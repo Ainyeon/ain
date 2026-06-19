@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>수도권 입주 캘린더 | 에인연</title>
+  <meta name="description" content="에인연이 매일 업데이트하는 수도권 입주 캘린더입니다. 단계별 입주 예정 단지를 확인하세요.">
+  <meta property="og:title" content="수도권 입주 캘린더 | 에인연">
+  <meta property="og:description" content="D-180부터 D+180까지 수도권 입주 단지를 단계별로 확인하세요.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#111827">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f1e8;
+      --paper: #fffaf0;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d8cdbb;
+      --accent: #8d5b2f;
+      --accent-strong: #533015;
+      --soft: #ebe1d1;
+      --white: #ffffff;
+      --danger: #8b2f24;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--bg);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #111827 0, #111827 330px, var(--bg) 330px, var(--bg) 100%);
+      letter-spacing: 0;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      width: min(100%, 520px);
+      margin: 0 auto;
+      padding: 28px 18px 40px;
+    }
+
+    .hero {
+      color: var(--white);
+      padding: 18px 0 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 28px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .mark::before {
+      content: "■";
+      color: #d6a15d;
+      font-size: 11px;
+    }
+
+    .updated {
+      color: #c6d0df;
+      font-size: 12px;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.12;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .period {
+      margin: 14px 0 0;
+      color: #d7deea;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 22px;
+    }
+
+    .summary-item {
+      min-height: 70px;
+      padding: 12px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .summary-value {
+      display: block;
+      font-size: 21px;
+      font-weight: 800;
+      line-height: 1;
+      color: #f8ead0;
+    }
+
+    .summary-label {
+      display: block;
+      margin-top: 8px;
+      color: #c6d0df;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .panel {
+      margin-top: 10px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 16px 34px rgba(17, 24, 39, 0.12);
+    }
+
+    .loading,
+    .error,
+    .empty {
+      padding: 32px 8px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+      text-align: center;
+    }
+
+    .error {
+      color: var(--danger);
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+
+    .stage-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--white);
+      overflow: hidden;
+    }
+
+    .stage-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 14px;
+      background: #f2eadc;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .stage-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.25;
+    }
+
+    .stage-title::before {
+      content: "■";
+      color: var(--accent);
+      font-size: 9px;
+      flex: 0 0 auto;
+    }
+
+    .count {
+      flex: 0 0 auto;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--ink);
+      color: var(--white);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .region-block {
+      padding: 12px 14px 4px;
+    }
+
+    .region-block + .region-block {
+      border-top: 1px solid #eee5d7;
+    }
+
+    .region-name {
+      margin: 0 0 8px;
+      color: var(--accent-strong);
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+
+    .complex-list {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 10px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .complex-item {
+      display: grid;
+      grid-template-columns: 12px 1fr;
+      gap: 6px;
+      color: #263246;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .complex-item::before {
+      content: "·";
+      color: var(--accent);
+      font-weight: 900;
+    }
+
+    .move-month {
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .footer {
+      margin-top: 18px;
+      padding: 18px 2px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .cafe-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 52px;
+      margin-top: 14px;
+      padding: 0 16px;
+      border-radius: 8px;
+      background: var(--ink);
+      color: var(--white);
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .raw-note {
+      margin-top: 14px;
+      color: #8a7b66;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    @media (min-width: 760px) {
+      body {
+        background:
+          linear-gradient(180deg, #111827 0, #111827 360px, var(--bg) 360px, var(--bg) 100%);
+      }
+
+      .page {
+        width: min(100%, 760px);
+        padding-top: 36px;
+      }
+
+      h1 {
+        font-size: 44px;
+      }
+
+      .panel {
+        padding: 20px;
+      }
+
+      .timeline {
+        gap: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero" aria-labelledby="page-title">
+      <div class="brand">
+        <span class="mark">에인연</span>
+        <span class="updated" id="updatedLabel">업데이트 확인 중</span>
+      </div>
+      <h1 id="page-title">수도권 입주 캘린더</h1>
+      <p class="period" id="periodLabel">D-180부터 D+180까지 입주 단지를 단계별로 정리합니다.</p>
+      <div class="summary" aria-label="캘린더 요약">
+        <div class="summary-item">
+          <span class="summary-value" id="totalCount">-</span>
+          <span class="summary-label">전체 단지</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-value" id="stageCount">-</span>
+          <span class="summary-label">표시 단계</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-value" id="calendarDate">-</span>
+          <span class="summary-label">기준일</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" aria-live="polite">
+      <div id="status" class="loading">캘린더를 불러오는 중입니다.</div>
+      <div id="timeline" class="timeline" hidden></div>
+    </section>
+
+    <footer class="footer">
+      <div>입주 단지 정보는 에인연에서 매일 업데이트됩니다.</div>
+      <a class="cafe-button" href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">현장 정보 더 받기 → 에인연 카페</a>
+      <div class="raw-note">공개 페이지에는 캘린더 본문, 단계, 기준일만 표시됩니다.</div>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
+    const VIEW_NAME = "public_move_in_calendar";
+    const STAGE_ORDER = [
+      "신규",
+      "D-180 ~ D-91",
+      "D-90 ~ D-31",
+      "D-30 ~ 입주",
+      "입주중 ~ D+90",
+      "D+90 ~ D+180"
+    ];
+
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    const statusEl = document.getElementById("status");
+    const timelineEl = document.getElementById("timeline");
+    const updatedLabelEl = document.getElementById("updatedLabel");
+    const periodLabelEl = document.getElementById("periodLabel");
+    const totalCountEl = document.getElementById("totalCount");
+    const stageCountEl = document.getElementById("stageCount");
+    const calendarDateEl = document.getElementById("calendarDate");
+
+    function formatDate(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(date);
+    }
+
+    function compactDate(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value.slice(5).replace("-", ".");
+      return new Intl.DateTimeFormat("ko-KR", {
+        month: "2-digit",
+        day: "2-digit"
+      }).format(date).replace(/\.$/, "");
+    }
+
+    function parseCalendar(text) {
+      const stages = [];
+      let current = null;
+
+      text.split("\n").forEach((rawLine) => {
+        const line = rawLine.trim();
+        if (!line || line.startsWith("─") || line.includes("에인연 입주 캘린더") || line.includes("입주 단지 정보")) {
+          return;
+        }
+
+        const stageMatch = line.match(/^\[(.+)]$/);
+        if (stageMatch) {
+          current = {
+            label: stageMatch[1],
+            items: []
+          };
+          stages.push(current);
+          return;
+        }
+
+        if (!current || !line.startsWith("·")) return;
+
+        const itemText = line.replace(/^·\s*/, "");
+        const parts = itemText.split(" — ");
+        const region = parts[0] || "기타";
+        const rest = parts.slice(1).join(" — ");
+        const itemMatch = rest.match(/^(.*?)(\s*\(([^)]+)\))?$/);
+        current.items.push({
+          region,
+          name: itemMatch ? itemMatch[1].trim() : rest.trim(),
+          month: itemMatch && itemMatch[3] ? itemMatch[3].trim() : ""
+        });
+      });
+
+      return STAGE_ORDER
+        .map((label) => stages.find((stage) => stage.label === label) || { label, items: [] })
+        .filter((stage) => stage.items.length > 0);
+    }
+
+    function groupByRegion(items) {
+      return items.reduce((groups, item) => {
+        if (!groups[item.region]) groups[item.region] = [];
+        groups[item.region].push(item);
+        return groups;
+      }, {});
+    }
+
+    function createStageCard(stage) {
+      const card = document.createElement("article");
+      card.className = "stage-card";
+
+      const head = document.createElement("div");
+      head.className = "stage-head";
+
+      const title = document.createElement("div");
+      title.className = "stage-title";
+      title.textContent = stage.label;
+
+      const count = document.createElement("div");
+      count.className = "count";
+      count.textContent = `${stage.items.length}곳`;
+
+      head.append(title, count);
+      card.append(head);
+
+      const groups = groupByRegion(stage.items);
+      Object.keys(groups).sort((a, b) => a.localeCompare(b, "ko-KR")).forEach((region) => {
+        const block = document.createElement("div");
+        block.className = "region-block";
+
+        const regionName = document.createElement("h2");
+        regionName.className = "region-name";
+        regionName.textContent = region;
+
+        const list = document.createElement("ul");
+        list.className = "complex-list";
+
+        groups[region].forEach((item) => {
+          const li = document.createElement("li");
+          li.className = "complex-item";
+
+          const text = document.createElement("span");
+          text.textContent = item.name;
+
+          if (item.month) {
+            const month = document.createElement("span");
+            month.className = "move-month";
+            month.textContent = ` (${item.month})`;
+            text.append(month);
+          }
+
+          li.append(text);
+          list.append(li);
+        });
+
+        block.append(regionName, list);
+        card.append(block);
+      });
+
+      return card;
+    }
+
+    async function fetchLatestCalendar() {
+      const metroResult = await client
+        .from(VIEW_NAME)
+        .select("content_text,stage,calendar_date")
+        .like("stage", "calendar_metro_%")
+        .order("calendar_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!metroResult.error && metroResult.data) {
+        return metroResult.data;
+      }
+
+      const fallbackResult = await client
+        .from(VIEW_NAME)
+        .select("content_text,stage,calendar_date")
+        .order("calendar_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fallbackResult.error) throw fallbackResult.error;
+      return fallbackResult.data;
+    }
+
+    async function renderCalendar() {
+      try {
+        const data = await fetchLatestCalendar();
+        if (!data || !data.content_text) {
+          statusEl.className = "empty";
+          statusEl.textContent = "공개된 캘린더가 아직 없습니다.";
+          return;
+        }
+
+        const stages = parseCalendar(data.content_text);
+        const total = stages.reduce((sum, stage) => sum + stage.items.length, 0);
+
+        if (!total) {
+          statusEl.className = "empty";
+          statusEl.textContent = "표시할 단지가 없습니다.";
+          return;
+        }
+
+        timelineEl.innerHTML = "";
+        stages.forEach((stage) => timelineEl.append(createStageCard(stage)));
+
+        statusEl.hidden = true;
+        timelineEl.hidden = false;
+        updatedLabelEl.textContent = `${formatDate(data.calendar_date)} 업데이트`;
+        periodLabelEl.textContent = "D-180부터 D+180까지 수도권 입주 단지를 단계별로 정리합니다.";
+        totalCountEl.textContent = total.toLocaleString("ko-KR");
+        stageCountEl.textContent = stages.length.toLocaleString("ko-KR");
+        calendarDateEl.textContent = compactDate(data.calendar_date);
+      } catch (error) {
+        statusEl.className = "error";
+        statusEl.textContent = "캘린더를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
+        console.error(error);
+      }
+    }
+
+    renderCalendar();
+  </script>
+</body>
+</html>
