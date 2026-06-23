@@ -8,20 +8,23 @@
   <meta property="og:title" content="수도권 입주 캘린더 | 에인연">
   <meta property="og:description" content="D-180부터 D+180까지 수도권 입주 단지를 단계별로 확인하세요.">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#111827">
+  <meta name="theme-color" content="#0E1116">
   <style>
     :root {
-      color-scheme: light;
-      --bg: #f5f1e8;
-      --paper: #fffaf0;
-      --ink: #172033;
-      --muted: #667085;
-      --line: #d8cdbb;
-      --accent: #8d5b2f;
-      --accent-strong: #533015;
-      --soft: #ebe1d1;
-      --white: #ffffff;
-      --danger: #8b2f24;
+      color-scheme: dark;
+      --bg: #0E1116;
+      --surface: #1A1F28;
+      --surface2: #161B23;
+      --border: #2A313D;
+      --txt: #E8EBF0;
+      --txt2: #9BA3B0;
+      --txt3: #6B7280;
+      --g-start: #2D4A9E;
+      --g-end: #9E2D3D;
+      --blue: #3D5BB0;
+      --purple: #7A4A8C;
+      --burgundy: #B0454F;
+      --danger: #E08A92;
     }
 
     * {
@@ -35,10 +38,11 @@
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
-      color: var(--ink);
-      background:
-        linear-gradient(180deg, #111827 0, #111827 330px, var(--bg) 330px, var(--bg) 100%);
+      background: var(--bg);
+      color: var(--txt);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
       letter-spacing: 0;
     }
 
@@ -47,107 +51,140 @@
       text-decoration: none;
     }
 
-    .page {
+    .wrap {
       width: min(100%, 520px);
       margin: 0 auto;
-      padding: 28px 18px 40px;
+      padding: 0 0 56px;
     }
 
-    .hero {
-      color: var(--white);
-      padding: 18px 0 24px;
+    header {
+      padding: 34px 24px 22px;
+      border-bottom: 1px solid var(--border);
     }
 
-    .brand {
+    .head-row {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 28px;
-      font-size: 14px;
-      font-weight: 700;
+      gap: 18px;
     }
 
-    .mark {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
+    .logo-block {
+      min-width: 0;
     }
 
-    .mark::before {
-      content: "■";
-      color: #d6a15d;
+    .logo-svg {
+      height: 46px;
+      width: auto;
+      display: block;
+    }
+
+    .sub {
+      margin-top: 8px;
+      color: var(--txt2);
       font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      white-space: nowrap;
     }
 
     .updated {
-      color: #c6d0df;
+      padding-top: 6px;
+      color: var(--txt2);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
       text-align: right;
+      white-space: nowrap;
     }
 
     h1 {
-      margin: 0;
-      font-size: 34px;
-      line-height: 1.12;
+      margin: 22px 0 0;
+      color: var(--txt);
+      font-size: 24px;
       font-weight: 800;
+      line-height: 1.22;
       letter-spacing: 0;
     }
 
-    .period {
-      margin: 14px 0 0;
-      color: #d7deea;
-      font-size: 15px;
-      line-height: 1.6;
+    .meta {
+      margin-top: 6px;
+      color: var(--txt2);
+      font-size: 13px;
+      line-height: 1.55;
     }
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
-      margin-top: 22px;
+      margin-top: 18px;
     }
 
     .summary-item {
-      min-height: 70px;
-      padding: 12px 10px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
+      min-height: 68px;
+      padding: 11px 10px;
+      border: 1px solid var(--border);
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.07);
+      background: var(--surface2);
     }
 
     .summary-value {
       display: block;
+      color: #fff;
       font-size: 21px;
       font-weight: 800;
-      line-height: 1;
-      color: #f8ead0;
+      line-height: 1.1;
     }
 
     .summary-label {
       display: block;
-      margin-top: 8px;
-      color: #c6d0df;
+      margin-top: 7px;
+      color: var(--txt2);
       font-size: 11px;
       line-height: 1.25;
     }
 
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 18px 24px 2px;
+    }
+
+    .chip {
+      min-height: 32px;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface2);
+      color: var(--txt2);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+      cursor: pointer;
+    }
+
+    .chip.on {
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--g-start), var(--g-end));
+      color: #fff;
+    }
+
     .panel {
-      margin-top: 10px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--paper);
-      box-shadow: 0 16px 34px rgba(17, 24, 39, 0.12);
+      padding-top: 4px;
     }
 
     .loading,
     .error,
     .empty {
-      padding: 32px 8px;
-      color: var(--muted);
-      font-size: 15px;
+      margin: 24px;
+      padding: 34px 20px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--txt2);
+      font-size: 14px;
       line-height: 1.7;
       text-align: center;
     }
@@ -158,161 +195,211 @@
 
     .timeline {
       display: grid;
-      gap: 12px;
+      gap: 2px;
     }
 
-    .stage-card {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--white);
-      overflow: hidden;
+    .stage {
+      padding: 24px 24px 0;
+      --stage: var(--blue);
+      --stage-soft: rgba(61, 91, 176, 0.18);
+      --stage-txt: #8FA9E8;
     }
 
     .stage-head {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 13px 14px;
-      background: #f2eadc;
-      border-bottom: 1px solid var(--line);
+      gap: 10px;
+      margin-bottom: 14px;
     }
 
-    .stage-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .stage-bar {
+      width: 3px;
+      height: 18px;
+      border-radius: 2px;
+      background: var(--stage);
+      flex: 0 0 auto;
+    }
+
+    .stage-name {
       min-width: 0;
+      color: var(--txt);
       font-size: 15px;
       font-weight: 800;
       line-height: 1.25;
     }
 
-    .stage-title::before {
-      content: "■";
-      color: var(--accent);
-      font-size: 9px;
-      flex: 0 0 auto;
-    }
-
-    .count {
-      flex: 0 0 auto;
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: var(--ink);
-      color: var(--white);
+    .stage-count {
+      margin-left: auto;
+      color: var(--txt3);
       font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .cards {
+      display: grid;
+      gap: 10px;
+    }
+
+    .complex-card {
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--stage);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 13px 14px;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .complex-name {
+      min-width: 0;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
+    .badge-new {
+      display: inline-flex;
+      align-items: center;
+      min-height: 18px;
+      margin-left: 7px;
+      padding: 2px 7px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, var(--g-start), var(--g-end));
+      color: #fff;
+      font-size: 10px;
       font-weight: 800;
+      line-height: 1;
+      vertical-align: middle;
+      white-space: nowrap;
     }
 
-    .region-block {
-      padding: 12px 14px 4px;
+    .stage-badge {
+      flex: 0 0 auto;
+      max-width: 118px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--stage-soft);
+      color: var(--stage-txt);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.25;
+      text-align: center;
+      white-space: normal;
     }
 
-    .region-block + .region-block {
-      border-top: 1px solid #eee5d7;
+    .loc {
+      margin-top: 6px;
+      color: var(--txt2);
+      font-size: 12px;
+      line-height: 1.45;
     }
 
-    .region-name {
-      margin: 0 0 8px;
-      color: var(--accent-strong);
-      font-size: 13px;
+    .date-line {
+      margin-top: 3px;
+      color: var(--txt3);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .cta {
+      margin: 36px 24px 0;
+      padding: 22px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--g-start), var(--g-end));
+      text-align: center;
+    }
+
+    .cta-title {
+      color: #fff;
+      font-size: 16px;
       font-weight: 800;
       line-height: 1.3;
     }
 
-    .complex-list {
-      display: grid;
-      gap: 8px;
-      margin: 0 0 10px;
-      padding: 0;
-      list-style: none;
+    .cta-sub {
+      margin-top: 4px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 12px;
+      line-height: 1.5;
     }
 
-    .complex-item {
-      display: grid;
-      grid-template-columns: 12px 1fr;
-      gap: 6px;
-      color: #263246;
-      font-size: 14px;
-      line-height: 1.45;
-    }
-
-    .complex-item::before {
-      content: "·";
-      color: var(--accent);
-      font-weight: 900;
-    }
-
-    .move-month {
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    .footer {
-      margin-top: 18px;
-      padding: 18px 2px 0;
-      color: var(--muted);
+    .cta-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      margin-top: 14px;
+      padding: 9px 22px;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--surface);
       font-size: 13px;
+      font-weight: 800;
+    }
+
+    footer {
+      margin-top: 28px;
+      padding: 0 24px;
+      color: var(--txt3);
+      font-size: 11px;
       line-height: 1.6;
       text-align: center;
     }
 
-    .cafe-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 52px;
-      margin-top: 14px;
-      padding: 0 16px;
-      border-radius: 8px;
-      background: var(--ink);
-      color: var(--white);
-      font-size: 15px;
-      font-weight: 800;
-    }
-
-    .raw-note {
-      margin-top: 14px;
-      color: #8a7b66;
-      font-size: 12px;
-      line-height: 1.6;
-    }
-
     @media (min-width: 760px) {
-      body {
-        background:
-          linear-gradient(180deg, #111827 0, #111827 360px, var(--bg) 360px, var(--bg) 100%);
+      .wrap {
+        width: min(100%, 760px);
       }
 
-      .page {
-        width: min(100%, 760px);
-        padding-top: 36px;
+      header {
+        padding-top: 40px;
       }
 
       h1 {
-        font-size: 44px;
+        font-size: 30px;
       }
 
-      .panel {
-        padding: 20px;
-      }
-
-      .timeline {
-        gap: 14px;
+      .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
   </style>
 </head>
 <body>
-  <main class="page">
-    <section class="hero" aria-labelledby="page-title">
-      <div class="brand">
-        <span class="mark">에인연</span>
-        <span class="updated" id="updatedLabel">업데이트 확인 중</span>
+  <main class="wrap">
+    <header>
+      <div class="head-row">
+        <div class="logo-block">
+          <svg class="logo-svg" viewBox="0 0 929 307" xmlns="http://www.w3.org/2000/svg" aria-label="A.IN">
+            <defs>
+              <linearGradient id="ain-logo-gradient" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#2D4A9E"/>
+                <stop offset="100%" stop-color="#9E2D3D"/>
+              </linearGradient>
+            </defs>
+            <g fill="url(#ain-logo-gradient)">
+              <path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/>
+              <circle cx="427" cy="268" r="40"/>
+              <path d="M510 0L509 302L565 303L565 0Z"/>
+              <path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/>
+            </g>
+          </svg>
+          <div class="sub">에어컨 인테리어 연구소</div>
+        </div>
+        <div class="updated" id="updatedLabel">업데이트 확인 중</div>
       </div>
-      <h1 id="page-title">수도권 입주 캘린더</h1>
-      <p class="period" id="periodLabel">D-180부터 D+180까지 입주 단지를 단계별로 정리합니다.</p>
+
+      <h1>수도권 입주 캘린더</h1>
+      <div class="meta" id="periodLabel">D-180부터 D+180까지 입주 단지를 단계별로 정리합니다.</div>
+
       <div class="summary" aria-label="캘린더 요약">
         <div class="summary-item">
           <span class="summary-value" id="totalCount">-</span>
@@ -327,18 +414,28 @@
           <span class="summary-label">기준일</span>
         </div>
       </div>
-    </section>
+    </header>
+
+    <nav class="chips" aria-label="지역 필터">
+      <button class="chip on" type="button" data-filter="all">전체</button>
+      <button class="chip" type="button" data-filter="서울">서울</button>
+      <button class="chip" type="button" data-filter="인천">인천</button>
+      <button class="chip" type="button" data-filter="경기">경기</button>
+      <button class="chip" type="button" data-filter="신규">신규만</button>
+    </nav>
 
     <section class="panel" aria-live="polite">
       <div id="status" class="loading">캘린더를 불러오는 중입니다.</div>
       <div id="timeline" class="timeline" hidden></div>
     </section>
 
-    <footer class="footer">
-      <div>입주 단지 정보는 에인연에서 매일 업데이트됩니다.</div>
-      <a class="cafe-button" href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">현장 정보 더 받기 → 에인연 카페</a>
-      <div class="raw-note">공개 페이지에는 캘린더 본문, 단계, 기준일만 표시됩니다.</div>
-    </footer>
+    <section class="cta" aria-label="에인연 카페">
+      <div class="cta-title">현장 정보 더 받기</div>
+      <div class="cta-sub">입주·구인·시세 — 매일 업데이트</div>
+      <a class="cta-button" href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">에인연 카페 →</a>
+    </section>
+
+    <footer>출처 청약홈·입주자모집공고 · 입주추정 = 공고일+30개월</footer>
   </main>
 
   <script>
@@ -353,6 +450,14 @@
       "입주중 ~ D+90",
       "D+90 ~ D+180"
     ];
+    const STAGE_META = {
+      "신규": { name: "신규", badge: "신규", color: "#2D4A9E", soft: "rgba(45, 74, 158, .2)", text: "#9CB4F5" },
+      "D-180 ~ D-91": { name: "D-180 ~ D-91", badge: "D-180 ~ D-91", color: "#3D5BB0", soft: "rgba(61, 91, 176, .18)", text: "#8FA9E8" },
+      "D-90 ~ D-31": { name: "D-90 ~ D-31", badge: "D-90 ~ D-31", color: "#3D5BB0", soft: "rgba(61, 91, 176, .18)", text: "#8FA9E8" },
+      "D-30 ~ 입주": { name: "D-30 ~ 입주", badge: "D-30 ~ 입주", color: "#7A4A8C", soft: "rgba(122, 74, 140, .2)", text: "#C49AD4" },
+      "입주중 ~ D+90": { name: "입주중 ~ D+90", badge: "입주중", color: "#B0454F", soft: "rgba(176, 69, 79, .18)", text: "#E08A92" },
+      "D+90 ~ D+180": { name: "D+90 ~ D+180", badge: "D+90 ~ D+180", color: "#B0454F", soft: "rgba(176, 69, 79, .18)", text: "#E08A92" }
+    };
 
     const statusEl = document.getElementById("status");
     const timelineEl = document.getElementById("timeline");
@@ -361,6 +466,9 @@
     const totalCountEl = document.getElementById("totalCount");
     const stageCountEl = document.getElementById("stageCount");
     const calendarDateEl = document.getElementById("calendarDate");
+    const chipButtons = [...document.querySelectorAll(".chip")];
+    let allStages = [];
+    let activeFilter = "all";
 
     function formatDate(value) {
       if (!value) return "-";
@@ -393,7 +501,7 @@
           return;
         }
 
-        const stageMatch = line.match(/^\[(.+)]$/);
+        const stageMatch = line.match(/^\[([^\]]+)]/);
         if (stageMatch) {
           current = {
             label: stageMatch[1],
@@ -413,7 +521,9 @@
         current.items.push({
           region,
           name: itemMatch ? itemMatch[1].trim() : rest.trim(),
-          month: itemMatch && itemMatch[3] ? itemMatch[3].trim() : ""
+          month: itemMatch && itemMatch[3] ? itemMatch[3].trim() : "",
+          isNew: current.label === "신규",
+          stage: current.label
         });
       });
 
@@ -422,67 +532,109 @@
         .filter((stage) => stage.items.length > 0);
     }
 
-    function groupByRegion(items) {
-      return items.reduce((groups, item) => {
-        if (!groups[item.region]) groups[item.region] = [];
-        groups[item.region].push(item);
-        return groups;
-      }, {});
+    function itemMatchesFilter(item) {
+      if (activeFilter === "all") return true;
+      if (activeFilter === "신규") return item.isNew;
+      if (activeFilter === "서울") return item.region.startsWith("서울");
+      if (activeFilter === "인천") return item.region.startsWith("인천");
+      if (activeFilter === "경기") return !item.region.startsWith("서울") && !item.region.startsWith("인천");
+      return true;
     }
 
-    function createStageCard(stage) {
+    function filteredStages() {
+      return allStages
+        .map((stage) => ({ ...stage, items: stage.items.filter(itemMatchesFilter) }))
+        .filter((stage) => stage.items.length > 0);
+    }
+
+    function createComplexCard(item, meta) {
       const card = document.createElement("article");
-      card.className = "stage-card";
+      card.className = "complex-card";
+      card.style.setProperty("--stage", meta.color);
+      card.style.setProperty("--stage-soft", meta.soft);
+      card.style.setProperty("--stage-txt", meta.text);
+
+      const top = document.createElement("div");
+      top.className = "card-top";
+
+      const name = document.createElement("div");
+      name.className = "complex-name";
+      name.textContent = item.name;
+      if (item.isNew) {
+        const badgeNew = document.createElement("span");
+        badgeNew.className = "badge-new";
+        badgeNew.textContent = "신규";
+        name.append(badgeNew);
+      }
+
+      const badge = document.createElement("div");
+      badge.className = "stage-badge";
+      badge.textContent = meta.badge;
+
+      const loc = document.createElement("div");
+      loc.className = "loc";
+      loc.textContent = item.region;
+
+      const date = document.createElement("div");
+      date.className = "date-line";
+      date.textContent = item.month ? `입주예정월 ${item.month.replace(" 입주", "")}` : "입주예정월 확인 중";
+
+      top.append(name, badge);
+      card.append(top, loc, date);
+      return card;
+    }
+
+    function createStageSection(stage) {
+      const meta = STAGE_META[stage.label] || STAGE_META["D-180 ~ D-91"];
+      const section = document.createElement("section");
+      section.className = "stage";
+      section.style.setProperty("--stage", meta.color);
+      section.style.setProperty("--stage-soft", meta.soft);
+      section.style.setProperty("--stage-txt", meta.text);
 
       const head = document.createElement("div");
       head.className = "stage-head";
 
-      const title = document.createElement("div");
-      title.className = "stage-title";
-      title.textContent = stage.label;
+      const bar = document.createElement("span");
+      bar.className = "stage-bar";
+
+      const name = document.createElement("div");
+      name.className = "stage-name";
+      name.textContent = meta.name;
 
       const count = document.createElement("div");
-      count.className = "count";
-      count.textContent = `${stage.items.length}곳`;
+      count.className = "stage-count";
+      count.textContent = `${stage.items.length}개`;
 
-      head.append(title, count);
-      card.append(head);
+      const cards = document.createElement("div");
+      cards.className = "cards";
+      stage.items.forEach((item) => cards.append(createComplexCard(item, meta)));
 
-      const groups = groupByRegion(stage.items);
-      Object.keys(groups).sort((a, b) => a.localeCompare(b, "ko-KR")).forEach((region) => {
-        const block = document.createElement("div");
-        block.className = "region-block";
+      head.append(bar, name, count);
+      section.append(head, cards);
+      return section;
+    }
 
-        const regionName = document.createElement("h2");
-        regionName.className = "region-name";
-        regionName.textContent = region;
+    function renderStages() {
+      const stages = filteredStages();
+      const total = stages.reduce((sum, stage) => sum + stage.items.length, 0);
 
-        const list = document.createElement("ul");
-        list.className = "complex-list";
+      timelineEl.innerHTML = "";
+      if (!total) {
+        statusEl.hidden = false;
+        statusEl.className = "empty";
+        statusEl.textContent = "표시할 단지가 없습니다.";
+        timelineEl.hidden = true;
+        totalCountEl.textContent = "0";
+        stageCountEl.textContent = "0";
+        return;
+      }
 
-        groups[region].forEach((item) => {
-          const li = document.createElement("li");
-          li.className = "complex-item";
-
-          const text = document.createElement("span");
-          text.textContent = item.name;
-
-          if (item.month) {
-            const month = document.createElement("span");
-            month.className = "move-month";
-            month.textContent = ` (${item.month})`;
-            text.append(month);
-          }
-
-          li.append(text);
-          list.append(li);
-        });
-
-        block.append(regionName, list);
-        card.append(block);
-      });
-
-      return card;
+      stages.forEach((stage) => timelineEl.append(createStageSection(stage)));
+      statusEl.hidden = true;
+      timelineEl.hidden = false;
+      totalCountEl.textContent = total.toLocaleString("ko-KR");
+      stageCountEl.textContent = stages.length.toLocaleString("ko-KR");
     }
 
     async function requestCalendarRows(query) {
@@ -532,31 +684,32 @@
           return;
         }
 
-        const stages = parseCalendar(data.content_text);
-        const total = stages.reduce((sum, stage) => sum + stage.items.length, 0);
-
-        if (!total) {
+        allStages = parseCalendar(data.content_text);
+        const rawTotal = allStages.reduce((sum, stage) => sum + stage.items.length, 0);
+        if (!rawTotal) {
           statusEl.className = "empty";
           statusEl.textContent = "표시할 단지가 없습니다.";
           return;
         }
 
-        timelineEl.innerHTML = "";
-        stages.forEach((stage) => timelineEl.append(createStageCard(stage)));
-
-        statusEl.hidden = true;
-        timelineEl.hidden = false;
         updatedLabelEl.textContent = `${formatDate(data.calendar_date)} 업데이트`;
         periodLabelEl.textContent = "D-180부터 D+180까지 수도권 입주 단지를 단계별로 정리합니다.";
-        totalCountEl.textContent = total.toLocaleString("ko-KR");
-        stageCountEl.textContent = stages.length.toLocaleString("ko-KR");
         calendarDateEl.textContent = compactDate(data.calendar_date);
+        renderStages();
       } catch (error) {
         statusEl.className = "error";
         statusEl.textContent = "캘린더를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
         console.error(error);
       }
     }
+
+    chipButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        activeFilter = button.dataset.filter || "all";
+        chipButtons.forEach((item) => item.classList.toggle("on", item === button));
+        renderStages();
+      });
+    });
 
     renderCalendar();
   </script>
