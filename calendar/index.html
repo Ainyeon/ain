@@ -341,7 +341,6 @@
     </footer>
   </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
@@ -354,8 +353,6 @@
       "입주중 ~ D+90",
       "D+90 ~ D+180"
     ];
-
-    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
     const statusEl = document.getElementById("status");
     const timelineEl = document.getElementById("timeline");
@@ -488,28 +485,42 @@
       return card;
     }
 
-    async function fetchLatestCalendar() {
-      const metroResult = await client
-        .from(VIEW_NAME)
-        .select("content_text,stage,calendar_date")
-        .like("stage", "calendar_metro_%")
-        .order("calendar_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    async function requestCalendarRows(query) {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/${VIEW_NAME}?${query}`, {
+        headers: {
+          apikey: SUPABASE_PUBLISHABLE_KEY,
+          Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+        }
+      });
 
-      if (!metroResult.error && metroResult.data) {
-        return metroResult.data;
+      if (!response.ok) {
+        throw new Error(`Supabase request failed: ${response.status}`);
       }
 
-      const fallbackResult = await client
-        .from(VIEW_NAME)
-        .select("content_text,stage,calendar_date")
-        .order("calendar_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      return response.json();
+    }
 
-      if (fallbackResult.error) throw fallbackResult.error;
-      return fallbackResult.data;
+    async function fetchLatestCalendar() {
+      const columns = "content_text,stage,calendar_date";
+      const metroQuery = new URLSearchParams({
+        select: columns,
+        stage: "like.calendar_metro_%",
+        order: "calendar_date.desc",
+        limit: "1"
+      });
+      const fallbackQuery = new URLSearchParams({
+        select: columns,
+        order: "calendar_date.desc",
+        limit: "1"
+      });
+
+      const metroRows = await requestCalendarRows(metroQuery.toString());
+      if (metroRows.length > 0) {
+        return metroRows[0];
+      }
+
+      const fallbackRows = await requestCalendarRows(fallbackQuery.toString());
+      return fallbackRows[0] || null;
     }
 
     async function renderCalendar() {
