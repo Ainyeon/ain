@@ -8,25 +8,28 @@
 <meta property="og:title" content="에인연 (AIN) · 현장 기술자의 AI 동료">
 <meta property="og:description" content="현장은 당신이, 나머지는 에인연이. 필요한 걸 올리면, 우리가 만들어 드립니다.">
 <meta property="og:type" content="website">
-<meta name="theme-color" content="#070C18">
+<meta name="theme-color" content="#0E1116">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#070C18;--navy:#10367D;--surface:#0E1A33;--copper:#F0A55E;--ink:#EDF2FC;
-  --muted:#7E93B8;--muted-dim:#5A6D90;--sky:#7FB0EC;--sky-soft:#A9CCF6;--green:#5DCAA5;
-  --line:rgba(127,176,236,0.12);--line-hi:rgba(127,176,236,0.28);
+  --bg:#0E1116;--surface:#1A1F28;--surface2:#161B23;--border:#2A313D;
+  --txt:#E8EBF0;--txt2:#9BA3B0;--txt3:#6B7280;
+  --g-start:#2D4A9E;--g-end:#9E2D3D;--blue:#3D5BB0;--purple:#7A4A8C;--burgundy:#B0454F;
+  --navy:var(--g-start);--copper:var(--g-end);--ink:var(--txt);
+  --muted:var(--txt2);--muted-dim:var(--txt3);--sky:#8FA9E8;--sky-soft:#C8D5F5;--green:#9BA3B0;
+  --line:var(--border);--line-hi:rgba(154,163,176,0.32);
   --mono:'JetBrains Mono',ui-monospace,monospace;--disp:'Space Grotesk','Noto Sans KR',sans-serif;--body:'Noto Sans KR',sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html{scroll-behavior:smooth;}
-body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1.6;min-height:100vh;display:flex;justify-content:center;-webkit-font-smoothing:antialiased;}
+body{font-family:var(--body);background:var(--bg);color:var(--txt);line-height:1.6;min-height:100vh;display:flex;justify-content:center;-webkit-font-smoothing:antialiased;}
 .wrap{width:100%;max-width:468px;min-height:100vh;padding:0 22px 56px;position:relative;overflow:hidden;
-  background:radial-gradient(620px 380px at 78% -8%, rgba(16,54,125,0.55) 0%, transparent 62%),radial-gradient(520px 340px at -10% 18%, rgba(240,165,94,0.06) 0%, transparent 60%),var(--bg);}
+  background:var(--bg);}
 .wrap::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
   background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:40px 40px;
-  -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.9),transparent 50%);mask-image:linear-gradient(180deg,rgba(0,0,0,.9),transparent 50%);}
+  -webkit-mask-image:linear-gradient(180deg,rgba(0,0,0,.18),transparent 42%);mask-image:linear-gradient(180deg,rgba(0,0,0,.18),transparent 42%);}
 @media (prefers-reduced-motion:no-preference){
   .reveal{opacity:0;transform:translateY(14px);animation:rise .55s cubic-bezier(.2,.7,.2,1) forwards;}
   .d1{animation-delay:.04s}.d2{animation-delay:.10s}.d3{animation-delay:.18s}.d4{animation-delay:.26s}
@@ -34,14 +37,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1
 @keyframes rise{to{opacity:1;transform:none}}
 
 .hero{padding:46px 2px 4px;position:relative;z-index:1;}
-.eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--disp);font-size:12px;font-weight:600;letter-spacing:0.02em;color:var(--sky);border:1px solid var(--line-hi);padding:7px 14px;border-radius:40px;margin-bottom:22px;background:rgba(16,54,125,0.25);}
-.eyebrow .sq{width:5px;height:5px;background:var(--copper);transform:rotate(45deg);}
-.logo{font-size:40px;font-weight:900;letter-spacing:-0.03em;line-height:1.05;}
-.logo .ain{font-family:var(--disp);font-size:22px;font-weight:600;color:var(--sky);letter-spacing:0;margin-left:8px;}
-.logo .full{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-size:12.5px;font-weight:500;color:var(--muted);letter-spacing:0.04em;margin-top:12px;}
-.logo .full::before{content:"";width:20px;height:1px;background:var(--line-hi);}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--disp);font-size:12px;font-weight:600;letter-spacing:0.02em;color:var(--txt2);border:1px solid var(--border);padding:7px 14px;border-radius:40px;margin-bottom:22px;background:var(--surface2);}
+.eyebrow .sq{width:5px;height:5px;background:linear-gradient(135deg,var(--g-start),var(--g-end));transform:rotate(45deg);}
+.logo{font-size:0;line-height:1;}
+.logo-svg{height:46px;width:auto;display:block;}
+.logo .full{display:flex;align-items:center;gap:9px;font-family:var(--disp);font-size:11px;font-weight:500;color:var(--txt2);letter-spacing:2px;margin-top:10px;text-transform:uppercase;}
+.logo .full::before{content:"";width:20px;height:1px;background:linear-gradient(90deg,var(--g-start),var(--g-end));}
 .tagline{font-size:25px;font-weight:900;letter-spacing:-0.035em;line-height:1.32;margin-top:26px;color:var(--ink);}
-.tagline .hl{color:var(--copper);}
+.tagline .hl{background:linear-gradient(135deg,var(--g-start),var(--g-end));-webkit-background-clip:text;background-clip:text;color:transparent;}
 .subline{font-size:14.5px;color:var(--sky-soft);margin-top:15px;font-weight:400;letter-spacing:-0.01em;line-height:1.6;}
 .subline b{color:var(--ink);font-weight:700;}
 
@@ -49,8 +52,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1
 .slabel::after{content:"";flex:1;height:1px;background:var(--line);}
 
 /* SIGNATURE: needs loop, 3 steps */
-.loop{position:relative;z-index:1;background:linear-gradient(180deg,rgba(22,40,78,0.85),rgba(11,22,46,0.9));border:1px solid var(--line-hi);border-radius:18px;padding:20px 18px 18px;overflow:hidden;box-shadow:0 18px 50px -24px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.04);}
-.loop::after{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--copper),transparent);opacity:.4;}
+.loop{position:relative;z-index:1;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:8px;padding:20px 18px 18px;overflow:hidden;box-shadow:none;}
+.loop::after{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,var(--g-start),var(--g-end));opacity:.55;}
 .loop h2{font-size:18px;font-weight:900;letter-spacing:-0.02em;line-height:1.35;}
 .loop h2 .hl{color:var(--copper);}
 .loop .lead{font-size:13px;color:var(--muted);margin-top:7px;line-height:1.55;}
@@ -58,23 +61,23 @@ body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1
 .step{display:flex;gap:13px;align-items:flex-start;position:relative;padding-bottom:16px;}
 .step:last-child{padding-bottom:0;}
 .step:not(:last-child)::before{content:"";position:absolute;left:15px;top:32px;bottom:2px;width:2px;background:linear-gradient(180deg,var(--line-hi),rgba(127,176,236,0.05));}
-.step .num{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:700;color:var(--copper);background:rgba(240,165,94,0.1);border:1px solid rgba(240,165,94,0.35);z-index:1;}
+.step .num{width:32px;height:32px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--g-start),var(--g-end));border:0;z-index:1;}
 .step .st{flex:1;padding-top:4px;}
 .step .st b{font-size:14.5px;font-weight:700;color:var(--ink);letter-spacing:-0.01em;}
 .step .st p{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.5;}
-.loop .free{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:700;color:var(--green);border-top:1px solid var(--line);padding-top:14px;letter-spacing:-0.01em;}
+.loop .free{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:700;color:var(--txt2);border-top:1px solid var(--border);padding-top:14px;letter-spacing:-0.01em;}
 
 .cards{display:flex;flex-direction:column;gap:12px;position:relative;z-index:1;}
-.card{background:linear-gradient(180deg,rgba(18,34,66,0.7),rgba(11,22,46,0.7));border:1px solid var(--line);border-radius:16px;padding:16px 17px;position:relative;overflow:hidden;}
+.card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:8px;padding:16px 17px;position:relative;overflow:hidden;}
 .card .top{display:flex;align-items:flex-start;gap:13px;}
-.card .ico{width:38px;height:38px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(16,54,125,0.55);border:1px solid var(--line-hi);}
+.card .ico{width:38px;height:38px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(61,91,176,0.18);border:1px solid rgba(61,91,176,0.34);}
 .card .ico svg{width:20px;height:20px;stroke:var(--sky);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}
 .card .tx{flex:1;}
 .card .tx h3{font-size:16px;font-weight:700;letter-spacing:-0.01em;line-height:1.3;}
 .card .tx p{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.55;}
 .card .tx p,.card .tx h3,.loop h2,.loop .lead,.subline,.soon .t,.step .st p,.step .st b,.chtx small,.tagline{word-break:keep-all;text-wrap:pretty;overflow-wrap:break-word;}
 .card .tx p b{color:var(--copper);font-weight:600;}
-.card.lead{border-color:var(--line-hi);background:linear-gradient(180deg,rgba(22,40,78,0.85),rgba(11,22,46,0.85));}
+.card.lead{border-color:var(--border);border-left-color:var(--purple);background:var(--surface);}
 .brief{margin-top:14px;border-top:1px solid var(--line);padding-top:12px;}
 .brief .bh{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
 .brief .bh .lab{font-family:var(--disp);font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0.04em;}
@@ -88,15 +91,15 @@ body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1
 .brow .bv .up{color:var(--copper);font-size:11px;margin-left:5px;}
 .brief .note{font-family:var(--mono);font-size:9.5px;color:var(--muted-dim);margin-top:8px;}
 
-.soon{display:flex;align-items:center;gap:11px;margin-top:12px;position:relative;z-index:1;border:1px dashed var(--line-hi);border-radius:14px;padding:13px 15px;background:rgba(16,54,125,0.12);}
+.soon{display:flex;align-items:center;gap:11px;margin-top:12px;position:relative;z-index:1;border:1px dashed var(--border);border-radius:8px;padding:13px 15px;background:var(--surface2);}
 .soon .tag{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--copper);letter-spacing:0.08em;border:1px solid rgba(240,165,94,0.4);padding:3px 8px;border-radius:30px;flex-shrink:0;}
 .soon .t{font-size:12.5px;color:var(--sky-soft);line-height:1.5;}
 .soon .t b{color:var(--ink);font-weight:600;}
 
 .chs{display:flex;flex-direction:column;gap:11px;position:relative;z-index:1;}
-.ch{display:flex;align-items:center;gap:14px;background:linear-gradient(180deg,rgba(21,36,74,0.7),rgba(14,26,51,0.7));border:1px solid var(--line);border-radius:16px;padding:13px 15px;text-decoration:none;color:var(--ink);transition:transform .15s ease,border-color .15s ease,background .15s ease;}
+.ch{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--burgundy);border-radius:8px;padding:13px 15px;text-decoration:none;color:var(--ink);transition:transform .15s ease,border-color .15s ease,background .15s ease;}
 .ch:active{transform:scale(0.985);}
-.ch:not(.soonch):hover{border-color:var(--line-hi);background:linear-gradient(180deg,rgba(25,42,84,0.82),rgba(16,30,58,0.82));}
+.ch:not(.soonch):hover{border-color:var(--line-hi);background:var(--surface2);}
 .ch:not(.soonch):hover .chev{transform:translateX(3px);color:var(--sky);}
 .chico{width:46px;height:46px;border-radius:13px;overflow:hidden;flex-shrink:0;position:relative;box-shadow:0 4px 12px -5px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,0.07);}
 .chico svg,.chico img{position:absolute;inset:0;width:100%;height:100%;display:block;}
@@ -105,8 +108,8 @@ body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1
 .chtx b{font-size:15.5px;font-weight:700;line-height:1.25;letter-spacing:-0.01em;}
 .chtx small{font-size:12px;color:var(--muted);}
 .chst{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--muted);border:1px solid var(--line-hi);padding:3px 9px;border-radius:30px;letter-spacing:0.04em;flex-shrink:0;}
-.chst.on{color:var(--green);border-color:rgba(93,202,165,0.4);display:inline-flex;align-items:center;gap:5px;}
-.chst.on .d{width:5px;height:5px;border-radius:50%;background:var(--green);}
+.chst.on{color:#fff;border-color:transparent;background:linear-gradient(135deg,var(--g-start),var(--g-end));display:inline-flex;align-items:center;gap:5px;}
+.chst.on .d{width:5px;height:5px;border-radius:50%;background:#fff;}
 .chev{font-family:var(--mono);font-size:15px;color:var(--muted-dim);flex-shrink:0;transition:transform .15s ease,color .15s ease;}
 .soonch{opacity:.5;cursor:default;}
 
@@ -125,7 +128,23 @@ body{font-family:var(--body);background:var(--bg);color:var(--ink);line-height:1
 
   <header class="hero">
     <span class="eyebrow reveal d1"><span class="sq"></span>현장 기술자의 AI 동료</span>
-    <h1 class="logo reveal d2">에인연<span class="ain">(AIN)</span><span class="full">에어컨 인테리어 연구소</span></h1>
+    <h1 class="logo reveal d2" aria-label="A.IN 에어컨 인테리어 연구소">
+      <svg class="logo-svg" viewBox="0 0 929 307" xmlns="http://www.w3.org/2000/svg" aria-label="A.IN">
+        <defs>
+          <linearGradient id="ain-landing-gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#2D4A9E"/>
+            <stop offset="100%" stop-color="#9E2D3D"/>
+          </linearGradient>
+        </defs>
+        <g fill="url(#ain-landing-gradient)">
+          <path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/>
+          <circle cx="427" cy="268" r="40"/>
+          <path d="M510 0L509 302L565 303L565 0Z"/>
+          <path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/>
+        </g>
+      </svg>
+      <span class="full">에어컨 인테리어 연구소</span>
+    </h1>
     <p class="tagline reveal d3">현장은 당신이,<br><span class="hl">나머지는 에인연</span>이.</p>
     <p class="subline reveal d3">빠르게 바뀌는 AI 시대, <b>혼자 두지 않습니다.</b><br>현장 사람들끼리 같이 갑니다.</p>
   </header>
