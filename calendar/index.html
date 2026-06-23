@@ -6,7 +6,7 @@
   <title>입주 캘린더 | 에인연</title>
   <meta name="description" content="에인연이 매일 업데이트하는 입주 캘린더입니다. 수도권과 전국 입주 예정 단지를 단계별로 확인하세요.">
   <meta property="og:title" content="입주 캘린더 | 에인연">
-  <meta property="og:description" content="입주예정일 데이터 정비 중입니다.">
+  <meta property="og:description" content="청약홈 입주자모집공고의 입주예정월 기준으로 매일 업데이트하는 입주 캘린더입니다.">
   <meta property="og:type" content="website">
   <meta name="theme-color" content="#0E1116">
   <style>
@@ -472,7 +472,7 @@
       </div>
 
       <h1 id="pageTitle">수도권 입주 캘린더</h1>
-      <div class="meta" id="periodLabel">입주예정일 데이터 정비 중입니다.</div>
+      <div class="meta" id="periodLabel">청약홈 입주자모집공고의 입주예정월 기준으로 정리합니다.</div>
 
       <div class="summary" aria-label="캘린더 요약">
         <div class="summary-item">
@@ -504,7 +504,7 @@
     </nav>
 
     <section class="panel" aria-live="polite">
-      <div id="status" class="loading">입주예정일 데이터 정비 중입니다. 정확한 입주예정월 출처를 확인한 뒤 다시 공개합니다.</div>
+      <div id="status" class="loading">캘린더를 불러오는 중</div>
       <div id="provincePanel" class="province-panel" hidden></div>
       <div id="timeline" class="timeline" hidden></div>
     </section>
@@ -515,7 +515,7 @@
       <a class="cta-button" href="https://ainyeon.github.io/ain/" target="_blank" rel="noopener">에인연 →</a>
     </section>
 
-    <footer>출처 청약홈·입주자모집공고 · 입주추정 = 공고일+30개월</footer>
+    <footer>출처: 청약홈 입주자모집공고 입주예정월 · 입주예정월은 공고 기준이며 실제 입주는 변동될 수 있습니다.</footer>
   </main>
 
   <script>
@@ -653,7 +653,7 @@
       loc.textContent = activeRegion === "NATION" && item.province !== item.region ? `${item.province} · ${item.region}` : item.region;
       const date = document.createElement("div");
       date.className = "date-line";
-      date.textContent = item.month ? `입주예정월 ${item.month.replace(" 입주", "")}` : "입주예정월 확인 중";
+      date.textContent = item.month ? `입주예정월 ${item.month}` : "입주예정월 확인 중";
       top.append(name, badge);
       card.append(top, loc, date);
       return card;
@@ -785,8 +785,8 @@
       pageTitleEl.textContent = activeRegion === "METRO" ? "수도권 입주 캘린더" : "전국 입주 캘린더";
       updatedLabelEl.textContent = `${formatDate(data.calendar_date)} 업데이트`;
       periodLabelEl.textContent = activeRegion === "METRO"
-        ? "D-180부터 D+180까지 수도권 입주 단지를 단계별로 정리합니다."
-        : "D-180부터 D+180까지 지방 시도별 입주 단지를 단계별로 정리합니다.";
+        ? "청약홈 입주자모집공고의 입주예정월 기준으로 수도권 단지를 정리합니다."
+        : "청약홈 입주자모집공고의 입주예정월 기준으로 지방 시도별 단지를 정리합니다.";
       calendarDateEl.textContent = compactDate(data.calendar_date);
       if (activeRegion === "NATION" && !activeProvince) {
         renderProvincePanel();
@@ -837,25 +837,7 @@
       });
     });
 
-    function renderMaintenance() {
-      pageTitleEl.textContent = "입주 캘린더 정비 중";
-      updatedLabelEl.textContent = "데이터 정비";
-      periodLabelEl.textContent = "입주예정월 원천 데이터를 재확인하고 있습니다.";
-      totalCountEl.textContent = "-";
-      stageCountEl.textContent = "-";
-      calendarDateEl.textContent = "-";
-      statusEl.hidden = false;
-      statusEl.className = "empty";
-      statusEl.textContent = "입주예정일 데이터 정비 중입니다. 공고 원본의 입주예정월을 확인한 뒤 다시 공개합니다.";
-      timelineEl.hidden = true;
-      provincePanelEl.hidden = true;
-      filterChipsEl.hidden = true;
-      regionTabs.forEach((tab) => {
-        tab.disabled = true;
-      });
-    }
-
-    renderMaintenance();
+    renderCalendar();
   </script>
 </body>
 </html>
