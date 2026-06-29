@@ -52,7 +52,10 @@
     .summary-item { min-height: 68px; padding: 11px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
     .summary-value { display: block; color: #fff; font-size: 21px; font-weight: 800; line-height: 1.1; }
     .summary-label { display: block; margin-top: 7px; color: var(--txt2); font-size: 11px; line-height: 1.25; }
-    .panel { padding: 24px; }
+    .panel { padding: 24px; display: grid; gap: 18px; }
+    .news-section { display: grid; gap: 11px; }
+    .section-headline { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--txt); font-size: 15px; font-weight: 900; }
+    .section-headline span:last-child { flex-shrink: 0; color: #9CB4F5; font-size: 11px; font-weight: 900; }
     .cards { display: grid; grid-template-columns: 1fr; gap: 12px; }
     .news-card {
       border: 1px solid var(--border);
@@ -123,6 +126,7 @@
   <script>
     const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
+    const OVERSEAS_NEWS_SOURCES = new Set(["Cooling Post", "Contractor Magazine"]);
     const statusEl = document.getElementById("status");
     const cardsEl = document.getElementById("cards");
     const updatedLabelEl = document.getElementById("updatedLabel");
@@ -147,19 +151,33 @@
     function card(row) {
       const article = document.createElement("article");
       article.className = "news-card";
+      const regionLabel = OVERSEAS_NEWS_SOURCES.has(row.source) ? "해외" : "국내";
       const summary = row.summary ? `<div class="summary-text">${escapeHtml(row.summary).replace(/\n/g, "<br>")}</div>` : "";
       article.innerHTML = `
         <div class="card-top">
           <div class="news-title">${escapeHtml(row.title || "제목 확인 필요")}</div>
-          <div class="source-badge">${escapeHtml(row.source || "출처")}</div>
+          <div class="source-badge">${regionLabel}</div>
         </div>
         ${summary}
         <div class="card-meta">
-          <span>${formatDateTime(row.collected_at)}</span>
+          <span>${escapeHtml(row.source || "출처")} · ${formatDateTime(row.collected_at)}</span>
           <a class="origin-link" href="${row.url}" target="_blank" rel="noopener">원문 보기</a>
         </div>
       `;
       return article;
+    }
+
+    function section(title, rows) {
+      const wrap = document.createElement("section");
+      wrap.className = "news-section";
+      const head = document.createElement("div");
+      head.className = "section-headline";
+      head.innerHTML = `<span>${title}</span><span>${rows.length.toLocaleString("ko-KR")}건</span>`;
+      const grid = document.createElement("div");
+      grid.className = "cards";
+      rows.forEach((row) => grid.append(card(row)));
+      wrap.append(head, grid);
+      return wrap;
     }
 
     function escapeHtml(value) {
@@ -188,7 +206,10 @@
           statusEl.textContent = "표시할 업계뉴스가 아직 없습니다.";
           return;
         }
-        rows.forEach((row) => cardsEl.append(card(row)));
+        const domestic = rows.filter((row) => !OVERSEAS_NEWS_SOURCES.has(row.source));
+        const overseas = rows.filter((row) => OVERSEAS_NEWS_SOURCES.has(row.source));
+        if (domestic.length) cardsEl.append(section("국내 뉴스", domestic));
+        if (overseas.length) cardsEl.append(section("해외 뉴스", overseas));
         statusEl.hidden = true;
         cardsEl.hidden = false;
         newsCountEl.textContent = rows.length.toLocaleString("ko-KR");

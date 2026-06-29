@@ -72,6 +72,8 @@
     .line-item b { color: var(--txt); font-weight: 800; }
     .line-item small { display: block; margin-top: 3px; color: var(--txt3); font-size: 11px; }
     .line-link { display: block; margin-top: 4px; color: #8FA9E8; font-size: 12px; font-weight: 800; }
+    .region-label { padding: 10px 0 0; color: #9CB4F5; font-size: 12px; font-weight: 900; }
+    .section-action { margin-top: 13px; display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 0 13px; border: 1px solid rgba(61, 91, 176, .42); border-radius: 8px; color: #B6C7FA; background: rgba(61, 91, 176, .12); font-size: 12px; font-weight: 900; }
     .loading, .empty, .error { padding: 32px 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 13px; }
     .error { color: var(--danger); }
     .cta { margin: 0 24px; padding: 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
@@ -126,8 +128,11 @@
   <script>
     const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
-    const PRICE_URL = "https://raw.githubusercontent.com/Ainyeon/ain-automation/main/data/prices.json";
-    const CALENDAR_VIEW = "public_move_in_calendar";
+    const OVERSEAS_NEWS_SOURCES = new Set(["Cooling Post", "Contractor Magazine"]);
+    const MOVE_IN_REGIONS = [
+      { code: "METRO", label: "수도권" },
+      { code: "NATION", label: "전국" }
+    ];
     const panelEl = document.getElementById("briefingPanel");
     const statusEl = document.getElementById("status");
     const updatedLabelEl = document.getElementById("updatedLabel");
@@ -141,6 +146,12 @@
 
     function todayLabel() {
       return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).format(new Date()).replace(/\.$/, "");
+    }
+
+    function kstDateIso() {
+      const parts = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(new Date());
+      const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      return `${values.year}-${values.month}-${values.day}`;
     }
 
     function formatDate(value) {
@@ -168,53 +179,103 @@
     }
 
     async function fetchPrices() {
-      const response = await fetch(PRICE_URL, { cache: "no-store" });
-      if (!response.ok) throw new Error(`prices.json ${response.status}`);
+      const query = new URLSearchParams({
+        select: "item_id,name,price,unit,currency,display_price,display_change_day,display_change_day_percent,collected_at,status",
+        status: "eq.active",
+        order: "collected_at.desc",
+        limit: "20"
+      });
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/prices?${query}`, {
+        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
+      });
+      if (!response.ok) throw new Error(`prices ${response.status}`);
       return response.json();
     }
 
-    function priceItems(payload) {
-      if (!payload || payload.status !== "ok") {
-        const reason = payload && payload.error ? ` (${escapeHtml(payload.error)})` : "";
-        return [line(`<b>자재시세 확인 필요</b>${reason}`), line("<b>냉매</b>: 준비중")];
+    function priceItems(items) {
+      if (!Array.isArray(items) || !items.length) {
+        return [line("<b>자재시세 확인 필요</b>"), line("<b>냉매</b>: 준비중")];
       }
-      const items = Array.isArray(payload.items) ? payload.items : [];
-      const rows = items.filter((item) => ["copper", "aluminium"].includes(item.id)).map((item) => {
+      const seen = new Set();
+      const rows = items.filter((item) => {
+        if (!["copper", "aluminium"].includes(item.item_id) || seen.has(item.item_id)) return false;
+        seen.add(item.item_id);
+        return true;
+      }).map((item) => {
         const change = item.display_change_day ? `전일 ${escapeHtml(item.display_change_day)}${item.display_change_day_percent ? ` / ${escapeHtml(item.display_change_day_percent)}` : ""}` : "전일 변동 확인 중";
-        return line(`<b>${escapeHtml(item.name || item.id)}</b>: ${escapeHtml(item.display_price || item.price)}`, change);
+        return line(`<b>${escapeHtml(item.name || item.item_id)}</b>: ${escapeHtml(item.display_price || item.price)}`, change);
       });
       rows.push(line("<b>냉매</b>: 준비중"));
       return rows.length ? rows : [line("<b>자재시세 확인 필요</b>"), line("<b>냉매</b>: 준비중")];
     }
 
-    async function fetchCalendar() {
+    async function fetchMoveIns(regionCode) {
       const query = new URLSearchParams({
-        select: "content_text,stage,calendar_date",
-        stage: "like.calendar_metro_%",
-        order: "calendar_date.desc",
-        limit: "1"
+        select: "id,region,complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in,notice_date",
+        region: `eq.${regionCode}`,
+        expected_move_in: `gte.${kstDateIso()}`,
+        is_public: "eq.true",
+        order: "expected_move_in.asc",
+        limit: "15"
       });
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/${CALENDAR_VIEW}?${query}`, {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/move_in_complexes?${query}`, {
         headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
       });
-      if (!response.ok) throw new Error(`calendar ${response.status}`);
-      const rows = await response.json();
-      return rows[0] || null;
+      if (!response.ok) throw new Error(`move_in ${response.status}`);
+      return response.json();
     }
 
-    function parseMoveIns(text) {
+    function ddayText(value) {
+      if (!value) return "";
+      const today = new Date(`${kstDateIso()}T00:00:00+09:00`);
+      const target = new Date(`${String(value).slice(0, 10)}T00:00:00+09:00`);
+      if (Number.isNaN(target.getTime())) return "";
+      const delta = Math.round((target.getTime() - today.getTime()) / 86400000);
+      if (delta === 0) return "D-day";
+      return delta > 0 ? `D-${delta}` : `D+${Math.abs(delta)}`;
+    }
+
+    function moveInDisplay(row) {
+      const name = row.complex_name_ad || row.complex_name_raw || "단지명 확인 필요";
+      const region = [row.sido, row.sigungu].filter(Boolean).join(" ") || row.region || "";
+      const dateText = row.expected_move_in ? formatDate(row.expected_move_in) : "입주일 미확인";
+      const stage = row.stage || "추적중";
+      const dday = ddayText(row.expected_move_in);
+      return { name, sub: [region, stage, dateText, dday].filter(Boolean).join(" · ") };
+    }
+
+    function uniqueMoveIns(rows, limit = 5) {
+      const seen = new Set();
       const items = [];
-      text.split("\n").forEach((raw) => {
-        const lineText = raw.trim();
-        if (!lineText.startsWith("·") || items.length >= 5) return;
-        const clean = lineText.replace(/^·\s*/, "");
-        const parts = clean.split(" — ");
-        if (parts.length < 2) return;
-        const region = parts[0];
-        const name = parts.slice(1).join(" — ").replace(/\s*\(([^)]+)\)\s*$/, "");
-        const monthMatch = clean.match(/\(([^)]+)\)\s*$/);
-        items.push({ region, name, month: monthMatch ? monthMatch[1] : "" });
+      rows.forEach((row) => {
+        const key = String(row.complex_name_ad || row.complex_name_raw || "").trim().toLowerCase();
+        if (!key || seen.has(key) || items.length >= limit) return;
+        seen.add(key);
+        items.push(row);
       });
+      return items;
+    }
+
+    function moveInItems(moveInResults) {
+      const items = [];
+      moveInResults.forEach((result, index) => {
+        const region = MOVE_IN_REGIONS[index];
+        items.push(`<div class="region-label">[${region.label}]</div>`);
+        if (result.status !== "fulfilled") {
+          items.push(line("<b>입주정보 확인 필요</b>"));
+          return;
+        }
+        const parsed = uniqueMoveIns(result.value || [], 5);
+        if (!parsed.length) {
+          items.push(line("<b>임박 입주 단지 없음</b>"));
+          return;
+        }
+        parsed.forEach((item) => {
+          const display = moveInDisplay(item);
+          items.push(line(`<b>${escapeHtml(display.name)}</b>`, escapeHtml(display.sub)));
+        });
+      });
+      items.push(`<a class="section-action" href="../calendar/">전체보기</a>`);
       return items;
     }
 
@@ -223,7 +284,7 @@
         select: "title,source,url,collected_at",
         status: "eq.active",
         order: "collected_at.desc",
-        limit: "5"
+        limit: "20"
       });
       const response = await fetch(`${SUPABASE_URL}/rest/v1/news_items?${query}`, {
         headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
@@ -232,21 +293,30 @@
       return response.json();
     }
 
+    function briefingNewsRows(rows) {
+      const domestic = rows.filter((item) => !OVERSEAS_NEWS_SOURCES.has(item.source));
+      const overseas = rows.filter((item) => OVERSEAS_NEWS_SOURCES.has(item.source));
+      return overseas.length ? domestic.slice(0, 4).concat(overseas.slice(0, 1)) : domestic.slice(0, 5);
+    }
+
     async function render() {
       statusEl.remove();
       updatedLabelEl.textContent = `${todayLabel()} 기준`;
-      const [prices, calendar, news] = await Promise.allSettled([fetchPrices(), fetchCalendar(), fetchNews()]);
+      const [prices, news, ...moveIns] = await Promise.allSettled([fetchPrices(), fetchNews(), ...MOVE_IN_REGIONS.map((region) => fetchMoveIns(region.code))]);
       const priceRows = prices.status === "fulfilled" ? priceItems(prices.value) : [line(`<b>자재시세 확인 필요</b> (${escapeHtml(prices.reason.message)})`), line("<b>냉매</b>: 준비중")];
-      const calendarRow = calendar.status === "fulfilled" ? calendar.value : null;
-      const moveIns = calendarRow ? parseMoveIns(calendarRow.content_text || "") : [];
-      const newsRows = news.status === "fulfilled" ? news.value : [];
-      panelEl.append(section("📊 자재시세", prices.status === "fulfilled" && prices.value.status === "ok" ? "정상" : "확인 필요", priceRows));
-      panelEl.append(section("🏠 입주정보", `${moveIns.length}건`, moveIns.length ? moveIns.map((item) => line(`<b>${escapeHtml(item.name)}</b>`, `${escapeHtml(item.region)}${item.month ? ` · ${escapeHtml(item.month)}` : ""}`)) : [line("<b>입주정보 확인 필요</b>")]));
-      panelEl.append(section("📰 업계뉴스", `${newsRows.length}건`, newsRows.length ? newsRows.map((item) => line(`<b>${escapeHtml(item.title)}</b>`, `${escapeHtml(item.source)} · ${formatDate(item.collected_at)}`, item.url)) : [line("<b>업계뉴스 확인 필요</b>")], "news"));
+      const moveRows = moveInItems(moveIns);
+      const moveInCount = moveRows.filter((item) => item.includes("line-item") && !item.includes("확인 필요") && !item.includes("임박 입주 단지 없음")).length;
+      const newsRows = news.status === "fulfilled" ? briefingNewsRows(news.value) : [];
+      panelEl.append(section("📊 자재시세", prices.status === "fulfilled" && prices.value.length ? "정상" : "확인 필요", priceRows));
+      panelEl.append(section("🏠 입주정보", `${moveInCount}건`, moveRows));
+      panelEl.append(section("📰 업계뉴스", `${newsRows.length}건`, newsRows.length ? newsRows.map((item) => {
+        const label = OVERSEAS_NEWS_SOURCES.has(item.source) ? "해외" : "국내";
+        return line(`<b>[${label}] ${escapeHtml(item.title)}</b>`, `${escapeHtml(item.source)} · ${formatDate(item.collected_at)}`, item.url);
+      }) : [line("<b>업계뉴스 확인 필요</b>")], "news"));
       panelEl.append(section("💼 구인구직", "준비중", [line("<b>준비중</b>")], "todo"));
       panelEl.append(section("🏛 정부사업", "준비중", [line("<b>준비중</b>")], "todo"));
-      priceStatusEl.textContent = prices.status === "fulfilled" && prices.value.status === "ok" ? "OK" : "확인";
-      moveInCountEl.textContent = moveIns.length.toLocaleString("ko-KR");
+      priceStatusEl.textContent = prices.status === "fulfilled" && prices.value.length ? "OK" : "확인";
+      moveInCountEl.textContent = moveInCount.toLocaleString("ko-KR");
       newsCountEl.textContent = newsRows.length.toLocaleString("ko-KR");
     }
 
