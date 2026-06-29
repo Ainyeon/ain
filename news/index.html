@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>업계뉴스 | 에인연</title>
+  <meta name="description" content="에인연이 수집한 HVAC, 공조, 냉매, 인테리어 업계뉴스 후보입니다.">
+  <meta property="og:title" content="업계뉴스 | 에인연">
+  <meta property="og:description" content="한국 에어컨·인테리어 업계 관점으로 정리한 최신 업계뉴스입니다.">
+  <meta property="og:type" content="website">
+  <meta name="theme-color" content="#0E1116">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0E1116;
+      --surface: #1A1F28;
+      --surface2: #161B23;
+      --border: #2A313D;
+      --txt: #E8EBF0;
+      --txt2: #9BA3B0;
+      --txt3: #6B7280;
+      --g-start: #2D4A9E;
+      --g-end: #9E2D3D;
+      --blue: #3D5BB0;
+      --purple: #7A4A8C;
+      --burgundy: #B0454F;
+      --danger: #E08A92;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--txt);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.6;
+      letter-spacing: 0;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap { width: min(100%, 520px); margin: 0 auto; padding: 0 0 56px; }
+    header { padding: 34px 24px 22px; border-bottom: 1px solid var(--border); }
+    .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+    .logo-block { min-width: 0; }
+    .logo-svg { height: 46px; width: auto; display: block; }
+    .sub { margin-top: 8px; color: var(--txt2); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; }
+    .updated { padding-top: 6px; color: var(--txt2); font-size: 12px; font-weight: 700; text-align: right; white-space: nowrap; }
+    h1 { margin: 22px 0 0; color: var(--txt); font-size: 24px; font-weight: 800; line-height: 1.22; letter-spacing: 0; }
+    .meta { margin-top: 6px; color: var(--txt2); font-size: 13px; line-height: 1.55; }
+    .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
+    .summary-item { min-height: 68px; padding: 11px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
+    .summary-value { display: block; color: #fff; font-size: 21px; font-weight: 800; line-height: 1.1; }
+    .summary-label { display: block; margin-top: 7px; color: var(--txt2); font-size: 11px; line-height: 1.25; }
+    .panel { padding: 24px; }
+    .cards { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .news-card {
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--blue);
+      border-radius: 8px;
+      background: var(--surface);
+      padding: 16px 17px;
+      overflow: hidden;
+    }
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .news-title { min-width: 0; color: var(--txt); font-size: 16px; font-weight: 800; line-height: 1.4; word-break: keep-all; overflow-wrap: break-word; }
+    .source-badge { flex-shrink: 0; border: 1px solid rgba(61, 91, 176, .34); border-radius: 999px; background: rgba(61, 91, 176, .18); color: #9CB4F5; padding: 3px 9px; font-size: 11px; font-weight: 800; line-height: 1.2; }
+    .summary-text { margin-top: 10px; color: var(--txt2); font-size: 13px; line-height: 1.55; word-break: keep-all; overflow-wrap: break-word; }
+    .card-meta { margin-top: 12px; color: var(--txt3); font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .origin-link { color: #8FA9E8; font-weight: 800; white-space: nowrap; }
+    .origin-link:active { opacity: .72; }
+    .loading, .empty, .error { padding: 32px 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 13px; }
+    .error { color: var(--danger); }
+    .cta { margin: 0 24px; padding: 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
+    .cta-title { color: var(--txt); font-size: 15px; font-weight: 800; }
+    .cta-sub { margin-top: 4px; color: var(--txt2); font-size: 12px; }
+    .cta-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .cta-button { min-height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: linear-gradient(135deg, var(--g-start), var(--g-end)); color: #fff; font-size: 13px; font-weight: 800; }
+    footer { padding: 22px 24px 0; color: var(--txt3); font-size: 11px; line-height: 1.6; }
+    @media (min-width: 760px) {
+      .wrap { width: min(100%, 760px); }
+      header { padding-top: 40px; }
+      h1 { font-size: 30px; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header>
+      <div class="head-row">
+        <div class="logo-block">
+          <svg class="logo-svg" viewBox="0 0 929 307" xmlns="http://www.w3.org/2000/svg" aria-label="A.IN">
+            <defs><linearGradient id="ain-logo-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2D4A9E"/><stop offset="100%" stop-color="#9E2D3D"/></linearGradient></defs>
+            <g fill="url(#ain-logo-gradient)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g>
+          </svg>
+          <div class="sub">에어컨 인테리어 연구소</div>
+        </div>
+        <div class="updated" id="updatedLabel">업데이트 확인 중</div>
+      </div>
+      <h1>업계뉴스</h1>
+      <div class="meta">HVAC·공조·냉매·인테리어 이슈를 한국 업계 관점으로 정리합니다.</div>
+      <div class="summary" aria-label="뉴스 요약">
+        <div class="summary-item"><span class="summary-value" id="newsCount">-</span><span class="summary-label">표시 뉴스</span></div>
+        <div class="summary-item"><span class="summary-value" id="sourceCount">-</span><span class="summary-label">출처 수</span></div>
+        <div class="summary-item"><span class="summary-value" id="latestDate">-</span><span class="summary-label">최신 수집</span></div>
+      </div>
+    </header>
+    <section class="panel" aria-live="polite">
+      <div id="status" class="loading">뉴스를 불러오는 중</div>
+      <div id="cards" class="cards" hidden></div>
+    </section>
+    <section class="cta" aria-label="에인연 더 보기">
+      <div class="cta-title">에인연 허브</div>
+      <div class="cta-sub">입주 캘린더와 모닝브리핑도 같이 확인하세요.</div>
+      <div class="cta-links">
+        <a class="cta-button" href="../calendar/">입주캘린더</a>
+        <a class="cta-button" href="../briefing/">모닝브리핑</a>
+      </div>
+    </section>
+    <footer>출처: 각 언론·기관 원문 링크 · 에인연 자체 요약 후보이며, 자동발행 없이 검수 후 활용합니다.</footer>
+  </main>
+  <script>
+    const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
+    const statusEl = document.getElementById("status");
+    const cardsEl = document.getElementById("cards");
+    const updatedLabelEl = document.getElementById("updatedLabel");
+    const newsCountEl = document.getElementById("newsCount");
+    const sourceCountEl = document.getElementById("sourceCount");
+    const latestDateEl = document.getElementById("latestDate");
+
+    function formatDateTime(value) {
+      if (!value) return "-";
+      const day = new Date(value);
+      if (Number.isNaN(day.getTime())) return value;
+      return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(day);
+    }
+
+    function compactDate(value) {
+      if (!value) return "-";
+      const day = new Date(value);
+      if (Number.isNaN(day.getTime())) return value.slice(5, 10).replace("-", ".");
+      return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).format(day).replace(/\.$/, "");
+    }
+
+    function card(row) {
+      const article = document.createElement("article");
+      article.className = "news-card";
+      const summary = row.summary ? `<div class="summary-text">${escapeHtml(row.summary).replace(/\n/g, "<br>")}</div>` : "";
+      article.innerHTML = `
+        <div class="card-top">
+          <div class="news-title">${escapeHtml(row.title || "제목 확인 필요")}</div>
+          <div class="source-badge">${escapeHtml(row.source || "출처")}</div>
+        </div>
+        ${summary}
+        <div class="card-meta">
+          <span>${formatDateTime(row.collected_at)}</span>
+          <a class="origin-link" href="${row.url}" target="_blank" rel="noopener">원문 보기</a>
+        </div>
+      `;
+      return article;
+    }
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+    }
+
+    async function fetchNews() {
+      const query = new URLSearchParams({
+        select: "title,summary,source,url,collected_at",
+        status: "eq.active",
+        order: "collected_at.desc",
+        limit: "30"
+      });
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/news_items?${query}`, {
+        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
+      });
+      if (!response.ok) throw new Error(`Supabase request failed: ${response.status}`);
+      return response.json();
+    }
+
+    async function render() {
+      try {
+        const rows = await fetchNews();
+        if (!rows.length) {
+          statusEl.className = "empty";
+          statusEl.textContent = "표시할 업계뉴스가 아직 없습니다.";
+          return;
+        }
+        rows.forEach((row) => cardsEl.append(card(row)));
+        statusEl.hidden = true;
+        cardsEl.hidden = false;
+        newsCountEl.textContent = rows.length.toLocaleString("ko-KR");
+        sourceCountEl.textContent = new Set(rows.map((row) => row.source).filter(Boolean)).size.toLocaleString("ko-KR");
+        latestDateEl.textContent = compactDate(rows[0].collected_at);
+        updatedLabelEl.textContent = `${formatDateTime(rows[0].collected_at)} 업데이트`;
+      } catch (error) {
+        statusEl.className = "error";
+        statusEl.textContent = "뉴스를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
+        console.error(error);
+      }
+    }
+
+    render();
+  </script>
+</body>
+</html>

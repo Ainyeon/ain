@@ -68,6 +68,15 @@ body{font-family:var(--body);background:var(--bg);color:var(--txt);line-height:1
 .loop .free{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:700;color:var(--txt2);border-top:1px solid var(--border);padding-top:14px;letter-spacing:-0.01em;}
 
 .cards{display:flex;flex-direction:column;gap:12px;position:relative;z-index:1;}
+.hub{display:grid;grid-template-columns:1fr;gap:10px;position:relative;z-index:1;margin-bottom:12px;}
+.hub-card{display:flex;align-items:center;gap:13px;min-height:76px;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:8px;padding:15px 16px;color:var(--ink);text-decoration:none;transition:transform .15s ease,border-color .15s ease,background .15s ease;}
+.hub-card:active{transform:scale(.985);}
+.hub-card:hover{border-color:var(--line-hi);background:var(--surface2);}
+.hub-card .mark{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(61,91,176,.18);border:1px solid rgba(61,91,176,.34);font-size:18px;}
+.hub-card .copy{flex:1;min-width:0;}
+.hub-card b{display:block;font-size:15.5px;font-weight:800;line-height:1.25;letter-spacing:-.01em;}
+.hub-card small{display:block;margin-top:4px;color:var(--muted);font-size:12px;line-height:1.45;word-break:keep-all;overflow-wrap:break-word;}
+.hub-card .go{font-family:var(--mono);font-size:15px;color:var(--muted-dim);flex-shrink:0;}
 .card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:8px;padding:16px 17px;position:relative;overflow:hidden;}
 .card .top{display:flex;align-items:flex-start;gap:13px;}
 .card .ico{width:38px;height:38px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(61,91,176,0.18);border:1px solid rgba(61,91,176,0.34);}
@@ -172,6 +181,23 @@ body{font-family:var(--body);background:var(--bg);color:var(--txt);line-height:1
   </section>
 
   <div class="slabel reveal d6">지금 받을 수 있는 것</div>
+  <nav class="hub reveal d6" aria-label="에인연 정보 허브">
+    <a class="hub-card" href="calendar/">
+      <span class="mark">🏠</span>
+      <span class="copy"><b>입주캘린더</b><small>수도권·전국 입주 예정 단지를 단계별로 봅니다.</small></span>
+      <span class="go">→</span>
+    </a>
+    <a class="hub-card" href="news/">
+      <span class="mark">📰</span>
+      <span class="copy"><b>업계뉴스</b><small>공조·냉매·인테리어 뉴스를 한국 업계 관점으로 모읍니다.</small></span>
+      <span class="go">→</span>
+    </a>
+    <a class="hub-card" href="briefing/">
+      <span class="mark">📊</span>
+      <span class="copy"><b>모닝브리핑</b><small>시세·입주·뉴스를 오늘 기준 한 장으로 확인합니다.</small></span>
+      <span class="go">→</span>
+    </a>
+  </nav>
   <div class="cards">
     <div class="card lead reveal d6">
       <div class="top">
