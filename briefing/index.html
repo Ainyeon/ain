@@ -54,6 +54,7 @@
     .summary-label { display: block; margin-top: 7px; color: var(--txt2); font-size: 11px; line-height: 1.25; }
     .panel { padding: 24px; display: grid; gap: 14px; }
     .brief-section {
+      min-width: 0;
       border: 1px solid var(--border);
       border-left: 3px solid var(--blue);
       border-radius: 8px;
@@ -64,7 +65,7 @@
     .brief-section.news { border-left-color: var(--purple); }
     .brief-section.todo { border-left-color: var(--burgundy); }
     .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
-    .section-title { color: var(--txt); font-size: 16px; font-weight: 800; line-height: 1.3; }
+    .section-title { color: var(--txt); font-size: 16px; font-weight: 800; line-height: 1.3; word-break: keep-all; overflow-wrap: break-word; }
     .section-count { flex-shrink: 0; border: 1px solid rgba(61, 91, 176, .34); border-radius: 999px; background: rgba(61, 91, 176, .18); color: #9CB4F5; padding: 3px 9px; font-size: 11px; font-weight: 800; line-height: 1.2; }
     .item-list { display: grid; gap: 9px; }
     .line-item { padding: 10px 0 0; border-top: 1px solid var(--border); color: var(--txt2); font-size: 13px; line-height: 1.52; word-break: keep-all; overflow-wrap: break-word; }

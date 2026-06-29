@@ -53,11 +53,16 @@
     .summary-value { display: block; color: #fff; font-size: 21px; font-weight: 800; line-height: 1.1; }
     .summary-label { display: block; margin-top: 7px; color: var(--txt2); font-size: 11px; line-height: 1.25; }
     .panel { padding: 24px; display: grid; gap: 18px; }
+    .news-sections { display: grid; grid-template-columns: 1fr; gap: 28px; }
     .news-section { display: grid; gap: 11px; }
     .section-headline { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--txt); font-size: 15px; font-weight: 900; }
     .section-headline span:last-child { flex-shrink: 0; color: #9CB4F5; font-size: 11px; font-weight: 900; }
-    .cards { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; align-items: stretch; }
     .news-card {
+      min-width: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
       border: 1px solid var(--border);
       border-left: 3px solid var(--blue);
       border-radius: 8px;
@@ -68,8 +73,8 @@
     .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
     .news-title { min-width: 0; color: var(--txt); font-size: 16px; font-weight: 800; line-height: 1.4; word-break: keep-all; overflow-wrap: break-word; }
     .source-badge { flex-shrink: 0; border: 1px solid rgba(61, 91, 176, .34); border-radius: 999px; background: rgba(61, 91, 176, .18); color: #9CB4F5; padding: 3px 9px; font-size: 11px; font-weight: 800; line-height: 1.2; }
-    .summary-text { margin-top: 10px; color: var(--txt2); font-size: 13px; line-height: 1.55; word-break: keep-all; overflow-wrap: break-word; }
-    .card-meta { margin-top: 12px; color: var(--txt3); font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .summary-text { margin-top: 10px; color: var(--txt2); font-size: 13px; line-height: 1.55; word-break: keep-all; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+    .card-meta { margin-top: auto; padding-top: 12px; color: var(--txt3); font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .origin-link { color: #8FA9E8; font-weight: 800; white-space: nowrap; }
     .origin-link:active { opacity: .72; }
     .loading, .empty, .error { padding: 32px 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 13px; }
@@ -84,7 +89,6 @@
       .wrap { width: min(100%, 760px); }
       header { padding-top: 40px; }
       h1 { font-size: 30px; }
-      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -111,7 +115,7 @@
     </header>
     <section class="panel" aria-live="polite">
       <div id="status" class="loading">뉴스를 불러오는 중</div>
-      <div id="cards" class="cards" hidden></div>
+      <div id="cards" class="news-sections" hidden></div>
     </section>
     <section class="cta" aria-label="에인연 더 보기">
       <div class="cta-title">에인연 허브</div>
