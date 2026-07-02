@@ -20,6 +20,7 @@
 - news, prices → anon 공개 (SEO 유입 자산)
 
 ## 현재 상태
-- 완료: auth.js, 4개 페이지 인증 UI, profiles 테이블+트리거, 캘린더 게이팅 UI
-- 완료: 03_rls_gating.sql + 04_views.sql(security_invoker) 실행 (2026-07-02, anon 401 REST 검증 통과)
-- 남은 검증: 브라우저 실전 테스트 (시크릿 창 게이트 UI / 카카오 로그인 데이터 로드)
+- 완료: auth.js, 4개 페이지 인증 UI, profiles 테이블+트리거
+- 완료: 03~06 SQL 전부 실행 (2026-07-02) — 게이팅 전체 완성, REST+익명 브라우저 검증 통과
+- 완료: 캘린더·브리핑 티저 UI (move_in_teaser 기반, 단지명 잠금, total_count 노출)
+- 참고: 티저 total_count(561)는 전체 추적 단지 기준 — 캘린더 전문(73)과 집계 기준 다름
