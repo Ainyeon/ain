@@ -532,8 +532,6 @@
 
   <script>
     ainAuth.init('ain-auth-root');
-    const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
     const VIEW_NAME = "public_move_in_calendar";
     const STAGE_ORDER = ["신규", "D-180 ~ D-91", "D-90 ~ D-31", "D-30 ~ 입주", "입주중 ~ D+90", "D+90 ~ D+180"];
     const STAGE_META = {
@@ -808,25 +806,16 @@
       }
     }
 
-    async function requestCalendarRows(query) {
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/${VIEW_NAME}?${query}`, {
-        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
-      });
-      if (!response.ok) throw new Error(`Supabase request failed: ${response.status}`);
-      return response.json();
-    }
-
     async function fetchLatestCalendar(region) {
-      const columns = "content_text,stage,calendar_date";
-      const query = new URLSearchParams({
-        select: columns,
-        stage: `like.calendar_${region.toLowerCase()}_%`,
-        order: "calendar_date.desc",
-        limit: "1"
-      });
-      const rows = await requestCalendarRows(query.toString());
-      if (!rows.length) return null;
-      return { ...rows[0], stages: parseCalendar(rows[0].content_text, region) };
+      const { data, error } = await ainAuth.getClient()
+        .from(VIEW_NAME)
+        .select("content_text,stage,calendar_date")
+        .like("stage", `calendar_${region.toLowerCase()}_%`)
+        .order("calendar_date", { ascending: false })
+        .limit(1);
+      if (error) throw new Error(`Supabase request failed: ${error.message}`);
+      if (!data.length) return null;
+      return { ...data[0], stages: parseCalendar(data[0].content_text, region) };
     }
 
     async function renderCalendar() {

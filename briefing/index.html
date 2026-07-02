@@ -133,8 +133,6 @@
   </main>
   <script>
     ainAuth.init('ain-auth-root');
-    const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
     const OVERSEAS_NEWS_SOURCES = new Set(["Cooling Post", "Contractor Magazine"]);
     const MOVE_IN_REGIONS = [
       { code: "METRO", label: "수도권" },
@@ -186,17 +184,14 @@
     }
 
     async function fetchPrices() {
-      const query = new URLSearchParams({
-        select: "item_id,name,price,unit,currency,display_price,display_change_day,display_change_day_percent,collected_at,status",
-        status: "eq.active",
-        order: "collected_at.desc",
-        limit: "20"
-      });
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/prices?${query}`, {
-        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
-      });
-      if (!response.ok) throw new Error(`prices ${response.status}`);
-      return response.json();
+      const { data, error } = await ainAuth.getClient()
+        .from("prices")
+        .select("item_id,name,price,unit,currency,display_price,display_change_day,display_change_day_percent,collected_at,status")
+        .eq("status", "active")
+        .order("collected_at", { ascending: false })
+        .limit(20);
+      if (error) throw new Error(`prices ${error.message}`);
+      return data;
     }
 
     function priceItems(items) {
@@ -217,19 +212,16 @@
     }
 
     async function fetchMoveIns(regionCode) {
-      const query = new URLSearchParams({
-        select: "id,region,complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in,notice_date",
-        region: `eq.${regionCode}`,
-        expected_move_in: `gte.${kstDateIso()}`,
-        is_public: "eq.true",
-        order: "expected_move_in.asc",
-        limit: "15"
-      });
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/move_in_complexes?${query}`, {
-        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
-      });
-      if (!response.ok) throw new Error(`move_in ${response.status}`);
-      return response.json();
+      const { data, error } = await ainAuth.getClient()
+        .from("move_in_complexes")
+        .select("id,region,complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in,notice_date")
+        .eq("region", regionCode)
+        .gte("expected_move_in", kstDateIso())
+        .eq("is_public", true)
+        .order("expected_move_in", { ascending: true })
+        .limit(15);
+      if (error) throw new Error(`move_in ${error.message}`);
+      return data;
     }
 
     function ddayText(value) {
@@ -287,17 +279,14 @@
     }
 
     async function fetchNews() {
-      const query = new URLSearchParams({
-        select: "title,source,url,collected_at",
-        status: "eq.active",
-        order: "collected_at.desc",
-        limit: "20"
-      });
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/news_items?${query}`, {
-        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
-      });
-      if (!response.ok) throw new Error(`news ${response.status}`);
-      return response.json();
+      const { data, error } = await ainAuth.getClient()
+        .from("news_items")
+        .select("title,source,url,collected_at")
+        .eq("status", "active")
+        .order("collected_at", { ascending: false })
+        .limit(20);
+      if (error) throw new Error(`news ${error.message}`);
+      return data;
     }
 
     function briefingNewsRows(rows) {
