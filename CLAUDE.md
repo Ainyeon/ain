@@ -14,10 +14,10 @@
 - RLS/GRANT 변경 SQL은 실행하지 말고 파일로만 출력 (사용자가 검토 후 실행)
 - 파이프라인(상위 레포 GitHub Actions, service_role 사용)을 깨뜨리는 변경 금지
 
-## 데이터 접근 구조
-- briefing → move_in_complexes 직접 조회 (anon 공개 유지 = 미리보기 역할)
-- calendar → public_move_in_calendar 뷰 (authenticated 전용 게이팅)
-- news, prices → anon 공개
+## 데이터 접근 구조 (게이팅 정책: 단지명 = 회원 전용, 시세·뉴스 = 공개)
+- 비로그인 입주 정보 → move_in_teaser 뷰만 (지역+입주월+단계, 단지명 없음, definer 권한)
+- briefing/calendar 로그인 → move_in_complexes / public_move_in_calendar (authenticated 전용)
+- news, prices → anon 공개 (SEO 유입 자산)
 
 ## 현재 상태
 - 완료: auth.js, 4개 페이지 인증 UI, profiles 테이블+트리거, 캘린더 게이팅 UI
