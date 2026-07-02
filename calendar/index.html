@@ -452,6 +452,10 @@
     .gate-sub { margin-top:9px; font-size:13px; color:var(--txt2); line-height:1.6; word-break:keep-all; }
     .gate-btn { margin-top:20px; display:inline-flex; align-items:center; gap:7px; height:44px; padding:0 22px; border-radius:10px; border:none; cursor:pointer; background:#FEE500; color:#191919; font-family:inherit; font-size:14px; font-weight:800; letter-spacing:-0.01em; transition:opacity .12s ease; }
     .gate-btn:hover { opacity:.88; }
+    .gate-teaser { display:grid; gap:10px; }
+    .teaser-card { border:1px solid var(--border); border-left:3px solid var(--stage, #3D5BB0); border-radius:8px; background:var(--surface); padding:13px 14px; }
+    .teaser-name { display:inline-flex; align-items:center; gap:7px; color:var(--txt2); font-size:15px; font-weight:700; line-height:1.35; }
+    .teaser-name svg { flex-shrink:0; opacity:.7; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="../auth.js"></script>
@@ -843,17 +847,47 @@
       return '<svg width="14" height="13" viewBox="0 0 13 12" aria-hidden="true" style="flex-shrink:0"><path d="M6.5 0C2.91 0 0 2.34 0 5.23c0 1.82 1.14 3.42 2.87 4.36L2.17 12l3.07-1.67c.41.07.83.11 1.26.11C10.09 10.44 13 8.1 13 5.23 13 2.34 10.09 0 6.5 0z" fill="#191919"/></svg>';
     }
 
-    function showGateUI() {
-      timelineEl.hidden = true;
-      provincePanelEl.hidden = true;
-      statusEl.className = "";
-      statusEl.hidden = false;
-      const shimmerRows = Array(5).fill('<div class="gate-shimmer-row"></div>').join("");
+    function escText(value) {
+      return String(value ?? "").replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+
+    function lockSvg() {
+      return '<svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 0a3.6 3.6 0 0 0-3.6 3.6V5H1.8A1.3 1.3 0 0 0 .5 6.3v6.2a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3V6.3A1.3 1.3 0 0 0 10.2 5H9.6V3.6A3.6 3.6 0 0 0 6 0Zm2.1 5H3.9V3.6a2.1 2.1 0 1 1 4.2 0V5Z" fill="currentColor"/></svg>';
+    }
+
+    async function fetchTeaser() {
+      const { data, error } = await ainAuth.getClient()
+        .from("move_in_teaser")
+        .select("region,sido,sigungu,move_in_month,stage,total_count");
+      if (error) throw new Error(`teaser ${error.message}`);
+      return data;
+    }
+
+    function teaserCardHtml(row) {
+      const meta = STAGE_META[row.stage];
+      const badgeStyle = meta
+        ? ` style="background:${meta.soft};color:${meta.text}"`
+        : "";
+      const loc = [row.sido, row.sigungu].filter(Boolean).join(" ")
+        || (row.region === "METRO" ? "수도권" : "전국");
+      const cardStyle = meta ? ` style="border-left-color:${meta.color}"` : "";
+      return '<div class="teaser-card"' + cardStyle + '>'
+        + '<div class="card-top">'
+        + '<div class="teaser-name">' + lockSvg() + '로그인 후 확인</div>'
+        + (row.stage ? '<div class="stage-badge"' + badgeStyle + '>' + escText(row.stage) + '</div>' : "")
+        + '</div>'
+        + '<div class="loc">' + escText(loc) + ' · ' + escText(row.move_in_month || "입주월 확인 중") + ' 입주예정</div>'
+        + '</div>';
+    }
+
+    function renderGate(previewHtml, total) {
       statusEl.innerHTML =
-        '<div class="gate-shimmer" aria-hidden="true">' + shimmerRows + '</div>'
+        previewHtml
         + '<div class="gate-card">'
-        + '<div class="gate-title">입주 캘린더 전체 보기</div>'
-        + '<div class="gate-sub">에인연 회원은 수도권·전국 입주 단지를<br>단계별로 모두 확인할 수 있습니다.</div>'
+        + '<div class="gate-title">' + (total ? "지금 " + total.toLocaleString("ko-KR") + "개 단지 추적 중" : "입주 캘린더 전체 보기") + '</div>'
+        + '<div class="gate-sub">단지명은 회원에게만 공개됩니다.<br>수도권·전국 입주 단지를 단계별로 확인하세요.</div>'
         + '<button class="gate-btn" id="_cal_gate_btn">' + kakaoSvg() + '카카오 3초 로그인</button>'
         + '</div>';
       document.getElementById("_cal_gate_btn").addEventListener("click", function () {
@@ -861,6 +895,23 @@
           provider: "kakao",
           options: { redirectTo: window.location.origin + window.location.pathname }
         });
+      });
+    }
+
+    function showGateUI() {
+      timelineEl.hidden = true;
+      provincePanelEl.hidden = true;
+      statusEl.className = "";
+      statusEl.hidden = false;
+      const shimmerRows = Array(5).fill('<div class="gate-shimmer-row"></div>').join("");
+      renderGate('<div class="gate-shimmer" aria-hidden="true">' + shimmerRows + '</div>');
+      fetchTeaser().then(function (rows) {
+        if (_calendarRendered || !rows || !rows.length) return;
+        const total = Number(rows[0].total_count) || 0;
+        if (total) totalCountEl.textContent = total.toLocaleString("ko-KR");
+        renderGate('<div class="gate-teaser">' + rows.map(teaserCardHtml).join("") + '</div>', total);
+      }).catch(function (error) {
+        console.error(error); // 뷰 미생성 등 — 블러 스켈레톤 게이트 유지
       });
     }
 
