@@ -760,8 +760,13 @@
       provincePanelEl.hidden = false;
       timelineEl.hidden = true;
       statusEl.hidden = true;
-      totalCountEl.textContent = flatten(currentStages()).length.toLocaleString("ko-KR");
+      totalCountEl.textContent = totalComplexCount().toLocaleString("ko-KR");
       stageCountEl.textContent = provinces.length.toLocaleString("ko-KR");
+    }
+
+    function totalComplexCount() {
+      // 필터·섹션 중복([신규]+D-day 동시 표기)과 무관한 실제 단지 수
+      return new Set(flatten(currentStages()).map((item) => `${item.region}|${item.name}|${item.month}`)).size;
     }
 
     function renderStages() {
@@ -769,19 +774,18 @@
       const total = stages.reduce((sum, stage) => sum + stage.items.length, 0);
       timelineEl.innerHTML = "";
       provincePanelEl.hidden = true;
+      totalCountEl.textContent = totalComplexCount().toLocaleString("ko-KR");
       if (!total) {
         statusEl.hidden = false;
         statusEl.className = "empty";
         statusEl.textContent = "표시할 단지가 없습니다.";
         timelineEl.hidden = true;
-        totalCountEl.textContent = "0";
         stageCountEl.textContent = "0";
         return;
       }
       stages.forEach((stage) => timelineEl.append(createStageSection(stage)));
       statusEl.hidden = true;
       timelineEl.hidden = false;
-      totalCountEl.textContent = total.toLocaleString("ko-KR");
       stageCountEl.textContent = stages.length.toLocaleString("ko-KR");
     }
 
