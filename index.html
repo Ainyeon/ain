@@ -131,11 +131,14 @@ body{font-family:var(--body);background:var(--bg);color:var(--txt);line-height:1
 .foot .desc{font-size:12px;color:var(--muted);margin-top:9px;line-height:1.75;}
 .foot .desc b{color:var(--sky-soft);font-weight:500;}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="./auth.js"></script>
 </head>
 <body>
 <div class="wrap">
 
   <header class="hero">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px" id="ain-auth-root"></div>
     <span class="eyebrow reveal d1"><span class="sq"></span>현장 기술자의 AI 동료</span>
     <h1 class="logo reveal d2" aria-label="A.IN 에어컨 인테리어 연구소">
       <svg class="logo-svg" viewBox="0 0 929 307" xmlns="http://www.w3.org/2000/svg" aria-label="A.IN">
@@ -268,6 +271,7 @@ body{font-family:var(--body);background:var(--bg);color:var(--txt);line-height:1
 
 </div>
 <script>
+ainAuth.init('ain-auth-root');
 (function(){
   var reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var fmt=function(n){return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');};

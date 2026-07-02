@@ -445,7 +445,16 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
+    .gate-shimmer { display:flex; flex-direction:column; gap:10px; filter:blur(4px); opacity:.3; pointer-events:none; user-select:none; }
+    .gate-shimmer-row { height:74px; border:1px solid var(--border); border-radius:8px; background:var(--surface); }
+    .gate-card { margin-top:20px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:30px 20px 26px; text-align:center; }
+    .gate-title { font-size:17px; font-weight:900; color:var(--txt); letter-spacing:-0.02em; word-break:keep-all; }
+    .gate-sub { margin-top:9px; font-size:13px; color:var(--txt2); line-height:1.6; word-break:keep-all; }
+    .gate-btn { margin-top:20px; display:inline-flex; align-items:center; gap:7px; height:44px; padding:0 22px; border-radius:10px; border:none; cursor:pointer; background:#FEE500; color:#191919; font-family:inherit; font-size:14px; font-weight:800; letter-spacing:-0.01em; transition:opacity .12s ease; }
+    .gate-btn:hover { opacity:.88; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../auth.js"></script>
 </head>
 <body>
   <main class="wrap">
@@ -468,7 +477,10 @@
           </svg>
           <div class="sub">에어컨 인테리어 연구소</div>
         </div>
-        <div class="updated" id="updatedLabel">업데이트 확인 중</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <div id="ain-auth-root"></div>
+          <div class="updated" id="updatedLabel">업데이트 확인 중</div>
+        </div>
       </div>
 
       <h1 id="pageTitle">수도권 입주 캘린더</h1>
@@ -519,6 +531,7 @@
   </main>
 
   <script>
+    ainAuth.init('ain-auth-root');
     const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
     const VIEW_NAME = "public_move_in_calendar";
@@ -837,7 +850,54 @@
       });
     });
 
-    renderCalendar();
+    function kakaoSvg() {
+      return '<svg width="14" height="13" viewBox="0 0 13 12" aria-hidden="true" style="flex-shrink:0"><path d="M6.5 0C2.91 0 0 2.34 0 5.23c0 1.82 1.14 3.42 2.87 4.36L2.17 12l3.07-1.67c.41.07.83.11 1.26.11C10.09 10.44 13 8.1 13 5.23 13 2.34 10.09 0 6.5 0z" fill="#191919"/></svg>';
+    }
+
+    function showGateUI() {
+      timelineEl.hidden = true;
+      provincePanelEl.hidden = true;
+      statusEl.className = "";
+      statusEl.hidden = false;
+      const shimmerRows = Array(5).fill('<div class="gate-shimmer-row"></div>').join("");
+      statusEl.innerHTML =
+        '<div class="gate-shimmer" aria-hidden="true">' + shimmerRows + '</div>'
+        + '<div class="gate-card">'
+        + '<div class="gate-title">입주 캘린더 전체 보기</div>'
+        + '<div class="gate-sub">에인연 회원은 수도권·전국 입주 단지를<br>단계별로 모두 확인할 수 있습니다.</div>'
+        + '<button class="gate-btn" id="_cal_gate_btn">' + kakaoSvg() + '카카오 3초 로그인</button>'
+        + '</div>';
+      document.getElementById("_cal_gate_btn").addEventListener("click", function () {
+        ainAuth.getClient().auth.signInWithOAuth({
+          provider: "kakao",
+          options: { redirectTo: window.location.origin + window.location.pathname }
+        });
+      });
+    }
+
+    var _calendarRendered = false;
+
+    function bootCalendar(session) {
+      if (session) {
+        if (!_calendarRendered) {
+          _calendarRendered = true;
+          statusEl.innerHTML = "";
+          statusEl.className = "loading";
+          statusEl.textContent = "캘린더를 불러오는 중";
+          statusEl.hidden = false;
+          timelineEl.hidden = true;
+          provincePanelEl.hidden = true;
+          renderCalendar();
+        }
+      } else {
+        _calendarRendered = false;
+        calendars = { METRO: null, NATION: null };
+        showGateUI();
+      }
+    }
+
+    ainAuth.getSession().then(function (session) { bootCalendar(session); });
+    window.addEventListener("ain:auth", function (e) { bootCalendar(e.detail.session); });
   </script>
 </body>
 </html>

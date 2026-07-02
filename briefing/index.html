@@ -91,6 +91,8 @@
       .brief-section:first-child { grid-column: 1 / -1; }
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../auth.js"></script>
 </head>
 <body>
   <main class="wrap">
@@ -103,7 +105,10 @@
           </svg>
           <div class="sub">에어컨 인테리어 연구소</div>
         </div>
-        <div class="updated" id="updatedLabel">업데이트 확인 중</div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
+          <div id="ain-auth-root"></div>
+          <div class="updated" id="updatedLabel">업데이트 확인 중</div>
+        </div>
       </div>
       <h1>모닝브리핑</h1>
       <div class="meta">자재시세, 입주정보, 업계뉴스를 오늘 기준으로 묶어 봅니다.</div>
@@ -127,6 +132,7 @@
     <footer>자동발행 없이 검수용으로 구성됩니다. 가격과 입주 정보는 원천 데이터 지연에 따라 달라질 수 있습니다.</footer>
   </main>
   <script>
+    ainAuth.init('ain-auth-root');
     const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
     const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
     const OVERSEAS_NEWS_SOURCES = new Set(["Cooling Post", "Contractor Magazine"]);
@@ -276,7 +282,7 @@
           items.push(line(`<b>${escapeHtml(display.name)}</b>`, escapeHtml(display.sub)));
         });
       });
-      items.push(`<a class="section-action" href="../calendar/">전체보기</a>`);
+      items.push(`<a class="section-action" href="../calendar/" id="briefing-calendar-cta">전체 캘린더 보기 →</a>`);
       return items;
     }
 
@@ -326,6 +332,15 @@
       statusEl.textContent = "모닝브리핑을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
       console.error(error);
     });
+
+    // After render, update CTA label based on auth state
+    function updateCalendarCta(session) {
+      const cta = document.getElementById("briefing-calendar-cta");
+      if (!cta) return;
+      cta.textContent = session ? "전체 캘린더 보기 →" : "회원 전용 전체 리스트 →";
+    }
+    ainAuth.getSession().then(function (session) { updateCalendarCta(session); });
+    window.addEventListener("ain:auth", function (e) { updateCalendarCta(e.detail.session); });
   </script>
 </body>
 </html>
