@@ -112,8 +112,21 @@
     transition:all .2s;
   }
   .nav-tags a:hover{color:var(--ink);border-color:#d9d9de;background:#fff}
-  .nav-right{margin-left:auto}
+  .nav-right{margin-left:auto;position:relative}
   .nav-right .menu-pill{background:var(--ink)}
+  .auth-pop{
+    position:absolute;right:0;top:calc(100% + 8px);
+    background:#fff;border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 14px 34px -14px rgba(15,16,19,.3);
+    padding:6px;min-width:132px;display:none;z-index:70;
+  }
+  .auth-pop.open{display:block}
+  .auth-pop button{
+    all:unset;display:block;width:100%;box-sizing:border-box;
+    padding:9px 12px;border-radius:9px;
+    font-family:inherit;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;
+  }
+  .auth-pop button:hover{background:var(--bg)}
 
   /* ---------- HERO ---------- */
   .hero{
@@ -648,16 +661,56 @@
   }
   renderTicker(TICKER_DATA);
 
-  // kakao login — auth.js(ainAuth) 진입점 연결. 로드 시 getClient()로
-  // OAuth 리다이렉트 토큰(#access_token) 감지·세션 저장까지 처리됨.
-  ainAuth.getClient();
-  document.getElementById('kakaoStart').addEventListener('click',e=>{
+  // kakao login + 세션 상태 UI — 인증 로직은 auth.js(ainAuth) 재사용.
+  // 로드 시 getClient()가 OAuth 리다이렉트 토큰(#access_token) 감지·세션 저장까지 처리.
+  const authClient=ainAuth.getClient();
+  const kakaoBtn=document.getElementById('kakaoStart');
+  const authPop=document.createElement('div');
+  authPop.className='auth-pop';
+  authPop.innerHTML='<button type="button" id="logoutBtn">로그아웃</button>';
+  kakaoBtn.parentElement.appendChild(authPop);
+
+  const escT=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  function displayName(user){
+    const m=(user&&user.user_metadata)||{};
+    const n=m.full_name||m.name||m.preferred_username||m.nickname;
+    if(n)return n;
+    if(user&&user.email)return user.email.split('@')[0];
+    return '내 계정';
+  }
+  let loggedIn=false;
+  function renderAuth(session){
+    loggedIn=!!session;
+    authPop.classList.remove('open');
+    if(session){
+      const name=displayName(session.user);
+      kakaoBtn.innerHTML='<span class="plus">'+escT(name.charAt(0))+'</span>'+escT(name);
+    }else{
+      kakaoBtn.innerHTML='<span class="plus">+</span>카카오로 시작';
+    }
+  }
+  function cleanAuthHash(){
+    if(location.hash.includes('access_token')){
+      history.replaceState(null,'',location.pathname+location.search);
+    }
+  }
+  kakaoBtn.addEventListener('click',e=>{
     e.preventDefault();
-    ainAuth.getClient().auth.signInWithOAuth({
+    if(loggedIn){authPop.classList.toggle('open');return;}
+    authClient.auth.signInWithOAuth({
       provider:'kakao',
       options:{redirectTo:location.origin+location.pathname}
     });
   });
+  document.getElementById('logoutBtn').addEventListener('click',async()=>{
+    await authClient.auth.signOut();
+    renderAuth(null);
+  });
+  addEventListener('click',e=>{
+    if(!e.target.closest('.nav-right'))authPop.classList.remove('open');
+  });
+  authClient.auth.getSession().then(r=>{renderAuth(r.data.session);cleanAuthHash();});
+  authClient.auth.onAuthStateChange((_e,s)=>{renderAuth(s);cleanAuthHash();});
 
   // scroll reveal (blur -> sharp)
   const io=new IntersectionObserver(es=>es.forEach(e=>{
