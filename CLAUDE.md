@@ -23,6 +23,11 @@
 - govt_programs → 원본 anon grant 회수 예정 (뷰 전환·배포 확인 후 09의 REVOKE 섹션 실행).
   anon 접근은 v_stat_gov 경유만. 파이프라인(service_role)은 무영향
 
+## 배포 규약
+- Code는 push까지만 수행하고 종료. 배포 완료 폴링(block=true) 대기 금지
+- 배포 확인은 박민혁이 직접 새로고침. 코드 후속작업 필요할 때만 Code 대기
+- Pages 빌드가 5분+ building/행이면 `gh api -X POST repos/Ainyeon/ain/pages/builds` 재빌드 1회 후 보고
+
 ## 현재 상태
 - 완료: auth.js, 4개 페이지 인증 UI, profiles 테이블+트리거
 - 완료: 03~06 SQL 전부 실행 (2026-07-02) — 게이팅 전체 완성, REST+익명 브라우저 검증 통과

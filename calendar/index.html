@@ -8,106 +8,49 @@
   <meta property="og:title" content="입주 캘린더 | 에인연">
   <meta property="og:description" content="청약홈 입주자모집공고의 입주예정월 기준으로 매일 업데이트하는 입주 캘린더입니다.">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#0E1116">
+  <meta name="theme-color" content="#F7F7F8">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="stylesheet" href="/assets/css/ain.css">
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #0E1116;
-      --surface: #1A1F28;
-      --surface2: #161B23;
-      --border: #2A313D;
-      --txt: #E8EBF0;
-      --txt2: #9BA3B0;
-      --txt3: #6B7280;
+      color-scheme: light;
+      --surface: #FFFFFF;
+      --surface2: #FDFDFE;
+      --border: #E8E8EC;
+      --txt: #0F1013;
+      --txt2: #63676F;
+      --txt3: #A3A7AE;
       --g-start: #2D4A9E;
       --g-end: #9E2D3D;
-      --blue: #3D5BB0;
-      --purple: #7A4A8C;
-      --burgundy: #B0454F;
-      --danger: #E08A92;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html {
-      background: var(--bg);
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--txt);
-      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
-      -webkit-font-smoothing: antialiased;
-      line-height: 1.6;
-      letter-spacing: 0;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
+      --blue: #4F8CFF;
+      --purple: #A78BFA;
+      --burgundy: #FF8A65;
+      --danger: #E5484D;
     }
 
     .wrap {
-      width: min(100%, 520px);
+      width: min(100%, 760px);
       margin: 0 auto;
       padding: 0 0 56px;
     }
 
-    header {
-      padding: 34px 24px 22px;
+    .page-head {
+      padding: 108px 24px 22px;
       border-bottom: 1px solid var(--border);
     }
 
-    .head-row {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 18px;
-    }
-
-    .logo-block {
-      min-width: 0;
-    }
-
-    .logo-svg {
-      height: 46px;
-      width: auto;
-      display: block;
-    }
-
-    .sub {
-      margin-top: 8px;
-      color: var(--txt2);
-      font-size: 11px;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      white-space: nowrap;
+    .page-head .sec-label {
+      margin-bottom: 10px;
     }
 
     .updated {
-      padding-top: 6px;
       color: var(--txt2);
       font-size: 12px;
       font-weight: 700;
-      text-align: right;
-      white-space: nowrap;
-    }
-
-    h1 {
-      margin: 22px 0 0;
-      color: var(--txt);
-      font-size: 24px;
-      font-weight: 800;
-      line-height: 1.22;
-      letter-spacing: 0;
     }
 
     .meta {
-      margin-top: 6px;
+      margin-top: 8px;
       color: var(--txt2);
       font-size: 13px;
       line-height: 1.55;
@@ -123,14 +66,15 @@
     .summary-item {
       min-height: 68px;
       padding: 11px 10px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface2);
+      border: 1px solid rgba(255,255,255,.9);
+      border-radius: 12px;
+      background: var(--surface);
+      box-shadow: var(--shadow-amb), inset 0 1px 0 #fff;
     }
 
     .summary-value {
       display: block;
-      color: #fff;
+      color: var(--txt);
       font-size: 21px;
       font-weight: 800;
       line-height: 1.1;
@@ -222,14 +166,15 @@
     .province-card {
       min-height: 68px;
       padding: 12px;
-      border: 1px solid var(--border);
+      border: 1px solid rgba(255,255,255,.9);
       border-left: 3px solid var(--blue);
-      border-radius: 8px;
+      border-radius: 12px;
       background: var(--surface);
       color: var(--txt);
       font: inherit;
       text-align: left;
       cursor: pointer;
+      box-shadow: var(--shadow-amb), 0 12px 28px -20px rgba(15,16,19,.14);
     }
 
     .province-card b {
@@ -275,8 +220,8 @@
     .stage {
       padding: 24px 24px 0;
       --stage: var(--blue);
-      --stage-soft: rgba(61, 91, 176, 0.18);
-      --stage-txt: #8FA9E8;
+      --stage-soft: rgba(79, 140, 255, 0.12);
+      --stage-txt: #3B76E0;
     }
 
     .stage-head {
@@ -316,11 +261,12 @@
     }
 
     .complex-card {
-      border: 1px solid var(--border);
+      border: 1px solid rgba(255,255,255,.9);
       border-left: 3px solid var(--stage);
-      border-radius: 8px;
+      border-radius: 12px;
       background: var(--surface);
       padding: 13px 14px;
+      box-shadow: var(--shadow-amb), 0 12px 28px -20px rgba(15,16,19,.14);
     }
 
     .card-top {
@@ -332,7 +278,7 @@
 
     .complex-name {
       min-width: 0;
-      color: #fff;
+      color: var(--txt);
       font-size: 15px;
       font-weight: 700;
       line-height: 1.35;
@@ -414,12 +360,12 @@
       padding: 9px 22px;
       border-radius: 8px;
       background: #fff;
-      color: var(--surface);
+      color: #2D4A9E;
       font-size: 13px;
       font-weight: 800;
     }
 
-    footer {
+    .fineprint {
       margin-top: 28px;
       padding: 0 24px;
       color: var(--txt3);
@@ -429,18 +375,6 @@
     }
 
     @media (min-width: 760px) {
-      .wrap {
-        width: min(100%, 760px);
-      }
-
-      header {
-        padding-top: 40px;
-      }
-
-      h1 {
-        font-size: 30px;
-      }
-
       .cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -453,42 +387,32 @@
     .gate-btn { margin-top:20px; display:inline-flex; align-items:center; gap:7px; height:44px; padding:0 22px; border-radius:10px; border:none; cursor:pointer; background:#FEE500; color:#191919; font-family:inherit; font-size:14px; font-weight:800; letter-spacing:-0.01em; transition:opacity .12s ease; }
     .gate-btn:hover { opacity:.88; }
     .gate-teaser { display:grid; gap:10px; }
-    .teaser-card { border:1px solid var(--border); border-left:3px solid var(--stage, #3D5BB0); border-radius:8px; background:var(--surface); padding:13px 14px; }
+    .teaser-card { border:1px solid rgba(255,255,255,.9); border-left:3px solid var(--stage, #4F8CFF); border-radius:12px; background:var(--surface); padding:13px 14px; box-shadow:var(--shadow-amb), 0 12px 28px -20px rgba(15,16,19,.14); }
     .teaser-name { display:inline-flex; align-items:center; gap:7px; color:var(--txt2); font-size:15px; font-weight:700; line-height:1.35; }
     .teaser-name svg { flex-shrink:0; opacity:.7; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="../auth.js"></script>
+  <script src="/auth.js"></script>
 </head>
 <body>
+  <nav class="nav" id="nav">
+    <a class="brand" href="/"><span class="brand-mark"></span>A.IN</a>
+    <a class="menu-pill" href="/#streams"><span class="plus">+</span>메뉴</a>
+    <div class="nav-tags">
+      <a href="/briefing/">모닝브리핑</a>
+      <a href="/calendar/">입주 레이더</a>
+      <a href="/news/">업계뉴스</a>
+      <a href="/#tools">도구</a>
+    </div>
+    <div class="nav-right">
+      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+    </div>
+  </nav>
   <main class="wrap">
-    <header>
-      <div class="head-row">
-        <div class="logo-block">
-          <svg class="logo-svg" viewBox="0 0 929 307" xmlns="http://www.w3.org/2000/svg" aria-label="A.IN">
-            <defs>
-              <linearGradient id="ain-logo-gradient" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#2D4A9E"/>
-                <stop offset="100%" stop-color="#9E2D3D"/>
-              </linearGradient>
-            </defs>
-            <g fill="url(#ain-logo-gradient)">
-              <path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/>
-              <circle cx="427" cy="268" r="40"/>
-              <path d="M510 0L509 302L565 303L565 0Z"/>
-              <path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/>
-            </g>
-          </svg>
-          <div class="sub">에어컨 인테리어 연구소</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-          <div id="ain-auth-root"></div>
-          <div class="updated" id="updatedLabel">업데이트 확인 중</div>
-        </div>
-      </div>
-
-      <h1 id="pageTitle">수도권 입주 캘린더</h1>
-      <div class="meta" id="periodLabel">청약홈 입주자모집공고의 입주예정월 기준으로 정리합니다.</div>
+    <header class="page-head">
+      <div class="sec-label">Move-in Radar · <span class="updated" id="updatedLabel">업데이트 확인 중</span></div>
+      <h1 class="page-title" id="pageTitle">수도권 입주 캘린더</h1>
+      <p class="page-sub meta" id="periodLabel">청약홈 입주자모집공고의 입주예정월 기준으로 정리합니다.</p>
 
       <div class="summary" aria-label="캘린더 요약">
         <div class="summary-item">
@@ -528,23 +452,38 @@
     <section class="cta" aria-label="에인연 더 보기">
       <div class="cta-title">에인연 더 보기</div>
       <div class="cta-sub">입주·구인·시세·복원 — 현장 정보 한곳에</div>
-      <a class="cta-button" href="../" target="_blank" rel="noopener">에인연 →</a>
+      <a class="cta-button" href="/">에인연 →</a>
     </section>
 
-    <footer>출처: 청약홈 입주자모집공고 입주예정월 · 타 부동산 정보와 입주월이 다를 수 있으며, 실제 입주는 변동될 수 있습니다.</footer>
+    <div class="fineprint">출처: 청약홈 입주자모집공고 입주예정월 · 타 부동산 정보와 입주월이 다를 수 있으며, 실제 입주는 변동될 수 있습니다.</div>
   </main>
+  <footer>
+    <div class="foot-inner">
+      <div>
+        <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
+        <p style="margin-top:12px;line-height:1.7">에어컨·인테리어 업계 정보 허브 A.IN<br>매일 아침 06:30, 업계의 하루가 정리됩니다</p>
+      </div>
+      <div class="foot-links">
+        <a href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">네이버 카페</a>
+        <a href="https://www.instagram.com/ainyeon_official" target="_blank" rel="noopener">인스타그램</a>
+        <a href="https://band.us/n/a2a2be04B5I6H" target="_blank" rel="noopener">밴드</a>
+        <a href="https://cafe.daangn.com/ein-yeon-eeokeo?utm_medium=copy_link" target="_blank" rel="noopener">문의</a>
+      </div>
+    </div>
+  </footer>
 
+  <script src="/assets/js/ain-common.js"></script>
   <script>
-    ainAuth.init('ain-auth-root');
     const VIEW_NAME = "public_move_in_calendar";
     const STAGE_ORDER = ["신규", "D-180 ~ D-91", "D-90 ~ D-31", "D-30 ~ 입주", "입주중 ~ D+90", "D+90 ~ D+180"];
+    // 라이트 테마 팔레트 (ain.css --g1~--g4 계열)
     const STAGE_META = {
-      "신규": { name: "신규", badge: "신규", color: "#2D4A9E", soft: "rgba(45, 74, 158, .2)", text: "#9CB4F5" },
-      "D-180 ~ D-91": { name: "D-180 ~ D-91", badge: "D-180 ~ D-91", color: "#3D5BB0", soft: "rgba(61, 91, 176, .18)", text: "#8FA9E8" },
-      "D-90 ~ D-31": { name: "D-90 ~ D-31", badge: "D-90 ~ D-31", color: "#3D5BB0", soft: "rgba(61, 91, 176, .18)", text: "#8FA9E8" },
-      "D-30 ~ 입주": { name: "D-30 ~ 입주", badge: "D-30 ~ 입주", color: "#7A4A8C", soft: "rgba(122, 74, 140, .2)", text: "#C49AD4" },
-      "입주중 ~ D+90": { name: "입주중 ~ D+90", badge: "입주중", color: "#B0454F", soft: "rgba(176, 69, 79, .18)", text: "#E08A92" },
-      "D+90 ~ D+180": { name: "D+90 ~ D+180", badge: "D+90 ~ D+180", color: "#B0454F", soft: "rgba(176, 69, 79, .18)", text: "#E08A92" }
+      "신규": { name: "신규", badge: "신규", color: "#4F8CFF", soft: "rgba(79, 140, 255, .12)", text: "#3B76E0" },
+      "D-180 ~ D-91": { name: "D-180 ~ D-91", badge: "D-180 ~ D-91", color: "#4F8CFF", soft: "rgba(79, 140, 255, .1)", text: "#3B76E0" },
+      "D-90 ~ D-31": { name: "D-90 ~ D-31", badge: "D-90 ~ D-31", color: "#35C5B8", soft: "rgba(53, 197, 184, .12)", text: "#18988B" },
+      "D-30 ~ 입주": { name: "D-30 ~ 입주", badge: "D-30 ~ 입주", color: "#A78BFA", soft: "rgba(167, 139, 250, .14)", text: "#7C5CD6" },
+      "입주중 ~ D+90": { name: "입주중 ~ D+90", badge: "입주중", color: "#FF8A65", soft: "rgba(255, 138, 101, .16)", text: "#D96A45" },
+      "D+90 ~ D+180": { name: "D+90 ~ D+180", badge: "D+90 ~ D+180", color: "#FF8A65", soft: "rgba(255, 138, 101, .16)", text: "#D96A45" }
     };
     const LOCAL_PROVINCES = ["강원", "대전", "충북", "충남", "대구", "경북", "부산", "울산", "경남", "광주", "전북", "전남", "제주"];
     const GYEONGGI_PREFIXES = [

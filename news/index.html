@@ -8,110 +8,89 @@
   <meta property="og:title" content="업계뉴스 | 에인연">
   <meta property="og:description" content="한국 에어컨·인테리어 업계 관점으로 정리한 최신 업계뉴스입니다.">
   <meta property="og:type" content="website">
-  <meta name="theme-color" content="#0E1116">
+  <meta name="theme-color" content="#F7F7F8">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="stylesheet" href="/assets/css/ain.css">
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #0E1116;
-      --surface: #1A1F28;
-      --surface2: #161B23;
-      --border: #2A313D;
-      --txt: #E8EBF0;
-      --txt2: #9BA3B0;
-      --txt3: #6B7280;
+      color-scheme: light;
+      --surface: #FFFFFF;
+      --surface2: #FDFDFE;
+      --border: #E8E8EC;
+      --txt: #0F1013;
+      --txt2: #63676F;
+      --txt3: #A3A7AE;
       --g-start: #2D4A9E;
       --g-end: #9E2D3D;
-      --blue: #3D5BB0;
-      --purple: #7A4A8C;
-      --burgundy: #B0454F;
-      --danger: #E08A92;
+      --blue: #4F8CFF;
+      --danger: #E5484D;
     }
-    * { box-sizing: border-box; }
-    html { background: var(--bg); }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--txt);
-      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
-      -webkit-font-smoothing: antialiased;
-      line-height: 1.6;
-      letter-spacing: 0;
-    }
-    a { color: inherit; text-decoration: none; }
-    .wrap { width: min(100%, 520px); margin: 0 auto; padding: 0 0 56px; }
-    header { padding: 34px 24px 22px; border-bottom: 1px solid var(--border); }
-    .head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
-    .logo-block { min-width: 0; }
-    .logo-svg { height: 46px; width: auto; display: block; }
-    .sub { margin-top: 8px; color: var(--txt2); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; }
-    .updated { padding-top: 6px; color: var(--txt2); font-size: 12px; font-weight: 700; text-align: right; white-space: nowrap; }
-    h1 { margin: 22px 0 0; color: var(--txt); font-size: 24px; font-weight: 800; line-height: 1.22; letter-spacing: 0; }
-    .meta { margin-top: 6px; color: var(--txt2); font-size: 13px; line-height: 1.55; }
+    .wrap { width: min(100%, 760px); margin: 0 auto; padding: 0 0 56px; }
+    .page-head { padding: 108px 24px 22px; border-bottom: 1px solid var(--border); }
+    .page-head .sec-label { margin-bottom: 10px; }
+    .updated { color: var(--txt2); font-size: 12px; font-weight: 700; }
+    .meta { margin-top: 8px; color: var(--txt2); font-size: 13px; line-height: 1.55; }
     .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
-    .summary-item { min-height: 68px; padding: 11px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
-    .summary-value { display: block; color: #fff; font-size: 21px; font-weight: 800; line-height: 1.1; }
+    .summary-item { min-height: 68px; padding: 11px 10px; border: 1px solid rgba(255,255,255,.9); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-amb), inset 0 1px 0 #fff; }
+    .summary-value { display: block; color: var(--txt); font-size: 21px; font-weight: 800; line-height: 1.1; }
     .summary-label { display: block; margin-top: 7px; color: var(--txt2); font-size: 11px; line-height: 1.25; }
     .panel { padding: 24px; display: grid; gap: 18px; }
     .news-sections { display: grid; grid-template-columns: 1fr; gap: 28px; }
     .news-section { display: grid; gap: 11px; }
     .section-headline { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--txt); font-size: 15px; font-weight: 900; }
-    .section-headline span:last-child { flex-shrink: 0; color: #9CB4F5; font-size: 11px; font-weight: 900; }
+    .section-headline span:last-child { flex-shrink: 0; color: #3B76E0; font-size: 11px; font-weight: 900; }
     .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; align-items: stretch; }
     .news-card {
       min-width: 0;
       height: 100%;
       display: flex;
       flex-direction: column;
-      border: 1px solid var(--border);
+      border: 1px solid rgba(255,255,255,.9);
       border-left: 3px solid var(--blue);
-      border-radius: 8px;
+      border-radius: 14px;
       background: var(--surface);
       padding: 16px 17px;
       overflow: hidden;
+      box-shadow: var(--shadow-amb), 0 14px 34px -22px rgba(15,16,19,.14);
     }
     .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
     .news-title { min-width: 0; color: var(--txt); font-size: 16px; font-weight: 800; line-height: 1.4; word-break: keep-all; overflow-wrap: break-word; }
-    .source-badge { flex-shrink: 0; border: 1px solid rgba(61, 91, 176, .34); border-radius: 999px; background: rgba(61, 91, 176, .18); color: #9CB4F5; padding: 3px 9px; font-size: 11px; font-weight: 800; line-height: 1.2; }
+    .source-badge { flex-shrink: 0; border: 1px solid rgba(79, 140, 255, .3); border-radius: 999px; background: rgba(79, 140, 255, .1); color: #3B76E0; padding: 3px 9px; font-size: 11px; font-weight: 800; line-height: 1.2; }
     .summary-text { margin-top: 10px; color: var(--txt2); font-size: 13px; line-height: 1.55; word-break: keep-all; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
     .card-meta { margin-top: auto; padding-top: 12px; color: var(--txt3); font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .origin-link { color: #8FA9E8; font-weight: 800; white-space: nowrap; }
+    .origin-link { color: #3B76E0; font-weight: 800; white-space: nowrap; }
     .origin-link:active { opacity: .72; }
-    .loading, .empty, .error { padding: 32px 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 13px; }
+    .loading, .empty, .error { padding: 32px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 13px; }
     .error { color: var(--danger); }
-    .cta { margin: 0 24px; padding: 18px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
+    .cta { margin: 0 24px; padding: 18px; border: 1px solid rgba(255,255,255,.9); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-amb), inset 0 1px 0 #fff; }
     .cta-title { color: var(--txt); font-size: 15px; font-weight: 800; }
     .cta-sub { margin-top: 4px; color: var(--txt2); font-size: 12px; }
     .cta-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
     .cta-button { min-height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: linear-gradient(135deg, var(--g-start), var(--g-end)); color: #fff; font-size: 13px; font-weight: 800; }
-    footer { padding: 22px 24px 0; color: var(--txt3); font-size: 11px; line-height: 1.6; }
-    @media (min-width: 760px) {
-      .wrap { width: min(100%, 760px); }
-      header { padding-top: 40px; }
-      h1 { font-size: 30px; }
-    }
+    .fineprint { padding: 22px 24px 0; color: var(--txt3); font-size: 11px; line-height: 1.6; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="../auth.js"></script>
+  <script src="/auth.js"></script>
 </head>
 <body>
+  <nav class="nav" id="nav">
+    <a class="brand" href="/"><span class="brand-mark"></span>A.IN</a>
+    <a class="menu-pill" href="/#streams"><span class="plus">+</span>메뉴</a>
+    <div class="nav-tags">
+      <a href="/briefing/">모닝브리핑</a>
+      <a href="/calendar/">입주 레이더</a>
+      <a href="/news/">업계뉴스</a>
+      <a href="/#tools">도구</a>
+    </div>
+    <div class="nav-right">
+      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+    </div>
+  </nav>
   <main class="wrap">
-    <header>
-      <div class="head-row">
-        <div class="logo-block">
-          <svg class="logo-svg" viewBox="0 0 929 307" xmlns="http://www.w3.org/2000/svg" aria-label="A.IN">
-            <defs><linearGradient id="ain-logo-gradient" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2D4A9E"/><stop offset="100%" stop-color="#9E2D3D"/></linearGradient></defs>
-            <g fill="url(#ain-logo-gradient)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g>
-          </svg>
-          <div class="sub">에어컨 인테리어 연구소</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
-          <div id="ain-auth-root"></div>
-          <div class="updated" id="updatedLabel">업데이트 확인 중</div>
-        </div>
-      </div>
-      <h1>업계뉴스</h1>
-      <div class="meta">HVAC·공조·냉매·인테리어 이슈를 한국 업계 관점으로 정리합니다.</div>
+    <header class="page-head">
+      <div class="sec-label">Industry News · <span class="updated" id="updatedLabel">업데이트 확인 중</span></div>
+      <h1 class="page-title">업계뉴스</h1>
+      <p class="page-sub meta">HVAC·공조·냉매·인테리어 이슈를 한국 업계 관점으로 정리합니다.</p>
       <div class="summary" aria-label="뉴스 요약">
         <div class="summary-item"><span class="summary-value" id="newsCount">-</span><span class="summary-label">표시 뉴스</span></div>
         <div class="summary-item"><span class="summary-value" id="sourceCount">-</span><span class="summary-label">출처 수</span></div>
@@ -126,16 +105,28 @@
       <div class="cta-title">에인연 허브</div>
       <div class="cta-sub">입주 캘린더와 모닝브리핑도 같이 확인하세요.</div>
       <div class="cta-links">
-        <a class="cta-button" href="../calendar/">입주캘린더</a>
-        <a class="cta-button" href="../briefing/">모닝브리핑</a>
+        <a class="cta-button" href="/calendar/">입주캘린더</a>
+        <a class="cta-button" href="/briefing/">모닝브리핑</a>
       </div>
     </section>
-    <footer>출처: 각 언론·기관 원문 링크 · 에인연 자체 요약 후보이며, 자동발행 없이 검수 후 활용합니다.</footer>
+    <div class="fineprint">출처: 각 언론·기관 원문 링크 · 에인연 자체 요약 후보이며, 자동발행 없이 검수 후 활용합니다.</div>
   </main>
+  <footer>
+    <div class="foot-inner">
+      <div>
+        <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
+        <p style="margin-top:12px;line-height:1.7">에어컨·인테리어 업계 정보 허브 A.IN<br>매일 아침 06:30, 업계의 하루가 정리됩니다</p>
+      </div>
+      <div class="foot-links">
+        <a href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">네이버 카페</a>
+        <a href="https://www.instagram.com/ainyeon_official" target="_blank" rel="noopener">인스타그램</a>
+        <a href="https://band.us/n/a2a2be04B5I6H" target="_blank" rel="noopener">밴드</a>
+        <a href="https://cafe.daangn.com/ein-yeon-eeokeo?utm_medium=copy_link" target="_blank" rel="noopener">문의</a>
+      </div>
+    </div>
+  </footer>
+  <script src="/assets/js/ain-common.js"></script>
   <script>
-    ainAuth.init('ain-auth-root');
-    const SUPABASE_URL = "https://oqgoibbhnidsveueifet.supabase.co";
-    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo";
     const OVERSEAS_NEWS_SOURCES = new Set(["Cooling Post", "Contractor Magazine"]);
     const statusEl = document.getElementById("status");
     const cardsEl = document.getElementById("cards");
@@ -195,17 +186,14 @@
     }
 
     async function fetchNews() {
-      const query = new URLSearchParams({
-        select: "title,summary,source,url,collected_at",
-        status: "eq.active",
-        order: "collected_at.desc",
-        limit: "30"
-      });
-      const response = await fetch(`${SUPABASE_URL}/rest/v1/news_items?${query}`, {
-        headers: { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
-      });
-      if (!response.ok) throw new Error(`Supabase request failed: ${response.status}`);
-      return response.json();
+      const { data, error } = await ainAuth.getClient()
+        .from("news_items")
+        .select("title,summary,source,url,collected_at")
+        .eq("status", "active")
+        .order("collected_at", { ascending: false })
+        .limit(30);
+      if (error) throw new Error(`news ${error.message}`);
+      return data;
     }
 
     async function render() {
