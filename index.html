@@ -823,8 +823,12 @@
     }
     if(copper){
       const el=document.getElementById('statPrice');
+      // unit이 "USD/mt"처럼 통화 포함 전체 단위면 그대로, "mt" 단독이면 통화 접두
+      const unitText=String(copper.unit||'').includes('/')
+        ?copper.unit
+        :(copper.currency||'USD')+'/'+(copper.unit||'mt');
       if(el)el.innerHTML='<span class="n">'+escT(fmtNum(copper.price))+'</span><span class="u">'
-        +escT((copper.currency||'USD')+'/'+String(copper.unit||'mt').replace(/^\//,''))+' · '+escT(copper.name||'전기동')+'</span>';
+        +escT(unitText)+' · '+escT(copper.name||'전기동')+'</span>';
     }
 
     // 모닝브리핑 카드 3줄 = 시세 + 입주 + 정부사업 (뉴스 미사용). 줄 단위 폴백.
