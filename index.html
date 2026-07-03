@@ -805,7 +805,7 @@
       ?{k:'이번 주 입주예정',v:mv.movein_this_week+'개 단지'}
       :{k:'입주 단지',v:fmtNum(mv.tracking_count)+'개 추적 중'};
     if(gv&&gv.active_count!=null)live[4]={k:'정부사업',v:'접수중 '+gv.active_count+'건',
-      note:gv.nearest_d_day!=null?'최임박 D-'+gv.nearest_d_day:null};
+      note:gv.nearest_d_day!=null?(gv.nearest_d_day>0?'최임박 D-'+gv.nearest_d_day:'오늘 마감 있음'):null};
     if(copper||alu||mv||gv)renderTicker(live);
 
     // 카드 숫자
@@ -817,7 +817,9 @@
     if(gv&&gv.active_count!=null){
       const el=document.getElementById('statGov');
       if(el)el.innerHTML='<span class="n">'+escT(gv.active_count)+'</span><span class="u">'
-        +(gv.nearest_d_day!=null?'접수 중 · D-'+escT(gv.nearest_d_day)+' 임박':'접수 중')+'</span>';
+        +(gv.nearest_d_day!=null
+          ?(gv.nearest_d_day>0?'접수 중 · D-'+escT(gv.nearest_d_day)+' 임박':'접수 중 · 오늘 마감 있음')
+          :'접수 중')+'</span>';
     }
     if(copper){
       const el=document.getElementById('statPrice');
@@ -838,10 +840,13 @@
               +' — <span class="hl">전일 '+escT(copper.display_change_day_percent||'변동 확인 중')+'</span>')
             :line('자재 시세 <span class="hl">업데이트 준비 중</span>'),
           mv
-            ?line('이번 주 입주예정 <span class="hl">'+escT(mv.movein_this_week)+'개 단지</span> · 추적 '+escT(fmtNum(mv.tracking_count))+'개')
+            ?(mv.movein_this_week>0
+              ?line('이번 주 입주예정 <span class="hl">'+escT(mv.movein_this_week)+'개 단지</span> · 추적 '+escT(fmtNum(mv.tracking_count))+'개')
+              :line('입주 단지 <span class="hl">'+escT(fmtNum(mv.tracking_count))+'개 추적 중</span>'))
             :line('입주 정보 <span class="hl">업데이트 준비 중</span>'),
           gv&&gv.nearest_program_name
-            ?line(escT(gv.nearest_program_name)+' <span class="hl">D-'+escT(gv.nearest_d_day)+' 마감 임박</span>')
+            ?line(escT(gv.nearest_program_name)+' <span class="hl">'
+              +(gv.nearest_d_day>0?'D-'+escT(gv.nearest_d_day)+' 마감 임박':'오늘 마감')+'</span>')
             :(gv&&gv.active_count!=null
               ?line('정부지원사업 접수중 <span class="hl">'+escT(gv.active_count)+'건</span>')
               :line('정부사업 <span class="hl">업데이트 준비 중</span>'))
