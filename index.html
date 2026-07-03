@@ -141,7 +141,7 @@
   /* orb: sphere body + dual rotating chroma rings */
   .orb{
     position:absolute;top:50%;left:50%;
-    width:min(720px,150vw);aspect-ratio:1;
+    width:min(620px,135vw);aspect-ratio:1;
     transform:translate(-50%,-53%);
     pointer-events:none;z-index:0;
     will-change:transform;
@@ -191,7 +191,7 @@
     backdrop-filter:blur(8px);
     box-shadow:var(--shadow-amb),inset 0 1px 0 #fff;
     padding:8px 16px;border-radius:100px;
-    margin-bottom:36px;
+    margin-bottom:30px;
   }
   .hero-eyebrow .live{
     width:6px;height:6px;border-radius:50%;
@@ -204,13 +204,21 @@
     100%{box-shadow:0 0 0 0 rgba(53,197,184,0)}
   }
   h1{
-    font-size:clamp(34px,6.2vw,72px);
-    line-height:1.12;
+    font-size:clamp(15px,2vw,20px);
+    line-height:1.4;
+    font-weight:700;
+    letter-spacing:.02em;
+    color:var(--soft);
+    margin-bottom:22px;
+  }
+  .hero-lead{
+    font-size:clamp(28px,4.6vw,52px);
+    line-height:1.18;
     font-weight:800;
-    letter-spacing:-0.048em;
+    letter-spacing:-0.045em;
     text-wrap:balance;
   }
-  h1 .g{color:var(--mute);font-weight:700}
+  .hero-lead .g{color:var(--mute);font-weight:750}
   .hero-sub{
     margin-top:26px;
     font-size:clamp(15px,1.6vw,17.5px);
@@ -438,7 +446,8 @@
   .rv.in{opacity:1;transform:none;filter:blur(0)}
   .hero-inner>*{opacity:0;transform:translateY(20px);filter:blur(10px);animation:rise .9s ease forwards}
   .hero-inner>*:nth-child(2){animation-delay:.14s}
-  .hero-inner>*:nth-child(3){animation-delay:.3s}
+  .hero-inner>*:nth-child(3){animation-delay:.28s}
+  .hero-inner>*:nth-child(4){animation-delay:.42s}
   .hero-foot{opacity:0;animation:rise .9s .5s ease forwards}
   @keyframes rise{to{opacity:1;transform:none;filter:blur(0)}}
 
@@ -493,13 +502,13 @@
 
   <div class="hero-inner" id="heroInner">
     <div class="hero-eyebrow"><span class="live"></span>A.IN — INFORMATION HUB</div>
-    <h1>
-      에어컨인테리어연구소<br>
-      <span class="g">공기처럼 흐르는</span> 업계 정보
-    </h1>
+    <h1>에어컨 인테리어 연구소</h1>
+    <p class="hero-lead">
+      <span class="g">공기처럼 흐르는</span><br>업계 정보
+    </p>
     <p class="hero-sub">
       자재 시세, 입주 예정 단지, 신규 채용, 정부지원사업.<br>
-      현장에 필요한 정보를 <b>매일 아침 06:30, 한 번에</b> 정리합니다.
+      현장에 필요한 정보를 <b>매일 아침 06:30 업데이트</b>.
     </p>
   </div>
 
@@ -594,7 +603,7 @@
           <div class="mc-title">쾌적한 에어컨 사용 안내</div>
           <div class="mc-sub">백운테크 · 010-0000-0000 · 인천 전지역</div>
           <div class="mc-rows"><i></i><i></i><i></i></div>
-          <div class="mc-foot"><span>A/S 문의 환영</span><span>made with 에어컨인테리어연구소</span></div>
+          <div class="mc-foot"><span>A/S 문의 환영</span><span>made with 에어컨 인테리어 연구소</span></div>
         </div>
         <div class="mock-fields">
           <span>상호명</span><span>연락처</span><span>대표색</span><span class="go">만들기</span>
@@ -617,7 +626,7 @@
 <footer>
   <div class="foot-inner">
     <div>
-      <a class="brand" href="./"><span class="brand-mark"></span>에어컨인테리어연구소</a>
+      <a class="brand" href="./"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
       <p style="margin-top:12px;line-height:1.7">에어컨·인테리어 업계 정보 허브 A.IN<br>매일 아침 06:30, 업계의 하루가 정리됩니다</p>
     </div>
     <div class="foot-links">
