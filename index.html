@@ -541,7 +541,7 @@
         <div class="card-tag">06:30 KST <span class="badge teal">매일 발행</span></div>
         <h3>모닝브리핑</h3>
         <p>시세·입주·채용·정부사업을 한 장으로. 출근길 3분이면 오늘 업계 흐름이 잡힙니다.</p>
-        <div class="brief-lines">
+        <div class="brief-lines" id="briefLines">
           <div><span class="t">07.03</span>동관 소폭 상승 — 하절기 수요 반영, <span class="hl">발주 시점 참고</span></div>
           <div><span class="t">07.03</span>인천 서구 검단 2개 단지 <span class="hl">8월 입주 확정</span></div>
           <div><span class="t">07.03</span>경기환경에너지 지원사업 <span class="hl">2차 접수 시작</span></div>
@@ -552,28 +552,28 @@
         <div class="card-tag">청약홈 연동 <span class="badge">주간 갱신</span></div>
         <h3>입주 레이더</h3>
         <p>입주 예정 단지를 지역별로 미리 확인. 시공·세척·인테리어 영업 타이밍을 놓치지 않습니다.</p>
-        <div class="mini-stat"><span class="n">142</span><span class="u">단지 추적 중 · 수도권 3개월</span></div>
+        <div class="mini-stat" id="statMovein"><span class="n">142</span><span class="u">단지 추적 중 · 수도권 3개월</span></div>
       </article>
 
       <article class="card c-job rv tilt">
         <div class="card-tag">구인구직</div>
         <h3>사람과 일</h3>
         <p>설치·세척·복원·인테리어 현장의 채용과 구직 정보.</p>
-        <div class="mini-stat"><span class="n">27</span><span class="u">오늘 신규</span></div>
+        <div class="mini-stat"><span class="badge">준비중</span></div>
       </article>
 
       <article class="card c-gov rv tilt">
         <div class="card-tag">기업마당 연동</div>
         <h3>정부지원사업</h3>
         <p>업계에 해당하는 지원사업만 골라 마감일 기준으로 정리.</p>
-        <div class="mini-stat"><span class="n">6</span><span class="u">접수 중 · D-5 임박 1건</span></div>
+        <div class="mini-stat" id="statGov"><span class="n">6</span><span class="u">접수 중 · D-5 임박 1건</span></div>
       </article>
 
       <article class="card c-price rv tilt">
         <div class="card-tag">자재 시세</div>
         <h3>동관·알루미늄</h3>
         <p>발주 판단에 필요한 원자재 시세를 매일 기록합니다.</p>
-        <div class="mini-stat"><span class="n">18,420</span><span class="u">원/kg · 동관 15.88</span></div>
+        <div class="mini-stat" id="statPrice"><span class="n">18,420</span><span class="u">원/kg · 동관 15.88</span></div>
       </article>
     </div>
   </section>
@@ -648,12 +648,12 @@
   const nav=document.getElementById('nav');
   addEventListener('scroll',()=>nav.classList.toggle('scrolled',scrollY>10),{passive:true});
 
-  // ticker data — P2에서 Supabase fetch로 교체 예정. v(값)가 null인 항목은 렌더 제외.
+  // ticker data — 더미(폴백)값. 아래 loadLiveData()가 뷰 값으로 교체. null 항목은 렌더 제외.
   const TICKER_DATA=[
     {k:"동관 15.88",v:"18,420원/kg",change:{dir:"up",text:"▲ 1.2%"}},
     {k:"알루미늄",v:"3,910원/kg",change:{dir:"down",text:"▼ 0.4%"}},
     {k:"이번 주 입주예정",v:"수도권 14개 단지"},
-    {k:"신규 채용",v:"오늘 27건",change:{dir:"up",text:"▲ 9"}},
+    null, // 채용: 소스 미구축 — null이라 렌더 제외
     {k:"정부사업",v:"접수중 6건",note:"최근 마감 D-5"},
     {k:"냉매 R410A",v:"시세 안정"}
   ];
@@ -772,6 +772,84 @@
       });
     });
   }
+
+  // P2: 읽기전용 뷰 3개 → 티커·카드 실데이터.
+  // 뷰 미생성·fetch 실패·빈값이면 아무것도 교체하지 않음 = 더미 폴백 (빈 화면 금지).
+  (async function loadLiveData(){
+    const db=ainAuth.getClient();
+    const get=async t=>{
+      try{
+        const {data,error}=await db.from(t).select('*');
+        if(error)throw error;
+        return data&&data.length?data:null;
+      }catch(e){console.warn('[live]',t,e.message||e);return null;}
+    };
+    const [metals,movein,gov]=await Promise.all([
+      get('v_ticker_metals'),get('v_stat_movein'),get('v_stat_gov')
+    ]);
+    const mv=movein&&movein[0];
+    const gv=gov&&gov[0];
+    const copper=metals&&metals.find(r=>r.item_id==='copper');
+    const alu=metals&&metals.find(r=>r.item_id==='aluminium');
+    const pct=r=>r&&r.change_day_percent!=null
+      ?{dir:r.change_day_percent<0?'down':'up',
+        text:(r.change_day_percent<0?'▼ ':'▲ ')+Math.abs(Number(r.change_day_percent)).toFixed(2)+'%'}
+      :null;
+    const fmtNum=v=>v==null?'':Number(v).toLocaleString('ko-KR',{maximumFractionDigits:2});
+
+    // 티커: 값이 온 항목만 인덱스 교체 (0동관 1알루 2입주 4정부 — 3채용은 null 유지)
+    const live=TICKER_DATA.slice();
+    if(copper)live[0]={k:copper.name||'전기동',v:copper.display_price||fmtNum(copper.price),change:pct(copper)};
+    if(alu)live[1]={k:alu.name||'알루미늄',v:alu.display_price||fmtNum(alu.price),change:pct(alu)};
+    if(mv)live[2]=mv.movein_this_week>0
+      ?{k:'이번 주 입주예정',v:mv.movein_this_week+'개 단지'}
+      :{k:'입주 단지',v:fmtNum(mv.tracking_count)+'개 추적 중'};
+    if(gv&&gv.active_count!=null)live[4]={k:'정부사업',v:'접수중 '+gv.active_count+'건',
+      note:gv.nearest_d_day!=null?'최임박 D-'+gv.nearest_d_day:null};
+    if(copper||alu||mv||gv)renderTicker(live);
+
+    // 카드 숫자
+    if(mv){
+      const el=document.getElementById('statMovein');
+      if(el)el.innerHTML='<span class="n">'+escT(fmtNum(mv.metro_3mo_count!=null?mv.metro_3mo_count:mv.tracking_count))
+        +'</span><span class="u">단지 추적 중 · 수도권 3개월</span>';
+    }
+    if(gv&&gv.active_count!=null){
+      const el=document.getElementById('statGov');
+      if(el)el.innerHTML='<span class="n">'+escT(gv.active_count)+'</span><span class="u">'
+        +(gv.nearest_d_day!=null?'접수 중 · D-'+escT(gv.nearest_d_day)+' 임박':'접수 중')+'</span>';
+    }
+    if(copper){
+      const el=document.getElementById('statPrice');
+      if(el)el.innerHTML='<span class="n">'+escT(fmtNum(copper.price))+'</span><span class="u">'
+        +escT((copper.currency||'USD')+'/'+String(copper.unit||'mt').replace(/^\//,''))+' · '+escT(copper.name||'전기동')+'</span>';
+    }
+
+    // 모닝브리핑 카드 3줄 = 시세 + 입주 + 정부사업 (뉴스 미사용). 줄 단위 폴백.
+    if(copper||mv||gv){
+      const bl=document.getElementById('briefLines');
+      if(bl){
+        const now=new Date();
+        const t=String(now.getMonth()+1).padStart(2,'0')+'.'+String(now.getDate()).padStart(2,'0');
+        const line=(body)=>'<div><span class="t">'+t+'</span>'+body+'</div>';
+        const rows=[
+          copper
+            ?line(escT(copper.name||'동관')+' '+escT(copper.display_price||fmtNum(copper.price))
+              +' — <span class="hl">전일 '+escT(copper.display_change_day_percent||'변동 확인 중')+'</span>')
+            :line('자재 시세 <span class="hl">업데이트 준비 중</span>'),
+          mv
+            ?line('이번 주 입주예정 <span class="hl">'+escT(mv.movein_this_week)+'개 단지</span> · 추적 '+escT(fmtNum(mv.tracking_count))+'개')
+            :line('입주 정보 <span class="hl">업데이트 준비 중</span>'),
+          gv&&gv.nearest_program_name
+            ?line(escT(gv.nearest_program_name)+' <span class="hl">D-'+escT(gv.nearest_d_day)+' 마감 임박</span>')
+            :(gv&&gv.active_count!=null
+              ?line('정부지원사업 접수중 <span class="hl">'+escT(gv.active_count)+'건</span>')
+              :line('정부사업 <span class="hl">업데이트 준비 중</span>'))
+        ];
+        bl.innerHTML=rows.join('');
+      }
+    }
+  })();
 </script>
 </body>
 </html>

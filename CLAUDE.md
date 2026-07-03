@@ -18,6 +18,10 @@
 - 비로그인 입주 정보 → move_in_teaser 뷰만 (지역+입주월+단계, 단지명 없음, definer 권한)
 - briefing/calendar 로그인 → move_in_complexes / public_move_in_calendar (authenticated 전용)
 - news, prices → anon 공개 (SEO 유입 자산)
+- 메인 티커·카드 → 집계 전용 뷰 3개 (09_public_views.sql): v_ticker_metals(invoker, prices 공개라서)
+  / v_stat_movein·v_stat_gov(definer — 원본 anon 차단 상태에서 집계 숫자만 노출)
+- govt_programs → 원본 anon grant 회수 예정 (뷰 전환·배포 확인 후 09의 REVOKE 섹션 실행).
+  anon 접근은 v_stat_gov 경유만. 파이프라인(service_role)은 무영향
 
 ## 현재 상태
 - 완료: auth.js, 4개 페이지 인증 UI, profiles 테이블+트리거
