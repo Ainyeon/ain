@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>OG Render</title>
+<style>
+  @font-face{
+    font-family:"Pretendard Variable";
+    src:url("../../assets/fonts/PretendardVariable.subset.woff2") format("woff2-variations");
+    font-weight:45 920;font-display:block;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1200px;height:630px;overflow:hidden}
+  body{
+    font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo",sans-serif;
+    background:
+      radial-gradient(900px 560px at 50% -12%, #FDFDFE 0%, #F7F7F8 62%),
+      #F7F7F8;
+    color:#0F1013;letter-spacing:-0.01em;
+    -webkit-font-smoothing:antialiased;
+  }
+  .stage{position:relative;width:1200px;height:630px}
+  .logo{display:flex;align-items:center;gap:16px}
+  .logo svg{display:block}
+  .brand-name{font-size:30px;font-weight:800;letter-spacing:-0.02em;color:#0F1013}
+  .copy{font-weight:800;letter-spacing:-0.045em;line-height:1.26;text-wrap:balance}
+  .copy .g{color:#A3A7AE}
+  .orb{
+    position:absolute;border-radius:50%;pointer-events:none;
+    background:
+      radial-gradient(circle at 38% 30%, rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 42%),
+      radial-gradient(circle at 50% 50%, #FDFDFE 0%, #F1F1F4 100%);
+    box-shadow:
+      inset -14px -20px 46px rgba(150,155,165,.20),
+      inset 10px 14px 36px rgba(255,255,255,.9),
+      0 40px 90px -50px rgba(15,16,19,.22);
+  }
+  .ring{
+    position:absolute;border-radius:50%;
+    background:conic-gradient(from 0deg,
+      rgba(79,140,255,0) 0deg, rgba(79,140,255,.55) 60deg,
+      rgba(53,197,184,.5) 140deg, rgba(255,138,101,.38) 215deg,
+      rgba(167,139,250,.42) 290deg, rgba(79,140,255,0) 360deg);
+    -webkit-mask:radial-gradient(closest-side,transparent 60%,#000 68%,#000 76%,transparent 86%);
+            mask:radial-gradient(closest-side,transparent 60%,#000 68%,#000 76%,transparent 86%);
+    filter:blur(16px) saturate(1.15);
+  }
+
+  /* 시안 A — 좌측 정렬, 오브 우측 */
+  .va .stage{padding:84px 90px}
+  .va .orb{width:540px;height:540px;right:-230px;top:45px;opacity:.85}
+  .va .ring{width:540px;height:540px;right:-230px;top:45px}
+  .va .logo{margin-bottom:176px}
+  .va .copy{font-size:60px;max-width:960px;position:relative}
+
+  /* 시안 B — 중앙 정렬, 오브 배경 중앙 */
+  .vb .stage{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:56px}
+  .vb .orb{width:640px;height:640px;left:280px;top:-40px;opacity:.6}
+  .vb .ring{width:640px;height:640px;left:280px;top:-40px;opacity:.75}
+  .vb .logo,.vb .copy{position:relative}
+  .vb .copy{font-size:60px;max-width:940px}
+
+  /* 시안 C — 카피 상단 대형, 하단 브랜드 라인 */
+  .vc .stage{padding:96px 90px;display:flex;flex-direction:column;justify-content:space-between}
+  .vc .orb{width:460px;height:460px;right:-120px;bottom:-160px;opacity:.8}
+  .vc .ring{width:460px;height:460px;right:-120px;bottom:-160px}
+  .vc .copy{font-size:70px;max-width:960px;position:relative}
+  .vc .bottom{display:flex;align-items:center;justify-content:space-between;position:relative}
+  .vc .domain{font-size:24px;font-weight:700;color:#63676F;letter-spacing:.01em}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="orb"></div>
+  <div class="ring"></div>
+  <div class="logo">
+    <svg width="132" height="44" viewBox="0 0 929 307" xmlns="http://www.w3.org/2000/svg" aria-label="A.IN">
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2D4A9E"/><stop offset="100%" stop-color="#9E2D3D"/></linearGradient></defs>
+      <g fill="url(#g)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g>
+    </svg>
+    <span class="brand-name">에어컨인테리어연구소</span>
+  </div>
+  <p class="copy">정보가 모이면 <span class="g">사람이 모이고,</span><br>사람이 모이면 <span class="g">시장이 움직입니다.</span></p>
+  <div class="bottom" hidden><span class="domain">ainyeon.com</span></div>
+</div>
+<script>
+  const v = new URLSearchParams(location.search).get('v') || 'a';
+  document.body.className = 'v' + v;
+  if (v === 'c') document.querySelector('.bottom').hidden = false;
+  if (v === 'c') { // C안: 카피가 위, 로고가 아래로
+    const stage = document.querySelector('.stage');
+    const logo = document.querySelector('.logo');
+    const bottom = document.querySelector('.bottom');
+    stage.insertBefore(document.querySelector('.copy'), logo);
+    bottom.insertBefore(logo, bottom.firstChild);
+    stage.appendChild(bottom);
+  }
+  document.fonts.ready.then(() => { document.title = 'READY'; });
+</script>
+</body>
+</html>

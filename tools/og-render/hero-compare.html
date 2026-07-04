@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{
+    font-family:"Pretendard Variable";
+    src:url("../../assets/fonts/PretendardVariable.subset.woff2") format("woff2-variations");
+    font-weight:45 920;font-display:block;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1200px;height:900px}
+  body{font-family:"Pretendard Variable",Pretendard,sans-serif;background:#F7F7F8;color:#0F1013;-webkit-font-smoothing:antialiased}
+  .panel{height:450px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative}
+  .panel+.panel{border-top:2px dashed #D6D8DD}
+  .tag{position:absolute;top:26px;left:32px;font-family:ui-monospace,Menlo,monospace;font-size:15px;font-weight:700;color:#63676F;
+       background:#fff;border:1px solid #E8E8EC;border-radius:100px;padding:8px 18px}
+  .label{font-size:19px;font-weight:700;letter-spacing:.02em;color:#63676F;margin-bottom:18px}
+  .lead{font-size:52px;font-weight:800;letter-spacing:-0.045em;line-height:1.2}
+  .lead .g{color:#A3A7AE}
+  .sub{margin-top:20px;font-size:17px;color:#63676F;line-height:1.7}
+  .sub b{color:#0F1013}
+</style>
+</head>
+<body>
+  <div class="panel">
+    <span class="tag">현재 히어로 (라이브)</span>
+    <div class="label">에어컨 인테리어 연구소</div>
+    <div class="lead"><span class="g">공기처럼 흐르는</span><br>업계 정보</div>
+    <p class="sub">자재 시세, 입주 예정 단지, 신규 채용, 정부지원사업.<br>현장에 필요한 정보를 <b>매일 아침 06:30 업데이트</b>.</p>
+  </div>
+  <div class="panel">
+    <span class="tag">제안 카피 (OG 문구)</span>
+    <div class="label">에어컨 인테리어 연구소</div>
+    <div class="lead">정보가 모이면 <span class="g">사람이 모이고,</span><br>사람이 모이면 <span class="g">시장이 움직입니다.</span></div>
+    <p class="sub">자재 시세, 입주 예정 단지, 신규 채용, 정부지원사업.<br>현장에 필요한 정보를 <b>매일 아침 06:30 업데이트</b>.</p>
+  </div>
+</body>
+</html>
