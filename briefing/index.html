@@ -14,7 +14,10 @@
   <meta name="theme-color" content="#F7F7F8">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/assets/css/ain.css">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+<link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/ain.css">
   <style>
     :root {
       color-scheme: light;
@@ -23,7 +26,7 @@
       --border: #E8E8EC;
       --txt: #0F1013;
       --txt2: #63676F;
-      --txt3: #A3A7AE;
+      --txt3: #6E737C;
       --g-start: #2D4A9E;
       --g-end: #9E2D3D;
       --blue: #4F8CFF;
@@ -55,15 +58,15 @@
     .brief-section.todo { border-left-color: var(--burgundy); }
     .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
     .section-title { color: var(--txt); font-size: 16px; font-weight: 800; line-height: 1.3; word-break: keep-all; overflow-wrap: break-word; }
-    .section-count { flex-shrink: 0; border: 1px solid rgba(79, 140, 255, .3); border-radius: 999px; background: rgba(79, 140, 255, .1); color: #3B76E0; padding: 3px 9px; font-size: 11px; font-weight: 800; line-height: 1.2; }
+    .section-count { flex-shrink: 0; border: 1px solid rgba(79, 140, 255, .3); border-radius: 999px; background: rgba(79, 140, 255, .1); color: #2F63C7; padding: 3px 9px; font-size: 11px; font-weight: 800; line-height: 1.2; }
     .item-list { display: grid; gap: 9px; }
     .line-item { padding: 10px 0 0; border-top: 1px solid var(--border); color: var(--txt2); font-size: 13px; line-height: 1.52; word-break: keep-all; overflow-wrap: break-word; }
     .line-item:first-child { padding-top: 0; border-top: 0; }
     .line-item b { color: var(--txt); font-weight: 800; }
     .line-item small { display: block; margin-top: 3px; color: var(--txt3); font-size: 11px; }
-    .line-link { display: block; margin-top: 4px; color: #3B76E0; font-size: 12px; font-weight: 800; }
-    .region-label { padding: 10px 0 0; color: #3B76E0; font-size: 12px; font-weight: 900; }
-    .section-action { margin-top: 13px; display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 0 13px; border: 1px solid rgba(79, 140, 255, .3); border-radius: 10px; color: #3B76E0; background: rgba(79, 140, 255, .1); font-size: 12px; font-weight: 900; }
+    .line-link { display: block; margin-top: 4px; color: #2F63C7; font-size: 12px; font-weight: 800; }
+    .region-label { padding: 10px 0 0; color: #2F63C7; font-size: 12px; font-weight: 900; }
+    .section-action { margin-top: 13px; display: inline-flex; min-height: 36px; align-items: center; justify-content: center; padding: 0 13px; border: 1px solid rgba(79, 140, 255, .3); border-radius: 10px; color: #2F63C7; background: rgba(79, 140, 255, .1); font-size: 12px; font-weight: 900; }
     button.section-action { cursor: pointer; font-family: inherit; }
     .teaser-locked { display: inline-flex; align-items: center; gap: 6px; color: var(--txt2); }
     .teaser-locked svg { flex-shrink: 0; opacity: .7; }
@@ -90,8 +93,9 @@
       .region-label { font-size: 13px; }
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="/auth.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="/auth.js"></script>
+  <script defer src="/assets/js/ain-common.js"></script>
 </head>
 <body>
   <nav class="nav" id="nav">
@@ -145,7 +149,6 @@
       </div>
     </div>
   </footer>
-  <script src="/assets/js/ain-common.js"></script>
   <script>
     const OVERSEAS_NEWS_SOURCES = new Set(["Cooling Post", "Contractor Magazine"]);
     const MOVE_IN_REGIONS = [
@@ -389,10 +392,12 @@
 
     let renderedLoggedIn = null;
 
-    render().catch((error) => {
-      statusEl.className = "error";
-      statusEl.textContent = "모닝브리핑을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
-      console.error(error);
+    addEventListener("DOMContentLoaded", () => {
+      render().catch((error) => {
+        statusEl.className = "error";
+        statusEl.textContent = "모닝브리핑을 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
+        console.error(error);
+      });
     });
 
     // 로그인 상태가 렌더 시점과 달라지면 리로드 (로그인/로그아웃 반영)

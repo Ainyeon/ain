@@ -14,7 +14,10 @@
   <meta name="theme-color" content="#F7F7F8">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/assets/css/ain.css">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+<link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/ain.css">
   <style>
     :root {
       color-scheme: light;
@@ -23,7 +26,7 @@
       --border: #E8E8EC;
       --txt: #0F1013;
       --txt2: #63676F;
-      --txt3: #A3A7AE;
+      --txt3: #6E737C;
       --g-start: #2D4A9E;
       --g-end: #9E2D3D;
       --blue: #4F8CFF;
@@ -225,7 +228,7 @@
       padding: 24px 24px 0;
       --stage: var(--blue);
       --stage-soft: rgba(79, 140, 255, 0.12);
-      --stage-txt: #3B76E0;
+      --stage-txt: #2F63C7;
     }
 
     .stage-head {
@@ -406,8 +409,9 @@
     .teaser-name { display:inline-flex; align-items:center; gap:7px; color:var(--txt2); font-size:15px; font-weight:700; line-height:1.35; }
     .teaser-name svg { flex-shrink:0; opacity:.7; }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="/auth.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="/auth.js"></script>
+  <script defer src="/assets/js/ain-common.js"></script>
 </head>
 <body>
   <nav class="nav" id="nav">
@@ -487,18 +491,17 @@
     </div>
   </footer>
 
-  <script src="/assets/js/ain-common.js"></script>
   <script>
     const VIEW_NAME = "public_move_in_calendar";
     const STAGE_ORDER = ["신규", "D-180 ~ D-91", "D-90 ~ D-31", "D-30 ~ 입주", "입주중 ~ D+90", "D+90 ~ D+180"];
     // 라이트 테마 팔레트 (ain.css --g1~--g4 계열)
     const STAGE_META = {
-      "신규": { name: "신규", badge: "신규", color: "#4F8CFF", soft: "rgba(79, 140, 255, .12)", text: "#3B76E0" },
-      "D-180 ~ D-91": { name: "D-180 ~ D-91", badge: "D-180 ~ D-91", color: "#4F8CFF", soft: "rgba(79, 140, 255, .1)", text: "#3B76E0" },
-      "D-90 ~ D-31": { name: "D-90 ~ D-31", badge: "D-90 ~ D-31", color: "#35C5B8", soft: "rgba(53, 197, 184, .12)", text: "#18988B" },
-      "D-30 ~ 입주": { name: "D-30 ~ 입주", badge: "D-30 ~ 입주", color: "#A78BFA", soft: "rgba(167, 139, 250, .14)", text: "#7C5CD6" },
-      "입주중 ~ D+90": { name: "입주중 ~ D+90", badge: "입주중", color: "#FF8A65", soft: "rgba(255, 138, 101, .16)", text: "#D96A45" },
-      "D+90 ~ D+180": { name: "D+90 ~ D+180", badge: "D+90 ~ D+180", color: "#FF8A65", soft: "rgba(255, 138, 101, .16)", text: "#D96A45" }
+      "신규": { name: "신규", badge: "신규", color: "#4F8CFF", soft: "rgba(79, 140, 255, .12)", text: "#2F63C7" },
+      "D-180 ~ D-91": { name: "D-180 ~ D-91", badge: "D-180 ~ D-91", color: "#4F8CFF", soft: "rgba(79, 140, 255, .1)", text: "#2F63C7" },
+      "D-90 ~ D-31": { name: "D-90 ~ D-31", badge: "D-90 ~ D-31", color: "#35C5B8", soft: "rgba(53, 197, 184, .12)", text: "#12766C" },
+      "D-30 ~ 입주": { name: "D-30 ~ 입주", badge: "D-30 ~ 입주", color: "#A78BFA", soft: "rgba(167, 139, 250, .14)", text: "#6847C4" },
+      "입주중 ~ D+90": { name: "입주중 ~ D+90", badge: "입주중", color: "#FF8A65", soft: "rgba(255, 138, 101, .16)", text: "#BA4E2C" },
+      "D+90 ~ D+180": { name: "D+90 ~ D+180", badge: "D+90 ~ D+180", color: "#FF8A65", soft: "rgba(255, 138, 101, .16)", text: "#BA4E2C" }
     };
     const LOCAL_PROVINCES = ["강원", "대전", "충북", "충남", "대구", "경북", "부산", "울산", "경남", "광주", "전북", "전남", "제주"];
     const GYEONGGI_PREFIXES = [
@@ -894,7 +897,9 @@
       }
     }
 
-    ainAuth.getSession().then(function (session) { bootCalendar(session); });
+    addEventListener("DOMContentLoaded", function () {
+      ainAuth.getSession().then(function (session) { bootCalendar(session); });
+    });
     window.addEventListener("ain:auth", function (e) { bootCalendar(e.detail.session); });
   </script>
 </body>

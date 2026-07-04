@@ -14,9 +14,12 @@
   <meta name="theme-color" content="#F7F7F8">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/assets/css/ain.css">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+<link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/css/ain.css">
   <style>
-    :root { color-scheme: light; --surface:#FFFFFF; --border:#E8E8EC; --txt:#0F1013; --txt2:#63676F; --txt3:#A3A7AE; }
+    :root { color-scheme: light; --surface:#FFFFFF; --border:#E8E8EC; --txt:#0F1013; --txt2:#63676F; --txt3:#6E737C; }
     .wrap { width: min(100%, 760px); margin: 0 auto; padding: 0 0 56px; }
     .page-head { padding: 108px 24px 22px; border-bottom: 1px solid var(--border); }
     .page-head .sec-label { margin-bottom: 10px; }
@@ -32,13 +35,14 @@
     .price-name { font-size: 16px; font-weight: 800; color: var(--txt); }
     .price-value { margin-top: 10px; font-family: var(--font-mono); font-size: 30px; font-weight: 700; letter-spacing: -0.03em; color: var(--txt); }
     .price-change { margin-top: 6px; font-size: 14px; font-weight: 700; }
-    .price-change.up { color: var(--up); } .price-change.down { color: var(--down); }
+    .price-change.up { color: #C13333; } .price-change.down { color: #2A5FD0; }
     .price-meta { margin-top: 10px; color: var(--txt3); font-size: 12.5px; }
     .loading, .error { padding: 32px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 14px; }
     .fineprint { padding: 22px 24px 0; color: var(--txt3); font-size: 11px; line-height: 1.6; }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="/auth.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="/auth.js"></script>
+  <script defer src="/assets/js/ain-common.js"></script>
 </head>
 <body>
   <nav class="nav" id="nav">
@@ -79,7 +83,6 @@
       </div>
     </div>
   </footer>
-  <script src="/assets/js/ain-common.js"></script>
   <script>
     const statusEl = document.getElementById("status");
     const panelEl = document.getElementById("panel");
@@ -98,7 +101,7 @@
       </article>`;
     }
 
-    (async function render() {
+    async function render() {
       try {
         const { data, error } = await ainAuth.getClient().from("v_ticker_metals").select("*");
         if (error) throw error;
@@ -117,7 +120,8 @@
         statusEl.textContent = "시세를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
         console.error(e);
       }
-    })();
+    }
+    addEventListener("DOMContentLoaded", () => { render(); });
   </script>
 </body>
 </html>

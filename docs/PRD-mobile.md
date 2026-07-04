@@ -30,16 +30,17 @@
 
 ## 4. 완료 기준 (Definition of Done)
 
-- [ ] 375px 뷰포트에서 전 페이지 가로 스크롤 0 (scrollX 이동 불가로 검증)
-- [ ] 탭바·주요 버튼 터치 타겟 44×44px 이상 (측정 스크립트로 검증)
-- [ ] 본문 텍스트 16px 이상 (콘텐츠 영역 기준)
-- [ ] 모바일에서 파랙스·틸트 미동작, 리빌 동작
-- [ ] Pretendard 서브셋 woff2 ≤ 900KB, font-display: swap
-- [ ] 전 페이지 canonical·og:url·og:title·og:description·og:image(절대 URL) 완비
-- [ ] manifest.json + 아이콘(192/512) + 서비스워커 → 설치 가능(Lighthouse installable)
-- [ ] 비행기모드(오프라인)에서 브리핑·시세 페이지가 마지막 캐시본으로 열림
-- [ ] Lighthouse 모바일: Performance ≥ 90, Accessibility ≥ 90 (로컬 서버 측정)
-- [ ] 데스크톱(1440px) 기존 렌더 회귀 없음
+- [x] 375px 뷰포트에서 전 페이지 가로 스크롤 0 (scrollX 이동 불가로 검증 — 6페이지)
+- [x] 탭바·주요 버튼 터치 타겟 44×44px 이상 (측정 스크립트 — 탭바 최소 56px, 위반 0건)
+- [x] 본문 텍스트 16px 이상 (브리핑 line-item·뉴스 요약·캘린더 단지명 16px)
+- [x] 모바일에서 파랙스·틸트 미동작(coarse pointer 가드), 리빌 동작·경량화(blur 8→4px)
+- [x] Pretendard 서브셋 woff2 ≤ 900KB → **320KB** (KS X 1001 + wght 400–900 인스턴스), swap 유지
+- [x] 전 페이지 canonical·og:url·og:title·og:description·og:image(절대 URL) 완비
+- [x] manifest.json + 아이콘(192/512/maskable) + 서비스워커 (설치 프롬프트 포함)
+- [x] 비행기모드에서 브리핑·시세 페이지 마지막 캐시본 열람 (Playwright offline 검증)
+- [~] Lighthouse 모바일 (gzip 서버, 콜드 캐시): 홈 **91**/me 95/prices 88/calendar 82/briefing 75/news 71 —
+      A11y·BP·SEO는 **전 페이지 100**. 데이터 페이지 감점은 fetch-bound LCP (HANDOFF 참고)
+- [x] 데스크톱(1440px) 기존 렌더 회귀 없음 (탭바 숨김·히어로 52px·티커 정상)
 
 ## 5. 비범위 (이번 작업에서 안 함)
 
