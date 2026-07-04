@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>업계뉴스 | 에인연</title>
   <meta name="description" content="에인연이 수집한 HVAC, 공조, 냉매, 인테리어 업계뉴스 후보입니다.">
+  <link rel="canonical" href="https://ainyeon.com/news/">
   <meta property="og:title" content="업계뉴스 | 에인연">
   <meta property="og:description" content="한국 에어컨·인테리어 업계 관점으로 정리한 최신 업계뉴스입니다.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ainyeon.com/news/">
+  <meta property="og:image" content="https://ainyeon.com/assets/og.png">
   <meta name="theme-color" content="#F7F7F8">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/assets/css/ain.css">
   <style>
     :root {
@@ -68,6 +72,15 @@
     .cta-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
     .cta-button { min-height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: linear-gradient(135deg, var(--g-start), var(--g-end)); color: #fff; font-size: 13px; font-weight: 800; }
     .fineprint { padding: 22px 24px 0; color: var(--txt3); font-size: 11px; line-height: 1.6; }
+
+    /* 모바일 에르고노믹스: 터치 타겟 44px, 본문 16px */
+    @media (max-width: 900px) {
+      .summary-text { font-size: 16px; -webkit-line-clamp: 5; }
+      .card-meta { font-size: 13px; }
+      .origin-link { display: inline-flex; align-items: center; min-height: 44px; }
+      .cta-button { min-height: 48px; }
+      .summary-label { font-size: 12px; }
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="/auth.js"></script>

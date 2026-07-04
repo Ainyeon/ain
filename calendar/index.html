@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>입주 캘린더 | 에인연</title>
   <meta name="description" content="에인연이 매일 업데이트하는 입주 캘린더입니다. 수도권과 전국 입주 예정 단지를 단계별로 확인하세요.">
+  <link rel="canonical" href="https://ainyeon.com/calendar/">
   <meta property="og:title" content="입주 캘린더 | 에인연">
   <meta property="og:description" content="청약홈 입주자모집공고의 입주예정월 기준으로 매일 업데이트하는 입주 캘린더입니다.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ainyeon.com/calendar/">
+  <meta property="og:image" content="https://ainyeon.com/assets/og.png">
   <meta name="theme-color" content="#F7F7F8">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/assets/css/ain.css">
   <style>
     :root {
@@ -378,6 +382,17 @@
       .cards {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+    }
+
+    /* 모바일 에르고노믹스: 터치 타겟 44px, 본문 16px */
+    @media (max-width: 900px) {
+      .region-tab { min-height: 48px; font-size: 14px; }
+      .chip { min-height: 44px; padding: 10px 16px; font-size: 13px; }
+      .province-card { min-height: 76px; }
+      .complex-name, .teaser-name { font-size: 16px; }
+      .loc, .date-line { font-size: 13px; }
+      .stage-badge { font-size: 12px; }
+      .summary-label { font-size: 12px; }
     }
     .gate-shimmer { display:flex; flex-direction:column; gap:10px; filter:blur(4px); opacity:.3; pointer-events:none; user-select:none; }
     .gate-shimmer-row { height:74px; border:1px solid var(--border); border-radius:8px; background:var(--surface); }

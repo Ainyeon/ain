@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>자재 시세 | 에인연</title>
+  <meta name="description" content="동관(전기동)·알루미늄 자재 시세를 매일 업데이트합니다. 발주 판단에 필요한 원자재 가격 흐름.">
+  <link rel="canonical" href="https://ainyeon.com/prices/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="자재 시세 | 에인연">
+  <meta property="og:description" content="동관·알루미늄 자재 시세, 매일 아침 업데이트.">
+  <meta property="og:url" content="https://ainyeon.com/prices/">
+  <meta property="og:image" content="https://ainyeon.com/assets/og.png">
+  <meta name="theme-color" content="#F7F7F8">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/assets/css/ain.css">
+  <style>
+    :root { color-scheme: light; --surface:#FFFFFF; --border:#E8E8EC; --txt:#0F1013; --txt2:#63676F; --txt3:#A3A7AE; }
+    .wrap { width: min(100%, 760px); margin: 0 auto; padding: 0 0 56px; }
+    .page-head { padding: 108px 24px 22px; border-bottom: 1px solid var(--border); }
+    .page-head .sec-label { margin-bottom: 10px; }
+    .updated { color: var(--txt2); font-size: 12px; font-weight: 700; }
+    .panel { padding: 24px; display: grid; gap: 14px; }
+    .price-card {
+      border: 1px solid rgba(255,255,255,.9); border-left: 3px solid var(--g1);
+      border-radius: 14px; background: var(--surface); padding: 20px;
+      box-shadow: var(--shadow-amb), 0 14px 34px -22px rgba(15,16,19,.14);
+    }
+    .price-card.alu { border-left-color: var(--g2); }
+    .price-card.gas { border-left-color: var(--g4); }
+    .price-name { font-size: 16px; font-weight: 800; color: var(--txt); }
+    .price-value { margin-top: 10px; font-family: var(--font-mono); font-size: 30px; font-weight: 700; letter-spacing: -0.03em; color: var(--txt); }
+    .price-change { margin-top: 6px; font-size: 14px; font-weight: 700; }
+    .price-change.up { color: var(--up); } .price-change.down { color: var(--down); }
+    .price-meta { margin-top: 10px; color: var(--txt3); font-size: 12.5px; }
+    .loading, .error { padding: 32px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 14px; }
+    .fineprint { padding: 22px 24px 0; color: var(--txt3); font-size: 11px; line-height: 1.6; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/auth.js"></script>
+</head>
+<body>
+  <nav class="nav" id="nav">
+    <a class="brand" href="/"><span class="brand-mark"></span>A.IN</a>
+    <a class="menu-pill" href="/#streams"><span class="plus">+</span>메뉴</a>
+    <div class="nav-tags">
+      <a href="/briefing/">모닝브리핑</a>
+      <a href="/calendar/">입주 레이더</a>
+      <a href="/news/">업계뉴스</a>
+      <a href="/#tools">도구</a>
+    </div>
+    <div class="nav-right">
+      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+    </div>
+  </nav>
+  <main class="wrap">
+    <header class="page-head">
+      <div class="sec-label">Material Prices · <span class="updated" id="updatedLabel">업데이트 확인 중</span></div>
+      <h1 class="page-title">자재 시세</h1>
+      <p class="page-sub">발주 판단에 필요한 원자재 시세를 매일 기록합니다.</p>
+    </header>
+    <section class="panel" id="panel" aria-live="polite">
+      <div id="status" class="loading">시세를 불러오는 중</div>
+    </section>
+    <div class="fineprint">시세는 국제 거래소 기준이며 국내 유통가와 다를 수 있습니다. 원천 데이터 지연에 따라 갱신 시점이 달라질 수 있습니다.</div>
+  </main>
+  <footer>
+    <div class="foot-inner">
+      <div>
+        <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
+        <p style="margin-top:12px;line-height:1.7">에어컨·인테리어 업계 정보 허브 A.IN<br>매일 아침 06:30, 업계의 하루가 정리됩니다</p>
+      </div>
+      <div class="foot-links">
+        <a href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">네이버 카페</a>
+        <a href="https://www.instagram.com/ainyeon_official" target="_blank" rel="noopener">인스타그램</a>
+        <a href="https://band.us/n/a2a2be04B5I6H" target="_blank" rel="noopener">밴드</a>
+        <a href="https://cafe.daangn.com/ein-yeon-eeokeo?utm_medium=copy_link" target="_blank" rel="noopener">문의</a>
+      </div>
+    </div>
+  </footer>
+  <script src="/assets/js/ain-common.js"></script>
+  <script>
+    const statusEl = document.getElementById("status");
+    const panelEl = document.getElementById("panel");
+    const updatedEl = document.getElementById("updatedLabel");
+
+    function metalCard(row, cls) {
+      const dir = row.change_day_percent == null ? "" : (row.change_day_percent < 0 ? "down" : "up");
+      const change = row.display_change_day_percent
+        ? `<div class="price-change ${dir}">전일 ${escT(row.display_change_day_percent)}${row.display_change_day ? " · " + escT(row.display_change_day) : ""}</div>` : "";
+      const when = row.collected_at ? new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(row.collected_at)) : "-";
+      return `<article class="price-card ${cls}">
+        <div class="price-name">${escT(row.name || row.item_id)}</div>
+        <div class="price-value">${escT(row.display_price || row.price)}</div>
+        ${change}
+        <div class="price-meta">${when} 수집 · ${escT(row.unit || "USD/mt")}</div>
+      </article>`;
+    }
+
+    (async function render() {
+      try {
+        const { data, error } = await ainAuth.getClient().from("v_ticker_metals").select("*");
+        if (error) throw error;
+        if (!data || !data.length) { statusEl.textContent = "표시할 시세가 아직 없습니다."; return; }
+        const copper = data.find(r => r.item_id === "copper");
+        const alu = data.find(r => r.item_id === "aluminium");
+        statusEl.remove();
+        panelEl.innerHTML =
+          (copper ? metalCard(copper, "") : "")
+          + (alu ? metalCard(alu, "alu") : "")
+          + '<article class="price-card gas"><div class="price-name">냉매 R410A · R32</div><div class="price-meta" style="margin-top:10px">시세 연동 준비중 — 모닝브리핑에서 먼저 다룹니다.</div></article>';
+        const latest = (copper || alu || {}).collected_at;
+        if (latest) updatedEl.textContent = new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(latest)) + " 기준";
+      } catch (e) {
+        statusEl.className = "error";
+        statusEl.textContent = "시세를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
+        console.error(e);
+      }
+    })();
+  </script>
+</body>
+</html>

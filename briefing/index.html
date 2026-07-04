@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>모닝브리핑 | 에인연</title>
   <meta name="description" content="자재시세, 입주정보, 업계뉴스를 한 장으로 보는 에인연 모닝브리핑입니다.">
+  <link rel="canonical" href="https://ainyeon.com/briefing/">
   <meta property="og:title" content="모닝브리핑 | 에인연">
   <meta property="og:description" content="매일 아침 에어컨·인테리어 업계에 필요한 정보를 한 장으로 정리합니다.">
   <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ainyeon.com/briefing/">
+  <meta property="og:image" content="https://ainyeon.com/assets/og.png">
   <meta name="theme-color" content="#F7F7F8">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
   <link rel="stylesheet" href="/assets/css/ain.css">
   <style>
     :root {
@@ -74,6 +78,16 @@
     @media (min-width: 760px) {
       .panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .brief-section:first-child { grid-column: 1 / -1; }
+    }
+
+    /* 모바일 에르고노믹스: 터치 타겟 44px, 본문 16px */
+    @media (max-width: 900px) {
+      .line-item { font-size: 16px; }
+      .line-item small { font-size: 13px; }
+      .section-action { min-height: 48px; font-size: 13.5px; }
+      .cta-button { min-height: 48px; }
+      .summary-label { font-size: 12px; }
+      .region-label { font-size: 13px; }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>

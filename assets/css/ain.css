@@ -476,3 +476,65 @@
   @media (max-width:900px){
     .page-hero{padding:96px 20px 0}
   }
+
+  /* ---------- 하단 탭바 (모바일 전용) ---------- */
+  .tabbar{
+    position:fixed;left:0;right:0;bottom:0;z-index:80;
+    display:flex;
+    background:rgba(255,255,255,.92);
+    backdrop-filter:blur(16px) saturate(1.4);
+    -webkit-backdrop-filter:blur(16px) saturate(1.4);
+    border-top:1px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .tabbar a{
+    flex:1;min-height:56px;min-width:44px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    font-size:11px;font-weight:650;color:var(--mute);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .tabbar a.on{color:var(--ink)}
+  .tabbar svg{width:22px;height:22px;flex:none}
+  @media (min-width:901px){.tabbar{display:none}}
+
+  /* ---------- 모바일 에르고노믹스 (375px 기준) ---------- */
+  @media (max-width:900px){
+    body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+    /* 필름 그레인 — 저사양 페인트 비용 절감 */
+    body::after{display:none}
+    /* 터치 타겟 ≥44px */
+    .menu-pill{min-height:44px}
+    .pill{min-height:44px;display:inline-flex;align-items:center}
+    .nav-tags a{min-height:40px;display:inline-flex;align-items:center}
+    .gate-btn{min-height:48px}
+    .auth-pop button{min-height:44px}
+    /* 본문 가독성 */
+    .card p{font-size:15px}
+    .hero-sub{font-size:16px}
+    .brief-lines{font-size:13.5px}
+    /* 리빌 경량화: blur 축소 */
+    .rv{transform:translateY(16px);filter:blur(4px)}
+    .hero-inner>*{filter:blur(5px)}
+  }
+
+  /* ---------- PWA 설치 배너 ---------- */
+  .install-bar{
+    position:fixed;left:12px;right:12px;z-index:90;
+    bottom:calc(72px + env(safe-area-inset-bottom));
+    display:flex;align-items:center;gap:10px;
+    background:var(--ink);color:#fff;
+    border-radius:14px;padding:12px 14px;
+    font-size:13px;font-weight:600;
+    box-shadow:0 16px 40px -14px rgba(15,16,19,.5);
+  }
+  .install-bar span{flex:1;min-width:0}
+  .install-bar button{
+    all:unset;cursor:pointer;font-family:inherit;
+    min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;
+  }
+  .install-bar .install-go{
+    background:#fff;color:var(--ink);border-radius:100px;
+    padding:0 18px;font-size:13px;font-weight:800;
+  }
+  .install-bar .install-x{color:rgba(255,255,255,.6);font-size:14px}
+  @media (min-width:901px){.install-bar{max-width:420px;left:auto;right:26px;bottom:26px}}

@@ -126,6 +126,61 @@
     });
   }
 
+  // 하단 탭바 (모바일 전용 — ≥901px CSS 숨김). 한 손 조작 핵심 내비게이션.
+  (function buildTabbar(){
+    const I={
+      home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>',
+      radar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/></svg>',
+      brief:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+      price:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19 9.5 13l3.5 3.5L20 9"/><path d="M15.5 9H20v4.5"/></svg>',
+      me:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.4-3.4 4.2-5 7.5-5s6.1 1.6 7.5 5"/></svg>'
+    };
+    const TABS=[
+      {href:'/',label:'홈',icon:I.home},
+      {href:'/calendar/',label:'입주레이더',icon:I.radar},
+      {href:'/briefing/',label:'브리핑',icon:I.brief},
+      {href:'/prices/',label:'시세',icon:I.price},
+      {href:'/me/',label:'내정보',icon:I.me}
+    ];
+    const here=location.pathname;
+    const tb=document.createElement('nav');
+    tb.className='tabbar';
+    tb.setAttribute('aria-label','주요 메뉴');
+    tb.innerHTML=TABS.map(t=>{
+      const on=t.href==='/'?(here==='/'||here==='/index.html'):here.startsWith(t.href);
+      return '<a href="'+t.href+'"'+(on?' class="on" aria-current="page"':'')+'>'+t.icon+'<span>'+t.label+'</span></a>';
+    }).join('');
+    document.body.appendChild(tb);
+  })();
+
+  // PWA: 서비스워커 등록 + 홈 화면 설치 프롬프트
+  if('serviceWorker' in navigator){
+    addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+  }
+  let deferredInstall=null;
+  addEventListener('beforeinstallprompt',e=>{
+    e.preventDefault();
+    if(localStorage.getItem('ain_install_dismissed'))return;
+    deferredInstall=e;
+    const bar=document.createElement('div');
+    bar.className='install-bar';
+    bar.innerHTML='<span>홈 화면에 에인연을 추가하면 앱처럼 쓸 수 있어요</span>'
+      +'<button type="button" class="install-go">추가</button>'
+      +'<button type="button" class="install-x" aria-label="닫기">✕</button>';
+    document.body.appendChild(bar);
+    bar.querySelector('.install-go').addEventListener('click',async()=>{
+      bar.remove();
+      if(!deferredInstall)return;
+      deferredInstall.prompt();
+      await deferredInstall.userChoice;
+      deferredInstall=null;
+    });
+    bar.querySelector('.install-x').addEventListener('click',()=>{
+      localStorage.setItem('ain_install_dismissed','1');
+      bar.remove();
+    });
+  });
+
   window.escT=escT;
   window.renderTicker=renderTicker;
 })();

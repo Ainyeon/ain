@@ -1,0 +1,17 @@
+{
+  "name": "에인연 — 에어컨 인테리어 연구소",
+  "short_name": "에인연",
+  "description": "자재 시세·입주 예정 단지·업계뉴스를 매일 아침 06:30 한 번에.",
+  "lang": "ko",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F7F7F8",
+  "theme_color": "#F7F7F8",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
