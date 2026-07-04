@@ -55,6 +55,7 @@
       box-shadow: var(--shadow-amb), 0 14px 34px -22px rgba(15,16,19,.14);
     }
     .brief-section.news { border-left-color: var(--purple); }
+    .brief-section.gov { border-left-color: var(--g-start); }
     .brief-section.todo { border-left-color: var(--burgundy); }
     .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 11px; }
     .section-title { color: var(--txt); font-size: 16px; font-weight: 800; line-height: 1.3; word-break: keep-all; overflow-wrap: break-word; }
@@ -347,6 +348,27 @@
       return overseas.length ? domestic.slice(0, 4).concat(overseas.slice(0, 1)) : domestic.slice(0, 5);
     }
 
+    async function fetchGovStats() {
+      const { data, error } = await ainAuth.getClient()
+        .from("v_stat_gov")
+        .select("active_count,nearest_program_name,nearest_d_day")
+        .limit(1);
+      if (error) throw new Error(`gov ${error.message}`);
+      return Array.isArray(data) && data.length ? data[0] : null;
+    }
+
+    function govItems(row) {
+      if (!row || !Number(row.active_count)) {
+        return [line("<b>진행 중인 정부사업 없음</b>")];
+      }
+      const items = [line(`<b>진행 중인 지원사업</b>: ${Number(row.active_count).toLocaleString("ko-KR")}건`)];
+      if (row.nearest_program_name) {
+        const dday = Number.isFinite(Number(row.nearest_d_day)) ? `마감 D-${Number(row.nearest_d_day)}` : "마감일 확인 중";
+        items.push(line(`<b>${escapeHtml(row.nearest_program_name)}</b>`, dday));
+      }
+      return items;
+    }
+
     async function render() {
       const session = await ainAuth.getSession();
       renderedLoggedIn = !!session;
@@ -355,7 +377,7 @@
       const moveInFetches = session
         ? MOVE_IN_REGIONS.map((region) => fetchMoveIns(region.code))
         : [fetchTeaser()];
-      const [prices, news, ...moveIns] = await Promise.allSettled([fetchPrices(), fetchNews(), ...moveInFetches]);
+      const [prices, news, gov, ...moveIns] = await Promise.allSettled([fetchPrices(), fetchNews(), fetchGovStats(), ...moveInFetches]);
       const priceRows = prices.status === "fulfilled" ? priceItems(prices.value) : [line(`<b>자재시세 확인 필요</b> (${escapeHtml(prices.reason.message)})`), line("<b>냉매</b>: 준비중")];
       let moveRows;
       let moveInCount;
@@ -375,7 +397,8 @@
         return line(`<b>[${label}] ${escapeHtml(item.title)}</b>`, `${escapeHtml(item.source)} · ${formatDate(item.collected_at)}`, item.url);
       }) : [line("<b>업계뉴스 확인 필요</b>")], "news"));
       panelEl.append(section("💼 구인구직", "준비중", [line("<b>준비중</b>")], "todo"));
-      panelEl.append(section("🏛 정부사업", "준비중", [line("<b>준비중</b>")], "todo"));
+      const govRow = gov.status === "fulfilled" ? gov.value : null;
+      panelEl.append(section("🏛 정부사업", govRow && Number(govRow.active_count) ? `${Number(govRow.active_count).toLocaleString("ko-KR")}건` : "확인 필요", gov.status === "fulfilled" ? govItems(govRow) : [line(`<b>정부사업 확인 필요</b> (${escapeHtml(gov.reason.message)})`)], "gov"));
       priceStatusEl.textContent = prices.status === "fulfilled" && prices.value.length ? "OK" : "확인";
       moveInCountEl.textContent = moveInCount ? moveInCount.toLocaleString("ko-KR") : (session ? "0" : "-");
       newsCountEl.textContent = newsRows.length.toLocaleString("ko-KR");
