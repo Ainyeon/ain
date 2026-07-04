@@ -59,6 +59,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
+  <script defer src="/assets/js/ain-community.js"></script>
 </head>
 <body>
   <nav class="nav" id="nav">
@@ -85,6 +86,8 @@
       <div class="quick" aria-label="빠른 이동">
         <a href="/calendar/"><b>입주 레이더</b><span>회원 전용 단지명 열람</span></a>
         <a href="/briefing/"><b>모닝브리핑</b><span>오늘 업계 요약</span></a>
+        <a href="/board/free/"><b>자유게시판</b><span>업계 사람들끼리</span></a>
+        <a href="/board/proposal/"><b>제안·투표</b><span>필요한 기능에 투표</span></a>
         <a href="/prices/"><b>자재 시세</b><span>동관·알루미늄</span></a>
         <a href="/news/"><b>업계뉴스</b><span>국내·해외 이슈</span></a>
       </div>
@@ -115,6 +118,20 @@
         || (user && user.email ? user.email.split("@")[0] : "내 계정");
     }
 
+    async function communityProfileLine() {
+      try {
+        const { profile, infraError } = await ainCommunity.getMyProfile();
+        if (infraError) return '';
+        if (!profile || !profile.nickname) {
+          return '<div class="me-email" style="margin-top:8px">커뮤니티 프로필 미설정 — 게시판 이용 전 설정이 필요합니다.</div>';
+        }
+        return '<div class="me-email" style="margin-top:8px"><span class="author-line">'
+          + ainCommunity.authorBadge(profile)
+          + (profile.region ? ' <span style="color:var(--txt3)">· ' + escT(profile.region) + '</span>' : '')
+          + '</span></div>';
+      } catch (e) { return ''; }
+    }
+
     function renderMe(session) {
       if (session) {
         const u = session.user;
@@ -124,8 +141,12 @@
           '<div class="me-avatar">' + escT(name.charAt(0)) + '</div>'
           + '<div class="me-name">' + escT(name) + '</div>'
           + (u.email ? '<div class="me-email">' + escT(u.email) + '</div>' : '')
+          + '<div id="commLine"></div>'
           + '<span class="me-provider">카카오 로그인</span>'
-          + '<div class="me-actions"><button type="button" class="me-btn danger" id="meLogout">로그아웃</button></div>';
+          + '<div class="me-actions">'
+          + '<a class="me-btn" href="/onboard/?next=/me/">프로필 수정 (닉네임·분야·지역)</a>'
+          + '<button type="button" class="me-btn danger" id="meLogout">로그아웃</button></div>';
+        communityProfileLine().then((html) => { document.getElementById("commLine").innerHTML = html; });
         document.getElementById("meLogout").addEventListener("click", async () => {
           await ainAuth.getClient().auth.signOut();
           renderMe(null);

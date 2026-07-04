@@ -552,3 +552,29 @@
   /* 접근성: 흰 카드 위 소형 텍스트 대비 보강 (WCAG AA 4.5:1) */
   .card-tag,.brief-lines .t,.mini-stat .u,.tool-list .soon{color:var(--soft)}
   .tabbar a{color:var(--soft)}
+
+  /* ---------- 커뮤니티 공통 ---------- */
+  .author-line{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--soft)}
+  .author-nick{font-weight:800;color:var(--ink)}
+  .field-badge{
+    padding:2px 8px;border-radius:100px;font-size:10.5px;font-weight:800;
+    background:rgba(79,140,255,.1);color:#2F63C7;border:1px solid rgba(79,140,255,.3);
+  }
+  .status-badge{padding:3px 10px;border-radius:100px;font-size:11px;font-weight:800}
+  .status-open{background:rgba(79,140,255,.1);color:#2F63C7}
+  .status-adopted{background:rgba(53,197,184,.14);color:#12766C}
+  .status-building{background:rgba(167,139,250,.16);color:#6847C4}
+  .status-shipped{background:rgba(15,16,19,.85);color:#fff}
+  .board-teaser-blur{filter:blur(3px);opacity:.55;pointer-events:none;user-select:none}
+  /* 홈 게시판 진입 밴드 */
+  .board-links{display:grid;grid-template-columns:1.4fr 1fr;gap:12px}
+  .board-links a{
+    display:flex;align-items:center;min-height:64px;padding:16px 20px;
+    border:1px solid rgba(255,255,255,.9);border-radius:16px;background:var(--card);
+    font-size:14.5px;font-weight:750;letter-spacing:-0.02em;
+    box-shadow:var(--shadow-amb),0 14px 34px -22px rgba(15,16,19,.14);
+    transition:transform .2s;
+  }
+  .board-links a:hover{transform:translateY(-2px)}
+  .board-links .sub-note{display:block;margin-top:3px;font-size:12px;font-weight:500;color:var(--soft)}
+  @media (max-width:900px){.board-links{grid-template-columns:1fr}}
