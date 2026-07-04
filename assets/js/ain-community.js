@@ -11,6 +11,10 @@
 
   const db = () => ainAuth.getClient();
 
+  // role 컬럼 미존재(08 SQL 미실행) 폴백 플래그
+  let roleColumnMissing = false;
+  const authorSelect = () => roleColumnMissing ? 'nickname,field' : 'nickname,field,role';
+
   async function getSessionUser() {
     const session = await ainAuth.getSession();
     return session ? session.user : null;
@@ -20,8 +24,14 @@
   async function getMyProfile() {
     const user = await getSessionUser();
     if (!user) return { user: null, profile: null };
-    const { data, error } = await db().from('profiles')
-      .select('id,nickname,field,region,is_admin').eq('id', user.id).maybeSingle();
+    let { data, error } = await db().from('profiles')
+      .select('id,nickname,field,region,role').eq('id', user.id).maybeSingle();
+    if (error && String(error.message || '').includes('role')) {
+      roleColumnMissing = true; // 08 미실행 → member 폴백
+      ({ data, error } = await db().from('profiles')
+        .select('id,nickname,field,region').eq('id', user.id).maybeSingle());
+      if (data) data.role = 'member';
+    }
     if (error) return { user, profile: null, infraError: true, errorMsg: error.message };
     return { user, profile: data };
   }
@@ -40,11 +50,16 @@
 
   function fieldLabel(field) { return FIELD_LABELS[field] || '미설정'; }
 
-  // "닉네임 · 분야뱃지" 통일 표기
+  const ROLE_BADGES = { admin: '운영자', manager: '매니저' };
+  const isStaff = (p) => !!(p && ROLE_BADGES[p.role]);
+
+  // "닉네임 · 분야뱃지" 통일 표기 (+운영자·매니저 전용 뱃지)
   function authorBadge(profile) {
     const nick = profile && profile.nickname ? profile.nickname : '알 수 없음';
     const field = profile && profile.field ? fieldLabel(profile.field) : null;
-    return '<span class="author-nick">' + escT(nick) + '</span>'
+    const role = profile && ROLE_BADGES[profile.role]
+      ? '<span class="role-badge role-' + profile.role + '">' + ROLE_BADGES[profile.role] + '</span>' : '';
+    return '<span class="author-nick">' + escT(nick) + '</span>' + role
       + (field ? '<span class="field-badge">' + escT(field) + '</span>' : '');
   }
 
@@ -84,5 +99,5 @@
     return data;
   }
 
-  window.ainCommunity = { FIELD_LABELS, fieldLabel, getMyProfile, requireMember, authorBadge, timeAgo, report, fetchTeaser };
+  window.ainCommunity = { FIELD_LABELS, fieldLabel, getMyProfile, requireMember, authorBadge, isStaff, authorSelect, timeAgo, report, fetchTeaser };
 })();

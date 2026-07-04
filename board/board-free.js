@@ -27,7 +27,7 @@
 
   async function renderList(me) {
     const { data, error } = await db().from('posts')
-      .select('id,title,created_at,author:profiles(nickname,field),comments(count)')
+      .select('id,title,created_at,author:profiles(' + C().authorSelect() + '),comments(count)')
       .eq('board_type', 'free')
       .order('created_at', { ascending: false })
       .limit(50);
@@ -42,7 +42,7 @@
       + '<button type="submit" class="btn-primary">등록</button></div></form>';
 
     const list = data.length ? data.map((p) =>
-      '<a class="board-card" href="?id=' + p.id + '"><h2>' + escT(p.title) + '</h2>'
+      '<a class="board-card' + (C().isStaff(p.author) ? ' staff-accent' : '') + '" href="?id=' + p.id + '"><h2>' + escT(p.title) + '</h2>'
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadge(p.author) + '</span>'
       + '<span><span class="cmt-count">댓글 ' + ((p.comments && p.comments[0] && p.comments[0].count) || 0) + '</span>'
       + ' · <time>' + C().timeAgo(p.created_at) + '</time></span></div></a>').join('')
@@ -71,8 +71,8 @@
 
   async function renderDetail(me, id) {
     const [{ data: post, error }, { data: cmts }] = await Promise.all([
-      db().from('posts').select('id,title,body,created_at,author_id,author:profiles(nickname,field)').eq('id', id).maybeSingle(),
-      db().from('comments').select('id,body,created_at,author_id,author:profiles(nickname,field)').eq('post_id', id).order('created_at')
+      db().from('posts').select('id,title,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('id', id).maybeSingle(),
+      db().from('comments').select('id,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('post_id', id).order('created_at')
     ]);
     if (error || !post) { gate('글을 찾을 수 없습니다. <br><br><a class="back-link" href="./">← 목록으로</a>'); return; }
 

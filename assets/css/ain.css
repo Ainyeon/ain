@@ -578,3 +578,8 @@
   .board-links a:hover{transform:translateY(-2px)}
   .board-links .sub-note{display:block;margin-top:3px;font-size:12px;font-weight:500;color:var(--soft)}
   @media (max-width:900px){.board-links{grid-template-columns:1fr}}
+  /* 운영자·매니저 표시 — 절제된 톤 */
+  .role-badge{padding:2px 8px;border-radius:100px;font-size:10.5px;font-weight:800}
+  .role-badge.role-admin{background:var(--ink);color:#fff}
+  .role-badge.role-manager{background:rgba(15,16,19,.07);color:var(--ink);border:1px solid var(--line)}
+  .staff-accent{border-left:3px solid var(--ink)}

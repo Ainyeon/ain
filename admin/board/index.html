@@ -47,6 +47,8 @@
       const db = () => ainAuth.getClient();
       const gate = (h) => panel.innerHTML = '<div class="gate-msg">' + h + '</div>';
       let filterReached = false;
+      let tab = 'mod'; // 'mod' | 'members'
+      let memberQuery = '';
 
       function tally(votes) {
         const m = {};
@@ -57,6 +59,54 @@
         return m;
       }
       const reached = (t) => t && t.up >= THRESHOLD_COUNT && t.up / (t.up + t.down) >= THRESHOLD_RATE;
+
+      function tabsHtml() {
+        return '<div class="sort-toggle" role="group" aria-label="관리 탭" style="margin-bottom:4px">'
+          + '<button type="button" id="tabMod" class="' + (tab === 'mod' ? 'on' : '') + '">신고·상태</button>'
+          + '<button type="button" id="tabMembers" class="' + (tab === 'members' ? 'on' : '') + '">회원 관리</button></div>';
+      }
+      function bindTabs() {
+        document.getElementById('tabMod').addEventListener('click', () => { tab = 'mod'; render(); });
+        document.getElementById('tabMembers').addEventListener('click', () => { tab = 'members'; renderMembers(); });
+      }
+
+      // 회원 관리: 닉네임 검색 → role 변경 (admin만 이 페이지 진입 가능. manager/member 전환만 — RPC 제약)
+      async function renderMembers() {
+        let q = db().from('profiles').select('id,nickname,field,role').order('nickname').limit(50);
+        if (memberQuery) q = q.ilike('nickname', '%' + memberQuery + '%');
+        const { data: members, error } = await q;
+        if (error) { gate('회원 목록 로드 실패 (08 SQL 실행 여부 확인): ' + escT(error.message)); return; }
+
+        const rows = (members || []).filter((m) => m.nickname).map((m) => {
+          const roleSel = m.role === 'admin'
+            ? '<span class="role-badge role-admin">운영자</span>'
+            : '<select data-role="' + m.id + '" aria-label="역할 변경">'
+              + '<option value="member"' + (m.role !== 'manager' ? ' selected' : '') + '>회원</option>'
+              + '<option value="manager"' + (m.role === 'manager' ? ' selected' : '') + '>매니저</option></select>';
+          return '<div class="board-card admin-row"><span class="author-line">'
+            + ainCommunity.authorBadge(m) + '</span>' + roleSel + '</div>';
+        }).join('') || '<p class="empty-note">' + (memberQuery ? '검색 결과 없음' : '닉네임 설정한 회원 없음') + '</p>';
+
+        panel.innerHTML = tabsHtml()
+          + '<form id="memSearch" class="cmt-form" style="margin:0 0 6px">'
+          + '<input type="search" id="memQ" placeholder="닉네임 검색" value="' + escT(memberQuery) + '" aria-label="닉네임 검색">'
+          + '<button type="submit">검색</button></form>'
+          + rows;
+        bindTabs();
+        document.getElementById('memSearch').addEventListener('submit', (e) => {
+          e.preventDefault();
+          memberQuery = document.getElementById('memQ').value.trim();
+          renderMembers();
+        });
+        panel.querySelectorAll('[data-role]').forEach((sel) =>
+          sel.addEventListener('change', async () => {
+            const { error: err } = await db().rpc('admin_set_role', {
+              p_user_id: sel.dataset.role, p_role: sel.value
+            });
+            alert(err ? '변경 실패: ' + err.message : '역할 변경 완료: ' + (sel.value === 'manager' ? '매니저' : '회원'));
+            renderMembers();
+          }));
+      }
 
       async function render() {
         const [{ data: posts, error: pe }, { data: votes }, { data: reports, error: re }, { data: cmts }] = await Promise.all([
@@ -109,13 +159,14 @@
             + '<select data-status="' + p.id + '" aria-label="상태 변경">' + opts + '</select></div>';
         }).join('') || '<p class="empty-note">' + (filterReached ? '임계 도달 제안 없음' : '제안 없음') + '</p>';
 
-        panel.innerHTML =
-          '<h2 style="font-size:15px;font-weight:800">신고 많은 순</h2>' + reportedRows
+        panel.innerHTML = tabsHtml()
+          + '<h2 style="font-size:15px;font-weight:800">신고 많은 순</h2>' + reportedRows
           + '<h2 style="font-size:15px;font-weight:800;margin-top:14px">제안 상태 관리 '
           + '<button type="button" class="tool-link" id="fltReached" style="font-size:12px">'
           + (filterReached ? '[전체 보기]' : '[임계 도달만]') + '</button></h2>'
           + stateRows;
 
+        bindTabs();
         document.getElementById('fltReached').addEventListener('click', () => { filterReached = !filterReached; render(); });
         panel.querySelectorAll('[data-status]').forEach((sel) =>
           sel.addEventListener('change', async () => {

@@ -82,7 +82,7 @@
   async function fetchAll() {
     const [{ data: posts, error }, { data: votes }] = await Promise.all([
       db().from('posts')
-        .select('id,title,body,status,created_at,author_id,author:profiles(nickname,field)')
+        .select('id,title,body,status,created_at,author_id,author:profiles(' + C().authorSelect() + ')')
         .eq('board_type', 'proposal').limit(100),
       db().from('votes').select('post_id,user_id,vote')
     ]);
@@ -113,7 +113,7 @@
 
     const cards = sorted.length ? sorted.map((p) => {
       const tv = get(p.id);
-      return '<article class="board-card' + (reached(tv) && p.status === 'open' ? ' reach-highlight' : '') + '">'
+      return '<article class="board-card' + (reached(tv) && p.status === 'open' ? ' reach-highlight' : '') + (C().isStaff(p.author) ? ' staff-accent' : '') + '">'
         + '<a href="?id=' + p.id + '"><h2>' + escT(p.title) + '</h2></a>'
         + '<div class="card-meta-line"><span class="author-line">' + C().authorBadge(p.author) + '</span>'
         + '<span class="status-badge status-' + escT(p.status) + '">' + (STATUS_LABELS[p.status] || p.status) + '</span></div>'
@@ -146,9 +146,9 @@
 
   async function renderDetail(me, id) {
     const [{ data: post, error }, { data: votes }, { data: cmts }] = await Promise.all([
-      db().from('posts').select('id,title,body,status,created_at,author_id,author:profiles(nickname,field)').eq('id', id).maybeSingle(),
+      db().from('posts').select('id,title,body,status,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('id', id).maybeSingle(),
       db().from('votes').select('post_id,user_id,vote').eq('post_id', id),
-      db().from('comments').select('id,body,created_at,author_id,author:profiles(nickname,field)').eq('post_id', id).order('created_at')
+      db().from('comments').select('id,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('post_id', id).order('created_at')
     ]);
     if (error || !post) { gate('글을 찾을 수 없습니다. <br><br><a class="back-link" href="./">← 목록으로</a>'); return; }
     const tv = tally(votes, me.user.id)[post.id] || { up: 0, down: 0, mine: null };

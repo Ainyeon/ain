@@ -1,11 +1,26 @@
-// 에인연 템플릿 메이커 — 캔버스 1080 고정 렌더 (기기 무관 동일 산출물)
-// 사진은 클라이언트에서만 처리. 서버 전송 0건.
+// 에인연 템플릿 메이커 — 규격별 고정 해상도 캔버스 렌더 (기기 무관 픽셀 동일)
+// 사진은 클라이언트에서만 처리. 서버 전송 0건. 미리보기는 모든 입력에 즉시 반영(디바운스 60ms).
 (function () {
   'use strict';
 
   const FONT = '"Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", sans-serif';
   const WATERMARK = 'made with 에인연 · ainyeon.com';
-  const STORE_KEY = 'maker_state_v1';
+  const STORE_KEY = 'maker_state_v2';
+
+  // 규격 정의 — 논리 좌표는 폭 1080 기준, scale = W/1080 (A4도 동일 조판을 고해상도로)
+  const FORMATS = {
+    T1: {
+      kakao:  { W: 1080, H: 1527, label: '1080×1527 · 카톡' },
+      square: { W: 1080, H: 1080, label: '1080×1080 · 정방형' },
+      a4:     { W: 2480, H: 3508, label: 'A4 · 인쇄용' },
+      story:  { W: 1080, H: 1920, label: '1080×1920 · 스토리' }
+    },
+    T2: {
+      square:   { W: 1080, H: 1080, label: '1080×1080 · 당근/피드' },
+      portrait: { W: 1080, H: 1350, label: '1080×1350 · 인스타 세로' },
+      story:    { W: 1080, H: 1920, label: '1080×1920 · 스토리/릴스' }
+    }
+  };
 
   const cv = document.getElementById('cv');
   const ctx = cv.getContext('2d');
@@ -14,15 +29,16 @@
 
   let presets = [];
   let active = 'T1';
-  let photos = { before: null, after: null }; // ImageBitmap (리사이즈 완료본)
-  let t2fmt = 'square';
+  let fmt = { T1: 'kakao', T2: 'square' };
+  let photos = { before: null, mid: null, after: null };
 
   // ── 상태 저장/복원 (사진 제외)
   function saveState() {
     const s = {
-      active, t2fmt,
+      active, fmt,
       t1: {
-        industry: $('f1industry').value, biz: $('f1biz').value, phone: $('f1phone').value,
+        industry: $('f1industry').value, industryName: $('f1industryName').value,
+        biz: $('f1biz').value, phone: $('f1phone').value,
         area: $('f1area').value, color: $('f1color').value, extra: $('f1extra').value,
         title: $('f1title').value, care: $('f1care').value, caution: $('f1caution').value, as: $('f1as').value
       },
@@ -31,7 +47,10 @@
     try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) {}
   }
   function loadState() {
-    try { return JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); } catch (e) { return null; }
+    try {
+      return JSON.parse(localStorage.getItem(STORE_KEY) || 'null')
+          || JSON.parse(localStorage.getItem('maker_state_v1') || 'null'); // v1 마이그레이션
+    } catch (e) { return null; }
   }
 
   function toast(msg) {
@@ -40,7 +59,7 @@
     setTimeout(() => toastEl.classList.remove('show'), 2200);
   }
 
-  // ── 텍스트 유틸
+  // ── 유틸
   function wrap(text, maxWidth, font) {
     ctx.font = font;
     const out = [];
@@ -56,9 +75,9 @@
   }
   function darken(hex, f) {
     const n = parseInt(hex.slice(1), 16);
-    const r = Math.round(((n >> 16) & 255) * f), g = Math.round(((n >> 8) & 255) * f), b = Math.round((n & 255) * f);
-    return `rgb(${r},${g},${b})`;
+    return `rgb(${Math.round(((n >> 16) & 255) * f)},${Math.round(((n >> 8) & 255) * f)},${Math.round((n & 255) * f)})`;
   }
+  // 어두운 대표색 → 밝은 텍스트 자동 반전 (가독성)
   function idealTextOn(hex) {
     const n = parseInt(hex.slice(1), 16);
     const lum = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
@@ -74,19 +93,21 @@
     ctx.closePath();
   }
 
-  // ── 현재 프리셋/입력 수집
+  // ── 프리셋/입력
   function currentPreset() {
     return presets.find((p) => p.id === $('f1industry').value) || presets[0];
   }
   function t1Data() {
     const p = currentPreset();
     const custom = !!p.custom;
+    const customName = $('f1industryName').value.trim();
     const lines = (v) => v.split('\n').map((s) => s.trim()).filter(Boolean);
     return {
-      industry: p.label,
-      title: (custom && $('f1title').value.trim()) || p.title,
+      industry: custom && customName ? customName : p.label,
+      title: (custom && $('f1title').value.trim())
+        || (custom && customName ? customName + ' 시공 완료 안내' : p.title),
       tone: p.tone,
-      biz: $('f1biz').value.trim() || '상호명',
+      biz: $('f1biz').value.trim() || '에어컨 인테리어 연구소',
       phone: $('f1phone').value.trim() || '010-0000-0000',
       area: $('f1area').value.trim(),
       color: $('f1color').value,
@@ -99,32 +120,39 @@
     };
   }
 
-  // ── T1: 고객 안내문 1080×1527
+  // ── T1: 고객 안내문 (논리폭 1080 조판 → 규격별 스케일)
   function renderT1() {
-    const W = 1080, H = 1527;
-    cv.width = W; cv.height = H;
-    $('previewSize').textContent = '1080×1527';
+    const F = FORMATS.T1[fmt.T1];
+    cv.width = F.W; cv.height = F.H;
+    $('previewSize').textContent = F.W + '×' + F.H;
+    const S = F.W / 1080;          // 물리 스케일 (A4=2.296)
+    const LH = Math.round(F.H / S); // 논리 높이 (kakao/a4≈1527, square=1080, story=1920)
+    ctx.setTransform(S, 0, 0, S, 0, 0);
+
     const d = t1Data();
-    const M = 72; // 좌우 여백
+    const M = 72;
+    // 규격별 밀도: 정방형은 압축, 스토리는 여유
+    const cfg = LH <= 1100 ? { cap: 2, head: 226, gap: 22, lead: 40 }
+              : LH <= 1600 ? { cap: 4, head: 300, gap: 40, lead: 46 }
+                           : { cap: 4, head: 380, gap: 64, lead: 50 };
 
     ctx.fillStyle = '#F7F7F8';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(0, 0, 1080, LH);
 
-    // 헤더 밴드 (대표색)
-    const grad = ctx.createLinearGradient(0, 0, W, 300);
+    // 헤더 밴드 (대표색 — 어두우면 흰 텍스트 자동)
+    const grad = ctx.createLinearGradient(0, 0, 1080, cfg.head);
     grad.addColorStop(0, d.color);
     grad.addColorStop(1, darken(d.color, 0.72));
     ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, 300);
-    const headTxt = idealTextOn(d.color);
-    ctx.fillStyle = headTxt;
+    ctx.fillRect(0, 0, 1080, cfg.head);
+    ctx.fillStyle = idealTextOn(d.color);
     ctx.globalAlpha = 0.82;
     ctx.font = `700 30px ${FONT}`;
-    ctx.fillText(d.industry + (d.area ? ' · ' + d.area : ''), M, 108);
+    ctx.fillText(d.industry + (d.area ? ' · ' + d.area : ''), M, cfg.head * 0.36);
     ctx.globalAlpha = 1;
-    ctx.font = `800 64px ${FONT}`;
-    const titleLines = wrap(d.title, W - M * 2, `800 64px ${FONT}`);
-    titleLines.slice(0, 2).forEach((ln, i) => ctx.fillText(ln, M, 192 + i * 78));
+    ctx.font = `800 ${LH <= 1100 ? 54 : 64}px ${FONT}`;
+    wrap(d.title, 1080 - M * 2, ctx.font).slice(0, 2)
+      .forEach((ln, i) => ctx.fillText(ln, M, cfg.head * 0.64 + i * 74));
 
     // 본문 블록
     const sections = [
@@ -132,67 +160,62 @@
       ['주의사항', d.blocks.caution],
       ['A/S 안내', d.blocks.as]
     ];
-    let y = 300 + 84;
+    let y = cfg.head + 76;
     for (const [head, items] of sections) {
       ctx.fillStyle = d.color;
-      roundRect(M, y - 34, 10, 42, 5); ctx.fill();
+      roundRect(M, y - 32, 10, 40, 5); ctx.fill();
       ctx.fillStyle = '#0F1013';
-      ctx.font = `800 40px ${FONT}`;
+      ctx.font = `800 ${LH <= 1100 ? 34 : 40}px ${FONT}`;
       ctx.fillText(head, M + 30, y);
-      y += 58;
-      ctx.font = `500 32px ${FONT}`;
-      for (const item of items.slice(0, 4)) {
-        const lines = wrap(item, W - M * 2 - 44, `500 32px ${FONT}`);
+      y += LH <= 1100 ? 50 : 58;
+      ctx.font = `500 ${LH <= 1100 ? 28 : 32}px ${FONT}`;
+      for (const item of items.slice(0, cfg.cap)) {
+        const lns = wrap(item, 1080 - M * 2 - 44, ctx.font);
         ctx.fillStyle = '#63676F';
         ctx.fillText('•', M + 6, y);
-        lines.forEach((ln) => {
-          ctx.fillText(ln, M + 44, y);
-          y += 46;
-        });
+        lns.forEach((ln) => { ctx.fillText(ln, M + 44, y); y += cfg.lead; });
         y += 6;
       }
-      y += 40;
+      y += cfg.gap;
     }
 
     // 추가 한 줄 / 톤
     const note = d.extra || d.tone;
-    if (note) {
+    if (note && LH - y > 300) {
       ctx.fillStyle = '#FFFFFF';
-      roundRect(M, y - 46, W - M * 2, 92, 18); ctx.fill();
+      roundRect(M, y - 44, 1080 - M * 2, 90, 18); ctx.fill();
       ctx.strokeStyle = '#E8E8EC'; ctx.lineWidth = 2; ctx.stroke();
       ctx.fillStyle = '#0F1013';
       ctx.font = `700 32px ${FONT}`;
-      const nl = wrap(note, W - M * 2 - 60, `700 32px ${FONT}`)[0];
       ctx.textAlign = 'center';
-      ctx.fillText(nl, W / 2, y + 12);
+      ctx.fillText(wrap(note, 1080 - M * 2 - 60, ctx.font)[0], 540, y + 12);
       ctx.textAlign = 'left';
     }
 
-    // 푸터 (연락처 블록)
-    const FY = H - 210;
+    // 푸터 + 워터마크
+    const FY = LH - 200;
     ctx.fillStyle = '#0F1013';
-    ctx.fillRect(0, FY, W, 150);
+    ctx.fillRect(0, FY, 1080, 144);
     ctx.fillStyle = '#FFFFFF';
     ctx.font = `800 44px ${FONT}`;
-    ctx.fillText(d.biz, M, FY + 66);
+    ctx.fillText(d.biz, M, FY + 64);
     ctx.font = `700 36px ${FONT}`;
     ctx.textAlign = 'right';
-    ctx.fillText(d.phone, W - M, FY + 66);
+    ctx.fillText(d.phone, 1080 - M, FY + 64);
     ctx.textAlign = 'left';
     ctx.globalAlpha = 0.65;
     ctx.font = `500 26px ${FONT}`;
-    ctx.fillText('문의·예약 언제든 환영합니다', M, FY + 116);
+    ctx.fillText('문의·예약 언제든 환영합니다', M, FY + 112);
     ctx.globalAlpha = 1;
-
-    // 워터마크
     ctx.fillStyle = '#6E737C';
     ctx.font = `600 24px ${FONT}`;
     ctx.textAlign = 'center';
-    ctx.fillText(WATERMARK, W / 2, H - 24);
+    ctx.fillText(WATERMARK, 540, LH - 22);
     ctx.textAlign = 'left';
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  // ── T2: 전후 비교 1080×1080 / 1080×1350
+  // ── T2: 전·중·후 비교 (중은 선택 — 2장이면 기존 배치, 3장이면 3분할)
   function coverDraw(img, x, y, w, h) {
     const s = Math.max(w / img.width, h / img.height);
     const dw = img.width * s, dh = img.height * s;
@@ -201,53 +224,58 @@
     ctx.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
     ctx.restore();
   }
-  function photoPlaceholder(x, y, w, h, label) {
-    ctx.fillStyle = '#ECEDEF';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = '#A3A7AE';
-    ctx.font = `700 34px ${FONT}`;
-    ctx.textAlign = 'center';
-    ctx.fillText(label + ' 사진을 선택하세요', x + w / 2, y + h / 2);
-    ctx.textAlign = 'left';
-  }
-  function chip(x, y, label) {
-    ctx.font = `800 30px ${FONT}`;
-    const w = ctx.measureText(label).width + 44;
+  function slotDraw(img, x, y, w, h, label) {
+    if (img) coverDraw(img, x, y, w, h);
+    else {
+      ctx.fillStyle = '#ECEDEF'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#A3A7AE';
+      ctx.font = `700 30px ${FONT}`;
+      ctx.textAlign = 'center';
+      ctx.fillText(label + ' 사진', x + w / 2, y + h / 2);
+      ctx.textAlign = 'left';
+    }
+    ctx.font = `800 28px ${FONT}`;
+    const cw = ctx.measureText(label).width + 40;
     ctx.fillStyle = 'rgba(15,16,19,.78)';
-    roundRect(x, y, w, 58, 29); ctx.fill();
+    roundRect(x + 20, y + 20, cw, 54, 27); ctx.fill();
     ctx.fillStyle = '#fff';
-    ctx.fillText(label, x + 22, y + 40);
+    ctx.fillText(label, x + 40, y + 57);
   }
   function renderT2() {
-    const W = 1080, H = t2fmt === 'square' ? 1080 : 1350;
-    cv.width = W; cv.height = H;
-    $('previewSize').textContent = `1080×${H}`;
+    const F = FORMATS.T2[fmt.T2];
+    cv.width = F.W; cv.height = F.H;
+    $('previewSize').textContent = F.W + '×' + F.H;
+    const W = F.W, H = F.H;
     const BAR = 170;
     const PH = H - BAR;
+    const three = !!photos.mid; // 시공중 사진이 있으면 3분할
 
     ctx.fillStyle = '#F7F7F8';
     ctx.fillRect(0, 0, W, H);
 
-    if (t2fmt === 'square') {
-      // 좌/우 분할
-      const half = W / 2;
-      photos.before ? coverDraw(photos.before, 0, 0, half - 3, PH) : photoPlaceholder(0, 0, half - 3, PH, 'BEFORE');
-      photos.after ? coverDraw(photos.after, half + 3, 0, half - 3, PH) : photoPlaceholder(half + 3, 0, half - 3, PH, 'AFTER');
-      ctx.fillStyle = '#fff'; ctx.fillRect(half - 3, 0, 6, PH);
-      chip(24, 24, 'BEFORE');
-      chip(half + 27, 24, 'AFTER');
+    const slots = three
+      ? [[photos.before, '시공 전'], [photos.mid, '시공 중'], [photos.after, '시공 후']]
+      : [[photos.before, '시공 전'], [photos.after, '시공 후']];
+    const n = slots.length;
+    const G = 6; // 슬롯 간격
+
+    if (fmt.T2 === 'square' && !three) {
+      // 2장 정방형: 좌/우 (기존 배치)
+      const half = (W - G) / 2;
+      slotDraw(slots[0][0], 0, 0, half, PH, slots[0][1]);
+      slotDraw(slots[1][0], half + G, 0, half, PH, slots[1][1]);
+    } else if (fmt.T2 === 'square') {
+      // 3장 정방형: 세로 3열
+      const w3 = (W - G * 2) / 3;
+      slots.forEach(([img, lb], i) => slotDraw(img, i * (w3 + G), 0, w3, PH, lb));
     } else {
-      // 상/하 분할
-      const half = PH / 2;
-      photos.before ? coverDraw(photos.before, 0, 0, W, half - 3) : photoPlaceholder(0, 0, W, half - 3, 'BEFORE');
-      photos.after ? coverDraw(photos.after, 0, half + 3, W, half - 3) : photoPlaceholder(0, half + 3, W, half - 3, 'AFTER');
-      ctx.fillStyle = '#fff'; ctx.fillRect(0, half - 3, W, 6);
-      chip(24, 24, 'BEFORE');
-      chip(24, half + 27, 'AFTER');
+      // 세로형(1350/1920): 가로 행 분할 (2행 또는 3행)
+      const hN = (PH - G * (n - 1)) / n;
+      slots.forEach(([img, lb], i) => slotDraw(img, 0, i * (hN + G), W, hN, lb));
     }
 
-    // 하단 바
-    const biz = $('f2biz').value.trim() || '상호명';
+    // 하단 바 + 워터마크
+    const biz = $('f2biz').value.trim() || '에어컨 인테리어 연구소';
     const phone = $('f2phone').value.trim() || '010-0000-0000';
     ctx.fillStyle = '#0F1013';
     ctx.fillRect(0, PH, W, BAR);
@@ -265,7 +293,7 @@
     ctx.textAlign = 'left';
   }
 
-  // ── 렌더 스케줄 (폰트 로드 후 + 입력 디바운스)
+  // ── 렌더 스케줄 (폰트 로드 후 + 60ms 디바운스 — 실시간 미리보기)
   let fontReady = false;
   let pending = null;
   async function ensureFonts() {
@@ -287,7 +315,7 @@
     }, 60);
   }
 
-  // ── 사진 리사이즈 (긴 변 1600px, 기기 내 처리)
+  // ── 사진 리사이즈 (긴 변 1600px, 기기 내 처리 — 전송 없음)
   async function loadPhoto(file, slot) {
     if (!file) return;
     const bmp = await createImageBitmap(file);
@@ -298,21 +326,20 @@
     oc.getContext('2d').drawImage(bmp, 0, 0, w, h);
     bmp.close();
     photos[slot] = await createImageBitmap(oc);
-    // 썸네일 표시
     const blob = await oc.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
-    const url = URL.createObjectURL(blob);
-    const drop = $(slot === 'before' ? 'dropBefore' : 'dropAfter');
+    const drop = $('drop' + slot[0].toUpperCase() + slot.slice(1));
     let img = drop.querySelector('img');
     if (!img) { img = document.createElement('img'); img.alt = ''; drop.appendChild(img); }
-    img.src = url;
-    $(slot === 'before' ? 'beforeHint' : 'afterHint').hidden = true;
+    img.src = URL.createObjectURL(blob);
+    const hint = $(slot + 'Hint');
+    if (hint) hint.hidden = true;
     render();
   }
 
-  // ── 내보내기
+  // ── 내보내기 / 공유
   function fileName() {
     const biz = (active === 'T1' ? $('f1biz').value : $('f2biz').value).trim() || '에인연';
-    return `${biz}-${active === 'T1' ? '안내문' : '전후비교'}.png`;
+    return `${biz}-${active === 'T1' ? '안내문' : '전후비교'}-${fmt[active]}.png`;
   }
   async function exportBlob() {
     await ensureFonts();
@@ -332,12 +359,8 @@
     const blob = await exportBlob();
     const file = new File([blob], fileName(), { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try {
-        await navigator.share({ files: [file] });
-        return;
-      } catch (e) {
-        if (e.name === 'AbortError') return;
-      }
+      try { await navigator.share({ files: [file] }); return; }
+      catch (e) { if (e.name === 'AbortError') return; }
     }
     await doDownload();
     toast('이 기기는 공유 미지원 — PNG로 저장했어요');
@@ -353,9 +376,10 @@
     const s = loadState();
     if (s) {
       active = s.active === 'T2' ? 'T2' : 'T1';
-      t2fmt = s.t2fmt === 'portrait' ? 'portrait' : 'square';
+      if (s.fmt) fmt = { T1: FORMATS.T1[s.fmt.T1] ? s.fmt.T1 : 'kakao', T2: FORMATS.T2[s.fmt.T2] ? s.fmt.T2 : 'square' };
       const t1 = s.t1 || {};
       if (t1.industry && presets.some((p) => p.id === t1.industry)) sel.value = t1.industry;
+      $('f1industryName').value = t1.industryName || '';
       $('f1biz').value = t1.biz || ''; $('f1phone').value = t1.phone || '';
       $('f1area').value = t1.area || ''; $('f1color').value = t1.color || '#4F8CFF';
       $('f1extra').value = t1.extra || ''; $('f1title').value = t1.title || '';
@@ -363,37 +387,49 @@
       const t2 = s.t2 || {};
       $('f2biz').value = t2.biz || t1.biz || ''; $('f2phone').value = t2.phone || t1.phone || '';
     }
+    $('f1hex').value = $('f1color').value.toUpperCase();
 
-    function syncTab() {
+    function fmtButtonsHtml(tpl) {
+      return Object.entries(FORMATS[tpl]).map(([k, f]) =>
+        `<button type="button" data-fmt="${k}" class="${fmt[tpl] === k ? 'on' : ''}">${f.label}</button>`).join('');
+    }
+    function syncUI() {
       const t1 = active === 'T1';
       $('formT1').hidden = !t1; $('formT2').hidden = t1;
       $('tabT1').classList.toggle('on', t1); $('tabT2').classList.toggle('on', !t1);
       $('tabT1').setAttribute('aria-selected', t1); $('tabT2').setAttribute('aria-selected', !t1);
       $('customFields').hidden = !(t1 && currentPreset().custom);
-      $('fmtSquare').classList.toggle('on', t2fmt === 'square');
-      $('fmtPortrait').classList.toggle('on', t2fmt === 'portrait');
+      $('fmtT1').innerHTML = fmtButtonsHtml('T1');
+      $('fmtT2').innerHTML = fmtButtonsHtml('T2');
+      document.querySelectorAll('#fmtT1 [data-fmt]').forEach((b) =>
+        b.addEventListener('click', () => { fmt.T1 = b.dataset.fmt; syncUI(); }));
+      document.querySelectorAll('#fmtT2 [data-fmt]').forEach((b) =>
+        b.addEventListener('click', () => { fmt.T2 = b.dataset.fmt; syncUI(); }));
       render();
     }
-    $('tabT1').addEventListener('click', () => { active = 'T1'; syncTab(); });
-    $('tabT2').addEventListener('click', () => { active = 'T2'; syncTab(); });
-    $('fmtSquare').addEventListener('click', () => { t2fmt = 'square'; syncTab(); });
-    $('fmtPortrait').addEventListener('click', () => { t2fmt = 'portrait'; syncTab(); });
+    $('tabT1').addEventListener('click', () => { active = 'T1'; syncUI(); });
+    $('tabT2').addEventListener('click', () => { active = 'T2'; syncUI(); });
 
+    // 모든 입력 → 즉시 미리보기
     document.querySelectorAll('#formT1 input, #formT1 select, #formT1 textarea, #formT2 input')
       .forEach((el) => el.addEventListener('input', () => {
         if (el.id === 'f1industry') $('customFields').hidden = !currentPreset().custom;
+        if (el.id === 'f1color') $('f1hex').value = el.value.toUpperCase();
+        if (el.id === 'f1hex') {
+          const v = el.value.trim().replace(/^([0-9a-fA-F]{6})$/, '#$1');
+          if (/^#[0-9a-fA-F]{6}$/.test(v)) $('f1color').value = v;
+        }
         render();
       }));
-    document.querySelectorAll('.swatch').forEach((b) => b.addEventListener('click', () => {
-      $('f1color').value = b.dataset.c; render();
-    }));
+
     $('fileBefore').addEventListener('change', (e) => loadPhoto(e.target.files[0], 'before'));
+    $('fileMid').addEventListener('change', (e) => loadPhoto(e.target.files[0], 'mid'));
     $('fileAfter').addEventListener('change', (e) => loadPhoto(e.target.files[0], 'after'));
     $('btnSave').addEventListener('click', doDownload);
     $('btnShare').addEventListener('click', doShare);
     $('btnAccount').addEventListener('click', () => toast('로그인 저장은 곧 제공됩니다'));
 
-    syncTab();
+    syncUI();
   }
 
   document.readyState === 'loading'

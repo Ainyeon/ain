@@ -68,6 +68,8 @@
 
     /* 사진 업로드 (T2) */
     .photo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .photo-row.three { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .photo-row.three .photo-drop { min-height: 96px; font-size: 12px; }
     .photo-drop {
       position: relative; min-height: 110px; border: 1.5px dashed var(--border); border-radius: 12px;
       background: #FBFBFC; display: grid; place-items: center; text-align: center;
@@ -76,10 +78,11 @@
     .photo-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
     .photo-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .photo-drop .tag { position: absolute; top: 7px; left: 7px; z-index: 1; padding: 3px 9px; border-radius: 100px; background: rgba(15,16,19,.72); color: #fff; font-size: 10.5px; font-weight: 800; }
-    .fmt-toggle { display: flex; gap: 8px; }
+    .fmt-toggle { display: flex; gap: 8px; flex-wrap: wrap; }
     .fmt-toggle button {
-      flex: 1; min-height: 44px; border: 1px solid var(--border); border-radius: 11px;
-      background: #FBFBFC; font: inherit; font-size: 13px; font-weight: 700; color: var(--txt2); cursor: pointer;
+      flex: 1 1 calc(50% - 8px); min-height: 44px; border: 1px solid var(--border); border-radius: 11px;
+      background: #FBFBFC; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--txt2); cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
     .fmt-toggle button.on { border-color: var(--ink); background: var(--ink); color: #fff; }
 
@@ -163,7 +166,7 @@
           <div class="field-row">
             <div class="field">
               <label for="f1biz">상호명</label>
-              <input type="text" id="f1biz" placeholder="백운테크" maxlength="20">
+              <input type="text" id="f1biz" placeholder="에어컨 인테리어 연구소" maxlength="20">
             </div>
             <div class="field">
               <label for="f1phone">연락처</label>
@@ -172,26 +175,26 @@
           </div>
           <div class="field">
             <label for="f1area">시공 지역</label>
-            <input type="text" id="f1area" placeholder="인천 전지역" maxlength="24">
+            <input type="text" id="f1area" placeholder="수도권 전지역" maxlength="24">
           </div>
           <div class="field">
-            <label for="f1color">대표색</label>
+            <label for="f1color">대표색 (어두운 색을 고르면 글자가 자동으로 밝게 반전됩니다)</label>
             <div class="color-field">
-              <input type="color" id="f1color" value="#4F8CFF" aria-label="대표색 직접 선택">
-              <div class="color-swatches" role="group" aria-label="대표색 빠른 선택">
-                <button type="button" class="swatch" style="background:#4F8CFF" data-c="#4F8CFF" aria-label="파랑"></button>
-                <button type="button" class="swatch" style="background:#35C5B8" data-c="#35C5B8" aria-label="청록"></button>
-                <button type="button" class="swatch" style="background:#FF8A65" data-c="#FF8A65" aria-label="주황"></button>
-                <button type="button" class="swatch" style="background:#A78BFA" data-c="#A78BFA" aria-label="보라"></button>
-                <button type="button" class="swatch" style="background:#0F1013" data-c="#0F1013" aria-label="검정"></button>
-              </div>
+              <input type="color" id="f1color" value="#4F8CFF" aria-label="대표색 컬러피커">
+              <input type="text" id="f1hex" value="#4F8CFF" maxlength="7" style="width:110px" aria-label="HEX 코드 직접 입력" placeholder="#4F8CFF">
             </div>
+          </div>
+          <div class="field">
+            <label>출력 규격</label>
+            <div class="fmt-toggle" id="fmtT1" role="group" aria-label="안내문 출력 규격"></div>
           </div>
           <div class="field">
             <label for="f1extra">추가 한 줄 (선택)</label>
             <input type="text" id="f1extra" placeholder="예: 여름 성수기 예약이 빠르게 마감됩니다" maxlength="40">
           </div>
           <div class="field" id="customFields" hidden>
+            <label for="f1industryName">업종명 (직접 입력)</label>
+            <input type="text" id="f1industryName" placeholder="예: 방수·옥상 시공" maxlength="16">
             <label for="f1title">안내문 제목 (직접 입력)</label>
             <input type="text" id="f1title" placeholder="시공 완료 안내" maxlength="20">
             <label for="f1care">관리 요령 (줄바꿈 = 항목)</label>
@@ -201,22 +204,27 @@
             <label for="f1as">A/S 안내 (줄바꿈 = 항목)</label>
             <textarea id="f1as"></textarea>
           </div>
-          <p class="hint">출력 규격: 1080×1527 (카톡 전송용 세로형) · 하단에 에인연 워터마크가 들어갑니다.</p>
+          <p class="hint">모든 입력은 미리보기에 즉시 반영됩니다 · 하단에 에인연 워터마크가 들어갑니다.</p>
         </form>
 
         <!-- T2 폼 -->
         <form class="form-card" id="formT2" hidden autocomplete="off">
           <div class="field">
-            <label>시공 전후 사진 (기기에서만 처리 — 서버 전송 없음)</label>
-            <div class="photo-row">
+            <label>시공 전·중·후 사진 (기기에서만 처리 — 서버 전송 없음. '시공 중'은 선택)</label>
+            <div class="photo-row three">
               <div class="photo-drop" id="dropBefore">
-                <span class="tag">BEFORE</span>
-                <span id="beforeHint">시공 전 사진<br>탭해서 선택</span>
+                <span class="tag">시공 전</span>
+                <span id="beforeHint">시공 전<br>탭해서 선택</span>
                 <input type="file" id="fileBefore" accept="image/*" aria-label="시공 전 사진 선택">
               </div>
+              <div class="photo-drop" id="dropMid">
+                <span class="tag">시공 중</span>
+                <span id="midHint">시공 중 (선택)<br>탭해서 선택</span>
+                <input type="file" id="fileMid" accept="image/*" aria-label="시공 중 사진 선택 (선택사항)">
+              </div>
               <div class="photo-drop" id="dropAfter">
-                <span class="tag">AFTER</span>
-                <span id="afterHint">시공 후 사진<br>탭해서 선택</span>
+                <span class="tag">시공 후</span>
+                <span id="afterHint">시공 후<br>탭해서 선택</span>
                 <input type="file" id="fileAfter" accept="image/*" aria-label="시공 후 사진 선택">
               </div>
             </div>
@@ -224,7 +232,7 @@
           <div class="field-row">
             <div class="field">
               <label for="f2biz">상호명</label>
-              <input type="text" id="f2biz" placeholder="백운테크" maxlength="20">
+              <input type="text" id="f2biz" placeholder="에어컨 인테리어 연구소" maxlength="20">
             </div>
             <div class="field">
               <label for="f2phone">연락처</label>
@@ -233,10 +241,7 @@
           </div>
           <div class="field">
             <label>출력 규격</label>
-            <div class="fmt-toggle" role="group" aria-label="출력 규격 선택">
-              <button type="button" id="fmtSquare" class="on">1080×1080 · 당근/피드</button>
-              <button type="button" id="fmtPortrait">1080×1350 · 인스타 세로</button>
-            </div>
+            <div class="fmt-toggle" id="fmtT2" role="group" aria-label="비교 카드 출력 규격"></div>
           </div>
           <p class="hint">사진은 업로드 즉시 기기 안에서 리사이즈되며 어디에도 전송되지 않습니다.</p>
         </form>
