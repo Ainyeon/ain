@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>자유게시판 | 에인연</title>
+  <meta name="description" content="HVAC·인테리어 현장 종사자들의 자유게시판. 회원 전용.">
+  <link rel="canonical" href="https://ainyeon.com/board/free/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="자유게시판 | 에인연">
+  <meta property="og:description" content="현장 이야기, 장비, 시세, 뭐든 — 업계 사람들끼리.">
+  <meta property="og:url" content="https://ainyeon.com/board/free/">
+  <meta property="og:image" content="https://ainyeon.com/assets/og.png">
+  <meta name="theme-color" content="#F7F7F8">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+  <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/ain.css">
+  <link rel="stylesheet" href="/board/board.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="/auth.js"></script>
+  <script defer src="/assets/js/ain-common.js"></script>
+  <script defer src="/assets/js/ain-community.js"></script>
+</head>
+<body>
+  <nav class="nav" id="nav">
+    <a class="brand" href="/"><span class="brand-mark"></span>A.IN</a>
+    <a class="menu-pill" href="/board/proposal/"><span class="plus">+</span>제안·투표</a>
+    <div class="nav-tags">
+      <a href="/briefing/">모닝브리핑</a>
+      <a href="/calendar/">입주 레이더</a>
+      <a href="/board/free/">자유게시판</a>
+      <a href="/board/proposal/">제안·투표</a>
+    </div>
+    <div class="nav-right">
+      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+    </div>
+  </nav>
+  <main class="wrap">
+    <header class="page-head">
+      <div class="sec-label">Community · Free Board</div>
+      <h1 class="page-title">자유게시판</h1>
+      <p class="page-sub">현장 이야기, 장비, 단가, 뭐든 — 업계 사람들끼리. 회원 전용 공간입니다.</p>
+    </header>
+    <section class="panel" id="panel" aria-live="polite">
+      <div class="gate-msg">불러오는 중…</div>
+    </section>
+  </main>
+  <script src="/board/board-free.js" defer></script>
+</body>
+</html>

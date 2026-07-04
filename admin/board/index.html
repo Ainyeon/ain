@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>게시판 관리 | 에인연</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#F7F7F8">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+  <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/ain.css">
+  <link rel="stylesheet" href="/board/board.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="/auth.js"></script>
+  <script defer src="/assets/js/ain-common.js"></script>
+  <script defer src="/assets/js/ain-community.js"></script>
+</head>
+<body>
+  <nav class="nav" id="nav">
+    <a class="brand" href="/"><span class="brand-mark"></span>A.IN</a>
+    <div class="nav-tags">
+      <a href="/board/free/">자유게시판</a>
+      <a href="/board/proposal/">제안·투표</a>
+    </div>
+    <div class="nav-right">
+      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+    </div>
+  </nav>
+  <main class="wrap">
+    <header class="page-head">
+      <div class="sec-label">Admin · Board</div>
+      <h1 class="page-title">게시판 관리</h1>
+      <p class="page-sub">신고 처리와 제안 상태 변경. 관리자 전용입니다.</p>
+    </header>
+    <section class="panel" id="panel" aria-live="polite">
+      <div class="gate-msg">권한 확인 중…</div>
+    </section>
+  </main>
+  <script>
+    (function () {
+      'use strict';
+      const STATUS_LABELS = { open: '투표중', adopted: '채택됨', building: '개발중', shipped: '반영완료' };
+      const THRESHOLD_COUNT = 20, THRESHOLD_RATE = 0.7;
+      const panel = document.getElementById('panel');
+      const db = () => ainAuth.getClient();
+      const gate = (h) => panel.innerHTML = '<div class="gate-msg">' + h + '</div>';
+      let filterReached = false;
+
+      function tally(votes) {
+        const m = {};
+        for (const v of votes || []) {
+          const t = m[v.post_id] || (m[v.post_id] = { up: 0, down: 0 });
+          t[v.vote]++;
+        }
+        return m;
+      }
+      const reached = (t) => t && t.up >= THRESHOLD_COUNT && t.up / (t.up + t.down) >= THRESHOLD_RATE;
+
+      async function render() {
+        const [{ data: posts, error: pe }, { data: votes }, { data: reports, error: re }, { data: cmts }] = await Promise.all([
+          db().from('posts').select('id,board_type,title,status,created_at,author:profiles(nickname)').order('created_at', { ascending: false }).limit(200),
+          db().from('votes').select('post_id,vote'),
+          db().from('reports').select('target_type,target_id,reason,created_at'),
+          db().from('comments').select('id,post_id,body,author:profiles(nickname)')
+        ]);
+        if (pe) { gate('데이터 로드 실패: ' + escT(pe.message)); return; }
+        if (re) { gate('신고 목록 접근 불가 — 관리자 권한(is_admin)이 필요합니다.'); return; }
+
+        const t = tally(votes);
+        // 신고 집계
+        const repCount = {}; // 'post-1' → n
+        (reports || []).forEach((r) => {
+          const k = r.target_type + '-' + r.target_id;
+          repCount[k] = (repCount[k] || 0) + 1;
+        });
+        const cmtById = {};
+        (cmts || []).forEach((c) => cmtById[c.id] = c);
+
+        // 신고 많은 순 목록
+        const reportedRows = Object.entries(repCount).sort((a, b) => b[1] - a[1]).map(([k, n]) => {
+          const [type, idStr] = k.split('-');
+          const id = Number(idStr);
+          let label = '';
+          if (type === 'post') {
+            const p = (posts || []).find((x) => x.id === id);
+            label = p ? '글: ' + p.title : '글 #' + id + ' (삭제됨?)';
+          } else {
+            const c = cmtById[id];
+            label = c ? '댓글: ' + c.body.slice(0, 40) : '댓글 #' + id + ' (삭제됨?)';
+          }
+          return '<div class="board-card admin-row"><span>' + escT(label) + '</span>'
+            + '<span><span class="report-count">신고 ' + n + '건</span> '
+            + '<button type="button" class="tool-link" data-del="' + type + ':' + id + '">삭제</button></span></div>';
+        }).join('') || '<p class="empty-note">신고된 게시물이 없습니다.</p>';
+
+        // 제안 상태 관리 (임계 도달 필터)
+        const proposals = (posts || []).filter((p) => p.board_type === 'proposal')
+          .filter((p) => !filterReached || reached(t[p.id]));
+        const stateRows = proposals.map((p) => {
+          const tv = t[p.id] || { up: 0, down: 0 };
+          const opts = Object.entries(STATUS_LABELS).map(([v, l]) =>
+            '<option value="' + v + '"' + (p.status === v ? ' selected' : '') + '>' + l + '</option>').join('');
+          return '<div class="board-card admin-row' + (reached(tv) && p.status === 'open' ? ' reach-highlight' : '') + '">'
+            + '<span><a href="/board/proposal/?id=' + p.id + '"><b>' + escT(p.title) + '</b></a><br>'
+            + '<span style="font-size:12px;color:var(--txt3)">👍' + tv.up + ' 👎' + tv.down
+            + (reached(tv) ? ' · <span class="reach-note">채택 기준 도달</span>' : '') + '</span></span>'
+            + '<select data-status="' + p.id + '" aria-label="상태 변경">' + opts + '</select></div>';
+        }).join('') || '<p class="empty-note">' + (filterReached ? '임계 도달 제안 없음' : '제안 없음') + '</p>';
+
+        panel.innerHTML =
+          '<h2 style="font-size:15px;font-weight:800">신고 많은 순</h2>' + reportedRows
+          + '<h2 style="font-size:15px;font-weight:800;margin-top:14px">제안 상태 관리 '
+          + '<button type="button" class="tool-link" id="fltReached" style="font-size:12px">'
+          + (filterReached ? '[전체 보기]' : '[임계 도달만]') + '</button></h2>'
+          + stateRows;
+
+        document.getElementById('fltReached').addEventListener('click', () => { filterReached = !filterReached; render(); });
+        panel.querySelectorAll('[data-status]').forEach((sel) =>
+          sel.addEventListener('change', async () => {
+            const { error } = await db().rpc('admin_set_post_status', {
+              p_post_id: Number(sel.dataset.status), p_status: sel.value
+            });
+            alert(error ? '변경 실패: ' + error.message : '상태 변경 완료: ' + STATUS_LABELS[sel.value]);
+          }));
+        panel.querySelectorAll('[data-del]').forEach((b) =>
+          b.addEventListener('click', async () => {
+            const [type, id] = b.dataset.del.split(':');
+            if (!confirm('신고된 ' + (type === 'post' ? '글' : '댓글') + '을 삭제할까요?')) return;
+            const { error } = await db().from(type === 'post' ? 'posts' : 'comments').delete().eq('id', Number(id));
+            if (error) alert('삭제 실패: ' + error.message); else render();
+          }));
+      }
+
+      addEventListener('DOMContentLoaded', async () => {
+        const me = await ainCommunity.getMyProfile();
+        if (me.infraError) { gate('커뮤니티 준비 중입니다.'); return; }
+        if (!me.user) { gate('로그인이 필요합니다.'); return; }
+        if (!me.profile || !me.profile.is_admin) { gate('관리자 전용 페이지입니다.'); return; }
+        render();
+      });
+    })();
+  </script>
+</body>
+</html>
