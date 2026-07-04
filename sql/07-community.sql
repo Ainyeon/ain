@@ -3,6 +3,11 @@
 --
 -- 실행 순서: 이 파일 전체 실행 → 맨 아래 [관리자 세팅] 주석 해제해 본인 계정 1줄 실행
 -- 전제: 02_auth_profiles.sql 적용 상태 (profiles 테이블 + 가입 트리거 존재 → CREATE 아닌 ALTER)
+--       02를 늦게 실행했다면 기존 가입자 백필 필요:
+--         insert into public.profiles (id, kakao_nickname, kakao_avatar_url)
+--         select id, coalesce(raw_user_meta_data->>'full_name', raw_user_meta_data->>'name'),
+--                raw_user_meta_data->>'avatar_url'
+--         from auth.users on conflict (id) do nothing;
 -- 보안 원칙: anon GRANT 없음(티저 뷰 제외). is_admin·business_id는 컬럼 GRANT에서 제외해
 --           본인 UPDATE로도 승격 불가. posts.status 변경은 SECURITY DEFINER RPC로만.
 
@@ -200,6 +205,10 @@ grant insert (target_type, target_id, reporter_id, reason) on public.reports to 
 -- ════════════════════════════════════════
 -- [F] 비회원 티저 뷰 (definer — 글 수 + 최신 제목 5건, 본문·작성자 미포함)
 -- ════════════════════════════════════════
+-- Supabase 기본 권한(default privileges)이 새 테이블에 anon GRANT를 자동 부여하므로 명시 회수.
+-- (RLS가 to authenticated뿐이라 데이터는 안 새지만, "grant부터 차단" 원칙 준수)
+revoke all on public.profiles, public.posts, public.comments, public.votes, public.reports from anon;
+
 create or replace view public.v_board_teaser as
 select board_type, title, status, created_at,
        count(*) over ()::int as total_count

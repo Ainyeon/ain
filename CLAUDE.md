@@ -29,7 +29,9 @@
 - Pages 빌드가 5분+ building/행이면 `gh api -X POST repos/Ainyeon/ain/pages/builds` 재빌드 1회 후 보고
 
 ## 현재 상태
-- 완료: auth.js, 4개 페이지 인증 UI, profiles 테이블+트리거
+- 완료: auth.js, 4개 페이지 인증 UI
 - 완료: 03~06 SQL 전부 실행 (2026-07-02) — 게이팅 전체 완성, REST+익명 브라우저 검증 통과
+- 완료: 02(profiles+트리거)·07(커뮤니티) SQL 실행 (2026-07-04, psql) — ※ 02는 기록과 달리
+  미실행 상태였음이 07 적용 중 발견되어 이날 백필과 함께 적용됨. 원본 5테이블 anon 401 검증
 - 완료: 캘린더·브리핑 티저 UI (move_in_teaser 기반, 단지명 잠금, total_count 노출)
 - 참고: 티저 total_count(561)는 전체 추적 단지 기준 — 캘린더 전문(73)과 집계 기준 다름
