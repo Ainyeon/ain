@@ -3,11 +3,19 @@
 (function () {
   'use strict';
 
+  // maker/fields.json 마스터와 동기 (신규 22종 + legacy 2종 표기 변환)
   const FIELD_LABELS = {
-    'ac-install': '에어컨 설치', 'ac-clean': '에어컨 세척', 'panel-restore': '판넬 복원·도색',
-    'interior': '인테리어', 'film-sheet': '필름·시트', 'paper-floor': '도배·장판',
-    'tile-bath': '타일·욕실', 'movein-clean': '입주청소', 'custom': '기타'
+    'ac-install': '에어컨 설치', 'ac-system': '시스템에어컨', 'ac-clean': '에어컨 세척',
+    'duct-clean': '덕트 청소', 'panel-restore': '냉난방기 복원·도색', 'boiler': '보일러', 'vent': '환기 시스템',
+    'interior': '종합 인테리어', 'paper': '도배', 'floor': '장판·마루', 'film-sheet': '필름·시트',
+    'tile': '타일', 'paint': '도장', 'carpentry': '목공', 'sash': '새시·창호',
+    'pipe': '상하수도·배관', 'waterproof': '방수',
+    'silicone': '실리콘·코킹', 'grout': '줄눈', 'mold': '결로·곰팡이', 'movein-clean': '입주청소',
+    'custom': '기타',
+    'paper-floor': '도배·장판', 'tile-bath': '타일·욕실'
   };
+  // 표시 전용 legacy id — 신규 선택지(온보딩 select 등)에서는 제외
+  const FIELD_LEGACY = ['paper-floor', 'tile-bath'];
 
   const db = () => ainAuth.getClient();
 
@@ -99,5 +107,5 @@
     return data;
   }
 
-  window.ainCommunity = { FIELD_LABELS, fieldLabel, getMyProfile, requireMember, authorBadge, isStaff, authorSelect, timeAgo, report, fetchTeaser };
+  window.ainCommunity = { FIELD_LABELS, FIELD_LEGACY, fieldLabel, getMyProfile, requireMember, authorBadge, isStaff, authorSelect, timeAgo, report, fetchTeaser };
 })();

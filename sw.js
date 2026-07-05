@@ -1,7 +1,7 @@
 // 에인연 서비스워커 — 오프라인 내성: 마지막 브리핑·시세 1회분 열람 가능
 // 전략: 내비게이션·데이터 = 네트워크 우선(성공 시 캐시 갱신, 실패 시 캐시 폴백)
 //       정적 자산 = 캐시 우선(백그라운드 갱신)
-const VERSION = 'ain-v4';
+const VERSION = 'ain-v6';
 const SHELL_CACHE = VERSION + '-shell';
 const DATA_CACHE = VERSION + '-data';
 
@@ -13,8 +13,15 @@ const SHELL = [
   '/news/',
   '/me/',
   '/maker/',
-  '/maker/maker.js',
-  '/maker/presets.json',
+  '/maker/notice/',
+  '/maker/compare/',
+  '/maker/maker.css',
+  '/maker/maker-core.js',
+  '/maker/notice/notice.js',
+  '/maker/compare/compare.js',
+  '/maker/fields.json',
+  '/maker/formats.json',
+  '/maker/copy.json',
   '/board/board.css',
   '/board/board-free.js',
   '/board/board-proposal.js',

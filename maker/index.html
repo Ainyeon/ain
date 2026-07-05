@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>템플릿 메이커 | 에인연</title>
-  <meta name="description" content="상호와 연락처만 넣으면 현장에서 바로 쓰는 홍보물 완성. 시공 후 고객 안내문, 시공 전후 비교 카드 — 전 업종 프리셋.">
+  <meta name="description" content="상호와 연락처만 넣으면 현장에서 바로 쓰는 홍보물 완성. 고객 안내문, 홍보 카드 — 전 업종 기본 문구.">
   <link rel="canonical" href="https://ainyeon.com/maker/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="템플릿 메이커 | 에인연">
-  <meta property="og:description" content="3분이면 됩니다 — 시공 안내문·전후 비교 카드, 전 업종 프리셋.">
+  <meta property="og:description" content="3분이면 됩니다 — 고객 안내문·홍보 카드, 전 업종 기본 문구.">
   <meta property="og:url" content="https://ainyeon.com/maker/">
   <meta property="og:image" content="https://ainyeon.com/assets/og.png">
   <meta name="theme-color" content="#F7F7F8">
@@ -17,111 +17,7 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/ain.css">
-  <style>
-    :root { color-scheme: light; --surface:#FFFFFF; --border:#E8E8EC; --txt:#0F1013; --txt2:#63676F; --txt3:#6E737C; }
-    .wrap { width: min(100%, 1080px); margin: 0 auto; padding: 0 0 140px; }
-    .page-head { padding: 108px 24px 18px; }
-    .page-head .sec-label { margin-bottom: 10px; }
-
-    /* 템플릿 선택 탭 */
-    .tpl-tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 14px 24px 4px; }
-    .tpl-tab {
-      min-height: 44px; padding: 10px 15px; border-radius: 12px;
-      border: 1px solid var(--border); background: var(--surface);
-      font: inherit; font-size: 13.5px; font-weight: 700; color: var(--txt2); cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .tpl-tab.on { border-color: var(--ink); background: var(--ink); color: #fff; }
-    .tpl-tab[disabled] { opacity: .55; cursor: default; }
-    .tpl-tab .soon { margin-left: 6px; font-family: var(--font-mono); font-size: 10px; color: var(--g1); }
-    .tpl-tab.on .soon { color: #9CC0FF; }
-
-    .maker-grid { display: grid; gap: 18px; padding: 14px 24px 0; }
-    @media (min-width: 901px) {
-      .maker-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; }
-      .preview-col { position: sticky; top: 86px; }
-    }
-
-    /* 입력 폼 */
-    .form-card {
-      border: 1px solid rgba(255,255,255,.9); border-radius: 16px; background: var(--surface);
-      padding: 18px; box-shadow: var(--shadow-amb), 0 14px 34px -22px rgba(15,16,19,.14);
-      display: grid; gap: 13px;
-    }
-    .field { display: grid; gap: 6px; }
-    .field label { font-size: 12.5px; font-weight: 800; color: var(--txt2); }
-    .field input[type=text], .field input[type=tel], .field select, .field textarea {
-      min-height: 46px; padding: 10px 13px; border: 1px solid var(--border); border-radius: 11px;
-      background: #FBFBFC; font: inherit; font-size: 16px; color: var(--txt); width: 100%;
-    }
-    .field textarea { min-height: 76px; resize: vertical; line-height: 1.5; }
-    .field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid var(--g1); outline-offset: 1px; }
-    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .color-field { display: flex; align-items: center; gap: 10px; }
-    .color-field input[type=color] {
-      width: 52px; height: 46px; padding: 3px; border: 1px solid var(--border); border-radius: 11px;
-      background: #FBFBFC; cursor: pointer;
-    }
-    .color-swatches { display: flex; gap: 7px; }
-    .swatch { width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--border); cursor: pointer; }
-    .hint { font-size: 12px; color: var(--txt3); line-height: 1.5; }
-
-    /* 사진 업로드 (T2) */
-    .photo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .photo-row.three { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .photo-row.three .photo-drop { min-height: 96px; font-size: 12px; }
-    .photo-drop {
-      position: relative; min-height: 110px; border: 1.5px dashed var(--border); border-radius: 12px;
-      background: #FBFBFC; display: grid; place-items: center; text-align: center;
-      font-size: 13px; font-weight: 700; color: var(--txt3); cursor: pointer; overflow: hidden;
-    }
-    .photo-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-    .photo-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-    .photo-drop .tag { position: absolute; top: 7px; left: 7px; z-index: 1; padding: 3px 9px; border-radius: 100px; background: rgba(15,16,19,.72); color: #fff; font-size: 10.5px; font-weight: 800; }
-    .fmt-toggle { display: flex; gap: 8px; flex-wrap: wrap; }
-    .fmt-toggle button {
-      flex: 1 1 calc(50% - 8px); min-height: 44px; border: 1px solid var(--border); border-radius: 11px;
-      background: #FBFBFC; font: inherit; font-size: 12.5px; font-weight: 700; color: var(--txt2); cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .fmt-toggle button.on { border-color: var(--ink); background: var(--ink); color: #fff; }
-
-    /* 미리보기 */
-    .preview-card {
-      border: 1px solid rgba(255,255,255,.9); border-radius: 16px; background: var(--surface);
-      padding: 14px; box-shadow: var(--shadow-amb), 0 14px 34px -22px rgba(15,16,19,.14);
-    }
-    .preview-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 12px; font-weight: 800; color: var(--txt3); }
-    #cv { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--border); background: #fff; }
-
-    /* 하단 고정 액션 바 (탭바 위) */
-    .action-bar {
-      position: fixed; left: 12px; right: 12px; z-index: 85;
-      bottom: calc(70px + env(safe-area-inset-bottom));
-      display: flex; gap: 9px;
-      background: rgba(255,255,255,.92); backdrop-filter: blur(14px);
-      border: 1px solid var(--line); border-radius: 16px; padding: 10px;
-      box-shadow: 0 16px 40px -18px rgba(15,16,19,.35);
-    }
-    .action-bar button {
-      flex: 1; min-height: 48px; border-radius: 12px; border: none; cursor: pointer;
-      font: inherit; font-size: 14.5px; font-weight: 800;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #btnShare { background: var(--ink); color: #fff; }
-    #btnSave { background: #FBFBFC; border: 1px solid var(--border); color: var(--txt); }
-    #btnAccount { flex: 0 0 auto; min-width: 48px; background: #FBFBFC; border: 1px dashed var(--border); color: var(--txt3); font-size: 12px; }
-    @media (min-width: 901px) {
-      .action-bar { left: auto; right: 26px; bottom: 26px; width: 420px; }
-    }
-    .toast {
-      position: fixed; left: 50%; transform: translateX(-50%);
-      bottom: calc(140px + env(safe-area-inset-bottom)); z-index: 95;
-      background: var(--ink); color: #fff; border-radius: 100px; padding: 10px 18px;
-      font-size: 13px; font-weight: 700; opacity: 0; transition: opacity .25s; pointer-events: none;
-    }
-    .toast.show { opacity: 1; }
-  </style>
+  <link rel="stylesheet" href="/maker/maker.css">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
@@ -129,156 +25,58 @@
 <body>
   <nav class="nav" id="nav">
     <a class="brand" href="/"><span class="brand-mark"></span>A.IN</a>
-    <a class="menu-pill" href="/#streams"><span class="plus">+</span>메뉴</a>
     <div class="nav-tags">
-      <a href="/briefing/">모닝브리핑</a>
-      <a href="/calendar/">입주 레이더</a>
-      <a href="/news/">업계뉴스</a>
-      <a href="/#tools">도구</a>
+      <a href="/maker/notice/">고객 안내문</a>
+      <a href="/maker/compare/">홍보 카드</a>
     </div>
     <div class="nav-right">
       <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
     </div>
   </nav>
-
   <main class="wrap">
     <header class="page-head">
-      <div class="sec-label">Template Maker · BETA</div>
+      <div class="sec-label">Template Maker</div>
       <h1 class="page-title">템플릿 메이커</h1>
-      <p class="page-sub">상호와 연락처만 넣으면 현장에서 바로 쓰는 홍보물이 완성됩니다. 입력값은 이 기기에 임시저장됩니다.</p>
-      <p class="page-sub" id="makerCount" style="margin-top:4px;font-weight:700" hidden></p>
+      <p class="page-sub">상호·연락처만 넣으면 현장에서 바로 쓰는 홍보물이 완성됩니다. 사진과 내용은 기기 밖으로 나가지 않습니다.</p>
+      <p class="page-sub" id="makerCount" hidden style="margin-top:6px;font-weight:800"></p>
     </header>
 
-    <div class="tpl-tabs" role="tablist" aria-label="템플릿 선택">
-      <button class="tpl-tab on" id="tabT1" role="tab" aria-selected="true">01 고객 안내문</button>
-      <button class="tpl-tab" id="tabT2" role="tab" aria-selected="false">02 전후 비교</button>
-      <button class="tpl-tab" role="tab" aria-selected="false" disabled aria-disabled="true">03 디지털 명함<span class="soon">SOON</span></button>
-      <button class="tpl-tab" role="tab" aria-selected="false" disabled aria-disabled="true">04 홍보 이미지<span class="soon">SOON</span></button>
+    <div class="hub-grid">
+      <a class="hub-card" href="/maker/notice/">
+        <span class="tag">NOTICE</span>
+        <h2>고객 안내문</h2>
+        <p>고객에게 전달하는 안내문을 만듭니다. 업종을 고르면 기본 문구가 채워지고, 제목·내용·글자 크기까지 원하는 대로 고칠 수 있어요. 카톡 전송·A4 인쇄 지원.</p>
+        <span class="go">만들러 가기 →</span>
+      </a>
+      <a class="hub-card" href="/maker/compare/">
+        <span class="tag">PROMO CARD</span>
+        <h2>홍보 카드</h2>
+        <p>당근·인스타에 올리는 홍보 카드를 만듭니다. 전후 비교부터 사진+문구, 문구 배너까지 모양을 고르기만 하면 완성 — 사진은 기기 안에서만 처리됩니다.</p>
+        <span class="go">만들러 가기 →</span>
+      </a>
     </div>
 
-    <div class="maker-grid">
-      <div class="form-col">
-        <!-- T1 폼 -->
-        <form class="form-card" id="formT1" autocomplete="off">
-          <div class="field">
-            <label for="f1industry">업종</label>
-            <select id="f1industry"></select>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="f1biz">상호명</label>
-              <input type="text" id="f1biz" placeholder="에어컨 인테리어 연구소" maxlength="20">
-            </div>
-            <div class="field">
-              <label for="f1phone">연락처</label>
-              <input type="tel" id="f1phone" placeholder="010-0000-0000" maxlength="20">
-            </div>
-          </div>
-          <div class="field">
-            <label for="f1area">시공 지역</label>
-            <input type="text" id="f1area" placeholder="수도권 전지역" maxlength="24">
-          </div>
-          <div class="field">
-            <label for="f1color">대표색 (어두운 색을 고르면 글자가 자동으로 밝게 반전됩니다)</label>
-            <div class="color-field">
-              <input type="color" id="f1color" value="#4F8CFF" aria-label="대표색 컬러피커">
-              <input type="text" id="f1hex" value="#4F8CFF" maxlength="7" style="width:110px" aria-label="HEX 코드 직접 입력" placeholder="#4F8CFF">
-            </div>
-          </div>
-          <div class="field">
-            <label>출력 규격</label>
-            <div class="fmt-toggle" id="fmtT1" role="group" aria-label="안내문 출력 규격"></div>
-          </div>
-          <div class="field">
-            <label for="f1extra">추가 한 줄 (선택)</label>
-            <input type="text" id="f1extra" placeholder="예: 여름 성수기 예약이 빠르게 마감됩니다" maxlength="40">
-          </div>
-          <div class="field" id="customFields" hidden>
-            <label for="f1industryName">업종명 (직접 입력)</label>
-            <input type="text" id="f1industryName" placeholder="예: 방수·옥상 시공" maxlength="16">
-            <label for="f1title">안내문 제목 (직접 입력)</label>
-            <input type="text" id="f1title" placeholder="시공 완료 안내" maxlength="20">
-            <label for="f1care">관리 요령 (줄바꿈 = 항목)</label>
-            <textarea id="f1care"></textarea>
-            <label for="f1caution">주의사항 (줄바꿈 = 항목)</label>
-            <textarea id="f1caution"></textarea>
-            <label for="f1as">A/S 안내 (줄바꿈 = 항목)</label>
-            <textarea id="f1as"></textarea>
-          </div>
-          <p class="hint">모든 입력은 미리보기에 즉시 반영됩니다 · 하단에 에인연 워터마크가 들어갑니다.</p>
-        </form>
-
-        <!-- T2 폼 -->
-        <form class="form-card" id="formT2" hidden autocomplete="off">
-          <div class="field">
-            <label>시공 전·중·후 사진 (기기에서만 처리 — 서버 전송 없음. '시공 중'은 선택)</label>
-            <div class="photo-row three">
-              <div class="photo-drop" id="dropBefore">
-                <span class="tag">시공 전</span>
-                <span id="beforeHint">시공 전<br>탭해서 선택</span>
-                <input type="file" id="fileBefore" accept="image/*" aria-label="시공 전 사진 선택">
-              </div>
-              <div class="photo-drop" id="dropMid">
-                <span class="tag">시공 중</span>
-                <span id="midHint">시공 중 (선택)<br>탭해서 선택</span>
-                <input type="file" id="fileMid" accept="image/*" aria-label="시공 중 사진 선택 (선택사항)">
-              </div>
-              <div class="photo-drop" id="dropAfter">
-                <span class="tag">시공 후</span>
-                <span id="afterHint">시공 후<br>탭해서 선택</span>
-                <input type="file" id="fileAfter" accept="image/*" aria-label="시공 후 사진 선택">
-              </div>
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label for="f2biz">상호명</label>
-              <input type="text" id="f2biz" placeholder="에어컨 인테리어 연구소" maxlength="20">
-            </div>
-            <div class="field">
-              <label for="f2phone">연락처</label>
-              <input type="tel" id="f2phone" placeholder="010-0000-0000" maxlength="20">
-            </div>
-          </div>
-          <div class="field">
-            <label>출력 규격</label>
-            <div class="fmt-toggle" id="fmtT2" role="group" aria-label="비교 카드 출력 규격"></div>
-          </div>
-          <p class="hint">사진은 업로드 즉시 기기 안에서 리사이즈되며 어디에도 전송되지 않습니다.</p>
-        </form>
-      </div>
-
-      <div class="preview-col">
-        <div class="preview-card">
-          <div class="preview-label"><span>미리보기</span><span id="previewSize">1080×1527</span></div>
-          <canvas id="cv" width="1080" height="1527" role="img" aria-label="템플릿 미리보기"></canvas>
-        </div>
-      </div>
-    </div>
+    <p class="fineprint">모든 이미지는 브라우저 안에서 만들어지며 서버로 전송되지 않습니다. 완성본에는 "made with 에인연" 워터마크가 작게 들어갑니다.</p>
   </main>
 
-  <div class="action-bar">
-    <button type="button" id="btnShare">공유 (카톡)</button>
-    <button type="button" id="btnSave">PNG 저장</button>
-    <button type="button" id="btnAccount" title="로그인 저장은 곧 제공됩니다" aria-disabled="true">계정<br>저장</button>
-  </div>
-  <div class="toast" id="toast" role="status"></div>
-
-  <footer>
-    <div class="foot-inner">
-      <div>
-        <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-        <p style="margin-top:12px;line-height:1.7">에어컨·인테리어 업계 정보 허브 A.IN<br>매일 아침 06:30, 업계의 하루가 정리됩니다</p>
-      </div>
-      <div class="foot-links">
-        <a href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">네이버 카페</a>
-        <a href="https://www.instagram.com/ainyeon_official" target="_blank" rel="noopener">인스타그램</a>
-        <a href="https://band.us/n/a2a2be04B5I6H" target="_blank" rel="noopener">밴드</a>
-        <a href="https://cafe.daangn.com/ein-yeon-eeokeo?utm_medium=copy_link" target="_blank" rel="noopener">문의</a>
-      </div>
-    </div>
-  </footer>
-
-  <script src="/maker/maker.js" defer></script>
+  <script>
+    // 사용 카운터 (site_stats.maker_uses) — 실패 시 조용히 생략
+    (function () {
+      function show() {
+        try {
+          ainAuth.getClient().from('site_stats').select('value').eq('key', 'maker_uses').maybeSingle()
+            .then(function (r) {
+              if (r && r.data && r.data.value != null) {
+                var el = document.getElementById('makerCount');
+                el.textContent = '지금까지 ' + Number(r.data.value).toLocaleString('ko-KR') + '회 제작됐어요';
+                el.hidden = false;
+              }
+            }, function () {});
+        } catch (e) {}
+      }
+      if (window.ainAuth) { ainAuth.init().then(show, function () {}); }
+      else { addEventListener('ain:auth', show, { once: true }); document.addEventListener('DOMContentLoaded', function () { setTimeout(show, 800); }, { once: true }); }
+    })();
+  </script>
 </body>
 </html>

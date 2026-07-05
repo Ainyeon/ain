@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>메이커 v2 무드보드 — 승인용</title>
+<meta name="robots" content="noindex">
+<style>
+  @font-face{
+    font-family:"Pretendard Variable";
+    src:url("/assets/fonts/PretendardVariable.subset.woff2") format("woff2-variations");
+    font-weight:45 920;font-display:swap;
+  }
+  :root{
+    --ink:#0F1013;--soft:#63676F;--mute:#A3A7AE;--line:#E8E8EC;--bg:#F7F7F8;
+    --g1:#4F8CFF;--g2:#35C5B8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Pretendard Variable",Pretendard,sans-serif;background:var(--bg);color:var(--ink);
+       -webkit-font-smoothing:antialiased;letter-spacing:-0.01em;padding:56px 24px 120px}
+  .wrap{max-width:1100px;margin:0 auto}
+  h1{font-size:30px;font-weight:800;letter-spacing:-0.04em}
+  .lead{margin-top:10px;color:var(--soft);font-size:14.5px;line-height:1.7}
+  h2{margin:56px 0 6px;font-size:20px;font-weight:800;letter-spacing:-0.03em}
+  .sub{color:var(--soft);font-size:13px;margin-bottom:20px;line-height:1.6}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+  .tile{background:#fff;border:1px solid rgba(255,255,255,.9);border-radius:18px;padding:18px;
+        box-shadow:0 2px 6px rgba(15,16,19,.04),0 18px 40px -26px rgba(15,16,19,.18)}
+  .tile h3{font-size:14.5px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .pick{font-size:10px;font-weight:800;background:var(--ink);color:#fff;border-radius:100px;padding:3px 9px}
+  .why{margin-top:8px;font-size:12.5px;color:var(--soft);line-height:1.65}
+  .refs{margin-top:8px;font-size:11px;color:var(--mute);line-height:1.6}
+  .refs a{color:#2F63C7;text-decoration:none}
+  .mock{margin-top:14px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+
+  /* ── T1 미니목업 (270×382 ≈ 1080×1527 축소) ── */
+  .m1{width:100%;aspect-ratio:1080/1527;background:#FBFBFC;position:relative;font-size:8px;padding:20px 18px;display:flex;flex-direction:column}
+  .m1 .bar{position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,var(--g1),var(--g2))}
+  .m1 .kicker{color:#8a8f98;font-weight:700;font-size:6.5px;letter-spacing:.14em}
+  .m1 .title{margin-top:5px;font-size:15px;font-weight:800;letter-spacing:-0.03em;line-height:1.25}
+  .m1 .rule{height:1px;background:#ECEDEF;margin:10px 0}
+  .m1 .chip{display:inline-block;font-size:6px;font-weight:800;color:#2F63C7;background:rgba(79,140,255,.09);
+            border-radius:100px;padding:2.5px 7px;margin-bottom:4px}
+  .m1 .chip.warn{color:#B4551E;background:rgba(255,138,101,.13)}
+  .m1 .chip.as{color:#12766C;background:rgba(53,197,184,.11)}
+  .m1 li{list-style:none;color:#4a4e55;line-height:1.7;font-size:7px;display:flex;gap:4px}
+  .m1 li::before{content:"·";color:#A3A7AE;font-weight:800}
+  .m1 .sec{margin-bottom:9px}
+  .m1 .foot{margin-top:auto;background:#0F1013;color:#fff;border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center}
+  .m1 .foot b{font-size:8.5px}
+  .m1 .foot span{font-size:7px;opacity:.75}
+  .m1 .wm{text-align:center;font-size:5px;color:#B9BDC4;margin-top:6px}
+
+  /* B: 애플 화이트 에디토리얼 */
+  .m1.apple{background:#fff;padding:24px 20px}
+  .m1.apple .title{font-size:16px;letter-spacing:-0.045em}
+  .m1.apple .chip{background:none;padding:0;border-radius:0;color:#0F1013;font-size:7px;letter-spacing:.12em;text-transform:uppercase}
+  .m1.apple .chip.warn,.m1.apple .chip.as{background:none;color:#0F1013}
+  .m1.apple .secline{width:14px;height:2px;border-radius:1px;background:var(--g1);margin-bottom:4px}
+  .m1.apple .foot{background:none;border-top:1.5px solid #0F1013;border-radius:0;color:#0F1013;padding:8px 0 0}
+  .m1.apple .foot span{opacity:.55}
+
+  /* C: 다크 프리미엄 */
+  .m1.dark{background:#141519;color:#EAECEF}
+  .m1.dark .title{color:#fff}
+  .m1.dark .rule{background:#26282e}
+  .m1.dark li{color:#B9BDC4}
+  .m1.dark .chip{color:#9CC0FF;background:rgba(79,140,255,.16)}
+  .m1.dark .chip.warn{color:#FFB196;background:rgba(255,138,101,.14)}
+  .m1.dark .chip.as{color:#7FD8CE;background:rgba(53,197,184,.14)}
+  .m1.dark .foot{background:linear-gradient(135deg,var(--g1),#2F63C7);border-radius:8px}
+  .m1.dark .wm{color:#4a4e55}
+
+  /* ── T2 미니목업 (정방형) ── */
+  .m2{width:100%;aspect-ratio:1;position:relative;display:flex;flex-direction:column;background:#F1F2F4}
+  .m2 .ph{flex:1;display:flex;gap:2px}
+  .m2 .p{flex:1;position:relative;background:linear-gradient(135deg,#C9CDD4,#9BA3AE)}
+  .m2 .p.after{background:linear-gradient(135deg,#8FB6F0,#5E8FD8)}
+  .m2 .p.mid{background:linear-gradient(135deg,#B4BCC8,#7E93B4)}
+  .m2 .lb{position:absolute;top:6px;left:6px;font-size:6px;font-weight:800;color:#fff;background:rgba(15,16,19,.72);
+          border-radius:100px;padding:2.5px 7px}
+  .m2 .brand{height:22%;background:#0F1013;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 12px}
+  .m2 .brand b{font-size:9px}
+  .m2 .brand span{font-size:7px;opacity:.8}
+  .m2 .wm2{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:5px;color:rgba(255,255,255,.5)}
+
+  /* B: 센터 디바이더 + 대형 라벨 */
+  .m2.divider .ph{gap:0}
+  .m2.divider .p+.p{border-left:2.5px solid #fff}
+  .m2.divider .lb{top:auto;bottom:8px;left:50%;transform:translateX(-50%);font-size:7px;padding:3px 9px}
+  .m2.divider .brand{background:#fff;color:#0F1013;border-top:1px solid var(--line)}
+  .m2.divider .brand span{opacity:.55}
+  .m2.divider .wm2{color:#B9BDC4}
+
+  /* C: 프레임(여백) 폴라로이드 */
+  .m2.frame{background:#fff;padding:10px 10px 0}
+  .m2.frame .ph{gap:6px}
+  .m2.frame .p{border-radius:6px}
+  .m2.frame .brand{background:#fff;color:#0F1013}
+
+  /* 토큰 표 */
+  table{width:100%;border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;
+        box-shadow:0 2px 6px rgba(15,16,19,.04)}
+  th,td{padding:11px 14px;font-size:12.5px;text-align:left;border-bottom:1px solid var(--line)}
+  th{font-weight:800;background:#FBFBFC;width:180px}
+  td{color:var(--soft)}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:11px;background:#F1F2F4;border-radius:5px;padding:1px 5px;color:#0F1013}
+  .verdict{margin-top:40px;background:#0F1013;color:#fff;border-radius:16px;padding:22px 24px;font-size:13.5px;line-height:1.8}
+  .verdict b{color:#9CC0FF}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>템플릿 메이커 v2 — 디자인 무드보드</h1>
+  <p class="lead">승인 게이트용 시안입니다. T1(고객 안내문)·T2(전·중·후 비교) 각 3방향 — 미니목업은 실제 산출물 비율(1080 규격) 축소판이라 이 느낌 그대로 캔버스에 옮겨집니다.<br>
+  각 타일의 레퍼런스 링크는 실검색으로 수집한 계열 근거입니다.</p>
+
+  <h2>T1 — 고객 안내문</h2>
+  <p class="sub">레퍼런스 계열: 에스테틱/시술 애프터케어 카드(미니멀 럭셔리 톤) · 병원 복약안내 위계 · 애플 제품 안내 타이포그래피</p>
+  <div class="grid">
+    <div class="tile">
+      <h3>A. 클리닉 미니멀 <span class="pick">추천</span></h3>
+      <p class="why">좌측 대표색 액센트 바 + 라벨칩 소제목(색으로 위계 구분: 관리=파랑, 주의=주황, A/S=청록). 현장 사장님 대표색이 어떤 색이어도 무너지지 않는 구조. 애프터케어 카드 컨벤션이라 고객이 "관리 안내"로 즉시 인식.</p>
+      <p class="refs">근거: <a href="https://www.etsy.com/market/post_procedure_care_cards">Etsy 미니멀 애프터케어 카드</a> · <a href="https://www.pinterest.com/ideas/esthetician-aftercare-cards/904541168319/">Pinterest 에스테틱 케어카드</a></p>
+      <div class="mock"><div class="m1">
+        <div class="bar"></div>
+        <div class="kicker">타일·욕실 · 인천 전지역</div>
+        <div class="title">타일·욕실 시공 후<br>관리 안내</div>
+        <div class="rule"></div>
+        <div class="sec"><span class="chip">관리 요령</span>
+          <li>줄눈·실리콘 완전 경화까지 24~48시간 물 사용을 피해 주세요</li>
+          <li>환풍기는 샤워 후 30분 가동이 곰팡이 예방에 좋습니다</li></div>
+        <div class="sec"><span class="chip warn">주의사항</span>
+          <li>경화 전 입욕·샤워 금지</li>
+          <li>산성 세제는 줄눈을 삭게 하니 중성세제를 쓰세요</li></div>
+        <div class="sec"><span class="chip as">A/S 안내</span>
+          <li>누수·줄눈 크랙 1년 내 무상 점검</li></div>
+        <div class="foot"><b>백운테크</b><span>010-1234-5678</span></div>
+        <div class="wm">made with 에인연 · ainyeon.com</div>
+      </div></div>
+    </div>
+
+    <div class="tile">
+      <h3>B. 화이트 에디토리얼</h3>
+      <p class="why">애플 제품안내 톤 — 칩·배경색 없이 타이포와 헤어라인 룰만으로 위계. 소제목은 대표색 짧은 언더라인. 가장 절제됐지만, 저시력·야외 시인성은 A보다 약함.</p>
+      <p class="refs">근거: 애플 제품 가이드 타이포 관행 · <a href="https://www.shutterstock.com/search/patient-information-leaflet?image_type=illustration">복약안내 리플릿 위계</a></p>
+      <div class="mock"><div class="m1 apple">
+        <div class="kicker">타일·욕실 · 인천 전지역</div>
+        <div class="title">시공 후<br>관리 안내</div>
+        <div class="rule"></div>
+        <div class="sec"><div class="secline"></div><span class="chip">관리 요령</span>
+          <li>줄눈·실리콘 완전 경화까지 24~48시간 물 사용 금지</li>
+          <li>환풍기는 샤워 후 30분 가동</li></div>
+        <div class="sec"><div class="secline" style="background:#FF8A65"></div><span class="chip warn">주의사항</span>
+          <li>경화 전 입욕·샤워 금지</li></div>
+        <div class="sec"><div class="secline" style="background:#35C5B8"></div><span class="chip as">A/S 안내</span>
+          <li>누수·줄눈 크랙 1년 내 무상 점검</li></div>
+        <div class="foot"><b>백운테크</b><span>010-1234-5678</span></div>
+        <div class="wm">made with 에인연 · ainyeon.com</div>
+      </div></div>
+    </div>
+
+    <div class="tile">
+      <h3>C. 다크 프리미엄 <span class="pick" style="background:#2F63C7">스타일 프리셋 2안</span></h3>
+      <p class="why">차콜 배경 + 대표색 그라디언트 푸터. "고급 시공" 포지셔닝 업체용(판넬 복원·필름 등). A와 같은 골격이라 스타일 토글로 공존 가능 — 요구된 2가지 프리셋 중 두 번째.</p>
+      <p class="refs">근거: <a href="https://www.etsy.com/market/post_procedure_care_cards">럭셔리 스킨케어 카드(다크 계열)</a></p>
+      <div class="mock"><div class="m1 dark">
+        <div class="kicker" style="color:#787f8a">타일·욕실 · 인천 전지역</div>
+        <div class="title">시공 후 관리 안내</div>
+        <div class="rule"></div>
+        <div class="sec"><span class="chip">관리 요령</span>
+          <li>줄눈·실리콘 완전 경화까지 24~48시간 물 사용 금지</li>
+          <li>환풍기는 샤워 후 30분 가동</li></div>
+        <div class="sec"><span class="chip warn">주의사항</span>
+          <li>경화 전 입욕·샤워 금지</li></div>
+        <div class="sec"><span class="chip as">A/S 안내</span>
+          <li>누수·줄눈 크랙 1년 내 무상 점검</li></div>
+        <div class="foot"><b>백운테크</b><span>010-1234-5678</span></div>
+        <div class="wm">made with 에인연 · ainyeon.com</div>
+      </div></div>
+    </div>
+  </div>
+
+  <h2>T2 — 전·중·후 비교</h2>
+  <p class="sub">레퍼런스 계열: Canva before/after 템플릿 · 리모델링 IG 릴스 커버 · 디테일링 카드. 목업은 정방형이며 세로형·스토리 규격에도 같은 문법 적용.</p>
+  <div class="grid">
+    <div class="tile">
+      <h3>A. 클린 스플릿 <span class="pick">추천</span></h3>
+      <p class="why">사진이 주인공 — 흰 디바이더(2px)로 분할, 라벨칩은 상단 코너 최소 크기. 하단 잉크 브랜드바(상호+연락처)로 무게 안정. 현재 v1 문법의 정제판이라 연속성 있음.</p>
+      <p class="refs">근거: <a href="https://www.canva.com/templates/s/before-and-after/">Canva before/after</a> · <a href="https://www.instagram.com/beforeafter_ideas/?hl=en">@beforeafter_ideas</a></p>
+      <div class="mock"><div class="m2">
+        <div class="ph">
+          <div class="p"><span class="lb">시공 전</span></div>
+          <div class="p mid"><span class="lb">시공 중</span></div>
+          <div class="p after"><span class="lb">시공 후</span></div>
+        </div>
+        <div class="brand"><b>백운테크</b><span>010-1234-5678</span><div class="wm2">made with 에인연 · ainyeon.com</div></div>
+      </div></div>
+    </div>
+
+    <div class="tile">
+      <h3>B. 센터 라벨 + 화이트 바</h3>
+      <p class="why">라벨을 사진 하단 중앙에 크게 — 릴스 커버에서 잘 읽히는 문법. 브랜드바는 화이트(밝은 피드에 자연스럽게 섞임). 사진 대비가 약하면 라벨 겹침 리스크.</p>
+      <p class="refs">근거: 리모델링 IG 릴스 커버 관행 (<a href="https://www.instagram.com/reel/DMPsUnoRzFg/">split-level reveal</a>)</p>
+      <div class="mock"><div class="m2 divider">
+        <div class="ph">
+          <div class="p"><span class="lb">시공 전</span></div>
+          <div class="p after"><span class="lb">시공 후</span></div>
+        </div>
+        <div class="brand"><b>백운테크</b><span>010-1234-5678</span></div>
+      </div></div>
+    </div>
+
+    <div class="tile">
+      <h3>C. 갤러리 프레임</h3>
+      <p class="why">흰 여백 프레임 + 라운드 사진 — "포트폴리오" 느낌. 고급스러우나 사진 면적 손해(모바일 피드에서 임팩트 감소).</p>
+      <p class="refs">근거: <a href="https://www.pinterest.com/ideas/before-and-after-layout-design/934476640001/">Pinterest before/after 레이아웃</a></p>
+      <div class="mock"><div class="m2 frame">
+        <div class="ph">
+          <div class="p"><span class="lb">시공 전</span></div>
+          <div class="p after"><span class="lb">시공 후</span></div>
+        </div>
+        <div class="brand"><b>백운테크</b><span>010-1234-5678</span></div>
+      </div></div>
+    </div>
+  </div>
+
+  <h2>적용할 디자인 토큰 (승인 시 캔버스 렌더에 그대로 이식)</h2>
+  <table>
+    <tr><th>스타일 프리셋</th><td>① 미니멀 화이트 (T1-A/T2-A 기본) · ② 다크 프리미엄 (T1-C) — 토글, 대표색은 두 프리셋 모두 액센트로만 사용</td></tr>
+    <tr><th>타이포 위계</th><td>제목 <code>800 / -0.04em / lh 1.22</code> → 라벨칩 <code>800 / 12.6em 상당 소형 + 색면</code> → 본문 <code>500 / lh 1.75</code> → 캡션 <code>500 / mute</code></td></tr>
+    <tr><th>색</th><td>지면 <code>#FBFBFC</code>(화이트) / <code>#141519</code>(다크) · 잉크 <code>#0F1013</code> · 칩 3색 = 관리 <code>#2F63C7</code>·주의 <code>#B4551E</code>·A/S <code>#12766C</code> (10% 틴트 배경)</td></tr>
+    <tr><th>간격 스케일</th><td>1080px 기준 여백 <code>96</code> · 섹션 간 <code>72</code> · 칩→본문 <code>28</code> · 리스트 행간 <code>1.75</code></td></tr>
+    <tr><th>라운드·그림자</th><td>카드 내부 요소 <code>r=18~24</code> · 푸터 박스 <code>r=20</code> · 그림자는 산출물엔 사용 안 함(인쇄·압축 대비), 화면 UI에만</td></tr>
+    <tr><th>대표색 규칙</th><td>액센트 바·소제목 언더라인·푸터 그라디언트에만. 본문 텍스트에는 절대 사용 안 함(가독성). 어두운 대표색 → 텍스트 자동 반전 유지</td></tr>
+    <tr><th>워터마크</th><td><code>500 / 24px / #B9BDC4</code> 하단 중앙 — 현행 절제 톤 유지</td></tr>
+  </table>
+
+  <div class="verdict">
+    제안: <b>T1-A(클리닉 미니멀) + T2-A(클린 스플릿)</b>를 기본으로, <b>T1-C 다크 프리미엄</b>을 스타일 토글 2안으로.
+    B안들은 각각의 장점(에디토리얼 절제·릴스 라벨)이 있지만 현장 시인성(야외·중장년 고객)과 사진 임팩트에서 A가 우세합니다.
+    다른 편성 원하시면 조합만 말해 주세요 — 골격이 같아 어느 조합이든 반영 가능합니다.
+  </div>
+</div>
+</body>
+</html>
