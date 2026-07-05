@@ -1,0 +1,13 @@
+{
+  "_guide": "출력 규격 라이브러리. tools 배열이 노출 대상(notice=T1 안내문, compare=T2 비교). 규격 추가 = 블록 한 줄.",
+  "formats": [
+    { "id": "kakao",     "label": "카톡 세로",        "W": 1080, "H": 1527, "tools": ["notice"] },
+    { "id": "square",    "label": "인스타 정방형",     "W": 1080, "H": 1080, "tools": ["notice", "compare"] },
+    { "id": "portrait",  "label": "인스타 세로",       "W": 1080, "H": 1350, "tools": ["compare"] },
+    { "id": "story",     "label": "스토리·릴스",       "W": 1080, "H": 1920, "tools": ["notice", "compare"] },
+    { "id": "facebook",  "label": "페이스북·링크",     "W": 1200, "H": 630,  "tools": ["compare"] },
+    { "id": "band",      "label": "밴드·카페 썸네일",  "W": 1200, "H": 900,  "tools": ["compare"] },
+    { "id": "a4",        "label": "A4 인쇄",          "W": 2480, "H": 3508, "tools": ["notice"] },
+    { "id": "a4-land",   "label": "A4 가로",          "W": 3508, "H": 2480, "tools": ["compare"] }
+  ]
+}
