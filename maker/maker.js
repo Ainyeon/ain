@@ -346,6 +346,29 @@
     active === 'T1' ? renderT1() : renderT2();
     return new Promise((res) => cv.toBlob(res, 'image/png'));
   }
+  // 사용 카운터 (site_stats.maker_uses — 09 SQL 미실행이면 조용히 생략)
+  async function loadUseCount() {
+    try {
+      const { data } = await ainAuth.getClient().from('site_stats').select('value').eq('key', 'maker_uses').maybeSingle();
+      if (data && data.value != null) {
+        const el = $('makerCount');
+        el.textContent = '지금까지 ' + Number(data.value).toLocaleString('ko-KR') + '명이 템플릿을 만들어 갔어요';
+        el.hidden = false;
+      }
+    } catch (e) {}
+  }
+  function bumpUseCount() {
+    try {
+      ainAuth.getClient().rpc('bump_stat', { p_key: 'maker_uses' }).then(({ data }) => {
+        if (data != null) {
+          const el = $('makerCount');
+          el.textContent = '지금까지 ' + Number(data).toLocaleString('ko-KR') + '명이 템플릿을 만들어 갔어요';
+          el.hidden = false;
+        }
+      }, () => {});
+    } catch (e) {}
+  }
+
   async function doDownload() {
     const blob = await exportBlob();
     const a = document.createElement('a');
@@ -354,12 +377,13 @@
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     toast('PNG 저장 완료');
+    bumpUseCount();
   }
   async function doShare() {
     const blob = await exportBlob();
     const file = new File([blob], fileName(), { type: 'image/png' });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file] }); return; }
+      try { await navigator.share({ files: [file] }); bumpUseCount(); return; }
       catch (e) { if (e.name === 'AbortError') return; }
     }
     await doDownload();
@@ -430,6 +454,7 @@
     $('btnAccount').addEventListener('click', () => toast('로그인 저장은 곧 제공됩니다'));
 
     syncUI();
+    loadUseCount();
   }
 
   document.readyState === 'loading'

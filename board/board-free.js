@@ -27,11 +27,18 @@
 
   async function renderList(me) {
     const { data, error } = await db().from('posts')
-      .select('id,title,created_at,author:profiles(' + C().authorSelect() + '),comments(count)')
+      .select('id,title,created_at,view_count,author:profiles(' + C().authorSelect() + '),comments(count)')
       .eq('board_type', 'free')
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) { gate('게시판 준비 중입니다. 잠시 후 다시 확인해 주세요.'); console.warn(error); return; }
+    // 공감 수 집계
+    const ids = (data || []).map((p) => p.id);
+    let likeMap = {};
+    if (ids.length) {
+      const { data: likes } = await db().from('votes').select('post_id').in('post_id', ids).eq('vote', 'up');
+      (likes || []).forEach((v) => { likeMap[v.post_id] = (likeMap[v.post_id] || 0) + 1; });
+    }
 
     const writeBlock =
       '<button type="button" class="write-btn" id="writeOpen">글쓰기</button>'
@@ -44,7 +51,7 @@
     const list = data.length ? data.map((p) =>
       '<a class="board-card' + (C().isStaff(p.author) ? ' staff-accent' : '') + '" href="?id=' + p.id + '"><h2>' + escT(p.title) + '</h2>'
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadge(p.author) + '</span>'
-      + '<span><span class="cmt-count">댓글 ' + ((p.comments && p.comments[0] && p.comments[0].count) || 0) + '</span>'
+      + '<span><span class="cmt-count">공감 ' + (likeMap[p.id] || 0) + ' · 댓글 ' + ((p.comments && p.comments[0] && p.comments[0].count) || 0) + ' · 조회 ' + (p.view_count || 0) + '</span>'
       + ' · <time>' + C().timeAgo(p.created_at) + '</time></span></div></a>').join('')
       : '<p class="empty-note">첫 글의 주인공이 되어 주세요.</p>';
 
@@ -70,11 +77,18 @@
   }
 
   async function renderDetail(me, id) {
-    const [{ data: post, error }, { data: cmts }] = await Promise.all([
-      db().from('posts').select('id,title,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('id', id).maybeSingle(),
-      db().from('comments').select('id,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('post_id', id).order('created_at')
+    const [{ data: post, error }, { data: cmts }, { data: likes }] = await Promise.all([
+      db().from('posts').select('id,title,body,created_at,view_count,author_id,author:profiles(' + C().authorSelect() + ')').eq('id', id).maybeSingle(),
+      db().from('comments').select('id,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('post_id', id).order('created_at'),
+      db().from('votes').select('user_id').eq('post_id', id).eq('vote', 'up')
     ]);
     if (error || !post) { gate('글을 찾을 수 없습니다. <br><br><a class="back-link" href="./">← 목록으로</a>'); return; }
+    if (!sessionStorage.getItem('viewed_f' + id)) {
+      sessionStorage.setItem('viewed_f' + id, '1');
+      db().rpc('increment_post_view', { p_post_id: Number(id) }).then(() => {}, () => {});
+    }
+    const likeCount = (likes || []).length;
+    const iLiked = (likes || []).some((v) => v.user_id === me.user.id);
 
     const mine = post.author_id === me.user.id;
     const cmtHtml = (cmts || []).map((c) =>
@@ -91,8 +105,9 @@
       '<a class="back-link" href="./">← 목록으로</a>'
       + '<article class="board-card"><h2 style="font-size:19px">' + escT(post.title) + '</h2>'
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadge(post.author) + '</span>'
-      + '<time style="color:var(--txt3);font-size:12px">' + C().timeAgo(post.created_at) + '</time></div>'
+      + '<span><span class="view-count">조회 ' + ((post.view_count || 0) + 1) + '</span> <time style="color:var(--txt3);font-size:12px">' + C().timeAgo(post.created_at) + '</time></span></div>'
       + '<div class="post-body">' + escT(post.body) + '</div>'
+      + '<div class="vote-row"><button type="button" class="like-btn' + (iLiked ? ' on' : '') + '" id="likeBtn">❤️ 공감 ' + likeCount + '</button></div>'
       + '<div class="post-tools">'
       + (mine ? '<button type="button" class="tool-link" id="delPost">글 삭제</button>'
               : '<button type="button" class="tool-link" id="repPost">신고</button>')
@@ -103,6 +118,13 @@
       + '<input type="text" id="cmtBody" placeholder="댓글 남기기" maxlength="2000" required aria-label="댓글 입력">'
       + '<button type="submit">등록</button></form></section>';
 
+    document.getElementById('likeBtn').addEventListener('click', async () => {
+      const { error: e1 } = iLiked
+        ? await db().from('votes').delete().eq('post_id', id).eq('user_id', me.user.id)
+        : await db().from('votes').upsert({ post_id: Number(id), user_id: me.user.id, vote: 'up' }, { onConflict: 'post_id,user_id' });
+      if (e1) { alert('처리 실패: ' + e1.message); return; }
+      location.reload();
+    });
     const del = document.getElementById('delPost');
     if (del) del.addEventListener('click', async () => {
       if (!confirm('글을 삭제할까요?')) return;

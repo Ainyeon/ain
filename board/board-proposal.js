@@ -4,6 +4,7 @@
   // 채택 이중조건 — 회원 규모에 따라 조정 (규칙 배너에도 이 값이 찍힘)
   const THRESHOLD_COUNT = 20;   // 찬성 최소 인원
   const THRESHOLD_RATE = 0.7;   // 찬성률
+  const DELETE_LOCK_VOTES = 5;  // 이 수 이상 투표가 모인 제안은 작성자 삭제 불가 (sql/09 정책과 쌍)
 
   const STATUS_LABELS = { open: '투표중', adopted: '채택됨', building: '개발중', shipped: '반영완료' };
   const panel = document.getElementById('panel');
@@ -82,7 +83,7 @@
   async function fetchAll() {
     const [{ data: posts, error }, { data: votes }] = await Promise.all([
       db().from('posts')
-        .select('id,title,body,status,created_at,author_id,author:profiles(' + C().authorSelect() + ')')
+        .select('id,title,body,status,created_at,view_count,author_id,author:profiles(' + C().authorSelect() + ')')
         .eq('board_type', 'proposal').limit(100),
       db().from('votes').select('post_id,user_id,vote')
     ]);
@@ -116,7 +117,7 @@
       return '<article class="board-card' + (reached(tv) && p.status === 'open' ? ' reach-highlight' : '') + (C().isStaff(p.author) ? ' staff-accent' : '') + '">'
         + '<a href="?id=' + p.id + '"><h2>' + escT(p.title) + '</h2></a>'
         + '<div class="card-meta-line"><span class="author-line">' + C().authorBadge(p.author) + '</span>'
-        + '<span class="status-badge status-' + escT(p.status) + '">' + (STATUS_LABELS[p.status] || p.status) + '</span></div>'
+        + '<span><span class="view-count">조회 ' + (p.view_count || 0) + '</span> <span class="status-badge status-' + escT(p.status) + '">' + (STATUS_LABELS[p.status] || p.status) + '</span></span></div>'
         + voteRowHtml(p.id, tv) + '</article>';
     }).join('') : '<p class="empty-note">첫 제안을 올려 주세요 — 필요한 기능이 있다면 지금이 기회입니다.</p>';
 
@@ -146,11 +147,16 @@
 
   async function renderDetail(me, id) {
     const [{ data: post, error }, { data: votes }, { data: cmts }] = await Promise.all([
-      db().from('posts').select('id,title,body,status,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('id', id).maybeSingle(),
+      db().from('posts').select('id,title,body,status,created_at,view_count,author_id,author:profiles(' + C().authorSelect() + ')').eq('id', id).maybeSingle(),
       db().from('votes').select('post_id,user_id,vote').eq('post_id', id),
       db().from('comments').select('id,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('post_id', id).order('created_at')
     ]);
     if (error || !post) { gate('글을 찾을 수 없습니다. <br><br><a class="back-link" href="./">← 목록으로</a>'); return; }
+    // 조회수: 세션당 1회 증가 (RPC 미생성이어도 무시)
+    if (!sessionStorage.getItem('viewed_p' + id)) {
+      sessionStorage.setItem('viewed_p' + id, '1');
+      db().rpc('increment_post_view', { p_post_id: Number(id) }).then(() => {}, () => {});
+    }
     const tv = tally(votes, me.user.id)[post.id] || { up: 0, down: 0, mine: null };
     const mine = post.author_id === me.user.id;
 
@@ -164,14 +170,17 @@
       + '<article class="board-card' + (reached(tv) && post.status === 'open' ? ' reach-highlight' : '') + '">'
       + '<div class="card-meta-line" style="margin:0 0 8px"><span class="status-badge status-' + escT(post.status) + '">'
       + (STATUS_LABELS[post.status] || post.status) + '</span>'
-      + '<time style="color:var(--txt3);font-size:12px">' + C().timeAgo(post.created_at) + '</time></div>'
+      + '<span><span class="view-count">조회 ' + ((post.view_count || 0) + 1) + '</span> <time style="color:var(--txt3);font-size:12px">' + C().timeAgo(post.created_at) + '</time></span></div>'
       + '<h2 style="font-size:19px">' + escT(post.title) + '</h2>'
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadge(post.author) + '</span></div>'
       + '<div class="post-body">' + escT(post.body) + '</div>'
       + voteRowHtml(post.id, tv)
       + '<div class="post-tools">'
-      + (mine ? '<button type="button" class="tool-link" id="delPost">글 삭제</button>'
-              : '<button type="button" class="tool-link" id="repPost">신고</button>')
+      + (mine
+        ? ((tv.up + tv.down) >= DELETE_LOCK_VOTES
+          ? '<span class="del-locked">투표 ' + DELETE_LOCK_VOTES + '명 이상 모인 제안은 삭제할 수 없습니다 (기록 보존)</span>'
+          : '<button type="button" class="tool-link" id="delPost">글 삭제</button>')
+        : '<button type="button" class="tool-link" id="repPost">신고</button>')
       + '</div></article>'
       + '<section class="board-card"><b style="font-size:14px">의견 ' + (cmts || []).length + '</b>'
       + cmtHtml
