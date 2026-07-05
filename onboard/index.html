@@ -82,6 +82,7 @@
       }
 
       const opts = Object.entries(ainCommunity.FIELD_LABELS)
+        .filter(([id]) => !(ainCommunity.FIELD_LEGACY || []).includes(id))
         .map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
       body.innerHTML = `
         <form class="ob-card" id="obForm">
