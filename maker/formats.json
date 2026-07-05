@@ -1,13 +1,19 @@
 {
-  "_guide": "출력 규격 라이브러리. tools 배열이 노출 대상(notice=T1 안내문, compare=T2 비교). 규격 추가 = 블록 한 줄.",
+  "_guide": "출력 규격 라이브러리 (v3: 두 도구 공통 12종 + 직접 입력). group이 드롭다운 그룹핑. 규격 추가 = 블록 한 줄.",
+  "groups": { "sns": "SNS", "kakao": "카톡·밴드", "print": "인쇄", "etc": "기타" },
   "formats": [
-    { "id": "kakao",     "label": "카톡 세로",        "W": 1080, "H": 1527, "tools": ["notice"] },
-    { "id": "square",    "label": "인스타 정방형",     "W": 1080, "H": 1080, "tools": ["notice", "compare"] },
-    { "id": "portrait",  "label": "인스타 세로",       "W": 1080, "H": 1350, "tools": ["compare"] },
-    { "id": "story",     "label": "스토리·릴스",       "W": 1080, "H": 1920, "tools": ["notice", "compare"] },
-    { "id": "facebook",  "label": "페이스북·링크",     "W": 1200, "H": 630,  "tools": ["compare"] },
-    { "id": "band",      "label": "밴드·카페 썸네일",  "W": 1200, "H": 900,  "tools": ["compare"] },
-    { "id": "a4",        "label": "A4 인쇄",          "W": 2480, "H": 3508, "tools": ["notice"] },
-    { "id": "a4-land",   "label": "A4 가로",          "W": 3508, "H": 2480, "tools": ["compare"] }
-  ]
+    { "id": "square",   "label": "인스타 정사각",   "W": 1080, "H": 1080, "group": "sns" },
+    { "id": "portrait", "label": "인스타 세로",     "W": 1080, "H": 1350, "group": "sns" },
+    { "id": "story",    "label": "스토리·릴스",     "W": 1080, "H": 1920, "group": "sns" },
+    { "id": "danggn",   "label": "당근 피드",       "W": 1080, "H": 1080, "group": "sns" },
+    { "id": "kakao",    "label": "카톡 세로",       "W": 1080, "H": 1527, "group": "kakao" },
+    { "id": "facebook", "label": "카톡 가로",       "W": 1200, "H": 630,  "group": "kakao" },
+    { "id": "band",     "label": "밴드·카페 대표",  "W": 1200, "H": 800,  "group": "kakao" },
+    { "id": "a4",       "label": "A4 세로",         "W": 2480, "H": 3508, "group": "print" },
+    { "id": "a4-land",  "label": "A4 가로",         "W": 3508, "H": 2480, "group": "print" },
+    { "id": "youtube",  "label": "유튜브 썸네일",   "W": 1280, "H": 720,  "group": "etc" },
+    { "id": "card",     "label": "명함 가로",       "W": 1063, "H": 591,  "group": "etc" },
+    { "id": "big",      "label": "정사각 대형",     "W": 2000, "H": 2000, "group": "etc" }
+  ],
+  "custom": { "min": 400, "max": 4000 }
 }

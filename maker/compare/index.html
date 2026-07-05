@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>전·중·후 비교 카드 | 에인연</title>
-  <meta name="description" content="시공 전·중·후 사진으로 만드는 비교 카드. 당근·인스타·릴스 규격, 사진은 기기 밖으로 나가지 않습니다.">
+  <title>홍보 카드 만들기 | 에인연</title>
+  <meta name="description" content="당근·인스타에 올리는 홍보 카드를 만듭니다. 전후 비교, 3분할, 사진+문구, 문구 배너 — 사진은 기기 밖으로 나가지 않습니다.">
   <link rel="canonical" href="https://ainyeon.com/maker/compare/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="전·중·후 비교 카드 | 에인연">
-  <meta property="og:description" content="사진 2~3장이면 홍보 카드 완성 — 서버 전송 없음.">
+  <meta property="og:title" content="홍보 카드 만들기 | 에인연">
+  <meta property="og:description" content="사진 한두 장이면 홍보 카드 완성 — 서버 전송 없음.">
   <meta property="og:url" content="https://ainyeon.com/maker/compare/">
   <meta property="og:image" content="https://ainyeon.com/assets/og.png">
   <meta name="theme-color" content="#F7F7F8">
@@ -27,10 +27,10 @@
 <body>
   <nav class="nav" id="nav">
     <a class="brand" href="/"><span class="brand-mark"></span>A.IN</a>
-    <a class="menu-pill" href="/maker/"><span class="plus">←</span>메이커 허브</a>
+    <a class="menu-pill" href="/maker/"><span class="plus">←</span>메이커</a>
     <div class="nav-tags">
       <a href="/maker/notice/">고객 안내문</a>
-      <a href="/maker/compare/">전·중·후 비교</a>
+      <a href="/maker/compare/">홍보 카드</a>
     </div>
     <div class="nav-right">
       <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
@@ -38,34 +38,57 @@
   </nav>
   <main class="wrap">
     <header class="page-head">
-      <div class="sec-label">Template Maker · 전·중·후 비교</div>
-      <h1 class="page-title">시공 전·중·후 비교 카드</h1>
-      <p class="page-sub">사진 2장이면 좌우 비교, '시공 중'까지 넣으면 3분할로 자동 전환. 사진은 기기 안에서만 처리됩니다.</p>
+      <div class="sec-label">Maker · 홍보 카드</div>
+      <h1 class="page-title">홍보 카드</h1>
+      <p class="page-sub">모양을 고르고 사진과 문구만 넣으면 완성. 사진은 기기 안에서만 처리됩니다.</p>
     </header>
 
     <div class="maker-grid">
       <div class="form-col">
         <form class="form-card" autocomplete="off" onsubmit="return false">
           <div class="field">
-            <label>시공 전·중·후 사진 ('시공 중'은 선택)</label>
-            <div class="photo-row">
+            <label>카드 모양</label>
+            <div class="lp-grid" id="layoutPick" role="group" aria-label="카드 모양 선택"></div>
+          </div>
+          <div class="field" id="photoField">
+            <label>사진</label>
+            <div class="photo-row" id="photoRow">
               <div class="photo-drop" id="dropBefore">
-                <span class="tag">시공 전</span>
-                <span id="beforeHint">시공 전<br>탭해서 선택</span>
-                <input type="file" id="fileBefore" accept="image/*" aria-label="시공 전 사진">
+                <span class="tag" id="tagBefore">시공 전</span>
+                <span id="beforeHint">탭해서<br>사진 선택</span>
+                <input type="file" id="fileBefore" accept="image/*" aria-label="첫 번째 사진">
               </div>
               <div class="photo-drop" id="dropMid">
-                <span class="tag">시공 중</span>
-                <span id="midHint">시공 중 (선택)<br>탭해서 선택</span>
-                <input type="file" id="fileMid" accept="image/*" aria-label="시공 중 사진 (선택)">
+                <span class="tag" id="tagMid">시공 중</span>
+                <span id="midHint">탭해서<br>사진 선택</span>
+                <input type="file" id="fileMid" accept="image/*" aria-label="가운데 사진">
               </div>
               <div class="photo-drop" id="dropAfter">
-                <span class="tag">시공 후</span>
-                <span id="afterHint">시공 후<br>탭해서 선택</span>
-                <input type="file" id="fileAfter" accept="image/*" aria-label="시공 후 사진">
+                <span class="tag" id="tagAfter">시공 후</span>
+                <span id="afterHint">탭해서<br>사진 선택</span>
+                <input type="file" id="fileAfter" accept="image/*" aria-label="마지막 사진">
               </div>
             </div>
-            <p class="hint">사진은 업로드 즉시 기기 안에서 리사이즈되며 어디에도 전송되지 않습니다.</p>
+            <p class="hint">사진은 넣는 즉시 기기 안에서 줄여서 쓰며 어디에도 전송되지 않습니다.</p>
+          </div>
+          <div class="field" id="labelField">
+            <label>사진 이름표</label>
+            <div class="field-row" style="grid-template-columns:1fr 1fr 1fr">
+              <input type="text" id="lbBefore" maxlength="10" aria-label="첫 번째 이름표">
+              <input type="text" id="lbMid" maxlength="10" aria-label="가운데 이름표">
+              <input type="text" id="lbAfter" maxlength="10" aria-label="마지막 이름표">
+            </div>
+            <div class="label-presets" id="labelPresets"></div>
+          </div>
+          <div class="field" id="textField">
+            <div class="field">
+              <label for="fHead">한 줄 문구</label>
+              <input type="text" id="fHead" placeholder="믿고 맡기는 시공, 확실한 마무리" maxlength="30">
+            </div>
+            <div class="field">
+              <label for="fSub">보조 문구</label>
+              <input type="text" id="fSub" placeholder="상담·견적 언제든 환영합니다" maxlength="40">
+            </div>
           </div>
           <div class="field-row">
             <div class="field">
@@ -77,24 +100,30 @@
               <input type="tel" id="fPhone" placeholder="010-0000-0000" maxlength="20">
             </div>
           </div>
+          <div class="field" id="colorField">
+            <label>대표색 (배너·문구 배경)</label>
+            <div id="colorCtl"></div>
+          </div>
           <div class="field">
-            <label>브랜드 바 스타일</label>
-            <div class="toggle-group" id="styleToggle" role="group" aria-label="브랜드 바 스타일">
-              <button type="button" data-style="ink" class="on">잉크 (기본)</button>
-              <button type="button" data-style="white">화이트</button>
+            <label>아래 상호 띠 색</label>
+            <div class="toggle-group" id="barToggle" role="group" aria-label="아래 상호 띠 색">
+              <button type="button" data-bar="ink" class="on">검정 띠</button>
+              <button type="button" data-bar="white">흰색 띠</button>
             </div>
           </div>
           <div class="field">
-            <label>출력 규격</label>
-            <div class="toggle-group" id="fmtToggle" role="group" aria-label="출력 규격"></div>
+            <label>크기</label>
+            <div id="fmtCtl"></div>
           </div>
         </form>
       </div>
 
       <div class="preview-col">
         <div class="preview-card">
-          <div class="preview-label"><span>미리보기 — 입력 즉시 반영</span><span id="previewSize"></span></div>
-          <canvas id="cv" width="1080" height="1080" role="img" aria-label="비교 카드 미리보기"></canvas>
+          <div class="preview-label"><span>미리보기</span><span id="previewSize"></span></div>
+          <canvas id="cv" width="1080" height="1080" role="img" aria-label="홍보 카드 미리보기"></canvas>
+          <p class="preview-tip">미리보기의 글자를 누르면 크기를 바꿀 수 있어요.</p>
+          <div id="adjustPanel"></div>
         </div>
       </div>
     </div>
@@ -102,7 +131,7 @@
 
   <div class="action-bar">
     <button type="button" id="btnShare">공유 (카톡)</button>
-    <button type="button" id="btnSave">PNG 저장</button>
+    <button type="button" id="btnSave">이미지 저장</button>
   </div>
   <div class="toast" id="toast" role="status"></div>
 </body>

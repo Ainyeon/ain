@@ -1,17 +1,23 @@
-// T1 고객 안내문 — 승인 무드보드(클리닉 미니멀 + 다크 프리미엄 토글) 캔버스 렌더
+// T1 고객 안내문 — 그라데이션 대표색·배경 밝기 슬라이더·크기 12종+직접 입력·탭 선택 조절
 (function () {
   'use strict';
   const M = () => window.makerCore;
   const $ = (id) => document.getElementById(id);
-  const STORE = 'maker_notice_v1';
+  const STORE = 'maker_notice_v2';
+  const STORE_V1 = 'maker_notice_v1';
 
-  let formats = [];        // 이 도구용 규격
-  let fmt = 'kakao';
-  let style = 'white';
-  let field = null;        // {id,label,custom?}
-  let sections = [];       // [{title, body}]
+  let fmtSel = { id: 'kakao', label: '카톡 세로', W: 1080, H: 1527 };
+  let gray = 0;                 // 배경 밝기 0(흰)~100(검)
+  let color = null;             // {mode,c1,c2,dir}
+  let field = null;             // {id,label,custom?} | null (무선택 = 범용 문구)
+  let sections = [];            // [{title, body}]
+  let tone = '';                // 하단 인사 문구 (업종별)
+  let adj = {};                 // 요소 조절값 {key:{size,gap,align}}
+  let selKey = null;            // 미리보기에서 선택된 요소
+  let regions = [];             // 렌더 시 기록되는 탭 영역 (논리 좌표)
   let copyData = null;
   let fieldSearchApi = null;
+  let panel = null;
 
   const cv = $('cv');
   const ctx = cv.getContext('2d');
@@ -26,17 +32,29 @@
   function saveState() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        fmt, style, field,
-        biz: $('fBiz').value, phone: $('fPhone').value, area: $('fArea').value, color: $('fColor').value,
-        sections
+        fmtSel, gray, color, field, tone, adj, sections,
+        biz: $('fBiz').value, phone: $('fPhone').value, area: $('fArea').value
       }));
     } catch (e) {}
   }
   function loadState() {
-    try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; }
+    try {
+      const v2 = JSON.parse(localStorage.getItem(STORE) || 'null');
+      if (v2) return v2;
+      const v1 = JSON.parse(localStorage.getItem(STORE_V1) || 'null');
+      if (!v1) return null;
+      // v2(구버전) 상태 이관: 다크 토글→배경 100, 단색 대표색 유지
+      return {
+        fmtSel: null, gray: v1.style === 'dark' ? 100 : 0,
+        color: v1.color ? { mode: 'solid', c1: v1.color, c2: '#8E2F56', dir: 'd' } : null,
+        field: v1.field || null, sections: v1.sections || [],
+        biz: v1.biz, phone: v1.phone, area: v1.area
+      };
+    } catch (e) { return null; }
   }
 
-  // ── 섹션 편집기 (제목 인라인 수정·추가·삭제·순서 이동 → 전부 실시간 반영)
+  // ── 섹션 편집기
+  function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
   function renderSectionEditor() {
     const root = $('sections');
     root.innerHTML = '';
@@ -45,12 +63,12 @@
       card.className = 'sec-card';
       card.innerHTML =
         '<div class="sec-head-row">'
-        + '<input type="text" value="' + escT(sec.title) + '" maxlength="12" aria-label="섹션 제목">'
-        + '<button type="button" class="sec-btn" data-up aria-label="위로"' + (i === 0 ? ' disabled' : '') + '>↑</button>'
-        + '<button type="button" class="sec-btn" data-down aria-label="아래로"' + (i === sections.length - 1 ? ' disabled' : '') + '>↓</button>'
-        + '<button type="button" class="sec-btn del" data-del aria-label="섹션 삭제">✕</button>'
+        + '<input type="text" value="' + esc(sec.title) + '" maxlength="12" aria-label="내용 제목">'
+        + '<button type="button" class="sec-btn" data-up' + (i === 0 ? ' disabled' : '') + '>위로</button>'
+        + '<button type="button" class="sec-btn" data-down' + (i === sections.length - 1 ? ' disabled' : '') + '>아래로</button>'
+        + '<button type="button" class="sec-btn del" data-del>삭제</button>'
         + '</div>'
-        + '<textarea placeholder="한 줄에 한 항목씩 입력" aria-label="섹션 내용"></textarea>';
+        + '<textarea placeholder="한 줄에 한 항목씩 입력" aria-label="내용"></textarea>';
       card.querySelector('textarea').value = sec.body;
       card.querySelector('input').addEventListener('input', (e) => { sec.title = e.target.value; render(); });
       card.querySelector('textarea').addEventListener('input', (e) => { sec.body = e.target.value; render(); });
@@ -63,7 +81,7 @@
         renderSectionEditor(); render();
       });
       card.querySelector('[data-del]').addEventListener('click', () => {
-        if (sections.length <= 1) { toast('섹션은 1개 이상 필요합니다'); return; }
+        if (sections.length <= 1) { toast('내용 칸은 1개 이상 필요합니다'); return; }
         sections.splice(i, 1);
         renderSectionEditor(); render();
       });
@@ -72,220 +90,276 @@
   }
 
   function fillFromCopy(fieldId) {
-    const c = copyData.copy[fieldId];
-    const src = c || { sections: copyData.default_sections.map((t) => ({ title: t, lines: [] })) };
-    sections = src.sections.map((s) => ({ title: s.title, body: (s.lines || []).join('\n') }));
+    const c = copyData.copy[fieldId] || copyData.copy.generic;
+    tone = c.tone || '';
+    sections = c.sections.map((s) => ({ title: s.title, body: (s.lines || []).join('\n') }));
     renderSectionEditor();
   }
 
-  function isDirty() {
-    // 현재 섹션이 마지막 자동 채움과 다른가 (업종 전환 시 덮어쓰기 확인용)
-    return sections.some((s) => s.body.trim() && !Object.values(copyData.copy).some((c) =>
-      c.sections.some((cs) => (cs.lines || []).join('\n') === s.body)));
-  }
-
-  // ── 캔버스 렌더 (논리폭 1080 → 규격 스케일)
-  function renderCanvas() {
-    const F = formats.find((f) => f.id === fmt) || formats[0];
+  // ── 캔버스 렌더 (논리폭 1080 → 규격 스케일, forExport=선택 테두리 생략)
+  function renderCanvas(forExport) {
+    const F = fmtSel;
     cv.width = F.W; cv.height = F.H;
     $('previewSize').textContent = F.W + '×' + F.H;
     const S = F.W / 1080;
     const LH = Math.round(F.H / S);
     ctx.setTransform(S, 0, 0, S, 0, 0);
 
-    const T = M().TOKENS;
-    const st = T.styles[style];
-    const u = M().makeCtxUtils(ctx);
-    const FONT = M().FONT;
-    const color = $('fColor').value;
+    const C = M();
+    const T = C.TOKENS;
+    const st = C.grayStyle(gray);
+    const u = C.makeCtxUtils(ctx);
+    const FONT = C.FONT;
     const biz = $('fBiz').value.trim() || '에어컨 인테리어 연구소';
     const phone = $('fPhone').value.trim() || '010-0000-0000';
     const area = $('fArea').value.trim();
-    const fieldLabel = field ? field.label : '업종 선택';
     const MG = T.margin;
+    const tight = LH <= 760;
     const compact = LH <= 1200;
+    regions = [];
+
+    const A = (k) => adj[k];
+    const drawText = (txt, x, y, align) => {
+      if (align === 'center') { ctx.textAlign = 'center'; ctx.fillText(txt, 540, y); ctx.textAlign = 'left'; }
+      else ctx.fillText(txt, x, y);
+    };
 
     // 지면
     ctx.fillStyle = st.page;
     ctx.fillRect(0, 0, 1080, LH);
 
-    // 좌측 대표색 액센트 바
-    const grad = ctx.createLinearGradient(0, 0, 0, LH);
-    grad.addColorStop(0, color);
-    grad.addColorStop(1, M().darken(color, 0.72));
-    ctx.fillStyle = grad;
+    // 좌측 대표색 액센트 바 (세로 흐름 고정)
+    const bar = ctx.createLinearGradient(0, 0, 0, LH);
+    if (color.mode === 'grad') { bar.addColorStop(0, color.c1); bar.addColorStop(1, color.c2); }
+    else { bar.addColorStop(0, color.c1); bar.addColorStop(1, C.darken(color.c1, 0.72)); }
+    ctx.fillStyle = bar;
     ctx.fillRect(0, 0, 18, LH);
 
-    // 키커 (업종 · 지역)
-    let y = compact ? 96 : 130;
-    ctx.fillStyle = st.mute;
-    ctx.font = `700 27px ${FONT}`;
-    ctx.fillText((fieldLabel + (area ? '  ·  ' + area : '')).toUpperCase(), MG, y);
+    // 키커 (업종)
+    let y = tight ? 76 : compact ? 96 : 130;
+    if (field) {
+      ctx.fillStyle = st.mute;
+      ctx.font = `700 27px ${FONT}`;
+      ctx.fillText(field.label, MG, y);
+      y += tight ? 44 : 54;
+    } else {
+      y += tight ? 0 : 10;
+    }
 
-    // 제목
-    y += compact ? 54 : 64;
+    // 문서 제목
+    const aT = A('title');
+    const titleSize = C.adjSize(tight ? 46 : compact ? 56 : 64, aT);
+    y = y + C.adjGap(0, aT) + (compact ? 0 : 10);
     ctx.fillStyle = st.ink;
-    const titleSize = compact ? 56 : 64;
     ctx.font = `800 ${titleSize}px ${FONT}`;
-    const title = (field && field.custom ? fieldLabel + ' ' : '') + '시공 후 관리 안내';
-    u.wrap(field && !field.custom ? fieldLabel + ' 시공 후 안내' : title, 1080 - MG * 2, ctx.font)
-      .slice(0, 2).forEach((ln) => { ctx.fillText(ln, MG, y); y += titleSize * 1.22; });
+    const title = field ? (field.custom ? field.label + ' 안내' : field.label + ' 관리 안내') : '고객 안내 말씀';
+    const tTop = y - titleSize * 0.2;
+    u.wrap(title, 1080 - MG * 2, ctx.font).slice(0, 2).forEach((ln) => {
+      drawText(ln, MG, y + titleSize * 0.82, aT && aT.align);
+      y += titleSize * 1.22;
+    });
+    y += titleSize * 0.1;
+    regions.push({ key: 'title', label: '문서 제목', x: MG, y: tTop, w: 1080 - MG * 2, h: y - tTop, align: true });
+
+    // 상호·연락처·지역 줄
+    const aS = A('subline');
+    const subSize = C.adjSize(27, aS);
+    y += C.adjGap(tight ? 10 : 18, aS);
+    ctx.fillStyle = st.mute;
+    ctx.font = `600 ${subSize}px ${FONT}`;
+    const subTxt = [biz, phone, area].filter(Boolean).join('  ·  ');
+    drawText(subTxt, MG, y + subSize, aS && aS.align);
+    regions.push({ key: 'subline', label: '상호·연락처 줄', x: MG, y, w: 1080 - MG * 2, h: subSize * 1.5, align: true });
+    y += subSize * 1.5;
 
     // 헤어라인
-    y += compact ? 6 : 14;
+    y += tight ? 18 : 26;
     ctx.fillStyle = st.rule;
     ctx.fillRect(MG, y, 1080 - MG * 2, 2);
-    y += compact ? 44 : 60;
+    y += tight ? 34 : compact ? 44 : 60;
 
-    // 섹션들 (칩 + 본문)
-    const bodySize = compact ? 28 : 31;
-    const chipSize = compact ? 22 : 24;
-    const maxLines = compact ? 2 : 4;
-    for (const sec of sections) {
-      if (y > LH - 300) break; // 푸터 공간 보호
-      const chip = T.chips[sections.indexOf(sec) % T.chips.length];
-      // 라벨칩
+    // 푸터 위치 먼저 계산 (본문 공간 보호)
+    const aF = A('footer');
+    const FH = tight ? 118 : 150;
+    const footBase = tight ? 58 : compact ? 64 : 84;
+    const FY = LH - FH - C.adjGap(footBase, aF);
+
+    // 내용 섹션들 (칩 + 본문)
+    sections.forEach((sec, i) => {
+      if (y > FY - 90) return;
+      const aSec = A('sec' + i);
+      const bodySize = C.adjSize(tight ? 26 : compact ? 28 : 31, aSec);
+      const chipSize = C.adjSize(tight ? 21 : compact ? 22 : 24, aSec);
+      const maxLines = tight ? 1 : compact ? 2 : 4;
+      const secTop = y - chipSize - 8;
+      y += C.adjGap(0, aSec);
+      const chip = T.chips[i % T.chips.length];
       ctx.font = `800 ${chipSize}px ${FONT}`;
       const tw = ctx.measureText(sec.title).width;
-      ctx.fillStyle = style === 'dark' ? chip.bg.replace('.10', '.18').replace('.14', '.2').replace('.12', '.18').replace('.15', '.2') : chip.bg;
+      ctx.fillStyle = st.darkText ? chip.bg
+        : chip.bg.replace('.10', '.2').replace('.14', '.22').replace('.12', '.2').replace('.15', '.22');
       u.roundRect(MG, y - chipSize - 8, tw + 36, chipSize + 20, (chipSize + 20) / 2);
       ctx.fill();
-      ctx.fillStyle = style === 'dark' ? '#EAECEF' : chip.text;
+      ctx.fillStyle = st.darkText ? chip.text : '#EAECEF';
       ctx.fillText(sec.title, MG + 18, y);
-      y += T.chipToBody + chipSize * 0.4;
+      y += C.adjGap(T.chipToBody, aSec) + chipSize * 0.4;
 
-      // 본문 (한 줄 = 한 항목)
       ctx.font = `500 ${bodySize}px ${FONT}`;
       const items = sec.body.split('\n').map((s) => s.trim()).filter(Boolean).slice(0, maxLines);
       for (const item of items) {
+        if (y > FY - 40) break;
         const lns = u.wrap(item, 1080 - MG * 2 - 44, ctx.font);
         ctx.fillStyle = st.mute;
         ctx.fillText('·', MG + 4, y);
         ctx.fillStyle = st.body;
-        lns.forEach((ln) => { ctx.fillText(ln, MG + 44, y); y += bodySize * M().TOKENS.lineHeight; });
+        lns.forEach((ln) => { ctx.fillText(ln, MG + 44, y); y += bodySize * T.lineHeight; });
         y += 4;
       }
       if (!items.length) y += bodySize;
-      y += compact ? 34 : T.sectionGap - 18;
-    }
+      regions.push({ key: 'sec' + i, label: '내용: ' + (sec.title || (i + 1) + '번째'), x: MG, y: secTop, w: 1080 - MG * 2, h: y - secTop, align: false });
+      y += tight ? 26 : compact ? 34 : T.sectionGap - 18;
+    });
 
-    // 푸터 박스
-    const FH = 150;
-    const FY = LH - FH - (compact ? 64 : 84);
+    // 하단 상호 영역
     if (st.footer === 'accent') {
-      const fg = ctx.createLinearGradient(MG, FY, 1080 - MG, FY + FH);
-      fg.addColorStop(0, color); fg.addColorStop(1, M().darken(color, 0.7));
-      ctx.fillStyle = fg;
+      ctx.fillStyle = C.accentPaint(ctx, color, MG, FY, 1080 - MG, FY + FH);
     } else {
       ctx.fillStyle = '#0F1013';
     }
-    u.roundRect(MG, FY, 1080 - MG * 2, FH, M().TOKENS.radius);
+    u.roundRect(MG, FY, 1080 - MG * 2, FH, T.radius);
     ctx.fill();
-    const footTxt = st.footer === 'accent' ? M().idealTextOn(color) : '#FFFFFF';
+    const footTxt = st.footer === 'accent' ? C.idealTextOn(color) : '#FFFFFF';
+    const bizSize = C.adjSize(38, aF);              // v3: 상호명 1단계 축소 (42→38)
+    const phoneSize = C.adjSize(34, aF);
     ctx.fillStyle = footTxt;
-    ctx.font = `800 42px ${FONT}`;
-    ctx.fillText(biz, MG + 44, FY + 66);
-    ctx.font = `700 34px ${FONT}`;
+    ctx.font = `800 ${bizSize}px ${FONT}`;
+    ctx.fillText(biz, MG + 44, FY + (tight ? 54 : 66));
+    ctx.font = `700 ${phoneSize}px ${FONT}`;
     ctx.textAlign = 'right';
-    ctx.fillText(phone, 1080 - MG - 44, FY + 66);
+    ctx.fillText(phone, 1080 - MG - 44, FY + (tight ? 54 : 66));
     ctx.textAlign = 'left';
-    ctx.globalAlpha = 0.66;
-    ctx.font = `500 24px ${FONT}`;
-    ctx.fillText('문의·예약 언제든 환영합니다', MG + 44, FY + 112);
-    ctx.globalAlpha = 1;
+    if (!tight) {
+      ctx.globalAlpha = 0.66;
+      ctx.font = `500 ${C.adjSize(24, aF)}px ${FONT}`;
+      ctx.fillText(tone || '문의 언제든 환영합니다', MG + 44, FY + 112);
+      ctx.globalAlpha = 1;
+    }
+    regions.push({ key: 'footer', label: '하단 상호 영역', x: MG, y: FY, w: 1080 - MG * 2, h: FH, align: false });
 
     // 워터마크
     ctx.fillStyle = st.wm;
     ctx.font = `500 24px ${FONT}`;
     ctx.textAlign = 'center';
-    ctx.fillText(M().TOKENS.watermark, 540, LH - 26);
+    ctx.fillText(T.watermark, 540, LH - 26);
     ctx.textAlign = 'left';
+
+    // 선택 표시 (내보내기 제외)
+    if (!forExport && selKey) {
+      const r = regions.find((x) => x.key === selKey);
+      if (r) {
+        ctx.strokeStyle = '#4F8CFF';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([12, 8]);
+        u.roundRect(r.x - 14, r.y - 10, r.w + 28, r.h + 20, 14);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  // 실시간 미리보기 — 100ms 디바운스
   let pending = null;
   function render() {
     clearTimeout(pending);
     pending = setTimeout(async () => {
       await M().ensureFonts();
-      renderCanvas();
+      renderCanvas(false);
       saveState();
     }, 100);
   }
   window.__noticeRender = render; // 테스트 훅
 
   function fileName() {
-    return ($('fBiz').value.trim() || '에인연') + '-안내문-' + fmt + '.png';
+    return ($('fBiz').value.trim() || '에인연') + '-안내문-' + fmtSel.W + 'x' + fmtSel.H + '.png';
   }
 
   // ── 초기화
   async function init() {
-    copyData = await M().loadJson('/maker/copy.json');
-    formats = await M().loadFormats('notice');
+    const C = M();
+    ctx.fillStyle = '#FBFBFC';           // 데이터 로드 전 즉시 첫 페인트
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    copyData = await C.loadJson('/maker/copy.json');
+    const fmtData = await C.loadJson('/maker/formats.json');
 
-    const s = loadState();
-    if (s) {
-      fmt = formats.some((f) => f.id === s.fmt) ? s.fmt : 'kakao';
-      style = s.style === 'dark' ? 'dark' : 'white';
-      field = s.field || null;
-      sections = Array.isArray(s.sections) && s.sections.length ? s.sections : [];
-      $('fBiz').value = s.biz || ''; $('fPhone').value = s.phone || '';
-      $('fArea').value = s.area || ''; $('fColor').value = s.color || '#4F8CFF';
-    }
-    $('fHex').value = $('fColor').value.toUpperCase();
-    if (!field) field = { id: 'ac-install', label: '에어컨 설치' }; // 첫 방문 기본 업종
-    if (!sections.length) fillFromCopy(field.id);
+    const s = loadState() || {};
+    gray = typeof s.gray === 'number' ? s.gray : 0;
+    color = s.color || Object.assign({}, C.DEFAULT_COLOR);
+    field = s.field || null;
+    tone = s.tone || '';
+    adj = s.adj || {};
+    sections = Array.isArray(s.sections) && s.sections.length ? s.sections : [];
+    if (s.biz) $('fBiz').value = s.biz;
+    if (s.phone) $('fPhone').value = s.phone;
+    if (s.area) $('fArea').value = s.area;
+    if (s.fmtSel && s.fmtSel.W) fmtSel = s.fmtSel;
+
+    if (!sections.length) fillFromCopy(field ? (field.custom ? 'generic' : field.id) : 'generic');
     else renderSectionEditor();
 
-    // 업종 검색
-    fieldSearchApi = await M().mountFieldSearch($('fieldSearch'), {
+    // 업종 검색 (v3: 디폴트 무선택 — 범용 문구로 시작)
+    fieldSearchApi = await C.mountFieldSearch($('fieldSearch'), {
       onSelect(item) {
         field = item;
         const hasContent = sections.some((x) => x.body.trim());
-        if (!hasContent || confirm('선택한 업종의 기본 문구로 섹션을 새로 채울까요? (지금 내용은 사라집니다)')) {
-          fillFromCopy(item.custom ? 'custom' : item.id);
+        if (!hasContent || confirm('선택한 업종의 기본 문구로 내용을 새로 채울까요? (지금 내용은 사라집니다)')) {
+          fillFromCopy(item.custom ? 'generic' : item.id);
         }
         render();
       }
     });
     if (field) fieldSearchApi.set(field);
 
-    // 규격 토글
-    function renderFmtToggle() {
-      $('fmtToggle').innerHTML = formats.map((f) =>
-        '<button type="button" data-fmt="' + f.id + '" class="' + (fmt === f.id ? 'on' : '') + '">'
-        + f.label + ' ' + f.W + '×' + f.H + '</button>').join('');
-      $('fmtToggle').querySelectorAll('[data-fmt]').forEach((b) =>
-        b.addEventListener('click', () => { fmt = b.dataset.fmt; renderFmtToggle(); render(); }));
-    }
-    renderFmtToggle();
+    // 대표색 (단색/그라데이션)
+    C.mountColorControl($('colorCtl'), color, (v) => { color = v; render(); });
+    // 배경 밝기
+    C.mountGraySlider($('grayCtl'), gray, (v) => { gray = v; render(); });
+    // 크기
+    const fmtApi = C.mountFormatSelect($('fmtCtl'), fmtData, fmtSel, (v) => { fmtSel = v; render(); });
+    fmtSel = fmtApi.get();
 
-    // 스타일 토글
-    $('styleToggle').querySelectorAll('[data-style]').forEach((b) =>
-      b.addEventListener('click', () => {
-        style = b.dataset.style;
-        $('styleToggle').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-        render();
-      }));
-    if (style === 'dark') {
-      $('styleToggle').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.style === 'dark'));
-    }
-
-    // 기본 입력 → 실시간
-    ['fBiz', 'fPhone', 'fArea'].forEach((id) => $(id).addEventListener('input', render));
-    $('fColor').addEventListener('input', () => { $('fHex').value = $('fColor').value.toUpperCase(); render(); });
-    $('fHex').addEventListener('input', () => {
-      const v = $('fHex').value.trim().replace(/^([0-9a-fA-F]{6})$/, '#$1');
-      if (/^#[0-9a-fA-F]{6}$/.test(v)) { $('fColor').value = v; render(); }
+    // 탭 선택 조절
+    panel = C.mountAdjustPanel($('adjustPanel'), {
+      read: (k) => adj[k],
+      write: (k, v) => { if (v) adj[k] = v; else delete adj[k]; render(); },
+      resetAll: () => { adj = {}; render(); },
+      onHide: () => { selKey = null; render(); }
     });
+    cv.addEventListener('click', (e) => {
+      const rect = cv.getBoundingClientRect();
+      const S = cv.width / 1080;
+      const x = (e.clientX - rect.left) * (cv.width / rect.width) / S;
+      const yy = (e.clientY - rect.top) * (cv.height / rect.height) / S;
+      const hit = [...regions].reverse().find((r) => x >= r.x - 14 && x <= r.x + r.w + 14 && yy >= r.y - 10 && yy <= r.y + r.h + 10);
+      if (hit) { selKey = hit.key; panel.show(hit.key, { label: hit.label, align: hit.align }); }
+      else { selKey = null; panel.hide(); }
+      render();
+    });
+
+    // 기본 입력
+    ['fBiz', 'fPhone', 'fArea'].forEach((id) => $(id).addEventListener('input', render));
     $('secAdd').addEventListener('click', () => {
-      sections.push({ title: '새 섹션', body: '' });
+      sections.push({ title: '새 내용', body: '' });
       renderSectionEditor(); render();
     });
 
-    $('btnSave').addEventListener('click', () => M().download(cv, fileName(), renderCanvas, toast));
-    $('btnShare').addEventListener('click', () => M().share(cv, fileName(), renderCanvas, toast));
+    $('btnSave').addEventListener('click', () => M().download(cv, fileName(), () => renderCanvas(true), toast));
+    $('btnShare').addEventListener('click', () => M().share(cv, fileName(), () => renderCanvas(true), toast));
+
+    C.showGuideOnce('maker_guide_notice_v1', [
+      '업종을 검색해 고르면 기본 문구가 채워져요',
+      '제목과 내용을 자유롭게 고치세요 — 미리보기의 글자를 누르면 크기·간격도 바뀌어요',
+      '다 되면 이미지로 저장하거나 카톡으로 보내세요'
+    ]);
 
     render();
   }
