@@ -352,7 +352,7 @@
       const { data } = await ainAuth.getClient().from('site_stats').select('value').eq('key', 'maker_uses').maybeSingle();
       if (data && data.value != null) {
         const el = $('makerCount');
-        el.textContent = '지금까지 ' + Number(data.value).toLocaleString('ko-KR') + '명이 템플릿을 만들어 갔어요';
+        el.textContent = '지금까지 ' + Number(data.value).toLocaleString('ko-KR') + '회 제작됐어요';
         el.hidden = false;
       }
     } catch (e) {}
@@ -362,7 +362,7 @@
       ainAuth.getClient().rpc('bump_stat', { p_key: 'maker_uses' }).then(({ data }) => {
         if (data != null) {
           const el = $('makerCount');
-          el.textContent = '지금까지 ' + Number(data).toLocaleString('ko-KR') + '명이 템플릿을 만들어 갔어요';
+          el.textContent = '지금까지 ' + Number(data).toLocaleString('ko-KR') + '회 제작됐어요';
           el.hidden = false;
         }
       }, () => {});
