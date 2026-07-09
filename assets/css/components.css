@@ -1,0 +1,245 @@
+/* ═══════════════════════════════════════════════════════════
+   A.IN 컴포넌트 v1 — redesign P0
+   design-tokens.css의 토큰만 소비한다. 임의값 금지.
+   컴포넌트: 네비 / 시세스트립 / 패널 / 섹션헤더 / 행리스트 /
+             데이터테이블 / 전일비 델타 / D-day 배지 / 빈상태 / 버튼
+   ═══════════════════════════════════════════════════════════ */
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--c-bg);
+  color:var(--c-ink);
+  font-family:var(--font-sans);
+  font-size:var(--fs-3);
+  font-weight:var(--fw-reg);
+  line-height:var(--lh-3);
+  letter-spacing:-0.01em;
+  -webkit-font-smoothing:antialiased;
+  min-height:100svh;display:flex;flex-direction:column;
+}
+body>main{flex:1;width:100%}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--c-accent);outline-offset:2px;border-radius:var(--r-1)}
+
+/* 숫자 — 시세·날짜·건수 전부 이 클래스. 표 정렬용 tabular 강제 */
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+.icon{width:15px;height:15px;flex:none;stroke:currentColor;stroke-width:1.8;
+      stroke-linecap:round;stroke-linejoin:round;fill:none;vertical-align:-2px}
+.icon.sm{width:12px;height:12px}
+
+/* ── 레이아웃 컨테이너 ──────────────────────── */
+.shell{max-width:var(--w-max);margin:0 auto;padding:0 var(--sp-5)}
+
+/* ── 네비 (터미널 헤더) ─────────────────────── */
+.tnav{background:var(--c-surface);border-bottom:1px solid var(--c-line)}
+.tnav-in{
+  max-width:var(--w-max);margin:0 auto;padding:0 var(--sp-5);
+  display:flex;align-items:center;gap:var(--sp-6);min-height:52px;
+}
+.tnav .brand{display:flex;align-items:center;gap:var(--sp-2);
+  font-size:var(--fs-2);font-weight:var(--fw-bold);letter-spacing:-0.02em}
+.brand-sq{width:18px;height:18px;border-radius:var(--r-1);background:var(--c-accent);
+  display:grid;place-items:center;color:var(--c-surface);
+  font-size:var(--fs-4);font-weight:var(--fw-bold);line-height:1}
+.tnav-links{display:flex;gap:var(--sp-1);margin-left:var(--sp-2)}
+.tnav-links a{
+  display:inline-flex;align-items:center;min-height:52px;padding:0 var(--sp-3);
+  font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-sub);
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.tnav-links a:hover{color:var(--c-ink)}
+.tnav-links a.on{color:var(--c-accent);border-bottom-color:var(--c-accent)}
+.tnav-auth{margin-left:auto}
+
+/* ── 시세 스트립 (상단 가로) ────────────────── */
+.strip{background:var(--c-surface);border-bottom:1px solid var(--c-line)}
+.strip-in{
+  max-width:var(--w-max);margin:0 auto;padding:0 var(--sp-5);
+  display:flex;align-items:stretch;
+}
+.strip-cell{
+  display:flex;align-items:baseline;gap:var(--sp-2);
+  padding:var(--sp-3) var(--sp-5) var(--sp-3) 0;margin-right:var(--sp-5);
+  border-right:1px solid var(--c-line);
+}
+.strip-cell .k{font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-sub)}
+.strip-cell .v{font-size:var(--fs-2);font-weight:var(--fw-bold);letter-spacing:-0.01em}
+.strip-cell .u{font-size:var(--fs-4);color:var(--c-ink-faint)}
+.strip-meta{margin-left:auto;display:flex;align-items:center;gap:var(--sp-2);
+  font-size:var(--fs-4);color:var(--c-ink-faint)}
+
+/* ── 전일비 델타 ────────────────────────────── */
+.delta{display:inline-flex;align-items:center;gap:2px;
+  font-size:var(--fs-4);font-weight:var(--fw-semi)}
+.delta.up{color:var(--c-up)}
+.delta.down{color:var(--c-down)}
+.delta.flat{color:var(--c-ink-faint)}
+.delta .tri{width:8px;height:8px;flex:none}
+
+/* ── 패널 (데이터 카드) ─────────────────────── */
+.panel{
+  background:var(--c-surface);border:1px solid var(--c-line);
+  border-radius:var(--r-2);box-shadow:var(--sh-1);overflow:hidden;
+}
+.phead{
+  display:flex;align-items:center;gap:var(--sp-2);
+  padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--c-line);
+}
+.phead .icon{color:var(--c-accent)}
+.phead h2{font-size:var(--fs-2);font-weight:var(--fw-bold);letter-spacing:-0.015em}
+.phead .cnt{font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-accent);
+  background:var(--c-accent-bg);border:1px solid var(--c-accent-line);
+  border-radius:var(--r-1);padding:1px var(--sp-2)}
+.phead-meta{margin-left:auto;display:flex;align-items:center;gap:var(--sp-3)}
+.phead .upd{display:inline-flex;align-items:center;gap:var(--sp-1);
+  font-size:var(--fs-4);color:var(--c-ink-faint)}
+.phead .more{display:inline-flex;align-items:center;gap:2px;
+  font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-accent)}
+.phead .more:hover{text-decoration:underline}
+
+/* ── 행 리스트 (패널 내부) ──────────────────── */
+.rows{display:block}
+.row{
+  display:flex;align-items:center;gap:var(--sp-3);
+  padding:var(--sp-3) var(--sp-4);border-top:1px solid var(--c-line);
+}
+.row:first-child{border-top:0}
+a.row:hover{background:var(--c-surface-sub)}
+.row-main{min-width:0;flex:1}
+.row-title{font-size:var(--fs-3);font-weight:var(--fw-semi);color:var(--c-ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-title .src-tag{font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint);margin-right:var(--sp-1)}
+.row-meta{margin-top:2px;font-size:var(--fs-4);color:var(--c-ink-faint);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-side{flex:none;display:flex;align-items:center;gap:var(--sp-2)}
+.row .lock{color:var(--c-ink-faint)}
+.rows .subhead{
+  padding:var(--sp-2) var(--sp-4);border-top:1px solid var(--c-line);
+  background:var(--c-surface-sub);
+  font-size:var(--fs-4);font-weight:var(--fw-bold);color:var(--c-ink-sub);
+  letter-spacing:.02em;
+}
+.rows .subhead:first-child{border-top:0}
+
+/* ── 데이터 테이블 ──────────────────────────── */
+.tscroll{overflow-x:auto}
+.dtable{width:100%;border-collapse:collapse}
+.dtable th{
+  padding:var(--sp-2) var(--sp-4);text-align:left;
+  font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint);
+  letter-spacing:.03em;border-bottom:1px solid var(--c-line-strong);
+  white-space:nowrap;
+}
+.dtable td{
+  padding:var(--sp-3) var(--sp-4);font-size:var(--fs-3);
+  border-bottom:1px solid var(--c-line);vertical-align:middle;
+}
+.dtable tbody tr:last-child td{border-bottom:0}
+.dtable tbody tr:hover{background:var(--c-surface-sub)}
+.dtable .ta-r{text-align:right}
+.dtable .cell-title{font-weight:var(--fw-semi);color:var(--c-ink)}
+.dtable .cell-sub{margin-top:1px;font-size:var(--fs-4);color:var(--c-ink-faint)}
+.dtable .nowrap{white-space:nowrap}
+
+/* ── D-day 배지 ─────────────────────────────── */
+.dday{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:52px;padding:2px var(--sp-2);border-radius:var(--r-1);
+  font-size:var(--fs-4);font-weight:var(--fw-bold);
+  font-variant-numeric:tabular-nums;
+  background:var(--c-accent-bg);color:var(--c-accent);
+  border:1px solid var(--c-accent-line);
+}
+.dday.urgent{background:var(--c-up-bg);color:var(--c-up);border-color:var(--c-up-bg)}
+.dday.always{background:var(--c-surface-sub);color:var(--c-ink-faint);border-color:var(--c-line)}
+
+/* ── 버튼 ───────────────────────────────────── */
+.btn-src{
+  display:inline-flex;align-items:center;gap:var(--sp-1);
+  min-height:28px;padding:0 var(--sp-2);border-radius:var(--r-1);
+  border:1px solid var(--c-line-strong);background:var(--c-surface);
+  font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-sub);
+  white-space:nowrap;
+}
+.btn-src:hover{color:var(--c-ink);border-color:var(--c-ink-faint)}
+.btn-line{
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--sp-1);
+  min-height:34px;padding:0 var(--sp-3);border-radius:var(--r-1);
+  border:1px solid var(--c-line-strong);background:var(--c-surface);
+  font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-sub);
+}
+.btn-line:hover{color:var(--c-ink);border-color:var(--c-ink-faint)}
+
+/* ── 빈 상태 (“준비중” 노출 금지 — 절제 문구) ── */
+.empty{
+  padding:var(--sp-7) var(--sp-4);text-align:center;
+  font-size:var(--fs-4);color:var(--c-ink-faint);
+}
+.empty b{display:block;font-size:var(--fs-3);font-weight:var(--fw-semi);
+  color:var(--c-ink-sub);margin-bottom:var(--sp-1)}
+
+/* ── 페이지 헤드 ────────────────────────────── */
+.phero{padding:var(--sp-7) 0 var(--sp-5)}
+.phero .crumb{font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint);
+  letter-spacing:.04em;margin-bottom:var(--sp-2)}
+.phero h1{font-size:var(--fs-1);font-weight:var(--fw-bold);
+  letter-spacing:-0.025em;line-height:var(--lh-1)}
+.phero .sub{margin-top:var(--sp-2);font-size:var(--fs-3);color:var(--c-ink-sub)}
+.phero-bar{display:flex;align-items:flex-end;gap:var(--sp-4)}
+.phero-stat{margin-left:auto;display:flex;gap:var(--sp-5);text-align:right}
+.phero-stat .st .n{font-size:var(--fs-1);font-weight:var(--fw-bold);letter-spacing:-0.02em}
+.phero-stat .st .l{margin-top:2px;font-size:var(--fs-4);color:var(--c-ink-faint)}
+
+/* ── 대시보드 그리드 ────────────────────────── */
+.dash{display:grid;grid-template-columns:minmax(0,8fr) minmax(0,4fr);
+  gap:var(--sp-4);padding-bottom:var(--sp-8)}
+.dash-col{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}
+
+/* ── 푸터 ───────────────────────────────────── */
+.tfoot{border-top:1px solid var(--c-line);background:var(--c-surface)}
+.tfoot-in{max-width:var(--w-max);margin:0 auto;padding:var(--sp-6) var(--sp-5);
+  display:flex;justify-content:space-between;align-items:center;gap:var(--sp-4);
+  font-size:var(--fs-4);color:var(--c-ink-faint)}
+.tfoot-in .links{display:flex;gap:var(--sp-4)}
+.tfoot-in a:hover{color:var(--c-ink)}
+
+/* ── 모바일 (≤640px, 390 기준) ──────────────── */
+@media (max-width:640px){
+  .shell{padding:0 var(--sp-4)}
+  .tnav-in{padding:0 var(--sp-4);gap:var(--sp-3)}
+  .tnav-links{display:none}
+  .strip-in{padding:0 var(--sp-4);flex-wrap:wrap}
+  .strip-cell{padding:var(--sp-2) var(--sp-4) var(--sp-2) 0;margin-right:var(--sp-4)}
+  .strip-meta{width:100%;margin:0;padding:var(--sp-1) 0 var(--sp-2)}
+  .dash{grid-template-columns:1fr}
+  .phero{padding:var(--sp-6) 0 var(--sp-4)}
+  .phero-bar{flex-direction:column;align-items:flex-start}
+  .phero-stat{margin-left:0;text-align:left}
+  .row{min-height:44px}
+  .btn-src{min-height:36px}
+  .tfoot-in{flex-direction:column;align-items:flex-start;gap:var(--sp-3)}
+
+  .phead{flex-wrap:wrap;row-gap:var(--sp-1)}
+  .phead h2{white-space:nowrap}
+  .hide-m{display:none!important}
+
+  /* 테이블 → 스택형 카드 (data-th 라벨) */
+  .dtable.stack thead{display:none}
+  .dtable.stack td.no-th{display:block}
+  .dtable.stack td.ta-r{padding-top:var(--sp-2)}
+  .dtable.stack tbody tr{
+    display:block;padding:var(--sp-3) var(--sp-4);
+    border-bottom:1px solid var(--c-line);
+  }
+  .dtable.stack tbody tr:hover{background:transparent}
+  .dtable.stack td{display:flex;align-items:center;gap:var(--sp-3);
+    padding:2px 0;border-bottom:0}
+  .dtable.stack td::before{
+    content:attr(data-th);flex:none;width:64px;
+    font-size:var(--fs-4);color:var(--c-ink-faint);
+  }
+  .dtable.stack td.no-th::before{display:none}
+}
