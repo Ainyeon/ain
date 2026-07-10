@@ -4,7 +4,8 @@
 --       사이트 /gov/ 리스트 데이터 공급. v_stat_gov(09)와 동일한
 --       definer 뷰 패턴 — 원본 차단 유지, 뷰 경유만 노출.
 -- 범위: CREATE VIEW + GRANT 추가만. 기존 객체 무변경.
--- 실행: 2026-07-09 세션 한정 승인(박민혁), psycopg2/SUPABASE_DB_URL.
+-- 상태: 2026-07-09 실행 완료(세션 한정 승인, psycopg2/SUPABASE_DB_URL).
+-- ⚠️ 12_summary_column.sql 적용 전 정의다. 12 적용 후에는 summary를 NULL 예약석으로 되돌리므로 재실행 금지.
 --
 -- 롤백(원복 1줄):
 --   drop view if exists public.v_gov_list;

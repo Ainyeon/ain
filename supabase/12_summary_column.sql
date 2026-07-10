@@ -1,6 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════
 -- 12_summary_column.sql — P2: 정부사업 Haiku 요약 컬럼 + 뷰 실컬럼 전환
--- 실행: 박민혁, Supabase SQL Editor (Code는 파일 출력만)
+-- 상태: 프로덕션 적용 완료 (2026-07-10, 상위 파이프라인 백필 19건 완료 기록)
+-- ⚠️ 14_hook_column.sql 적용 후에는 뷰의 hook·first_seen_date가 빠지므로 이 구버전을 재실행하지 않는다.
 -- 범위: ADD COLUMN 3개 + CREATE OR REPLACE VIEW (컬럼명·순서·타입 동일
 --       — null::text 캐스팅 → 실컬럼. grant는 replace 시 자동 유지)
 --

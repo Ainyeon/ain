@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════
 -- 14_hook_column.sql — P3a: 훅(후킹 카피) 컬럼 + 뷰 노출(hook·first_seen_date)
--- 실행: 박민혁, Supabase SQL Editor (Code는 파일 출력만)
+-- 상태: 미실행·사용자 승인 대기 (2026-07-10 main 병합 기록)
 -- 범위: ADD COLUMN 3개 + CREATE OR REPLACE VIEW
 --       (기존 컬럼 순서·타입 유지, hook·first_seen_date는 끝에 append — 호환 규칙 준수.
 --        first_seen_date는 NEW 배지 전역 기준 'KST 당일 수집' 판정용)

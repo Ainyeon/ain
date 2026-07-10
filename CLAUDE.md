@@ -6,7 +6,7 @@
 ## 스택
 - Supabase: https://oqgoibbhnidsveueifet.supabase.co (카카오 OAuth 연동 완료)
 - 인증 모듈: auth.js (ainAuth.init / getSession / 'ain:auth' 이벤트)
-- SQL 파일: supabase/*.sql (실행은 Supabase SQL Editor에서 수동)
+- SQL 파일: `supabase/*.sql`, `sql/*.sql` (실행은 Supabase SQL Editor에서 수동)
 
 ## 절대 규칙
 - service_role 키를 어떤 파일에도 쓰지 않는다
@@ -16,13 +16,28 @@
 
 ## 데이터 접근 구조 (게이팅 정책: 단지명 = 회원 전용, 시세·뉴스 = 공개)
 - 비로그인 입주 정보 → move_in_teaser 뷰만 (지역+입주월+단계, 단지명 없음, definer 권한)
-- briefing/calendar 로그인 → move_in_complexes / public_move_in_calendar (authenticated 전용)
+- 홈/캘린더 로그인 → move_in_complexes / public_move_in_calendar (authenticated 전용)
 - news, prices → anon 공개 (SEO 유입 자산)
 - 메인 티커·카드 → 집계 전용 뷰 3개 (09_public_views.sql): v_ticker_metals(invoker, prices 공개라서)
   / v_stat_movein·v_stat_gov(definer — 원본 anon 차단 상태에서 집계 숫자만 노출)
 - govt_programs → 원본 anon grant **회수됨** (2026-07-09 실측 401 — 기록상 "예정"이었으나 07-04 psql
   세션에서 이미 실행돼 있었음). anon 접근은 v_stat_gov(집계) + v_gov_list(리스트, supabase/11) 경유만.
   v_gov_list = definer 뷰, SELECT만 grant (신규 뷰에 디폴트로 붙는 쓰기권한은 회수 완료). 파이프라인 무영향
+
+## 라우트 맵
+- `/` — 모닝브리핑 홈 대시보드
+- `/briefing/` — 구 URL 보존용 `/` 리다이렉트
+- `/calendar/` — 입주 캘린더, 단지명 로그인 게이트
+- `/prices/`·`/news/` — 공개 시세·업계뉴스
+- `/gov/` — `v_gov_list` 기반 공개 정부사업 목록
+- `/maker/`·`/maker/notice/`·`/maker/compare/` — 메이커 허브와 제작 도구
+- `/board/free/`·`/board/proposal/` — 커뮤니티, `/admin/board/` — 운영자 관리
+- `/me/`·`/onboard/` — 회원 UI
+- `/cards/` — 운영자용 정부사업 카드뉴스 작업대
+
+## 작업 격리
+- 동시 작업은 전용 clone 또는 `git worktree`를 사용하고 하나의 워킹트리를 공유하지 않는다.
+- 상위 `ain-automation`의 새 기능 브랜치는 반드시 그 저장소의 `main`을 base로 만든다.
 
 ## 배포 규약
 - Code는 push까지만 수행하고 종료. 배포 완료 폴링(block=true) 대기 금지
@@ -31,8 +46,9 @@
 
 ## 배포 전 회귀 체크 (P1 회귀 사고 이후 강제 — 2026-07-10)
 "새로 만든 것" 검증만으론 부족하다. 기존 기능 보존을 아래 목록으로 확인한 뒤에만 push:
-1. **전 라우트 200 + 렌더**: `/` `/calendar/` `/prices/` `/gov/` `/news/` `/maker/`
-   `/maker/notice/` `/maker/compare/` `/board/free/` `/board/proposal/` `/me/` — 390px·1280px 각각
+1. **전 라우트 200 + 렌더**: `/` `/calendar/` `/prices/` `/gov/` `/news/` `/cards/` `/maker/`
+   `/maker/notice/` `/maker/compare/` `/board/free/` `/board/proposal/` `/admin/board/`
+   `/me/` `/onboard/` — 390px·1280px 각각
 2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
 3. **구 기능 목록 통과**: 메이커 캔버스 실렌더(#cv 크기>0) · 게시판 게이트/티저 렌더 ·
    입주 게이팅(비로그인 잠금 카드) · 시세 실데이터
@@ -42,7 +58,7 @@
 6. sw.js 캐시 버전 범프 확인 (정적 CSS 변경 시 ?v= 쿼리도 함께)
 
 ## 현재 상태
-- 완료: auth.js, 4개 페이지 인증 UI
+- 완료: 공통 `auth.js`와 홈·데이터·메이커·커뮤니티·회원 라우트 인증 UI
 - 완료: 03~06 SQL 전부 실행 (2026-07-02) — 게이팅 전체 완성, REST+익명 브라우저 검증 통과
 - 완료: 02(profiles+트리거)·07(커뮤니티) SQL 실행 (2026-07-04, psql) — ※ 02는 기록과 달리
   미실행 상태였음이 07 적용 중 발견되어 이날 백필과 함께 적용됨. 원본 5테이블 anon 401 검증
@@ -54,5 +70,9 @@
   실행 전까지 신규 업종(보일러 등 15종) 선택 시 프로필 저장이 제약 위반으로 실패. 실행엔 사용자 명시 승인 필요
 - 완료: 전면 개편 P1 (2026-07-10) — 디자인 토큰 체계(design-tokens.css+components.css, 웜그레이+딥블루 #2D4A9E),
   홈=브리핑 대시보드 승격, /briefing/→/ 리다이렉트(구 URL 보존), /gov/ 신설(v_gov_list 실데이터),
-  이모지 전수 제거(라인 SVG 대체), 로고 이원화(symbol.svg+모노 파비콘+PWA 아이콘), sw ain-v7.
+  이모지 전수 제거(라인 SVG 대체), 로고 이원화(symbol.svg+모노 파비콘+PWA 아이콘), 당시 sw ain-v7.
   구 홈(오브 히어로)·구 브리핑은 git 히스토리에만 존재. calendar/news/prices는 네비·배선만 신규(풀 리스킨 = 후속)
+- 완료: P2 정부사업 3줄 요약 렌더와 `supabase/12_summary_column.sql` 적용. 당시 `sw.js`는 `ain-v12`
+  (2026-07-10, 상위 파이프라인 백필 19건 완료 기록).
+- 완료: P3a NEW 배지·`/cards/` 작업대·상위 저장소 훅 생성기 main 반영, 현재 `sw.js`는 `ain-v13`.
+- ⚠️ 미실행: `supabase/14_hook_column.sql` — hook 컬럼과 `v_gov_list` 노출 활성화는 사용자 승인 후 수동 적용.
