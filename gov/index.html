@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=11">
+  <link rel="stylesheet" href="/assets/css/components.css?v=12">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
@@ -54,7 +54,7 @@
         <div>
           <div class="crumb">GOVERNMENT PROGRAMS</div>
           <h1>정부 지원사업</h1>
-          <p class="sub">기업마당 공고를 매일 자동 수집해 마감이 가까운 순으로 정리합니다. 신청은 원문에서 진행하세요.</p>
+          <p class="sub">기업마당 공고를 매일 자동 수집해 마감이 가까운 순으로 정리합니다. 신청은 원문에서 진행하세요.<br>※ 현재 기업마당(bizinfo) 기준 · 한전·지자체 지원사업 순차 추가 예정</p>
         </div>
         <div class="phero-stat">
           <div class="st"><div class="n num" id="statActive">—</div><div class="l">접수 중</div></div>
@@ -105,6 +105,21 @@
     // ── 데이터: v_gov_list (11_v_gov_list.sql — definer 뷰, anon SELECT 전용) ──
     const $ = (id) => document.getElementById(id);
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const kstToday = () => {
+      const p2 = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(new Date());
+      const o = Object.fromEntries(p2.map((x) => [x.type, x.value]));
+      return `${o.year}-${o.month}-${o.day}`;
+    };
+    // NEW 배지 — 전역 기준: KST 당일 수집 (결정론)
+    const isNewToday = (v) => {
+      if (!v) return false;
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return false;
+      const p3 = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(d);
+      const o3 = Object.fromEntries(p3.map((x) => [x.type, x.value]));
+      return `${o3.year}-${o3.month}-${o3.day}` === kstToday();  // timestamptz(UTC)도 KST 당일로 정확 판정
+    };
+    const newBadge = (v) => isNewToday(v) ? '<span class="new-badge">NEW</span>' : "";
     const ddayBadge = (n) => {
       if (n === null || n === undefined) return '<span class="dday always">상시</span>';
       if (n < 0) return '<span class="dday always">마감</span>';
@@ -126,7 +141,7 @@
     async function load() {
       const sb = ainAuth.init("authSlot") || ainAuth.getClient();
       const { data, error, count } = await sb.from("v_gov_list")
-        .select("program_name,host_org,application_end_date,application_period_text,d_day,source_url,summary,last_updated", { count: "exact" })
+        .select("program_name,host_org,application_end_date,application_period_text,d_day,source_url,summary,first_seen_date,last_updated", { count: "exact" })
         .order("application_end_date", { ascending: true, nullsFirst: false })
         .limit(100);
       if (error) {
@@ -149,7 +164,7 @@
       $("listBody").innerHTML = rows.map((r) => `
         <tr>
           <td data-th="사업명" class="no-th">
-            <div class="cell-title">${esc(r.program_name)}</div>
+            <div class="cell-title">${newBadge(r.first_seen_date)}${esc(r.program_name)}</div>
             <div class="cell-sub">${esc(r.host_org || "주관기관 확인")}${r.application_period_text ? " · " + esc(r.application_period_text) : ""}</div>
             ${r.summary ? r.summary.split("\n").map((ln) => `<div class="cell-sub">${esc(ln)}</div>`).join("") : ""}
           </td>

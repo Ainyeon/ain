@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=11">
+  <link rel="stylesheet" href="/assets/css/components.css?v=12">
   <style>
     /* 페이지 로컬: 토큰만 소비 */
     .price-note{padding:var(--sp-5) 0 var(--sp-8);color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
@@ -96,6 +96,21 @@
 
   <script>
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const kstToday = () => {
+      const p2 = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(new Date());
+      const o = Object.fromEntries(p2.map((x) => [x.type, x.value]));
+      return `${o.year}-${o.month}-${o.day}`;
+    };
+    // NEW 배지 — 전역 기준: KST 당일 수집 (결정론)
+    const isNewToday = (v) => {
+      if (!v) return false;
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return false;
+      const p3 = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(d);
+      const o3 = Object.fromEntries(p3.map((x) => [x.type, x.value]));
+      return `${o3.year}-${o3.month}-${o3.day}` === kstToday();  // timestamptz(UTC)도 KST 당일로 정확 판정
+    };
+    const newBadge = (v) => isNewToday(v) ? '<span class="new-badge">NEW</span>' : "";
     const tri = (dir) => dir === 0 ? "" :
       `<svg class="tri" viewBox="0 0 8 8" fill="currentColor" stroke="none" width="8" height="8"><path d="${dir > 0 ? "M4 1 7.5 7h-7Z" : "M4 7 .5 1h7Z"}"/></svg>`;
 
@@ -112,7 +127,7 @@
       const weekPct = sp.change_week_percent;
       const weekTxt = Number.isFinite(Number(weekPct)) ? `${Number(weekPct) > 0 ? "+" : ""}${Number(weekPct).toFixed(2)}%` : "";
       return `<tr>
-        <td data-th="품목" class="no-th"><div class="cell-title">${esc(row.name || row.item_id)}</div><div class="cell-sub">${esc(row.unit || "USD/mt")}</div></td>
+        <td data-th="품목" class="no-th"><div class="cell-title">${newBadge(row.collected_at)}${esc(row.name || row.item_id)}</div><div class="cell-sub">${esc(row.unit || "USD/mt")}</div></td>
         <td data-th="가격" class="ta-r nowrap num" style="font-weight:var(--fw-bold)">${esc(row.display_price || row.price)}</td>
         <td data-th="전일비" class="ta-r nowrap">${deltaCell(row.change_day_percent, row.display_change_day_percent)}</td>
         <td data-th="주간" class="ta-r nowrap">${deltaCell(weekPct, weekTxt)}</td>
