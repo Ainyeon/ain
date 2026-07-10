@@ -151,7 +151,7 @@
           <td data-th="사업명" class="no-th">
             <div class="cell-title">${esc(r.program_name)}</div>
             <div class="cell-sub">${esc(r.host_org || "주관기관 확인")}${r.application_period_text ? " · " + esc(r.application_period_text) : ""}</div>
-            ${r.summary ? `<div class="cell-sub">${esc(r.summary)}</div>` : ""}
+            ${r.summary ? r.summary.split("\n").map((ln) => `<div class="cell-sub">${esc(ln)}</div>`).join("") : ""}
           </td>
           <td data-th="접수마감" class="nowrap num">${esc(fmtDate(r.application_end_date))}</td>
           <td data-th="남은기간">${ddayBadge(r.application_end_date === null ? null : Number(r.d_day))}</td>
