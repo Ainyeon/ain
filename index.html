@@ -232,6 +232,16 @@
       const cls = n <= 7 ? "dday urgent" : "dday";
       return `<span class="${cls} num">${n === 0 ? "D-day" : `D-${n}`}</span>`;
     };
+    // NEW 배지 — 전역 기준: KST 당일 수집 (결정론)
+    const isNewToday = (v) => {
+      if (!v) return false;
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return false;
+      const p3 = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(d);
+      const o3 = Object.fromEntries(p3.map((x) => [x.type, x.value]));
+      return `${o3.year}-${o3.month}-${o3.day}` === kstToday();  // timestamptz(UTC)도 KST 당일로 정확 판정
+    };
+    const newBadge = (v) => isNewToday(v) ? '<span class="new-badge">NEW</span>' : "";
     const tri = (dir) => dir === 0 ? "" :
       `<svg class="tri" viewBox="0 0 8 8" fill="currentColor" stroke="none"><path d="${dir > 0 ? "M4 1 7.5 7h-7Z" : "M4 7 .5 1h7Z"}"/></svg>`;
     const emptyBox = (title, sub) => `<div class="empty"><b>${esc(title)}</b>${esc(sub || "")}</div>`;
@@ -265,7 +275,7 @@
     async function loadMoveIn(sb, session) {
       if (session) {
         const results = await Promise.all(REGIONS.map((r) => sb.from("move_in_complexes")
-          .select("complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in,last_updated")
+          .select("complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in,last_updated,first_seen_date")
           .eq("region", r.code).gte("expected_move_in", kstToday()).eq("is_public", true)
           .order("expected_move_in", { ascending: true }).limit(15)));
         let html = "", count = 0, latest = "";
@@ -283,7 +293,7 @@
             if (r.last_updated > latest) latest = r.last_updated;
             const loc = [r.sido, r.sigungu].filter(Boolean).join(" ");
             const month = /-01$/.test(String(r.expected_move_in)) ? String(r.expected_move_in).slice(0, 7).replace("-", ".") + " 입주예정" : fmtMD(r.expected_move_in);
-            html += rowHtml(esc(r.complex_name_ad || r.complex_name_raw), esc([loc, r.stage, month].filter(Boolean).join(" · ")), ddayBadge(r.expected_move_in));
+            html += rowHtml(newBadge(r.first_seen_date) + esc(r.complex_name_ad || r.complex_name_raw), esc([loc, r.stage, month].filter(Boolean).join(" · ")), ddayBadge(r.expected_move_in));
           });
         });
         $("moveRows").innerHTML = html || emptyBox("임박한 입주 단지가 없습니다", "다음 수집에서 갱신됩니다");
@@ -318,7 +328,7 @@
     // 정부사업 — v_gov_list (11_v_gov_list.sql, definer 뷰, anon SELECT)
     async function loadGov(sb) {
       const { data, error, count } = await sb.from("v_gov_list")
-        .select("program_name,host_org,application_end_date,source_url,summary", { count: "exact" })
+        .select("program_name,host_org,application_end_date,source_url,summary,first_seen_date", { count: "exact" })
         .order("application_end_date", { ascending: true, nullsFirst: false })
         .limit(5);
       if (error) throw error;
@@ -329,7 +339,7 @@
         return esc(t || r.host_org || "주관기관 확인");
       };
       $("govRows").innerHTML = rows.length ? rows.map((r) =>
-        rowHtml(esc(r.program_name), govMeta(r),
+        rowHtml(newBadge(r.first_seen_date) + esc(r.program_name), govMeta(r),
           ddayBadge(r.application_end_date) + (r.source_url ? `<a class="btn-src" href="${esc(r.source_url)}" target="_blank" rel="noopener">원문<svg class="icon sm"><use href="#i-ext"/></svg></a>` : ""))
       ).join("") : emptyBox("접수 중인 공고가 없습니다", "기업마당 공고 기준");
     }
@@ -348,7 +358,7 @@
       $("statNews").textContent = sel.length;
       $("newsUpd").textContent = fmtTime(rows[0] && rows[0].collected_at);
       $("newsRows").innerHTML = sel.length ? sel.map((r) =>
-        rowHtml(`<span class="src-tag">${OVERSEAS.has(r.source) ? "해외" : "국내"}</span>${esc(r.title)}`,
+        rowHtml(`${newBadge(r.collected_at)}<span class="src-tag">${OVERSEAS.has(r.source) ? "해외" : "국내"}</span>${esc(r.title)}`,
           `${esc(r.source)} · ${fmtMD(r.collected_at)}`,
           '<svg class="icon sm" style="color:var(--c-ink-faint)"><use href="#i-ext"/></svg>', r.url)
       ).join("") : emptyBox("오늘 수집된 뉴스가 없습니다", "다음 수집 07:00");

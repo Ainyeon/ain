@@ -110,6 +110,21 @@
     const OVERSEAS_NEWS_SOURCES = new Set(["Cooling Post", "Contractor Magazine"]);
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+    const kstToday = () => {
+      const p2 = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(new Date());
+      const o = Object.fromEntries(p2.map((x) => [x.type, x.value]));
+      return `${o.year}-${o.month}-${o.day}`;
+    };
+    // NEW 배지 — 전역 기준: KST 당일 수집 (결정론)
+    const isNewToday = (v) => {
+      if (!v) return false;
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return false;
+      const p3 = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(d);
+      const o3 = Object.fromEntries(p3.map((x) => [x.type, x.value]));
+      return `${o3.year}-${o3.month}-${o3.day}` === kstToday();  // timestamptz(UTC)도 KST 당일로 정확 판정
+    };
+    const newBadge = (v) => isNewToday(v) ? '<span class="new-badge">NEW</span>' : "";
     function formatDateTime(value) {
       if (!value) return "-";
       const day = new Date(value);
@@ -127,7 +142,7 @@
       const summary = row.summary ? `<div class="news-summary">${esc(row.summary)}</div>` : "";
       return `<a class="row" href="${esc(row.url)}" target="_blank" rel="noopener">
         <div class="row-main">
-          <div class="row-title">${esc(row.title || "제목 확인 필요")}</div>
+          <div class="row-title">${newBadge(row.collected_at)}${esc(row.title || "제목 확인 필요")}</div>
           ${summary}
           <div class="row-meta">${esc(row.source || "출처")} · ${formatDateTime(row.collected_at)}</div>
         </div>

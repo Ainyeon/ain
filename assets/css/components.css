@@ -150,6 +150,12 @@ a.row:hover{background:var(--c-surface-sub)}
 .dtable .cell-sub{margin-top:1px;font-size:var(--fs-4);color:var(--c-ink-faint)}
 .dtable .nowrap{white-space:nowrap}
 
+/* ── NEW 배지 — 전역 기준: KST 당일 수집분 (결정론, LLM 무관) ── */
+.new-badge{display:inline-flex;align-items:center;
+  padding:1px 5px;margin-right:var(--sp-1);border-radius:var(--r-1);
+  font-size:10px;font-weight:var(--fw-bold);letter-spacing:.03em;
+  background:var(--c-accent);color:var(--c-surface);vertical-align:2px}
+
 /* ── D-day 배지 ─────────────────────────────── */
 .dday{
   display:inline-flex;align-items:center;justify-content:center;
