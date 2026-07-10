@@ -11,105 +11,110 @@
   <meta property="og:description" content="에인연 계정 정보와 회원 전용 기능.">
   <meta property="og:url" content="https://ainyeon.com/me/">
   <meta property="og:image" content="https://ainyeon.com/assets/og.png">
-  <meta name="theme-color" content="#F7F7F8">
+  <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
-<link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/ain.css">
+  <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+  <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=8">
+  <link rel="stylesheet" href="/assets/css/components.css?v=8">
   <style>
-    :root { color-scheme: light; --surface:#FFFFFF; --border:#E8E8EC; --txt:#0F1013; --txt2:#63676F; --txt3:#6E737C; }
-    .wrap { width: min(100%, 760px); margin: 0 auto; padding: 0 0 56px; }
-    .page-head { padding: 108px 24px 22px; border-bottom: 1px solid var(--border); }
-    .page-head .sec-label { margin-bottom: 10px; }
-    .panel { padding: 24px; display: grid; gap: 14px; }
-    .me-card {
-      border: 1px solid rgba(255,255,255,.9); border-radius: 14px; background: var(--surface);
-      padding: 22px 20px; box-shadow: var(--shadow-amb), 0 14px 34px -22px rgba(15,16,19,.14);
-    }
-    .me-avatar {
-      width: 52px; height: 52px; border-radius: 50%;
-      background: conic-gradient(from 210deg, var(--g1), var(--g2), var(--g4), var(--g3), var(--g1));
-      color: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 800;
-    }
-    .me-name { margin-top: 12px; font-size: 19px; font-weight: 800; color: var(--txt); }
-    .me-email { margin-top: 3px; color: var(--txt2); font-size: 13.5px; }
-    .me-provider { display: inline-flex; margin-top: 10px; padding: 4px 11px; border-radius: 100px; background: #FEE500; color: #191919; font-size: 11.5px; font-weight: 800; }
-    .me-actions { display: grid; gap: 9px; margin-top: 18px; }
-    .me-btn {
-      min-height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px;
-      border-radius: 12px; border: 1px solid var(--border); background: var(--surface);
-      font: inherit; font-size: 14.5px; font-weight: 700; color: var(--txt); cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .me-btn.kakao { background: #FEE500; border-color: #FEE500; color: #191919; font-weight: 800; }
-    .me-btn.danger { color: var(--up); }
-    .quick { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; }
-    .quick a {
-      min-height: 58px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px;
-      border: 1px solid rgba(255,255,255,.9); border-radius: 12px; background: var(--surface); padding: 12px 14px;
-      box-shadow: var(--shadow-amb), inset 0 1px 0 #fff;
-    }
-    .quick b { font-size: 14px; color: var(--txt); }
-    .quick span { font-size: 11.5px; color: var(--txt3); }
-    .loading { padding: 32px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 14px; }
-    .fineprint { padding: 22px 24px 0; color: var(--txt3); font-size: 11px; line-height: 1.6; }
+    /* 페이지 로컬: 토큰만 소비. 예외 2건 주석 — 오브(브랜드 마크)·카카오 옐로(외부 브랜드) */
+    .me-wrap{display:grid;gap:var(--sp-4);padding-bottom:var(--sp-8)}
+    .me-body{padding:var(--sp-5) var(--sp-4)}
+    .me-avatar{width:52px;height:52px;border-radius:50%;
+      background:conic-gradient(from 210deg,#4F8CFF,#35C5B8,#A78BFA,#FF8A65,#4F8CFF); /* 브랜드 오브 예외 */
+      color:var(--c-surface);display:grid;place-items:center;
+      font-size:var(--fs-1);font-weight:var(--fw-bold)}
+    .me-name{margin-top:var(--sp-3);font-size:var(--fs-2);font-weight:var(--fw-bold);color:var(--c-ink)}
+    .me-email{margin-top:var(--sp-1);color:var(--c-ink-sub);font-size:var(--fs-3)}
+    .me-provider{display:inline-flex;margin-top:var(--sp-3);padding:var(--sp-1) var(--sp-3);
+      border-radius:var(--r-1);background:#FEE500;color:#191919; /* 카카오 브랜드 예외 */
+      font-size:var(--fs-4);font-weight:var(--fw-bold)}
+    .me-actions{display:grid;gap:var(--sp-2);margin-top:var(--sp-5)}
+    .me-btn{min-height:48px;display:flex;align-items:center;justify-content:center;gap:var(--sp-2);
+      border-radius:var(--r-1);border:1px solid var(--c-line-strong);background:var(--c-surface);
+      font:inherit;font-size:var(--fs-3);font-weight:var(--fw-semi);color:var(--c-ink);cursor:pointer;
+      -webkit-tap-highlight-color:transparent}
+    .me-btn:hover{border-color:var(--c-ink-faint)}
+    .me-btn.kakao{background:#FEE500;border-color:#FEE500;color:#191919;font-weight:var(--fw-bold)} /* 카카오 예외 */
+    .me-btn.danger{color:var(--c-up)}
+    .me-note{color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
   <script defer src="/assets/js/ain-community.js"></script>
 </head>
-<body>
-  <nav class="nav" id="nav">
-    <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-    <a class="menu-pill" href="/"><span class="plus">+</span>메뉴</a>
-    <div class="nav-tags">
-      <a href="/gov/">정부사업</a>
-      <a href="/calendar/">입주 레이더</a>
-      <a href="/news/">업계뉴스</a>
-      <a href="/maker/">메이커</a>
-    </div>
-    <div class="nav-right">
-      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+<body class="has-tabbar">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+      <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    </defs>
+  </svg>
+
+  <nav class="tnav">
+    <div class="tnav-in">
+      <a class="brand" href="/"><span class="brand-orb"></span>에어컨 인테리어 연구소</a>
+      <div class="tnav-links">
+        <a href="/">홈</a>
+        <a href="/calendar/">입주정보</a>
+        <a href="/prices/">시세</a>
+        <a href="/gov/">정부사업</a>
+        <a href="/news/">업계뉴스</a>
+        <a href="/maker/">메이커</a>
+        <a href="/board/free/">커뮤니티</a>
+      </div>
+      <div class="tnav-auth" id="authSlot"></div>
     </div>
   </nav>
-  <main class="wrap">
-    <header class="page-head">
-      <div class="sec-label">My Page</div>
-      <h1 class="page-title">내정보</h1>
-      <p class="page-sub">계정 상태와 회원 전용 기능을 확인합니다.</p>
+
+  <main class="shell">
+    <header class="phero">
+      <div class="phero-bar">
+        <div>
+          <div class="crumb">MY PAGE</div>
+          <h1>내정보</h1>
+          <p class="sub">계정 상태와 회원 전용 기능을 확인합니다.</p>
+        </div>
+      </div>
     </header>
-    <section class="panel" aria-live="polite">
-      <div id="meCard" class="loading">계정 상태 확인 중</div>
-      <div class="quick" aria-label="빠른 이동">
-        <a href="/calendar/"><b>입주 레이더</b><span>회원 전용 단지명 열람</span></a>
-        <a href="/"><b>오늘의 브리핑</b><span>홈 대시보드</span></a>
-        <a href="/board/free/"><b>자유게시판</b><span>업계 사람들끼리</span></a>
-        <a href="/board/proposal/"><b>제안·투표</b><span>필요한 기능에 투표</span></a>
-        <a href="/prices/"><b>자재 시세</b><span>동관·알루미늄</span></a>
-        <a href="/news/"><b>업계뉴스</b><span>국내·해외 이슈</span></a>
-      </div>
-    </section>
-    <div class="fineprint">로그인은 카카오 계정으로 처리되며, 에인연은 닉네임·이메일 외의 정보를 수집하지 않습니다.</div>
+
+    <div class="me-wrap">
+      <section class="panel" aria-live="polite">
+        <div class="phead"><svg class="icon"><use href="#i-user"/></svg><h2>계정</h2></div>
+        <div class="me-body" id="meCard"><div class="empty">계정 상태 확인 중</div></div>
+      </section>
+
+      <section class="panel" aria-label="빠른 이동">
+        <div class="phead"><svg class="icon"><use href="#i-chev"/></svg><h2>빠른 이동</h2></div>
+        <div class="rows">
+          <a class="row" href="/calendar/"><div class="row-main"><div class="row-title">입주 레이더</div><div class="row-meta">회원 전용 단지명 열람</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/"><div class="row-main"><div class="row-title">오늘의 브리핑</div><div class="row-meta">홈 대시보드</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/board/free/"><div class="row-main"><div class="row-title">자유게시판</div><div class="row-meta">업계 사람들끼리</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/board/proposal/"><div class="row-main"><div class="row-title">제안·투표</div><div class="row-meta">필요한 기능에 투표</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/prices/"><div class="row-main"><div class="row-title">자재 시세</div><div class="row-meta">동관·알루미늄</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/news/"><div class="row-main"><div class="row-title">업계뉴스</div><div class="row-meta">국내·해외 이슈</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+        </div>
+      </section>
+      <div class="me-note">로그인은 카카오 계정으로 처리되며, 에인연은 닉네임·이메일 외의 정보를 수집하지 않습니다.</div>
+    </div>
   </main>
-  <footer>
-    <div class="foot-inner">
-      <div>
-        <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-        <p style="margin-top:12px;line-height:1.7">에어컨·인테리어 업계 정보 허브 A.IN<br>매일 아침 06:30, 업계의 하루가 정리됩니다</p>
-      </div>
-      <div class="foot-links">
+
+  <footer class="tfoot">
+    <div class="tfoot-in">
+      <div>에어컨 인테리어 연구소 A.IN — 업계 정보, 매일 아침 자동 수집</div>
+      <div class="links">
         <a href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">네이버 카페</a>
         <a href="https://www.instagram.com/ainyeon_official" target="_blank" rel="noopener">인스타그램</a>
         <a href="https://band.us/n/a2a2be04B5I6H" target="_blank" rel="noopener">밴드</a>
-        <a href="https://cafe.daangn.com/ein-yeon-eeokeo?utm_medium=copy_link" target="_blank" rel="noopener">문의</a>
       </div>
     </div>
   </footer>
+
   <script>
-    // 기존 ainAuth 배선 재사용만 — OAuth 설정·플로우 무변경
+    // 기존 ainAuth 배선 재사용만 — OAuth 설정·플로우 무변경 (P1 이전 로직 그대로)
     const meCard = document.getElementById("meCard");
 
     function nameOf(user) {
@@ -127,7 +132,7 @@
         }
         return '<div class="me-email" style="margin-top:8px"><span class="author-line">'
           + ainCommunity.authorBadge(profile)
-          + (profile.region ? ' <span style="color:var(--txt3)">· ' + escT(profile.region) + '</span>' : '')
+          + (profile.region ? ' <span style="color:var(--c-ink-faint)">· ' + escT(profile.region) + '</span>' : '')
           + '</span></div>';
       } catch (e) { return ''; }
     }
@@ -136,7 +141,6 @@
       if (session) {
         const u = session.user;
         const name = nameOf(u);
-        meCard.className = "me-card";
         meCard.innerHTML =
           '<div class="me-avatar">' + escT(name.charAt(0)) + '</div>'
           + '<div class="me-name">' + escT(name) + '</div>'
@@ -152,7 +156,6 @@
           renderMe(null);
         });
       } else {
-        meCard.className = "me-card";
         meCard.innerHTML =
           '<div class="me-name">로그인이 필요합니다</div>'
           + '<div class="me-email">단지명 열람 등 회원 전용 기능은 로그인 후 이용할 수 있습니다.</div>'
@@ -166,7 +169,7 @@
       }
     }
 
-    addEventListener("DOMContentLoaded", () => { ainAuth.getSession().then(renderMe); });
+    addEventListener("DOMContentLoaded", () => { ainAuth.init("authSlot"); ainAuth.getSession().then(renderMe); });
     window.addEventListener("ain:auth", e => renderMe(e.detail && e.detail.session));
   </script>
 </body>

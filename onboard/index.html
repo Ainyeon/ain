@@ -7,35 +7,44 @@
   <meta name="description" content="에인연 회원 프로필을 설정합니다.">
   <link rel="canonical" href="https://ainyeon.com/onboard/">
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#F7F7F8">
+  <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/ain.css">
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=8">
+  <link rel="stylesheet" href="/assets/css/components.css?v=8">
   <style>
-    :root { color-scheme: light; --surface:#FFFFFF; --border:#E8E8EC; --txt:#0F1013; --txt2:#63676F; --txt3:#6E737C; }
+    :root { color-scheme: light;
+      /* 레거시 별칭 → 토큰 브릿지 */
+      --surface: var(--c-surface); --border: var(--c-line);
+      --txt: var(--c-ink); --txt2: var(--c-ink-sub); --txt3: var(--c-ink-faint);
+      --ink: var(--c-ink); --g1: var(--c-accent); --up: var(--c-up);
+      --shadow-amb: var(--sh-1); }
     .wrap { width: min(100%, 560px); margin: 0 auto; padding: 0 24px 80px; }
-    .page-head { padding: 108px 0 20px; }
+    .page-head { padding: 32px 0 20px; }
     .ob-card {
-      border: 1px solid rgba(255,255,255,.9); border-radius: 16px; background: var(--surface);
-      padding: 22px 20px; box-shadow: var(--shadow-amb), 0 14px 34px -22px rgba(15,16,19,.14);
+      border: 1px solid var(--c-line); border-radius: 16px; background: var(--surface);
+      padding: 22px 20px; box-shadow: var(--sh-1);
       display: grid; gap: 15px;
     }
     .field { display: grid; gap: 6px; }
     .field label { font-size: 12.5px; font-weight: 800; color: var(--txt2); }
     .field input, .field select {
       min-height: 48px; padding: 10px 13px; border: 1px solid var(--border); border-radius: 11px;
-      background: #FBFBFC; font: inherit; font-size: 16px; color: var(--txt); width: 100%;
+      background: var(--c-surface-sub); font: inherit; font-size: 16px; color: var(--txt); width: 100%;
     }
     .field input:focus, .field select:focus { outline: 2px solid var(--g1); outline-offset: 1px; }
     .nick-status { font-size: 12px; font-weight: 700; min-height: 16px; }
-    .nick-status.ok { color: #12766C; } .nick-status.bad { color: var(--up); }
+    .nick-status.ok { color: var(--c-down); } .nick-status.bad { color: var(--up); }
     .ob-submit {
       min-height: 50px; border: none; border-radius: 12px; background: var(--ink); color: #fff;
       font: inherit; font-size: 15px; font-weight: 800; cursor: pointer;
     }
     .ob-submit[disabled] { opacity: .45; cursor: default; }
+    .sec-label { font-size: var(--fs-4); font-weight: var(--fw-semi); color: var(--c-ink-faint); letter-spacing: .04em; text-transform: uppercase; }
+    .page-title { font-size: var(--fs-1); font-weight: var(--fw-bold); letter-spacing: -0.025em; color: var(--c-ink); }
+    .page-sub { margin-top: var(--sp-2); font-size: var(--fs-3); color: var(--c-ink-sub); line-height: 1.6; }
     .hint { font-size: 12px; color: var(--txt3); line-height: 1.6; }
     .gate-msg { padding: 28px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); text-align: center; font-size: 14px; color: var(--txt2); }
   </style>
@@ -44,11 +53,11 @@
   <script defer src="/assets/js/ain-common.js"></script>
   <script defer src="/assets/js/ain-community.js"></script>
 </head>
-<body>
-  <nav class="nav" id="nav">
-    <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-    <div class="nav-right">
-      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+<body class="has-tabbar">
+  <nav class="tnav">
+    <div class="tnav-in">
+      <a class="brand" href="/"><span class="brand-orb"></span>에어컨 인테리어 연구소</a>
+      <div class="tnav-auth" id="authSlot"></div>
     </div>
   </nav>
   <main class="wrap">
@@ -165,5 +174,6 @@
       });
     });
   </script>
+<script>addEventListener("DOMContentLoaded",()=>{if(window.ainAuth)ainAuth.init("authSlot")});</script>
 </body>
 </html>

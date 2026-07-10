@@ -11,26 +11,29 @@
   <meta property="og:description" content="3분이면 됩니다 — 고객 안내문·홍보 카드, 전 업종 기본 문구.">
   <meta property="og:url" content="https://ainyeon.com/maker/">
   <meta property="og:image" content="https://ainyeon.com/assets/og.png">
-  <meta name="theme-color" content="#F7F7F8">
+  <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/ain.css">
-  <link rel="stylesheet" href="/maker/maker.css">
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=8">
+  <link rel="stylesheet" href="/assets/css/components.css?v=8">
+  <link rel="stylesheet" href="/maker/maker.css?v=8">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
 </head>
-<body>
-  <nav class="nav" id="nav">
-    <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-    <div class="nav-tags">
-      <a href="/maker/notice/">고객 안내문</a>
-      <a href="/maker/compare/">홍보 카드</a>
-    </div>
-    <div class="nav-right">
-      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+<body class="has-tabbar">
+  <nav class="tnav">
+    <div class="tnav-in">
+      <a class="brand" href="/"><span class="brand-orb"></span>에어컨 인테리어 연구소</a>
+      <div class="tnav-links">
+        <a href="/">홈</a>
+        <a class="on" href="/maker/">메이커</a>
+        <a href="/maker/notice/">고객 안내문</a>
+        <a href="/maker/compare/">홍보 카드</a>
+      </div>
+      <div class="tnav-auth" id="authSlot"></div>
     </div>
   </nav>
   <main class="wrap">
@@ -74,7 +77,7 @@
             }, function () {});
         } catch (e) {}
       }
-      if (window.ainAuth) { ainAuth.init().then(show, function () {}); }
+      if (window.ainAuth) { try { ainAuth.init('authSlot'); } catch (e) {} show(); }
       else { addEventListener('ain:auth', show, { once: true }); document.addEventListener('DOMContentLoaded', function () { setTimeout(show, 800); }, { once: true }); }
     })();
   </script>

@@ -11,116 +11,131 @@
   <meta property="og:description" content="동관·알루미늄 자재 시세, 매일 아침 업데이트.">
   <meta property="og:url" content="https://ainyeon.com/prices/">
   <meta property="og:image" content="https://ainyeon.com/assets/og.png">
-  <meta name="theme-color" content="#F7F7F8">
+  <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
-<link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/ain.css">
+  <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+  <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=8">
+  <link rel="stylesheet" href="/assets/css/components.css?v=8">
   <style>
-    :root { color-scheme: light; --surface:#FFFFFF; --border:#E8E8EC; --txt:#0F1013; --txt2:#63676F; --txt3:#6E737C; }
-    .wrap { width: min(100%, 760px); margin: 0 auto; padding: 0 0 56px; }
-    .page-head { padding: 108px 24px 22px; border-bottom: 1px solid var(--border); }
-    .page-head .sec-label { margin-bottom: 10px; }
-    .updated { color: var(--txt2); font-size: 12px; font-weight: 700; }
-    .panel { padding: 24px; display: grid; gap: 14px; }
-    .price-card {
-      border: 1px solid rgba(255,255,255,.9); border-left: 3px solid var(--g1);
-      border-radius: 14px; background: var(--surface); padding: 20px;
-      box-shadow: var(--shadow-amb), 0 14px 34px -22px rgba(15,16,19,.14);
-    }
-    .price-card.alu { border-left-color: var(--g2); }
-    .price-card.gas { border-left-color: var(--g4); }
-    .price-name { font-size: 16px; font-weight: 800; color: var(--txt); }
-    .price-value { margin-top: 10px; font-family: var(--font-mono); font-size: 30px; font-weight: 700; letter-spacing: -0.03em; color: var(--txt); }
-    .price-change { margin-top: 6px; font-size: 14px; font-weight: 700; }
-    .price-change.up { color: #C13333; } .price-change.down { color: #2A5FD0; }
-    .price-meta { margin-top: 10px; color: var(--txt3); font-size: 12.5px; }
-    .loading, .error { padding: 32px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 14px; }
-    .fineprint { padding: 22px 24px 0; color: var(--txt3); font-size: 11px; line-height: 1.6; }
+    /* 페이지 로컬: 토큰만 소비 */
+    .price-note{padding:var(--sp-5) 0 var(--sp-8);color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
 </head>
-<body>
-  <nav class="nav" id="nav">
-    <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-    <a class="menu-pill" href="/"><span class="plus">+</span>메뉴</a>
-    <div class="nav-tags">
-      <a href="/gov/">정부사업</a>
-      <a href="/calendar/">입주 레이더</a>
-      <a href="/news/">업계뉴스</a>
-      <a href="/maker/">메이커</a>
-    </div>
-    <div class="nav-right">
-      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+<body class="has-tabbar">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    </defs>
+  </svg>
+
+  <nav class="tnav">
+    <div class="tnav-in">
+      <a class="brand" href="/"><span class="brand-orb"></span>에어컨 인테리어 연구소</a>
+      <div class="tnav-links">
+        <a href="/">홈</a>
+        <a href="/calendar/">입주정보</a>
+        <a class="on" href="/prices/">시세</a>
+        <a href="/gov/">정부사업</a>
+        <a href="/news/">업계뉴스</a>
+        <a href="/maker/">메이커</a>
+        <a href="/board/free/">커뮤니티</a>
+      </div>
+      <div class="tnav-auth" id="authSlot"></div>
     </div>
   </nav>
-  <main class="wrap">
-    <header class="page-head">
-      <div class="sec-label">Material Prices · <span class="updated" id="updatedLabel">업데이트 확인 중</span></div>
-      <h1 class="page-title">자재 시세</h1>
-      <p class="page-sub">발주 판단에 필요한 원자재 시세를 매일 기록합니다.</p>
-    </header>
-    <section class="panel" id="panel" aria-live="polite">
-      <div id="status" class="loading">시세를 불러오는 중</div>
-    </section>
-    <div class="fineprint">시세는 국제 거래소 기준이며 국내 유통가와 다를 수 있습니다. 원천 데이터 지연에 따라 갱신 시점이 달라질 수 있습니다.</div>
-  </main>
-  <footer>
-    <div class="foot-inner">
-      <div>
-        <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-        <p style="margin-top:12px;line-height:1.7">에어컨·인테리어 업계 정보 허브 A.IN<br>매일 아침 06:30, 업계의 하루가 정리됩니다</p>
+
+  <main class="shell">
+    <header class="phero">
+      <div class="phero-bar">
+        <div>
+          <div class="crumb">MATERIAL PRICES</div>
+          <h1>자재 시세</h1>
+          <p class="sub">발주 판단에 필요한 원자재 시세를 매일 기록합니다.</p>
+        </div>
       </div>
-      <div class="foot-links">
+    </header>
+
+    <section class="panel" aria-labelledby="hPrices">
+      <div class="phead">
+        <svg class="icon"><use href="#i-chart"/></svg>
+        <h2 id="hPrices">일일 시세</h2>
+        <div class="phead-meta">
+          <span class="upd"><svg class="icon sm"><use href="#i-clock"/></svg><span id="updatedLabel">확인 중</span></span>
+        </div>
+      </div>
+      <div class="tscroll">
+        <table class="dtable stack">
+          <thead>
+            <tr><th>품목</th><th class="nowrap ta-r">가격</th><th class="nowrap ta-r">전일비</th><th class="nowrap">수집</th></tr>
+          </thead>
+          <tbody id="priceBody">
+            <tr><td class="no-th" colspan="4"><div class="empty">시세를 불러오는 중</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <div class="price-note">시세는 국제 거래소 기준이며 국내 유통가와 다를 수 있습니다. 원천 데이터 지연에 따라 갱신 시점이 달라질 수 있습니다.</div>
+  </main>
+
+  <footer class="tfoot">
+    <div class="tfoot-in">
+      <div>에어컨 인테리어 연구소 A.IN — 업계 정보, 매일 아침 자동 수집</div>
+      <div class="links">
         <a href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">네이버 카페</a>
         <a href="https://www.instagram.com/ainyeon_official" target="_blank" rel="noopener">인스타그램</a>
         <a href="https://band.us/n/a2a2be04B5I6H" target="_blank" rel="noopener">밴드</a>
-        <a href="https://cafe.daangn.com/ein-yeon-eeokeo?utm_medium=copy_link" target="_blank" rel="noopener">문의</a>
       </div>
     </div>
   </footer>
-  <script>
-    const statusEl = document.getElementById("status");
-    const panelEl = document.getElementById("panel");
-    const updatedEl = document.getElementById("updatedLabel");
 
-    function metalCard(row, cls) {
-      const dir = row.change_day_percent == null ? "" : (row.change_day_percent < 0 ? "down" : "up");
-      const change = row.display_change_day_percent
-        ? `<div class="price-change ${dir}">전일 ${escT(row.display_change_day_percent)}${row.display_change_day ? " · " + escT(row.display_change_day) : ""}</div>` : "";
+  <script>
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const tri = (dir) => dir === 0 ? "" :
+      `<svg class="tri" viewBox="0 0 8 8" fill="currentColor" stroke="none" width="8" height="8"><path d="${dir > 0 ? "M4 1 7.5 7h-7Z" : "M4 7 .5 1h7Z"}"/></svg>`;
+
+    function metalRow(row) {
+      const pct = Number(row.change_day_percent);
+      const dir = Number.isFinite(pct) ? Math.sign(pct) : 0;
+      const cls = dir > 0 ? "up" : dir < 0 ? "down" : "flat";
       const when = row.collected_at ? new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(row.collected_at)) : "-";
-      return `<article class="price-card ${cls}">
-        <div class="price-name">${escT(row.name || row.item_id)}</div>
-        <div class="price-value">${escT(row.display_price || row.price)}</div>
-        ${change}
-        <div class="price-meta">${when} 수집 · ${escT(row.unit || "USD/mt")}</div>
-      </article>`;
+      const changeTxt = row.display_change_day_percent
+        ? `<span class="delta ${cls} num">${tri(dir)}${esc(row.display_change_day_percent)}</span>` : '<span class="delta flat num">—</span>';
+      return `<tr>
+        <td data-th="품목" class="no-th"><div class="cell-title">${esc(row.name || row.item_id)}</div><div class="cell-sub">${esc(row.unit || "USD/mt")}</div></td>
+        <td data-th="가격" class="ta-r nowrap num" style="font-weight:var(--fw-bold)">${esc(row.display_price || row.price)}</td>
+        <td data-th="전일비" class="ta-r nowrap">${changeTxt}</td>
+        <td data-th="수집" class="nowrap num">${esc(when)}</td>
+      </tr>`;
     }
 
     async function render() {
+      const body = document.getElementById("priceBody");
       try {
         const { data, error } = await ainAuth.getClient().from("v_ticker_metals").select("*");
         if (error) throw error;
-        if (!data || !data.length) { statusEl.textContent = "표시할 시세가 아직 없습니다."; return; }
-        const copper = data.find(r => r.item_id === "copper");
-        const alu = data.find(r => r.item_id === "aluminium");
-        statusEl.remove();
-        panelEl.innerHTML =
-          (copper ? metalCard(copper, "") : "")
-          + (alu ? metalCard(alu, "alu") : "");
-        const latest = (copper || alu || {}).collected_at;
-        if (latest) updatedEl.textContent = new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(latest)) + " 기준";
+        const copper = (data || []).find((r) => r.item_id === "copper");
+        const alu = (data || []).find((r) => r.item_id === "aluminium");
+        const rows = [copper, alu].filter(Boolean);
+        if (!rows.length) {
+          body.innerHTML = `<tr><td class="no-th" colspan="4"><div class="empty"><b>표시할 시세가 아직 없습니다</b>다음 수집에서 갱신됩니다</div></td></tr>`;
+          return;
+        }
+        body.innerHTML = rows.map(metalRow).join("");
+        const latest = rows[0].collected_at;
+        if (latest) document.getElementById("updatedLabel").textContent =
+          new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(latest)) + " 기준";
       } catch (e) {
-        statusEl.className = "error";
-        statusEl.textContent = "시세를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
+        body.innerHTML = `<tr><td class="no-th" colspan="4"><div class="empty"><b>시세를 불러오지 못했습니다</b>잠시 후 다시 확인해 주세요</div></td></tr>`;
         console.error(e);
       }
     }
-    addEventListener("DOMContentLoaded", () => { render(); });
+    addEventListener("DOMContentLoaded", () => { ainAuth.init("authSlot"); render(); });
   </script>
 </body>
 </html>

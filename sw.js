@@ -1,7 +1,7 @@
 // 에인연 서비스워커 — 오프라인 내성: 마지막 브리핑·시세 1회분 열람 가능
 // 전략: 내비게이션·데이터 = 네트워크 우선(성공 시 캐시 갱신, 실패 시 캐시 폴백)
 //       정적 자산 = 캐시 우선(백그라운드 갱신)
-const VERSION = 'ain-v8'; // v8: HF1 — 오브 파비콘 복원·정식명칭·메이커 패널·게시판 삭제 에러처리
+const VERSION = 'ain-v9'; // v9: HF2 — 전 라우트 토큰 리스킨, ain.css 프리캐시 제거
 const SHELL_CACHE = VERSION + '-shell';
 const DATA_CACHE = VERSION + '-data';
 
@@ -15,18 +15,17 @@ const SHELL = [
   '/maker/',
   '/maker/notice/',
   '/maker/compare/',
-  '/maker/maker.css',
+  '/maker/maker.css?v=8',
   '/maker/maker-core.js',
   '/maker/notice/notice.js',
   '/maker/compare/compare.js',
   '/maker/fields.json',
   '/maker/formats.json',
   '/maker/copy.json',
-  '/board/board.css',
+  '/board/board.css?v=8',
   '/board/board-free.js',
   '/board/board-proposal.js',
   '/assets/js/ain-community.js',
-  '/assets/css/ain.css',
   '/assets/css/design-tokens.css?v=8',
   '/assets/css/components.css?v=8',
   '/assets/js/ain-common.js',

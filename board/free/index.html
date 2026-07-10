@@ -11,43 +11,55 @@
   <meta property="og:description" content="현장 이야기, 장비, 시세, 뭐든 — 업계 사람들끼리.">
   <meta property="og:url" content="https://ainyeon.com/board/free/">
   <meta property="og:image" content="https://ainyeon.com/assets/og.png">
-  <meta name="theme-color" content="#F7F7F8">
+  <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/ain.css">
-  <link rel="stylesheet" href="/board/board.css">
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=8">
+  <link rel="stylesheet" href="/assets/css/components.css?v=8">
+  <link rel="stylesheet" href="/board/board.css?v=8">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
   <script defer src="/assets/js/ain-community.js"></script>
 </head>
-<body>
-  <nav class="nav" id="nav">
-    <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-    <a class="menu-pill" href="/board/proposal/"><span class="plus">+</span>제안·투표</a>
-    <div class="nav-tags">
-      <a href="/gov/">정부사업</a>
-      <a href="/calendar/">입주 레이더</a>
-      <a href="/board/free/">자유게시판</a>
-      <a href="/board/proposal/">제안·투표</a>
-    </div>
-    <div class="nav-right">
-      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+<body class="has-tabbar">
+  <nav class="tnav">
+    <div class="tnav-in">
+      <a class="brand" href="/"><span class="brand-orb"></span>에어컨 인테리어 연구소</a>
+      <div class="tnav-links">
+        <a href="/">홈</a>
+        <a href="/calendar/">입주정보</a>
+        <a href="/prices/">시세</a>
+        <a href="/gov/">정부사업</a>
+        <a href="/news/">업계뉴스</a>
+        <a href="/maker/">메이커</a>
+        <a class="on" href="/board/free/">커뮤니티</a>
+      </div>
+      <div class="tnav-auth" id="authSlot"></div>
     </div>
   </nav>
-  <main class="wrap">
-    <header class="page-head">
-      <div class="sec-label">Community · Free Board</div>
-      <h1 class="page-title">자유게시판</h1>
-      <p class="page-sub">현장 이야기, 장비, 단가, 뭐든 — 업계 사람들끼리. 회원 전용 공간입니다.</p>
+  <main class="shell">
+    <header class="phero">
+      <div class="phero-bar">
+        <div>
+          <div class="crumb">COMMUNITY · FREE BOARD</div>
+          <h1>자유게시판</h1>
+          <p class="sub">현장 이야기, 장비, 단가, 뭐든 — 업계 사람들끼리. 회원 전용 공간입니다.</p>
+          <div class="board-tabs">
+            <a class="on" href="/board/free/">자유게시판</a>
+            <a href="/board/proposal/">제안·투표</a>
+          </div>
+        </div>
+      </div>
     </header>
-    <section class="panel" id="panel" aria-live="polite">
+    <section class="board-wrap" id="panel" aria-live="polite">
       <div class="gate-msg">불러오는 중…</div>
     </section>
   </main>
+  <script>addEventListener("DOMContentLoaded",()=>{if(window.ainAuth)ainAuth.init("authSlot")});</script>
   <script src="/board/board-free.js" defer></script>
 </body>
 </html>

@@ -11,28 +11,32 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ainyeon.com/calendar/">
   <meta property="og:image" content="https://ainyeon.com/assets/og.png">
-  <meta name="theme-color" content="#F7F7F8">
+  <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
 <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/ain.css">
+<link rel="stylesheet" href="/assets/css/design-tokens.css?v=8">
+<link rel="stylesheet" href="/assets/css/components.css?v=8">
   <style>
     :root {
       color-scheme: light;
-      --surface: #FFFFFF;
-      --surface2: #FDFDFE;
-      --border: #E8E8EC;
-      --txt: #0F1013;
-      --txt2: #63676F;
-      --txt3: #6E737C;
-      --g-start: #2D4A9E;
-      --g-end: #9E2D3D;
-      --blue: #4F8CFF;
-      --purple: #A78BFA;
-      --burgundy: #FF8A65;
-      --danger: #E5484D;
+      /* 레거시 별칭 → design-tokens 브릿지 (마크업·JS 무변경용) */
+      --surface: var(--c-surface);
+      --surface2: var(--c-surface-sub);
+      --border: var(--c-line);
+      --txt: var(--c-ink);
+      --txt2: var(--c-ink-sub);
+      --txt3: var(--c-ink-faint);
+      --g-start: var(--c-accent);
+      --g-end: var(--c-accent);
+      --blue: var(--c-accent);
+      --purple: var(--c-accent);
+      --burgundy: var(--c-up);
+      --danger: var(--c-up);
+      --shadow-amb: var(--sh-1);
+      --shadow-key: var(--sh-2);
     }
 
     .wrap {
@@ -42,7 +46,7 @@
     }
 
     .page-head {
-      padding: 108px 24px 22px;
+      padding: 32px 24px 22px;
       border-bottom: 1px solid var(--border);
     }
 
@@ -73,10 +77,10 @@
     .summary-item {
       min-height: 68px;
       padding: 11px 10px;
-      border: 1px solid rgba(255,255,255,.9);
+      border: 1px solid var(--c-line);
       border-radius: 12px;
       background: var(--surface);
-      box-shadow: var(--shadow-amb), inset 0 1px 0 #fff;
+      box-shadow: var(--shadow-amb);
     }
 
     .summary-value {
@@ -134,7 +138,7 @@
     .region-tab.on,
     .chip.on {
       border-color: transparent;
-      background: linear-gradient(135deg, var(--g-start), var(--g-end));
+      background: var(--c-accent);
       color: #fff;
     }
 
@@ -173,7 +177,7 @@
     .province-card {
       min-height: 68px;
       padding: 12px;
-      border: 1px solid rgba(255,255,255,.9);
+      border: 1px solid var(--c-line);
       border-left: 3px solid var(--blue);
       border-radius: 12px;
       background: var(--surface);
@@ -181,7 +185,7 @@
       font: inherit;
       text-align: left;
       cursor: pointer;
-      box-shadow: var(--shadow-amb), 0 12px 28px -20px rgba(15,16,19,.14);
+      box-shadow: var(--sh-1);
     }
 
     .province-card b {
@@ -268,12 +272,12 @@
     }
 
     .complex-card {
-      border: 1px solid rgba(255,255,255,.9);
+      border: 1px solid var(--c-line);
       border-left: 3px solid var(--stage);
       border-radius: 12px;
       background: var(--surface);
       padding: 13px 14px;
-      box-shadow: var(--shadow-amb), 0 12px 28px -20px rgba(15,16,19,.14);
+      box-shadow: var(--sh-1);
     }
 
     .card-top {
@@ -299,7 +303,7 @@
       margin-left: 7px;
       padding: 2px 7px;
       border-radius: 5px;
-      background: linear-gradient(135deg, var(--g-start), var(--g-end));
+      background: var(--c-accent);
       color: #fff;
       font-size: 10px;
       font-weight: 800;
@@ -340,7 +344,7 @@
       margin: 36px 24px 0;
       padding: 22px;
       border-radius: 8px;
-      background: linear-gradient(135deg, var(--g-start), var(--g-end));
+      background: var(--c-accent);
       text-align: center;
     }
 
@@ -405,7 +409,7 @@
     .gate-btn { margin-top:20px; display:inline-flex; align-items:center; gap:7px; height:44px; padding:0 22px; border-radius:10px; border:none; cursor:pointer; background:#FEE500; color:#191919; font-family:inherit; font-size:14px; font-weight:800; letter-spacing:-0.01em; transition:opacity .12s ease; }
     .gate-btn:hover { opacity:.88; }
     .gate-teaser { display:grid; gap:10px; }
-    .teaser-card { border:1px solid rgba(255,255,255,.9); border-left:3px solid var(--stage, #4F8CFF); border-radius:12px; background:var(--surface); padding:13px 14px; box-shadow:var(--shadow-amb), 0 12px 28px -20px rgba(15,16,19,.14); }
+    .teaser-card { border:1px solid var(--c-line); border-left:3px solid var(--stage, var(--c-accent)); border-radius:12px; background:var(--surface); padding:13px 14px; box-shadow:var(--sh-1); }
     .teaser-name { display:inline-flex; align-items:center; gap:7px; color:var(--txt2); font-size:15px; font-weight:700; line-height:1.35; }
     .teaser-name svg { flex-shrink:0; opacity:.7; }
   </style>
@@ -413,18 +417,20 @@
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
 </head>
-<body>
-  <nav class="nav" id="nav">
-    <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-    <a class="menu-pill" href="/"><span class="plus">+</span>메뉴</a>
-    <div class="nav-tags">
-      <a href="/gov/">정부사업</a>
-      <a href="/calendar/">입주 레이더</a>
-      <a href="/news/">업계뉴스</a>
-      <a href="/maker/">메이커</a>
-    </div>
-    <div class="nav-right">
-      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+<body class="has-tabbar">
+  <nav class="tnav">
+    <div class="tnav-in">
+      <a class="brand" href="/"><span class="brand-orb"></span>에어컨 인테리어 연구소</a>
+      <div class="tnav-links">
+        <a href="/">홈</a>
+        <a class="on" href="/calendar/">입주정보</a>
+        <a href="/prices/">시세</a>
+        <a href="/gov/">정부사업</a>
+        <a href="/news/">업계뉴스</a>
+        <a href="/maker/">메이커</a>
+        <a href="/board/free/">커뮤니티</a>
+      </div>
+      <div class="tnav-auth" id="authSlot"></div>
     </div>
   </nav>
   <main class="wrap">
@@ -476,17 +482,13 @@
 
     <div class="fineprint">출처: 청약홈 입주자모집공고 입주예정월 · 타 부동산 정보와 입주월이 다를 수 있으며, 실제 입주는 변동될 수 있습니다.</div>
   </main>
-  <footer>
-    <div class="foot-inner">
-      <div>
-        <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-        <p style="margin-top:12px;line-height:1.7">에어컨·인테리어 업계 정보 허브 A.IN<br>매일 아침 06:30, 업계의 하루가 정리됩니다</p>
-      </div>
-      <div class="foot-links">
+  <footer class="tfoot">
+    <div class="tfoot-in">
+      <div>에어컨 인테리어 연구소 A.IN — 업계 정보, 매일 아침 자동 수집</div>
+      <div class="links">
         <a href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">네이버 카페</a>
         <a href="https://www.instagram.com/ainyeon_official" target="_blank" rel="noopener">인스타그램</a>
         <a href="https://band.us/n/a2a2be04B5I6H" target="_blank" rel="noopener">밴드</a>
-        <a href="https://cafe.daangn.com/ein-yeon-eeokeo?utm_medium=copy_link" target="_blank" rel="noopener">문의</a>
       </div>
     </div>
   </footer>
@@ -494,14 +496,14 @@
   <script>
     const VIEW_NAME = "public_move_in_calendar";
     const STAGE_ORDER = ["신규", "D-180 ~ D-91", "D-90 ~ D-31", "D-30 ~ 입주", "입주중 ~ D+90", "D+90 ~ D+180"];
-    // 라이트 테마 팔레트 (ain.css --g1~--g4 계열)
+    // 스테이지 팔레트 — 디자인 토큰 값과 동일 hex (임박=적 / 진행=딥블루 / 원거리·완료=뉴트럴)
     const STAGE_META = {
-      "신규": { name: "신규", badge: "신규", color: "#4F8CFF", soft: "rgba(79, 140, 255, .12)", text: "#2F63C7" },
-      "D-180 ~ D-91": { name: "D-180 ~ D-91", badge: "D-180 ~ D-91", color: "#4F8CFF", soft: "rgba(79, 140, 255, .1)", text: "#2F63C7" },
-      "D-90 ~ D-31": { name: "D-90 ~ D-31", badge: "D-90 ~ D-31", color: "#35C5B8", soft: "rgba(53, 197, 184, .12)", text: "#12766C" },
-      "D-30 ~ 입주": { name: "D-30 ~ 입주", badge: "D-30 ~ 입주", color: "#A78BFA", soft: "rgba(167, 139, 250, .14)", text: "#6847C4" },
-      "입주중 ~ D+90": { name: "입주중 ~ D+90", badge: "입주중", color: "#FF8A65", soft: "rgba(255, 138, 101, .16)", text: "#BA4E2C" },
-      "D+90 ~ D+180": { name: "D+90 ~ D+180", badge: "D+90 ~ D+180", color: "#FF8A65", soft: "rgba(255, 138, 101, .16)", text: "#BA4E2C" }
+      "신규": { name: "신규", badge: "신규", color: "#2D4A9E", soft: "#EEF1F8", text: "#2D4A9E" },
+      "D-180 ~ D-91": { name: "D-180 ~ D-91", badge: "D-180 ~ D-91", color: "#79756B", soft: "#F9F8F6", text: "#5C5850" },
+      "D-90 ~ D-31": { name: "D-90 ~ D-31", badge: "D-90 ~ D-31", color: "#2D4A9E", soft: "#EEF1F8", text: "#2D4A9E" },
+      "D-30 ~ 입주": { name: "D-30 ~ 입주", badge: "D-30 ~ 입주", color: "#C13438", soft: "#F9ECEC", text: "#C13438" },
+      "입주중 ~ D+90": { name: "입주중 ~ D+90", badge: "입주중", color: "#79756B", soft: "#F9F8F6", text: "#5C5850" },
+      "D+90 ~ D+180": { name: "D+90 ~ D+180", badge: "D+90 ~ D+180", color: "#79756B", soft: "#F9F8F6", text: "#5C5850" }
     };
     const LOCAL_PROVINCES = ["강원", "대전", "충북", "충남", "대구", "경북", "부산", "울산", "경남", "광주", "전북", "전남", "제주"];
     const GYEONGGI_PREFIXES = [
@@ -902,5 +904,6 @@
     });
     window.addEventListener("ain:auth", function (e) { bootCalendar(e.detail.session); });
   </script>
+<script>addEventListener("DOMContentLoaded",()=>{if(window.ainAuth)ainAuth.init("authSlot")});</script>
 </body>
 </html>

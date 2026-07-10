@@ -11,145 +11,104 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ainyeon.com/news/">
   <meta property="og:image" content="https://ainyeon.com/assets/og.png">
-  <meta name="theme-color" content="#F7F7F8">
+  <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
-<link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
-<link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/ain.css">
+  <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+  <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=8">
+  <link rel="stylesheet" href="/assets/css/components.css?v=8">
   <style>
-    :root {
-      color-scheme: light;
-      --surface: #FFFFFF;
-      --surface2: #FDFDFE;
-      --border: #E8E8EC;
-      --txt: #0F1013;
-      --txt2: #63676F;
-      --txt3: #6E737C;
-      --g-start: #2D4A9E;
-      --g-end: #9E2D3D;
-      --blue: #4F8CFF;
-      --danger: #E5484D;
-    }
-    .wrap { width: min(100%, 760px); margin: 0 auto; padding: 0 0 56px; }
-    .page-head { padding: 108px 24px 22px; border-bottom: 1px solid var(--border); }
-    .page-head .sec-label { margin-bottom: 10px; }
-    .updated { color: var(--txt2); font-size: 12px; font-weight: 700; }
-    .meta { margin-top: 8px; color: var(--txt2); font-size: 13px; line-height: 1.55; }
-    .summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 18px; }
-    .summary-item { min-height: 68px; padding: 11px 10px; border: 1px solid rgba(255,255,255,.9); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-amb), inset 0 1px 0 #fff; }
-    .summary-value { display: block; color: var(--txt); font-size: 21px; font-weight: 800; line-height: 1.1; }
-    .summary-label { display: block; margin-top: 7px; color: var(--txt2); font-size: 11px; line-height: 1.25; }
-    .panel { padding: 24px; display: grid; gap: 18px; }
-    .news-sections { display: grid; grid-template-columns: 1fr; gap: 28px; }
-    .news-section { display: grid; gap: 11px; }
-    .section-headline { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--txt); font-size: 15px; font-weight: 900; }
-    .section-headline span:last-child { flex-shrink: 0; color: #2F63C7; font-size: 11px; font-weight: 900; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; align-items: stretch; }
-    .news-card {
-      min-width: 0;
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      border: 1px solid rgba(255,255,255,.9);
-      border-left: 3px solid var(--blue);
-      border-radius: 14px;
-      background: var(--surface);
-      padding: 16px 17px;
-      overflow: hidden;
-      box-shadow: var(--shadow-amb), 0 14px 34px -22px rgba(15,16,19,.14);
-    }
-    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
-    .news-title { min-width: 0; color: var(--txt); font-size: 16px; font-weight: 800; line-height: 1.4; word-break: keep-all; overflow-wrap: break-word; }
-    .source-badge { flex-shrink: 0; border: 1px solid rgba(79, 140, 255, .3); border-radius: 999px; background: rgba(79, 140, 255, .1); color: #2F63C7; padding: 3px 9px; font-size: 11px; font-weight: 800; line-height: 1.2; }
-    .summary-text { margin-top: 10px; color: var(--txt2); font-size: 13px; line-height: 1.55; word-break: keep-all; overflow-wrap: break-word; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-    .card-meta { margin-top: auto; padding-top: 12px; color: var(--txt3); font-size: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .origin-link { color: #2F63C7; font-weight: 800; white-space: nowrap; }
-    .origin-link:active { opacity: .72; }
-    .loading, .empty, .error { padding: 32px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--txt2); text-align: center; font-size: 13px; }
-    .error { color: var(--danger); }
-    .cta { margin: 0 24px; padding: 18px; border: 1px solid rgba(255,255,255,.9); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-amb), inset 0 1px 0 #fff; }
-    .cta-title { color: var(--txt); font-size: 15px; font-weight: 800; }
-    .cta-sub { margin-top: 4px; color: var(--txt2); font-size: 12px; }
-    .cta-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-    .cta-button { min-height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: linear-gradient(135deg, var(--g-start), var(--g-end)); color: #fff; font-size: 13px; font-weight: 800; }
-    .fineprint { padding: 22px 24px 0; color: var(--txt3); font-size: 11px; line-height: 1.6; }
-
-    /* 모바일 에르고노믹스: 터치 타겟 44px, 본문 16px */
-    @media (max-width: 900px) {
-      .summary-text { font-size: 16px; -webkit-line-clamp: 5; }
-      .card-meta { font-size: 13px; }
-      .origin-link { display: inline-flex; align-items: center; min-height: 44px; }
-      .cta-button { min-height: 48px; }
-      .summary-label { font-size: 12px; }
-    }
+    /* 페이지 로컬: 토큰만 소비 — 뉴스 요약 4줄 클램프 */
+    .news-summary{margin-top:2px;color:var(--c-ink-sub);font-size:var(--fs-4);line-height:1.55;
+      display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+    .news-note{padding:var(--sp-5) 0 var(--sp-8);color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
+    .row-title{white-space:normal}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
 </head>
-<body>
-  <nav class="nav" id="nav">
-    <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-    <a class="menu-pill" href="/"><span class="plus">+</span>메뉴</a>
-    <div class="nav-tags">
-      <a href="/gov/">정부사업</a>
-      <a href="/calendar/">입주 레이더</a>
-      <a href="/news/">업계뉴스</a>
-      <a href="/maker/">메이커</a>
-    </div>
-    <div class="nav-right">
-      <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
+<body class="has-tabbar">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-news" viewBox="0 0 24 24"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0V6"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+      <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+    </defs>
+  </svg>
+
+  <nav class="tnav">
+    <div class="tnav-in">
+      <a class="brand" href="/"><span class="brand-orb"></span>에어컨 인테리어 연구소</a>
+      <div class="tnav-links">
+        <a href="/">홈</a>
+        <a href="/calendar/">입주정보</a>
+        <a href="/prices/">시세</a>
+        <a href="/gov/">정부사업</a>
+        <a class="on" href="/news/">업계뉴스</a>
+        <a href="/maker/">메이커</a>
+        <a href="/board/free/">커뮤니티</a>
+      </div>
+      <div class="tnav-auth" id="authSlot"></div>
     </div>
   </nav>
-  <main class="wrap">
-    <header class="page-head">
-      <div class="sec-label">Industry News · <span class="updated" id="updatedLabel">업데이트 확인 중</span></div>
-      <h1 class="page-title">업계뉴스</h1>
-      <p class="page-sub meta">HVAC·공조·냉매·인테리어 이슈를 한국 업계 관점으로 정리합니다.</p>
-      <div class="summary" aria-label="뉴스 요약">
-        <div class="summary-item"><span class="summary-value" id="newsCount">-</span><span class="summary-label">표시 뉴스</span></div>
-        <div class="summary-item"><span class="summary-value" id="sourceCount">-</span><span class="summary-label">출처 수</span></div>
-        <div class="summary-item"><span class="summary-value" id="latestDate">-</span><span class="summary-label">최신 수집</span></div>
+
+  <main class="shell">
+    <header class="phero">
+      <div class="phero-bar">
+        <div>
+          <div class="crumb">INDUSTRY NEWS</div>
+          <h1>업계뉴스</h1>
+          <p class="sub">HVAC·공조·냉매·인테리어 이슈를 한국 업계 관점으로 정리합니다.</p>
+        </div>
+        <div class="phero-stat">
+          <div class="st"><div class="n num" id="newsCount">—</div><div class="l">표시 뉴스</div></div>
+          <div class="st"><div class="n num" id="sourceCount">—</div><div class="l">출처 수</div></div>
+          <div class="st"><div class="n num" id="latestDate">—</div><div class="l">최신 수집</div></div>
+        </div>
       </div>
     </header>
-    <section class="panel" aria-live="polite">
-      <div id="status" class="loading">뉴스를 불러오는 중</div>
-      <div id="cards" class="news-sections" hidden></div>
-    </section>
-    <section class="cta" aria-label="에인연 더 보기">
-      <div class="cta-title">에인연 허브</div>
-      <div class="cta-sub">입주 캘린더와 모닝브리핑도 같이 확인하세요.</div>
-      <div class="cta-links">
-        <a class="cta-button" href="/calendar/">입주캘린더</a>
-        <a class="cta-button" href="/">홈 대시보드</a>
-      </div>
-    </section>
-    <div class="fineprint">출처: 각 언론·기관 원문 링크 · 에인연 자체 요약 후보이며, 자동발행 없이 검수 후 활용합니다.</div>
+
+    <div style="display:grid;gap:var(--sp-4)">
+      <section class="panel" aria-labelledby="hDomestic">
+        <div class="phead">
+          <svg class="icon"><use href="#i-news"/></svg>
+          <h2 id="hDomestic">국내 뉴스</h2>
+          <span class="cnt num" id="domCnt">—</span>
+          <div class="phead-meta">
+            <span class="upd"><svg class="icon sm"><use href="#i-clock"/></svg><span id="updatedLabel">확인 중</span></span>
+          </div>
+        </div>
+        <div class="rows" id="domRows"><div class="empty">뉴스를 불러오는 중</div></div>
+      </section>
+
+      <section class="panel" aria-labelledby="hOverseas">
+        <div class="phead">
+          <svg class="icon"><use href="#i-news"/></svg>
+          <h2 id="hOverseas">해외 뉴스</h2>
+          <span class="cnt num" id="ovsCnt">—</span>
+        </div>
+        <div class="rows" id="ovsRows"><div class="empty">뉴스를 불러오는 중</div></div>
+      </section>
+    </div>
+    <div class="news-note">출처: 각 언론·기관 원문 링크 · 에인연 자체 요약 후보이며, 자동발행 없이 검수 후 활용합니다.</div>
   </main>
-  <footer>
-    <div class="foot-inner">
-      <div>
-        <a class="brand" href="/"><span class="brand-mark"></span>에어컨 인테리어 연구소</a>
-        <p style="margin-top:12px;line-height:1.7">에어컨·인테리어 업계 정보 허브 A.IN<br>매일 아침 06:30, 업계의 하루가 정리됩니다</p>
-      </div>
-      <div class="foot-links">
+
+  <footer class="tfoot">
+    <div class="tfoot-in">
+      <div>에어컨 인테리어 연구소 A.IN — 업계 정보, 매일 아침 자동 수집</div>
+      <div class="links">
         <a href="https://cafe.naver.com/aineyon" target="_blank" rel="noopener">네이버 카페</a>
         <a href="https://www.instagram.com/ainyeon_official" target="_blank" rel="noopener">인스타그램</a>
         <a href="https://band.us/n/a2a2be04B5I6H" target="_blank" rel="noopener">밴드</a>
-        <a href="https://cafe.daangn.com/ein-yeon-eeokeo?utm_medium=copy_link" target="_blank" rel="noopener">문의</a>
       </div>
     </div>
   </footer>
+
   <script>
     const OVERSEAS_NEWS_SOURCES = new Set(["Cooling Post", "Contractor Magazine"]);
-    const statusEl = document.getElementById("status");
-    const cardsEl = document.getElementById("cards");
-    const updatedLabelEl = document.getElementById("updatedLabel");
-    const newsCountEl = document.getElementById("newsCount");
-    const sourceCountEl = document.getElementById("sourceCount");
-    const latestDateEl = document.getElementById("latestDate");
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
     function formatDateTime(value) {
       if (!value) return "-";
@@ -157,87 +116,57 @@
       if (Number.isNaN(day.getTime())) return value;
       return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(day);
     }
-
     function compactDate(value) {
       if (!value) return "-";
       const day = new Date(value);
-      if (Number.isNaN(day.getTime())) return value.slice(5, 10).replace("-", ".");
+      if (Number.isNaN(day.getTime())) return String(value).slice(5, 10).replace("-", ".");
       return new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).format(day).replace(/\.$/, "");
     }
 
-    function card(row) {
-      const article = document.createElement("article");
-      article.className = "news-card";
-      const regionLabel = OVERSEAS_NEWS_SOURCES.has(row.source) ? "해외" : "국내";
-      const summary = row.summary ? `<div class="summary-text">${escapeHtml(row.summary).replace(/\n/g, "<br>")}</div>` : "";
-      article.innerHTML = `
-        <div class="card-top">
-          <div class="news-title">${escapeHtml(row.title || "제목 확인 필요")}</div>
-          <div class="source-badge">${regionLabel}</div>
+    function newsRow(row) {
+      const summary = row.summary ? `<div class="news-summary">${esc(row.summary)}</div>` : "";
+      return `<a class="row" href="${esc(row.url)}" target="_blank" rel="noopener">
+        <div class="row-main">
+          <div class="row-title">${esc(row.title || "제목 확인 필요")}</div>
+          ${summary}
+          <div class="row-meta">${esc(row.source || "출처")} · ${formatDateTime(row.collected_at)}</div>
         </div>
-        ${summary}
-        <div class="card-meta">
-          <span>${escapeHtml(row.source || "출처")} · ${formatDateTime(row.collected_at)}</span>
-          <a class="origin-link" href="${row.url}" target="_blank" rel="noopener">원문 보기</a>
-        </div>
-      `;
-      return article;
-    }
-
-    function section(title, rows) {
-      const wrap = document.createElement("section");
-      wrap.className = "news-section";
-      const head = document.createElement("div");
-      head.className = "section-headline";
-      head.innerHTML = `<span>${title}</span><span>${rows.length.toLocaleString("ko-KR")}건</span>`;
-      const grid = document.createElement("div");
-      grid.className = "cards";
-      rows.forEach((row) => grid.append(card(row)));
-      wrap.append(head, grid);
-      return wrap;
-    }
-
-    function escapeHtml(value) {
-      return String(value || "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
-    }
-
-    async function fetchNews() {
-      const { data, error } = await ainAuth.getClient()
-        .from("news_items")
-        .select("title,summary,source,url,collected_at")
-        .eq("status", "active")
-        .order("collected_at", { ascending: false })
-        .limit(30);
-      if (error) throw new Error(`news ${error.message}`);
-      return data;
+        <div class="row-side"><span class="btn-src">원문<svg class="icon sm"><use href="#i-ext"/></svg></span></div>
+      </a>`;
     }
 
     async function render() {
+      const domEl = document.getElementById("domRows");
+      const ovsEl = document.getElementById("ovsRows");
       try {
-        const rows = await fetchNews();
+        const { data, error } = await ainAuth.getClient()
+          .from("news_items")
+          .select("title,summary,source,url,collected_at")
+          .eq("status", "active")
+          .order("collected_at", { ascending: false })
+          .limit(30);
+        if (error) throw error;
+        const rows = data || [];
         if (!rows.length) {
-          statusEl.className = "empty";
-          statusEl.textContent = "표시할 업계뉴스가 아직 없습니다.";
+          domEl.innerHTML = ovsEl.innerHTML = `<div class="empty"><b>표시할 업계뉴스가 아직 없습니다</b>다음 수집에서 갱신됩니다</div>`;
           return;
         }
-        const domestic = rows.filter((row) => !OVERSEAS_NEWS_SOURCES.has(row.source));
-        const overseas = rows.filter((row) => OVERSEAS_NEWS_SOURCES.has(row.source));
-        if (domestic.length) cardsEl.append(section("국내 뉴스", domestic));
-        if (overseas.length) cardsEl.append(section("해외 뉴스", overseas));
-        statusEl.hidden = true;
-        cardsEl.hidden = false;
-        newsCountEl.textContent = rows.length.toLocaleString("ko-KR");
-        sourceCountEl.textContent = new Set(rows.map((row) => row.source).filter(Boolean)).size.toLocaleString("ko-KR");
-        latestDateEl.textContent = compactDate(rows[0].collected_at);
-        updatedLabelEl.textContent = `${formatDateTime(rows[0].collected_at)} 업데이트`;
-      } catch (error) {
-        statusEl.className = "error";
-        statusEl.textContent = "뉴스를 불러오지 못했습니다. 잠시 후 다시 확인해 주세요.";
-        console.error(error);
+        const domestic = rows.filter((r) => !OVERSEAS_NEWS_SOURCES.has(r.source));
+        const overseas = rows.filter((r) => OVERSEAS_NEWS_SOURCES.has(r.source));
+        domEl.innerHTML = domestic.length ? domestic.map(newsRow).join("") : `<div class="empty">국내 뉴스가 없습니다</div>`;
+        ovsEl.innerHTML = overseas.length ? overseas.map(newsRow).join("") : `<div class="empty">해외 뉴스가 없습니다</div>`;
+        document.getElementById("domCnt").textContent = `${domestic.length}건`;
+        document.getElementById("ovsCnt").textContent = `${overseas.length}건`;
+        document.getElementById("newsCount").textContent = rows.length.toLocaleString("ko-KR");
+        document.getElementById("sourceCount").textContent = new Set(rows.map((r) => r.source).filter(Boolean)).size.toLocaleString("ko-KR");
+        document.getElementById("latestDate").textContent = compactDate(rows[0].collected_at);
+        document.getElementById("updatedLabel").textContent = `${formatDateTime(rows[0].collected_at)} 업데이트`;
+      } catch (e) {
+        domEl.innerHTML = ovsEl.innerHTML = `<div class="empty"><b>뉴스를 불러오지 못했습니다</b>잠시 후 다시 확인해 주세요</div>`;
+        console.error(e);
       }
     }
-
-    addEventListener("DOMContentLoaded", () => { render(); });
+    addEventListener("DOMContentLoaded", () => { ainAuth.init("authSlot"); render(); });
   </script>
 </body>
 </html>

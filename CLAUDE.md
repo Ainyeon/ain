@@ -29,6 +29,18 @@
 - 배포 확인은 박민혁이 직접 새로고침. 코드 후속작업 필요할 때만 Code 대기
 - Pages 빌드가 5분+ building/행이면 `gh api -X POST repos/Ainyeon/ain/pages/builds` 재빌드 1회 후 보고
 
+## 배포 전 회귀 체크 (P1 회귀 사고 이후 강제 — 2026-07-10)
+"새로 만든 것" 검증만으론 부족하다. 기존 기능 보존을 아래 목록으로 확인한 뒤에만 push:
+1. **전 라우트 200 + 렌더**: `/` `/calendar/` `/prices/` `/gov/` `/news/` `/maker/`
+   `/maker/notice/` `/maker/compare/` `/board/free/` `/board/proposal/` `/me/` — 390px·1280px 각각
+2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
+3. **구 기능 목록 통과**: 메이커 캔버스 실렌더(#cv 크기>0) · 게시판 게이트/티저 렌더 ·
+   입주 게이팅(비로그인 잠금 카드) · 시세 실데이터
+4. **룩 혼재 push 금지**: 전 라우트가 design-tokens/components만 소비하는지
+   `grep -rln "assets/css/ain.css" --include="*.html" .` 로 확인 (legacy/ 제외 0이어야 함)
+5. **로그인 필요 기능**(글 작성·삭제, 단지명 열람)은 무인 검증 불가 — 종료 요약에 사각으로 명시
+6. sw.js 캐시 버전 범프 확인 (정적 CSS 변경 시 ?v= 쿼리도 함께)
+
 ## 현재 상태
 - 완료: auth.js, 4개 페이지 인증 UI
 - 완료: 03~06 SQL 전부 실행 (2026-07-02) — 게이팅 전체 완성, REST+익명 브라우저 검증 통과

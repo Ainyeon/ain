@@ -208,6 +208,54 @@ a.row:hover{background:var(--c-surface-sub)}
 .tfoot-in .links{display:flex;gap:var(--sp-4)}
 .tfoot-in a:hover{color:var(--c-ink)}
 
+/* ── 커뮤니티 공통 (ain-community.js 렌더 클래스 — ain.css에서 토큰화 이식) ── */
+.author-line{display:inline-flex;align-items:center;gap:var(--sp-2);
+  font-size:var(--fs-4);color:var(--c-ink-sub)}
+.author-nick{font-weight:var(--fw-bold);color:var(--c-ink)}
+.field-badge{padding:1px var(--sp-2);border-radius:var(--r-1);
+  font-size:var(--fs-4);font-weight:var(--fw-bold);
+  background:var(--c-accent-bg);color:var(--c-accent);border:1px solid var(--c-accent-line)}
+.status-badge{padding:2px var(--sp-2);border-radius:var(--r-1);
+  font-size:var(--fs-4);font-weight:var(--fw-bold)}
+.status-open{background:var(--c-accent-bg);color:var(--c-accent)}
+.status-adopted{background:var(--c-down-bg);color:var(--c-down)}
+.status-building{background:var(--c-surface-sub);color:var(--c-ink-sub);border:1px solid var(--c-line)}
+.status-shipped{background:var(--c-ink);color:var(--c-surface)}
+.role-badge{padding:1px var(--sp-2);border-radius:var(--r-1);
+  font-size:var(--fs-4);font-weight:var(--fw-bold)}
+.role-badge.role-admin{background:var(--c-ink);color:var(--c-surface)}
+.role-badge.role-manager{background:var(--c-surface-sub);color:var(--c-ink);border:1px solid var(--c-line)}
+.staff-accent{border-left:3px solid var(--c-accent)}
+.board-teaser-blur{filter:blur(3px);opacity:.55;pointer-events:none;user-select:none}
+
+/* ── 하단 탭바 (모바일 — ain-common.js 주입, ain.css에서 토큰화 이식) ── */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:80;display:flex;
+  background:var(--c-surface);border-top:1px solid var(--c-line);
+  padding-bottom:env(safe-area-inset-bottom)}
+.tabbar a{flex:1;min-height:56px;min-width:44px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint);
+  -webkit-tap-highlight-color:transparent}
+.tabbar a.on{color:var(--c-accent)}
+.tabbar svg{width:22px;height:22px;flex:none}
+@media (min-width:641px){.tabbar{display:none}}
+@media (max-width:640px){body.has-tabbar{padding-bottom:calc(64px + env(safe-area-inset-bottom))}}
+
+/* ── PWA 설치 배너 (ain-common.js 주입) ── */
+.install-bar{position:fixed;left:var(--sp-3);right:var(--sp-3);z-index:90;
+  bottom:calc(72px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;gap:var(--sp-3);
+  background:var(--c-ink);color:var(--c-surface);
+  border-radius:var(--r-2);padding:var(--sp-3) var(--sp-4);
+  font-size:var(--fs-3);font-weight:var(--fw-semi);box-shadow:var(--sh-2)}
+.install-bar span{flex:1;min-width:0}
+.install-bar button{all:unset;cursor:pointer;font-family:inherit;
+  min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
+.install-bar .install-go{background:var(--c-surface);color:var(--c-ink);
+  border-radius:var(--r-1);padding:0 var(--sp-4);font-weight:var(--fw-bold)}
+.install-bar .install-x{color:var(--c-ink-faint)}
+@media (min-width:641px){.install-bar{max-width:420px;left:auto;right:var(--sp-6);bottom:var(--sp-6)}}
+
 /* ── 모바일 (≤640px, 390 기준) ──────────────── */
 @media (max-width:640px){
   .shell{padding:0 var(--sp-4)}
