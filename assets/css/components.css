@@ -40,10 +40,12 @@ button{font-family:inherit;cursor:pointer}
   display:flex;align-items:center;gap:var(--sp-6);min-height:52px;
 }
 .tnav .brand{display:flex;align-items:center;gap:var(--sp-2);
-  font-size:var(--fs-2);font-weight:var(--fw-bold);letter-spacing:-0.02em}
-.brand-sq{width:18px;height:18px;border-radius:var(--r-1);background:var(--c-accent);
-  display:grid;place-items:center;color:var(--c-surface);
-  font-size:var(--fs-4);font-weight:var(--fw-bold);line-height:1}
+  font-size:var(--fs-2);font-weight:var(--fw-bold);letter-spacing:-0.02em;white-space:nowrap}
+/* 브랜드 마크 = 오브 (2026-07-10 확정: A 글리프 폐기, 기존 심볼 유지).
+   유일한 다색 예외 — "포인트 1색" 규칙은 UI 컴포넌트에만 적용, 브랜드 마크는 제외 */
+.brand-orb{width:20px;height:20px;border-radius:7px;flex:none;position:relative;
+  background:conic-gradient(from 210deg,#4F8CFF,#35C5B8,#A78BFA,#FF8A65,#4F8CFF)}
+.brand-orb::after{content:"";position:absolute;inset:5px;border-radius:4px;background:rgba(255,255,255,.92)}
 .tnav-links{display:flex;gap:var(--sp-1);margin-left:var(--sp-2)}
 .tnav-links a{
   display:inline-flex;align-items:center;min-height:52px;padding:0 var(--sp-3);

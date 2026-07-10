@@ -192,7 +192,8 @@
     const del = document.getElementById('delPost');
     if (del) del.addEventListener('click', async () => {
       if (!confirm('제안을 삭제할까요? 투표 기록도 함께 삭제됩니다.')) return;
-      await db().from('posts').delete().eq('id', id);
+      const { error: delErr } = await db().from('posts').delete().eq('id', id);
+      if (delErr) { alert('삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(delErr); return; }
       location.href = './';
     });
     const rep = document.getElementById('repPost');

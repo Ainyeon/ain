@@ -1,7 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- A.IN 파비콘 — 모노 딥블루(#2D4A9E) 바탕 + 화이트 A 글리프(symbol.svg 동형).
-       컬러 규칙: 이 2색 외 사용 금지. 구 그라데이션 마크는 폐기(2026-07 개편). -->
-  <rect width="64" height="64" rx="14" fill="#2D4A9E"/>
-  <path d="M18 48 L32 14 L46 48" stroke="#FFFFFF" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M24 37 H40" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4F8CFF"/>
+      <stop offset="40%" stop-color="#35C5B8"/>
+      <stop offset="75%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#FF8A65"/>
+    </linearGradient>
+  </defs>
+  <rect width="32" height="32" rx="10" fill="url(#g)"/>
+  <rect x="8" y="8" width="16" height="16" rx="6" fill="#FFFFFF" fill-opacity="0.92"/>
 </svg>

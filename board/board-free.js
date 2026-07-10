@@ -128,7 +128,8 @@
     const del = document.getElementById('delPost');
     if (del) del.addEventListener('click', async () => {
       if (!confirm('글을 삭제할까요?')) return;
-      await db().from('posts').delete().eq('id', id);
+      const { error: delErr } = await db().from('posts').delete().eq('id', id);
+      if (delErr) { alert('삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(delErr); return; }
       location.href = './';
     });
     const rep = document.getElementById('repPost');
@@ -138,7 +139,8 @@
     panel.querySelectorAll('[data-del-cmt]').forEach((b) =>
       b.addEventListener('click', async () => {
         if (!confirm('댓글을 삭제할까요?')) return;
-        await db().from('comments').delete().eq('id', Number(b.dataset.delCmt));
+        const { error: cdErr } = await db().from('comments').delete().eq('id', Number(b.dataset.delCmt));
+        if (cdErr) { alert('삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(cdErr); return; }
         location.reload();
       }));
     document.getElementById('cmtForm').addEventListener('submit', async (e) => {
