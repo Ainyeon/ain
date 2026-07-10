@@ -107,7 +107,7 @@
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadge(post.author) + '</span>'
       + '<span><span class="view-count">조회 ' + ((post.view_count || 0) + 1) + '</span> <time style="color:var(--txt3);font-size:12px">' + C().timeAgo(post.created_at) + '</time></span></div>'
       + '<div class="post-body">' + escT(post.body) + '</div>'
-      + '<div class="vote-row"><button type="button" class="like-btn' + (iLiked ? ' on' : '') + '" id="likeBtn">❤️ 공감 ' + likeCount + '</button></div>'
+      + '<div class="vote-row"><button type="button" class="like-btn' + (iLiked ? ' on' : '') + '" id="likeBtn"><svg width=\'13\' height=\'13\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' style=\'vertical-align:-2px\' aria-hidden=\'true\'><path d=\'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\'/></svg> 공감 ' + likeCount + '</button></div>'
       + '<div class="post-tools">'
       + (mine ? '<button type="button" class="tool-link" id="delPost">글 삭제</button>'
               : '<button type="button" class="tool-link" id="repPost">신고</button>')

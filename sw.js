@@ -1,13 +1,13 @@
 // 에인연 서비스워커 — 오프라인 내성: 마지막 브리핑·시세 1회분 열람 가능
 // 전략: 내비게이션·데이터 = 네트워크 우선(성공 시 캐시 갱신, 실패 시 캐시 폴백)
 //       정적 자산 = 캐시 우선(백그라운드 갱신)
-const VERSION = 'ain-v6';
+const VERSION = 'ain-v7'; // v7: 개편 — 홈 대시보드 승격, /briefing/→/ 통합, /gov/ 신설, 토큰 CSS
 const SHELL_CACHE = VERSION + '-shell';
 const DATA_CACHE = VERSION + '-data';
 
 const SHELL = [
   '/',
-  '/briefing/',
+  '/gov/',
   '/prices/',
   '/calendar/',
   '/news/',
@@ -27,6 +27,8 @@ const SHELL = [
   '/board/board-proposal.js',
   '/assets/js/ain-community.js',
   '/assets/css/ain.css',
+  '/assets/css/design-tokens.css',
+  '/assets/css/components.css',
   '/assets/js/ain-common.js',
   '/auth.js',
   '/assets/fonts/PretendardVariable.subset.woff2',
@@ -38,7 +40,7 @@ const SHELL = [
 // 오프라인 캐싱 허용 데이터: 공개 읽기 전용 REST GET만 (인증·토큰 요청은 절대 캐시 안 함)
 const DATA_HOST = 'oqgoibbhnidsveueifet.supabase.co';
 const DATA_PATH = '/rest/v1/';
-const DATA_ALLOW = ['v_ticker_metals', 'v_stat_movein', 'v_stat_gov', 'move_in_teaser', 'news_items', 'prices'];
+const DATA_ALLOW = ['v_ticker_metals', 'v_stat_movein', 'v_stat_gov', 'v_gov_list', 'move_in_teaser', 'news_items', 'prices'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

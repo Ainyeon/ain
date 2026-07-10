@@ -138,7 +138,7 @@
     const TABS=[
       {href:'/',label:'홈',icon:I.home},
       {href:'/calendar/',label:'입주레이더',icon:I.radar},
-      {href:'/briefing/',label:'브리핑',icon:I.brief},
+      {href:'/gov/',label:'정부사업',icon:I.brief},
       {href:'/prices/',label:'시세',icon:I.price},
       {href:'/me/',label:'내정보',icon:I.me}
     ];

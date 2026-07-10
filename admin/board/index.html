@@ -154,7 +154,7 @@
             '<option value="' + v + '"' + (p.status === v ? ' selected' : '') + '>' + l + '</option>').join('');
           return '<div class="board-card admin-row' + (reached(tv) && p.status === 'open' ? ' reach-highlight' : '') + '">'
             + '<span><a href="/board/proposal/?id=' + p.id + '"><b>' + escT(p.title) + '</b></a><br>'
-            + '<span style="font-size:12px;color:var(--txt3)">👍' + tv.up + ' 👎' + tv.down
+            + '<span style="font-size:12px;color:var(--txt3)">찬 ' + tv.up + ' · 반 ' + tv.down
             + (reached(tv) ? ' · <span class="reach-note">채택 기준 도달</span>' : '') + '</span></span>'
             + '<select data-status="' + p.id + '" aria-label="상태 변경">' + opts + '</select></div>';
         }).join('') || '<p class="empty-note">' + (filterReached ? '임계 도달 제안 없음' : '제안 없음') + '</p>';

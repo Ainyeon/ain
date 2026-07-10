@@ -20,8 +20,9 @@
 - news, prices → anon 공개 (SEO 유입 자산)
 - 메인 티커·카드 → 집계 전용 뷰 3개 (09_public_views.sql): v_ticker_metals(invoker, prices 공개라서)
   / v_stat_movein·v_stat_gov(definer — 원본 anon 차단 상태에서 집계 숫자만 노출)
-- govt_programs → 원본 anon grant 회수 예정 (뷰 전환·배포 확인 후 09의 REVOKE 섹션 실행).
-  anon 접근은 v_stat_gov 경유만. 파이프라인(service_role)은 무영향
+- govt_programs → 원본 anon grant **회수됨** (2026-07-09 실측 401 — 기록상 "예정"이었으나 07-04 psql
+  세션에서 이미 실행돼 있었음). anon 접근은 v_stat_gov(집계) + v_gov_list(리스트, supabase/11) 경유만.
+  v_gov_list = definer 뷰, SELECT만 grant (신규 뷰에 디폴트로 붙는 쓰기권한은 회수 완료). 파이프라인 무영향
 
 ## 배포 규약
 - Code는 push까지만 수행하고 종료. 배포 완료 폴링(block=true) 대기 금지
@@ -39,3 +40,7 @@
   그라데이션 대표색·배경 슬라이더·크기 12종+직접입력·탭 선택 조절·레이아웃 6종. sw ain-v6
 - ⚠️ 미실행: sql/10-fields-expand.sql (profiles_field_check 확장) — 온보딩이 신규 업종 22종을 노출 중이라
   실행 전까지 신규 업종(보일러 등 15종) 선택 시 프로필 저장이 제약 위반으로 실패. 실행엔 사용자 명시 승인 필요
+- 완료: 전면 개편 P1 (2026-07-10) — 디자인 토큰 체계(design-tokens.css+components.css, 웜그레이+딥블루 #2D4A9E),
+  홈=브리핑 대시보드 승격, /briefing/→/ 리다이렉트(구 URL 보존), /gov/ 신설(v_gov_list 실데이터),
+  이모지 전수 제거(라인 SVG 대체), 로고 이원화(symbol.svg+모노 파비콘+PWA 아이콘), sw ain-v7.
+  구 홈(오브 히어로)·구 브리핑은 git 히스토리에만 존재. calendar/news/prices는 네비·배선만 신규(풀 리스킨 = 후속)

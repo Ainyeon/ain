@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- A.IN 심볼 글리프 (배경 없음) — 로고 이원 체계의 원자 단위.
+       컬러 규칙: 딥블루 #2D4A9E 단색만 사용. 그라데이션·다색 금지.
+       배경 위 사용 시 이 글리프 색만 #FFFFFF로 반전 가능(모노 2색 체계). -->
+  <path d="M18 48 L32 14 L46 48" stroke="#2D4A9E" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24 37 H40" stroke="#2D4A9E" stroke-width="7" stroke-linecap="round"/>
+</svg>

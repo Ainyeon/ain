@@ -3,10 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>정부 지원사업 | 에인연 (시안)</title>
-  <meta name="robots" content="noindex">
+  <title>정부 지원사업 | 에인연</title>
+  <meta name="description" content="에어컨·인테리어 업계에 유효한 정부 지원사업 공고를 기업마당에서 매일 자동 수집해 마감임박순으로 정리합니다.">
+  <link rel="canonical" href="https://ainyeon.com/gov/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="정부 지원사업 | 에인연">
+  <meta property="og:description" content="접수 중인 지원사업을 마감이 가까운 순으로 — 매일 자동 갱신, 원문 링크 제공.">
+  <meta property="og:url" content="https://ainyeon.com/gov/">
+  <meta property="og:image" content="https://ainyeon.com/assets/og.png">
   <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css">
   <link rel="stylesheet" href="/assets/css/components.css">
@@ -25,12 +33,12 @@
 
   <nav class="tnav">
     <div class="tnav-in">
-      <a class="brand" href="/redesign/"><span class="brand-sq">A</span>에인연</a>
+      <a class="brand" href="/"><span class="brand-sq">A</span>에인연</a>
       <div class="tnav-links">
-        <a href="/redesign/">홈</a>
+        <a href="/">홈</a>
         <a href="/calendar/">입주정보</a>
         <a href="/prices/">시세</a>
-        <a class="on" href="/redesign/gov/">정부사업</a>
+        <a class="on" href="/gov/">정부사업</a>
         <a href="/news/">업계뉴스</a>
         <a href="/board/free/">커뮤니티</a>
       </div>
@@ -85,25 +93,18 @@
     <div class="tfoot-in">
       <div>에어컨 인테리어 연구소 A.IN — 출처: 중소벤처기업부 기업마당</div>
       <div class="links">
-        <a href="/redesign/">홈</a>
+        <a href="/">홈</a>
         <a href="https://www.bizinfo.go.kr" target="_blank" rel="noopener">기업마당</a>
       </div>
     </div>
   </footer>
 
   <script>
-    // ── 데이터: 기존 소스(govt_programs, 현 anon grant) 렌더만. v_gov_list 전환은 P2 ──
+    // ── 데이터: v_gov_list (11_v_gov_list.sql — definer 뷰, anon SELECT 전용) ──
     const $ = (id) => document.getElementById(id);
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    const kstToday = () => {
-      const p = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(new Date());
-      const o = Object.fromEntries(p.map((x) => [x.type, x.value]));
-      return `${o.year}-${o.month}-${o.day}`;
-    };
-    const ddayNum = (end) => end ? Math.round((new Date(`${String(end).slice(0, 10)}T00:00:00+09:00`) - new Date(`${kstToday()}T00:00:00+09:00`)) / 864e5) : null;
-    const ddayBadge = (end) => {
-      const n = ddayNum(end);
-      if (n === null) return '<span class="dday always">상시</span>';
+    const ddayBadge = (n) => {
+      if (n === null || n === undefined) return '<span class="dday always">상시</span>';
       if (n < 0) return '<span class="dday always">마감</span>';
       return `<span class="dday${n <= 7 ? " urgent" : ""} num">${n === 0 ? "D-day" : `D-${n}`}</span>`;
     };
@@ -122,27 +123,22 @@
 
     async function load() {
       const sb = ainAuth.init("authSlot") || ainAuth.getClient();
-      const today = kstToday();
-      const { data, error, count } = await sb.from("govt_programs")
-        .select("program_name,host_org,application_end_date,application_period_text,source_url,updated_at", { count: "exact" })
-        .eq("status", "active")
-        .or(`application_end_date.gte.${today},application_end_date.is.null`)
+      const { data, error, count } = await sb.from("v_gov_list")
+        .select("program_name,host_org,application_end_date,application_period_text,d_day,source_url,summary,last_updated", { count: "exact" })
         .order("application_end_date", { ascending: true, nullsFirst: false })
         .limit(100);
       if (error) {
-        // 원본 anon 접근 회수 상태(RLS 게이팅) — P2에서 v_gov_list 공개뷰로 전환.
-        // 시안 판정용 샘플 행 렌더 + "샘플" 명시. 실 카운트는 v_stat_gov(공개 집계)로.
+        $("listBody").innerHTML = `<tr><td class="no-th" colspan="4"><div class="empty"><b>목록을 불러올 수 없습니다</b>잠시 후 새로고침 해주세요</div></td></tr>`;
         console.error(error);
-        renderSample(sb);
         return;
       }
       const rows = data || [];
       const total = count ?? rows.length;
-      const week = rows.filter((r) => { const n = ddayNum(r.application_end_date); return n !== null && n >= 0 && n <= 7; }).length;
+      const week = rows.filter((r) => Number.isFinite(Number(r.d_day)) && r.d_day !== null && r.d_day >= 0 && r.d_day <= 7).length;
       $("statActive").textContent = total.toLocaleString("ko-KR");
       $("statWeek").textContent = week.toLocaleString("ko-KR");
       $("listCnt").textContent = `${total.toLocaleString("ko-KR")}건`;
-      const latest = rows.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), "");
+      const latest = rows.reduce((m, r) => (r.last_updated > m ? r.last_updated : m), "");
       $("listUpd").textContent = fmtTime(latest);
       if (!rows.length) {
         $("listBody").innerHTML = `<tr><td class="no-th" colspan="4"><div class="empty"><b>접수 중인 공고가 없습니다</b>기업마당 공고 기준 — 매일 갱신</div></td></tr>`;
@@ -153,50 +149,18 @@
           <td data-th="사업명" class="no-th">
             <div class="cell-title">${esc(r.program_name)}</div>
             <div class="cell-sub">${esc(r.host_org || "주관기관 확인")}${r.application_period_text ? " · " + esc(r.application_period_text) : ""}</div>
+            ${r.summary ? `<div class="cell-sub">${esc(r.summary)}</div>` : ""}
           </td>
           <td data-th="접수마감" class="nowrap num">${esc(fmtDate(r.application_end_date))}</td>
-          <td data-th="남은기간">${ddayBadge(r.application_end_date)}</td>
+          <td data-th="남은기간">${ddayBadge(r.application_end_date === null ? null : Number(r.d_day))}</td>
           <td data-th="원문" class="ta-r no-th">${r.source_url ? `<a class="btn-src" href="${esc(r.source_url)}" target="_blank" rel="noopener">원문 보기<svg class="icon sm"><use href="#i-ext"/></svg></a>` : ""}</td>
         </tr>`).join("");
     }
-    // 시안 판정용 샘플 (P2 v_gov_list 전환 전까지 anon은 리스트 접근 불가)
-    async function renderSample(sb) {
-      const base = kstToday();
-      const plus = (n) => {
-        const d = new Date(`${base}T00:00:00+09:00`); d.setDate(d.getDate() + n);
-        return d.toISOString().slice(0, 10);
-      };
-      const sample = [
-        { program_name: "중소기업 에너지효율 설비교체 지원사업", host_org: "한국에너지공단", application_end_date: plus(3) },
-        { program_name: "소상공인 냉난방기 교체 지원 (2차)", host_org: "소상공인시장진흥공단", application_end_date: plus(6) },
-        { program_name: "뿌리기업 공정혁신 설비투자 지원", host_org: "중소벤처기업부", application_end_date: plus(14) },
-        { program_name: "고효율 히트펌프 보급 시범사업", host_org: "산업통상자원부", application_end_date: plus(23) },
-        { program_name: "건물 에너지진단 컨설팅 바우처", host_org: "한국에너지공단", application_end_date: plus(41) },
-        { program_name: "소기업 스마트공방 기술보급", host_org: "중소벤처기업부", application_end_date: null },
-      ];
-      let total = sample.length;
-      try {
-        const { data } = await sb.from("v_stat_gov").select("active_count").limit(1);
-        if (Array.isArray(data) && data.length && Number(data[0].active_count)) total = Number(data[0].active_count);
-      } catch (_) { /* 집계 실패 시 샘플 수 유지 */ }
-      const week = sample.filter((r) => { const n = ddayNum(r.application_end_date); return n !== null && n >= 0 && n <= 7; }).length;
-      $("statActive").textContent = total.toLocaleString("ko-KR");
-      $("statWeek").textContent = week.toLocaleString("ko-KR");
-      $("listCnt").textContent = "표시용 샘플";
-      $("listUpd").textContent = "미리보기";
-      $("listBody").innerHTML = sample.map((r) => `
-        <tr>
-          <td data-th="사업명" class="no-th">
-            <div class="cell-title">${esc(r.program_name)}</div>
-            <div class="cell-sub">${esc(r.host_org)}</div>
-          </td>
-          <td data-th="접수마감" class="nowrap num">${esc(fmtDate(r.application_end_date))}</td>
-          <td data-th="남은기간">${ddayBadge(r.application_end_date)}</td>
-          <td data-th="원문" class="ta-r no-th"><a class="btn-src" href="https://www.bizinfo.go.kr" target="_blank" rel="noopener">원문 보기<svg class="icon sm"><use href="#i-ext"/></svg></a></td>
-        </tr>`).join("");
-    }
-
     document.addEventListener("DOMContentLoaded", () => { load().catch(console.error); });
+
+    if ("serviceWorker" in navigator) {
+      addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+    }
   </script>
 </body>
 </html>

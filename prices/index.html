@@ -47,12 +47,12 @@
 <body>
   <nav class="nav" id="nav">
     <a class="brand" href="/"><span class="brand-mark"></span>A.IN</a>
-    <a class="menu-pill" href="/#streams"><span class="plus">+</span>메뉴</a>
+    <a class="menu-pill" href="/"><span class="plus">+</span>메뉴</a>
     <div class="nav-tags">
-      <a href="/briefing/">모닝브리핑</a>
+      <a href="/gov/">정부사업</a>
       <a href="/calendar/">입주 레이더</a>
       <a href="/news/">업계뉴스</a>
-      <a href="/#tools">도구</a>
+      <a href="/maker/">메이커</a>
     </div>
     <div class="nav-right">
       <a class="menu-pill" href="#" id="kakaoStart"><span class="plus">+</span>카카오로 시작</a>
@@ -111,8 +111,7 @@
         statusEl.remove();
         panelEl.innerHTML =
           (copper ? metalCard(copper, "") : "")
-          + (alu ? metalCard(alu, "alu") : "")
-          + '<article class="price-card gas"><div class="price-name">냉매 R410A · R32</div><div class="price-meta" style="margin-top:10px">시세 연동 준비중 — 모닝브리핑에서 먼저 다룹니다.</div></article>';
+          + (alu ? metalCard(alu, "alu") : "");
         const latest = (copper || alu || {}).collected_at;
         if (latest) updatedEl.textContent = new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(latest)) + " 기준";
       } catch (e) {
