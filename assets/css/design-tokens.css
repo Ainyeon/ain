@@ -31,6 +31,9 @@
   --c-accent:#2D4A9E;
   --c-accent-bg:#EEF1F8;
   --c-accent-line:#C7D0E6;
+  /* 브랜드 그라데이션 — 적용처 한정: 워드마크·활성 탭/필터·프라이머리 CTA·섹션 포인트 바.
+     본문·테이블·배지 도배 금지 (전문성 보존) */
+  --brand-gradient:linear-gradient(135deg,#2D4A9E,#9E2D3D);
 
   /* ── 컬러 · 시세 방향 (국내 관례: 상승=적 / 하락=청) ── */
   --c-up:#C13438;

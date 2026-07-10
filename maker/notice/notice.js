@@ -33,7 +33,7 @@
     try {
       localStorage.setItem(STORE, JSON.stringify({
         fmtSel, gray, color, field, tone, adj, sections,
-        biz: $('fBiz').value, phone: $('fPhone').value, area: $('fArea').value
+        biz: $('fBiz').value, phone: $('fPhone').value, area: $('fArea').value, title: $('fTitle') ? $('fTitle').value : ''
       }));
     } catch (e) {}
   }
@@ -152,7 +152,8 @@
     y = y + C.adjGap(0, aT) + (compact ? 0 : 10);
     ctx.fillStyle = st.ink;
     ctx.font = `800 ${titleSize}px ${FONT}`;
-    const title = field ? (field.custom ? field.label + ' 안내' : field.label + ' 관리 안내') : '고객 안내 말씀';
+    // HF3: '관리 안내' 고정 문구 제거 — 사용자 제목 우선, 비우면 '업종명 안내' 자동
+    const title = ($('fTitle') && $('fTitle').value.trim()) || (field ? field.label + ' 안내' : '고객 안내 말씀');
     const tTop = y - titleSize * 0.2;
     u.wrap(title, 1080 - MG * 2, ctx.font).slice(0, 2).forEach((ln) => {
       drawText(ln, MG, y + titleSize * 0.82, aT && aT.align);
@@ -299,6 +300,7 @@
     adj = s.adj || {};
     sections = Array.isArray(s.sections) && s.sections.length ? s.sections : [];
     if (s.biz) $('fBiz').value = s.biz;
+    if (s.title && $('fTitle')) $('fTitle').value = s.title;
     if (s.phone) $('fPhone').value = s.phone;
     if (s.area) $('fArea').value = s.area;
     if (s.fmtSel && s.fmtSel.W) fmtSel = s.fmtSel;
@@ -346,7 +348,7 @@
     });
 
     // 기본 입력
-    ['fBiz', 'fPhone', 'fArea'].forEach((id) => $(id).addEventListener('input', render));
+    ['fBiz', 'fPhone', 'fArea', 'fTitle'].forEach((id) => { if ($(id)) $(id).addEventListener('input', render); });
     $('secAdd').addEventListener('click', () => {
       sections.push({ title: '새 내용', body: '' });
       renderSectionEditor(); render();

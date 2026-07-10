@@ -16,8 +16,8 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=8">
-  <link rel="stylesheet" href="/assets/css/components.css?v=8">
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=10">
+  <link rel="stylesheet" href="/assets/css/components.css?v=10">
   <style>
     /* 페이지 로컬: 토큰만 소비 */
     .price-note{padding:var(--sp-5) 0 var(--sp-8);color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
@@ -36,7 +36,7 @@
 
   <nav class="tnav">
     <div class="tnav-in">
-      <a class="brand" href="/"><span class="brand-orb"></span>에어컨 인테리어 연구소</a>
+      <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 78 22" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><text x="0" y="17.5" font-size="20" font-weight="800" letter-spacing="-0.5" fill="url(#bgw)">A.IN</text></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
       <div class="tnav-links">
         <a href="/">홈</a>
         <a href="/calendar/">입주정보</a>
@@ -72,10 +72,10 @@
       <div class="tscroll">
         <table class="dtable stack">
           <thead>
-            <tr><th>품목</th><th class="nowrap ta-r">가격</th><th class="nowrap ta-r">전일비</th><th class="nowrap">수집</th></tr>
+            <tr><th>품목</th><th class="nowrap ta-r">가격</th><th class="nowrap ta-r">전일비</th><th class="nowrap ta-r">주간</th><th class="nowrap">수집</th></tr>
           </thead>
           <tbody id="priceBody">
-            <tr><td class="no-th" colspan="4"><div class="empty">시세를 불러오는 중</div></td></tr>
+            <tr><td class="no-th" colspan="5"><div class="empty">시세를 불러오는 중</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -99,17 +99,23 @@
     const tri = (dir) => dir === 0 ? "" :
       `<svg class="tri" viewBox="0 0 8 8" fill="currentColor" stroke="none" width="8" height="8"><path d="${dir > 0 ? "M4 1 7.5 7h-7Z" : "M4 7 .5 1h7Z"}"/></svg>`;
 
-    function metalRow(row) {
-      const pct = Number(row.change_day_percent);
-      const dir = Number.isFinite(pct) ? Math.sign(pct) : 0;
+    const deltaCell = (pct, text) => {
+      const n = Number(pct);
+      const dir = Number.isFinite(n) ? Math.sign(n) : 0;
       const cls = dir > 0 ? "up" : dir < 0 ? "down" : "flat";
+      return text ? `<span class="delta ${cls} num">${tri(dir)}${esc(text)}</span>` : '<span class="delta flat num">—</span>';
+    };
+
+    function metalRow(row) {
       const when = row.collected_at ? new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(row.collected_at)) : "-";
-      const changeTxt = row.display_change_day_percent
-        ? `<span class="delta ${cls} num">${tri(dir)}${esc(row.display_change_day_percent)}</span>` : '<span class="delta flat num">—</span>';
+      const sp = row.source_payload || {};
+      const weekPct = sp.change_week_percent;
+      const weekTxt = Number.isFinite(Number(weekPct)) ? `${Number(weekPct) > 0 ? "+" : ""}${Number(weekPct).toFixed(2)}%` : "";
       return `<tr>
         <td data-th="품목" class="no-th"><div class="cell-title">${esc(row.name || row.item_id)}</div><div class="cell-sub">${esc(row.unit || "USD/mt")}</div></td>
         <td data-th="가격" class="ta-r nowrap num" style="font-weight:var(--fw-bold)">${esc(row.display_price || row.price)}</td>
-        <td data-th="전일비" class="ta-r nowrap">${changeTxt}</td>
+        <td data-th="전일비" class="ta-r nowrap">${deltaCell(row.change_day_percent, row.display_change_day_percent)}</td>
+        <td data-th="주간" class="ta-r nowrap">${deltaCell(weekPct, weekTxt)}</td>
         <td data-th="수집" class="nowrap num">${esc(when)}</td>
       </tr>`;
     }
@@ -117,13 +123,17 @@
     async function render() {
       const body = document.getElementById("priceBody");
       try {
-        const { data, error } = await ainAuth.getClient().from("v_ticker_metals").select("*");
+        // HF3: 5종 확장 — prices 테이블 직쿼리(anon 공개), 최신 1행/종목 클라 dedupe
+        const ORDER = ["copper", "aluminium", "nickel", "zinc", "usd_krw"];
+        const { data, error } = await ainAuth.getClient().from("prices")
+          .select("item_id,name,price,unit,display_price,change_day_percent,display_change_day_percent,source_payload,collected_at,status")
+          .eq("status", "active").order("collected_at", { ascending: false }).limit(40);
         if (error) throw error;
-        const copper = (data || []).find((r) => r.item_id === "copper");
-        const alu = (data || []).find((r) => r.item_id === "aluminium");
-        const rows = [copper, alu].filter(Boolean);
+        const seen = new Map();
+        (data || []).forEach((r) => { if (ORDER.includes(r.item_id) && !seen.has(r.item_id)) seen.set(r.item_id, r); });
+        const rows = ORDER.map((id) => seen.get(id)).filter(Boolean);
         if (!rows.length) {
-          body.innerHTML = `<tr><td class="no-th" colspan="4"><div class="empty"><b>표시할 시세가 아직 없습니다</b>다음 수집에서 갱신됩니다</div></td></tr>`;
+          body.innerHTML = `<tr><td class="no-th" colspan="5"><div class="empty"><b>표시할 시세가 아직 없습니다</b>다음 수집에서 갱신됩니다</div></td></tr>`;
           return;
         }
         body.innerHTML = rows.map(metalRow).join("");
@@ -131,7 +141,7 @@
         if (latest) document.getElementById("updatedLabel").textContent =
           new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).format(new Date(latest)) + " 기준";
       } catch (e) {
-        body.innerHTML = `<tr><td class="no-th" colspan="4"><div class="empty"><b>시세를 불러오지 못했습니다</b>잠시 후 다시 확인해 주세요</div></td></tr>`;
+        body.innerHTML = `<tr><td class="no-th" colspan="5"><div class="empty"><b>시세를 불러오지 못했습니다</b>잠시 후 다시 확인해 주세요</div></td></tr>`;
         console.error(e);
       }
     }

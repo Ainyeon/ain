@@ -10,7 +10,7 @@ a.board-card:hover { background: var(--c-surface-sub); }
 .card-meta-line { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin-top: var(--sp-2); }
 .card-meta-line time, .cmt-count { font-size: var(--fs-4); color: var(--c-ink-faint); }
 .write-btn {
-  min-height: 48px; border: none; border-radius: var(--r-1); background: var(--c-accent); color: var(--c-surface);
+  min-height: 48px; border: none; border-radius: var(--r-1); background: var(--brand-gradient); color: var(--c-surface); /* 프라이머리 CTA — 그라데이션 한정 적용처 */
   font: inherit; font-size: var(--fs-3); font-weight: var(--fw-bold); cursor: pointer; width: 100%;
 }
 .write-btn:hover { opacity: .92; }

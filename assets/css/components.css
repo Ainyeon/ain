@@ -41,11 +41,9 @@ button{font-family:inherit;cursor:pointer}
 }
 .tnav .brand{display:flex;align-items:center;gap:var(--sp-2);
   font-size:var(--fs-2);font-weight:var(--fw-bold);letter-spacing:-0.02em;white-space:nowrap}
-/* 브랜드 마크 = 오브 (2026-07-10 확정: A 글리프 폐기, 기존 심볼 유지).
-   유일한 다색 예외 — "포인트 1색" 규칙은 UI 컴포넌트에만 적용, 브랜드 마크는 제외 */
-.brand-orb{width:20px;height:20px;border-radius:7px;flex:none;position:relative;
-  background:conic-gradient(from 210deg,#4F8CFF,#35C5B8,#A78BFA,#FF8A65,#4F8CFF)}
-.brand-orb::after{content:"";position:absolute;inset:5px;border-radius:4px;background:rgba(255,255,255,.92)}
+/* 브랜드: A.IN 그라데이션 워드마크(HF3) + 정식명칭. 오브는 파비콘·PWA 아이콘 전용 */
+.brand-word{height:17px;width:auto;flex:none}
+.brand-name{white-space:nowrap}
 .tnav-links{display:flex;gap:var(--sp-1);margin-left:var(--sp-2)}
 .tnav-links a{
   display:inline-flex;align-items:center;min-height:52px;padding:0 var(--sp-3);
@@ -53,7 +51,8 @@ button{font-family:inherit;cursor:pointer}
   border-bottom:2px solid transparent;margin-bottom:-1px;
 }
 .tnav-links a:hover{color:var(--c-ink)}
-.tnav-links a.on{color:var(--c-accent);border-bottom-color:var(--c-accent)}
+.tnav-links a.on{color:var(--c-accent);
+  border-image:var(--brand-gradient) 1;border-bottom-color:var(--c-accent)}
 .tnav-auth{margin-left:auto}
 
 /* ── 시세 스트립 (상단 가로) ────────────────── */
@@ -87,9 +86,13 @@ button{font-family:inherit;cursor:pointer}
   border-radius:var(--r-2);box-shadow:var(--sh-1);overflow:hidden;
 }
 .phead{
+  position:relative;
   display:flex;align-items:center;gap:var(--sp-2);
   padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--c-line);
 }
+/* 섹션 포인트 바 — 브랜드 그라데이션 한정 적용처 */
+.phead::before{content:"";position:absolute;left:0;top:25%;bottom:25%;width:3px;
+  border-radius:0 2px 2px 0;background:var(--brand-gradient)}
 .phead .icon{color:var(--c-accent)}
 .phead h2{font-size:var(--fs-2);font-weight:var(--fw-bold);letter-spacing:-0.015em}
 .phead .cnt{font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-accent);
@@ -236,7 +239,10 @@ a.row:hover{background:var(--c-surface-sub)}
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint);
   -webkit-tap-highlight-color:transparent}
+.tabbar a{position:relative}
 .tabbar a.on{color:var(--c-accent)}
+.tabbar a.on::before{content:"";position:absolute;top:0;left:28%;right:28%;height:3px;
+  border-radius:0 0 3px 3px;background:var(--brand-gradient)}
 .tabbar svg{width:22px;height:22px;flex:none}
 @media (min-width:641px){.tabbar{display:none}}
 @media (max-width:640px){body.has-tabbar{padding-bottom:calc(64px + env(safe-area-inset-bottom))}}
@@ -261,9 +267,12 @@ a.row:hover{background:var(--c-surface-sub)}
   .shell{padding:0 var(--sp-4)}
   .tnav-in{padding:0 var(--sp-4);gap:var(--sp-3)}
   .tnav-links{display:none}
-  .strip-in{padding:0 var(--sp-4);flex-wrap:wrap}
-  .strip-cell{padding:var(--sp-2) var(--sp-4) var(--sp-2) 0;margin-right:var(--sp-4)}
-  .strip-meta{width:100%;margin:0;padding:var(--sp-1) 0 var(--sp-2)}
+  .strip-in{padding:0 var(--sp-4);display:grid;grid-template-columns:1fr 1fr}
+  .strip-cell{flex-direction:column;align-items:flex-start;gap:2px;
+    padding:var(--sp-2) var(--sp-3) var(--sp-2) 0;margin-right:var(--sp-3)}
+  .strip-cell .v{font-size:var(--fs-3);white-space:nowrap}
+  .strip-cell .delta{white-space:nowrap}
+  .strip-meta{grid-column:1/-1;margin:0;padding:var(--sp-1) 0 var(--sp-2)}
   .dash{grid-template-columns:1fr}
   .phero{padding:var(--sp-6) 0 var(--sp-4)}
   .phero-bar{flex-direction:column;align-items:flex-start}
