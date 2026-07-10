@@ -1,0 +1,6 @@
+<svg viewBox="0 0 929 307" xmlns="http://www.w3.org/2000/svg" aria-label="A.IN">
+<!-- A.IN 워드마크 v4 — 원본 픽셀트레이싱 (ain_logo_v4). 헤더 브랜드의 원본 자산 — 유실 금지 -->
+<defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#2D4A9E"/><stop offset="100%" stop-color="#9E2D3D"/></linearGradient></defs>
+<g fill="url(#g1)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g>
+</svg>
