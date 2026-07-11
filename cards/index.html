@@ -248,13 +248,15 @@
         bindCards(panel, "card", "gov-card", updateStat);
       }
 
-      // B 렌더 — 삼성·LG 뉴스룸 배선 (manufacturer_news_items, anon RLS: active만 공개 읽기). 정예 8건
+      // B 렌더 — 삼성·LG 뉴스룸 배선 (manufacturer_news_items, anon RLS: active만 공개 읽기).
+      // 정예 = 제목에 공조 키워드가 있는 건만 (payload.title_matched_keywords 非빈 — 수집기 다운스트림 필터 규약)
       async function renderB(showDone) {
         const panel = $("panelB");
         const sb = ainAuth.getClient();
         const { data, error } = await sb.from("manufacturer_news_items")
           .select("manufacturer,title,summary,source,url,source_published_date,collected_at")
           .eq("status", "active")
+          .neq("source_payload->title_matched_keywords", "[]")
           .order("source_published_date", { ascending: false })
           .limit(8);
         if (error) { panel.innerHTML = `<div class="empty"><b>제조사 뉴스를 불러올 수 없습니다</b>${esc(error.message)}</div>`; return; }
