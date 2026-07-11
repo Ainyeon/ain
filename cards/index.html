@@ -62,6 +62,10 @@
     .card-meta-line2{font-size:var(--fs-4);color:var(--c-ink-faint)}
     .hidden-done{display:none}
     .toolbar{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4)}
+    /* B(정보) 카드 — A 레이아웃 그대로, 자유문 요약만 4줄 클램프 */
+    .gc-sum .ln.ln-b{-webkit-line-clamp:4}
+    .sec-title{font-size:var(--fs-2);font-weight:800;margin:var(--sp-6) 0 var(--sp-3)}
+    .sec-title small{font-weight:600;color:var(--c-ink-faint);margin-left:8px}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -89,7 +93,7 @@
         <div>
           <div class="crumb">ADMIN · CARD NEWS</div>
           <h1>카드뉴스 작업대</h1>
-          <p class="sub">정부사업 카드 1080×1350 — 저장해서 인스타·카페에 올리세요. 관리자 전용입니다.</p>
+          <p class="sub">A(정부·강훅) / B(제조사 뉴스·정보) 카드 1080×1350 — 저장해서 인스타·카페에 올리세요. 관리자 전용입니다.</p>
         </div>
       </div>
     </header>
@@ -97,9 +101,12 @@
       <button type="button" class="btn-line" id="showDone">게시 완료 표시분 보기</button>
       <span class="card-meta-line2" id="cardStat">확인 중</span>
     </div>
+    <h2 class="sec-title" id="secA" hidden>A — 정부지원사업<small>강훅</small></h2>
     <section class="cards-wrap" id="panel" aria-live="polite">
       <div class="empty">권한 확인 중</div>
     </section>
+    <h2 class="sec-title" id="secB" hidden>B — 제조사 뉴스<small>삼성·LG 뉴스룸 · 정보</small></h2>
+    <section class="cards-wrap" id="panelB" aria-live="polite" hidden></section>
   </main>
 
   <script>
@@ -107,11 +114,12 @@
       'use strict';
       const $ = (id) => document.getElementById(id);
       const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-      const kstToday = () => {
-        const p = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(new Date());
+      const kstDateOf = (d) => {
+        const p = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(d);
         const o = Object.fromEntries(p.map((x) => [x.type, x.value]));
         return `${o.year}-${o.month}-${o.day}`;
       };
+      const kstToday = () => kstDateOf(new Date());
       // 게시 완료(숨김) = localStorage — 서버 무접촉 작업대 정리 (판단: 로컬 숨김 채택, 사유 핸드오프)
       const DONE_KEY = "ain_cards_done";
       const doneSet = () => new Set(JSON.parse(localStorage.getItem(DONE_KEY) || "[]"));
@@ -124,6 +132,9 @@
         const dd = n === 0 ? "오늘 마감" : `마감 D-${n}`;
         return { dd, cls: "", dt: r.application_period_text || `${r.application_start_date || ""} ~ ${r.application_end_date}` };
       };
+
+      // 브랜드 플레이스홀더 밴드 — A/B 공통 (기사 og:image 추출은 수집기 개편 필요 — P3b 범위 밖, 배선만)
+      const VISUAL_BAND = `<div class="gc-visual"><img class="gv-ic" alt="" width="130" height="130" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22130%22%20height%3D%22130%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23FFFFFF%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%220.95%22%3E%3Cline%20x1%3D%223%22%20x2%3D%2221%22%20y1%3D%2222%22%20y2%3D%2222%22/%3E%3Cline%20x1%3D%226%22%20x2%3D%226%22%20y1%3D%2218%22%20y2%3D%2211%22/%3E%3Cline%20x1%3D%2210%22%20x2%3D%2210%22%20y1%3D%2218%22%20y2%3D%2211%22/%3E%3Cline%20x1%3D%2214%22%20x2%3D%2214%22%20y1%3D%2218%22%20y2%3D%2211%22/%3E%3Cline%20x1%3D%2218%22%20x2%3D%2218%22%20y1%3D%2218%22%20y2%3D%2211%22/%3E%3Cpolygon%20points%3D%2212%202%2020%207%204%207%22/%3E%3C/svg%3E"><img class="gv-wm" alt="" width="103" height="34" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22103%22%20height%3D%2234%22%20viewBox%3D%220%200%20929%20307%22%20opacity%3D%220.9%22%3E%3Cg%20fill%3D%22%23FFFFFF%22%3E%3Cpath%20d%3D%22M149%200L0%20303L202%20302L178%20250L85%20249L179%2061L298%20303L358%20303L211%201Z%22/%3E%3Ccircle%20cx%3D%22427%22%20cy%3D%22268%22%20r%3D%2240%22/%3E%3Cpath%20d%3D%22M510%200L509%20302L565%20303L565%200Z%22/%3E%3Cpath%20d%3D%22M633%200L632%20302L688%20302L689%2088L862%20303L927%20303L928%201L872%201L871%20224L693%200Z%22/%3E%3C/g%3E%3C/svg%3E"></div>`;
 
       function cardHtml(r, idx) {
         const hook = r.hook || r.program_name;                    // hook NULL → 사업명 폴백
@@ -140,7 +151,7 @@
             <div class="gov-card" id="card${idx}">
               <div class="gc-top">${isNew ? '<span class="nb">NEW</span>' : ""}<span class="cat">정부지원사업</span></div>
               <div class="gc-hook">${esc(hook)}</div>
-              <div class="gc-visual"><img class="gv-ic" alt="" width="130" height="130" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22130%22%20height%3D%22130%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23FFFFFF%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20opacity%3D%220.95%22%3E%3Cline%20x1%3D%223%22%20x2%3D%2221%22%20y1%3D%2222%22%20y2%3D%2222%22/%3E%3Cline%20x1%3D%226%22%20x2%3D%226%22%20y1%3D%2218%22%20y2%3D%2211%22/%3E%3Cline%20x1%3D%2210%22%20x2%3D%2210%22%20y1%3D%2218%22%20y2%3D%2211%22/%3E%3Cline%20x1%3D%2214%22%20x2%3D%2214%22%20y1%3D%2218%22%20y2%3D%2211%22/%3E%3Cline%20x1%3D%2218%22%20x2%3D%2218%22%20y1%3D%2218%22%20y2%3D%2211%22/%3E%3Cpolygon%20points%3D%2212%202%2020%207%204%207%22/%3E%3C/svg%3E"><img class="gv-wm" alt="" width="103" height="34" src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22103%22%20height%3D%2234%22%20viewBox%3D%220%200%20929%20307%22%20opacity%3D%220.9%22%3E%3Cg%20fill%3D%22%23FFFFFF%22%3E%3Cpath%20d%3D%22M149%200L0%20303L202%20302L178%20250L85%20249L179%2061L298%20303L358%20303L211%201Z%22/%3E%3Ccircle%20cx%3D%22427%22%20cy%3D%22268%22%20r%3D%2240%22/%3E%3Cpath%20d%3D%22M510%200L509%20302L565%20303L565%200Z%22/%3E%3Cpath%20d%3D%22M633%200L632%20302L688%20302L689%2088L862%20303L927%20303L928%201L872%201L871%20224L693%200Z%22/%3E%3C/g%3E%3C/svg%3E"></div>
+              ${VISUAL_BAND}
               <div class="gc-sum">${sumHtml}</div>
               <div class="gc-foot">
                 <div class="gc-dead"><div class="dd ${d.cls}">${esc(d.dd)}</div><div class="dt">${esc(d.dt)}</div></div>
@@ -156,6 +167,36 @@
         </div>`;
       }
 
+      // B(정보) 카드 — 제조사 뉴스룸. A 레이아웃 재사용, 데이터 매핑만 다름
+      const MAKER_LABEL = { samsung: "삼성전자", lg: "LG전자" };
+      // LG 원문 요약의 "Quick Point ■" 불릿 잔재 제거 (실측: 카드에 그대로 노출됨)
+      const cleanSummary = (s) => String(s || "").replace(/Quick Point/gi, " ").replace(/[■●▶]+/g, " ").replace(/\s+/g, " ").trim();
+      function cardHtmlB(r, idx) {
+        const isNew = kstDateOf(new Date(r.collected_at)) === kstToday(); // collected_at은 timestamptz — KST 변환 후 비교
+        const pd = String(r.source_published_date || "").slice(0, 10);    // date형 — slice 안전
+        const dd = pd ? `${Number(pd.slice(5, 7))}/${Number(pd.slice(8, 10))} 발행` : "발행일 확인 필요";
+        return `
+        <div class="card-item" data-key="${esc(r.url)}">
+          <div class="card-stage"><div class="card-scale">
+            <div class="gov-card" id="cardb${idx}">
+              <div class="gc-top">${isNew ? '<span class="nb">NEW</span>' : ""}<span class="cat">제조사 뉴스 · ${esc(MAKER_LABEL[r.manufacturer] || r.manufacturer)}</span></div>
+              <div class="gc-hook">${esc(r.title)}</div>
+              ${VISUAL_BAND}
+              <div class="gc-sum"><div class="ln ln-b">${esc(cleanSummary(r.summary))}</div></div>
+              <div class="gc-foot">
+                <div class="gc-dead"><div class="dd always">${esc(dd)}</div><div class="dt">${esc(r.source || "")}</div></div>
+                <div class="gc-cta"><div class="site">ainyeon.com</div><div class="ask">자세한 정보는 댓글 남겨주세요</div></div>
+              </div>
+            </div>
+          </div></div>
+          <div class="card-meta-line2">${esc(r.source || "")} · ${esc(r.title)}</div>
+          <div class="card-actions">
+            <button type="button" class="btn-line" data-save="${idx}">이미지 저장 (1080×1350)</button>
+            <button type="button" class="btn-line" data-done="${idx}">게시 완료 (숨김)</button>
+          </div>
+        </div>`;
+      }
+
       function fitScales() {
         document.querySelectorAll(".card-stage").forEach((stage) => {
           const scale = stage.clientWidth / 1080;
@@ -163,15 +204,32 @@
         });
       }
 
-      async function saveCard(idx) {
-        const el = document.getElementById(`card${idx}`);
+      async function saveCard(domId, fname) {
+        const el = document.getElementById(domId);
         await document.fonts.ready;
         const canvas = await html2canvas(el, { width: 1080, height: 1350, scale: 1, backgroundColor: "#FFFFFF", useCORS: true });
         const a = document.createElement("a");
-        a.download = `ainyeon-gov-card-${kstToday()}-${idx + 1}.png`;
+        a.download = `ainyeon-${fname}.png`;
         a.href = canvas.toDataURL("image/png");
         a.click();
       }
+
+      // 저장·게시완료 버튼 배선 — A/B 공통 (idPrefix: card|cardb, fnPrefix: 파일명)
+      function bindCards(panel, idPrefix, fnPrefix, statFn) {
+        panel.querySelectorAll("[data-save]").forEach((b) => b.addEventListener("click", () => {
+          const i = Number(b.dataset.save);
+          saveCard(`${idPrefix}${i}`, `${fnPrefix}-${kstToday()}-${i + 1}`);
+        }));
+        panel.querySelectorAll("[data-done]").forEach((b) => b.addEventListener("click", () => {
+          const item = b.closest(".card-item");
+          markDone(item.dataset.key);
+          item.classList.add("hidden-done");
+          statFn();
+        }));
+      }
+
+      let statA = 0, statB = 0;
+      const updateStat = () => { $("cardStat").textContent = `A ${statA}건 · B ${statB}건 · 게시완료 표시 ${doneSet().size}건`; };
 
       async function render(showDone) {
         const panel = $("panel");
@@ -183,17 +241,30 @@
         if (error) { panel.innerHTML = `<div class="empty"><b>목록을 불러올 수 없습니다</b>${esc(error.message)}</div>`; return; }
         const done = doneSet();
         const rows = (data || []).filter((r) => showDone || !done.has(r.source_url));
-        $("cardStat").textContent = `카드 ${rows.length}건 · 게시완료 표시 ${done.size}건`;
-        if (!rows.length) { panel.innerHTML = `<div class="empty"><b>표시할 카드가 없습니다</b></div>`; return; }
+        statA = rows.length; updateStat();
+        if (!rows.length) { panel.innerHTML = `<div class="empty"><b>표시할 A 카드가 없습니다</b></div>`; return; }
         panel.innerHTML = rows.map(cardHtml).join("");
         fitScales();
-        panel.querySelectorAll("[data-save]").forEach((b) => b.addEventListener("click", () => saveCard(Number(b.dataset.save))));
-        panel.querySelectorAll("[data-done]").forEach((b) => b.addEventListener("click", () => {
-          const item = b.closest(".card-item");
-          markDone(item.dataset.key);
-          item.classList.add("hidden-done");
-          $("cardStat").textContent = `게시완료 표시 ${doneSet().size}건`;
-        }));
+        bindCards(panel, "card", "gov-card", updateStat);
+      }
+
+      // B 렌더 — 삼성·LG 뉴스룸 배선 (manufacturer_news_items, anon RLS: active만 공개 읽기). 정예 8건
+      async function renderB(showDone) {
+        const panel = $("panelB");
+        const sb = ainAuth.getClient();
+        const { data, error } = await sb.from("manufacturer_news_items")
+          .select("manufacturer,title,summary,source,url,source_published_date,collected_at")
+          .eq("status", "active")
+          .order("source_published_date", { ascending: false })
+          .limit(8);
+        if (error) { panel.innerHTML = `<div class="empty"><b>제조사 뉴스를 불러올 수 없습니다</b>${esc(error.message)}</div>`; return; }
+        const done = doneSet();
+        const rows = (data || []).filter((r) => showDone || !done.has(r.url));
+        statB = rows.length; updateStat();
+        if (!rows.length) { panel.innerHTML = `<div class="empty"><b>표시할 B 카드가 없습니다</b></div>`; return; }
+        panel.innerHTML = rows.map(cardHtmlB).join("");
+        fitScales();
+        bindCards(panel, "cardb", "maker-news", updateStat);
       }
 
       addEventListener("resize", fitScales);
@@ -203,9 +274,11 @@
         const role = me && me.profile && me.profile.role;
         if (!me || !me.user) { $("panel").innerHTML = '<div class="empty"><b>로그인이 필요합니다</b></div>'; return; }
         if (!["admin", "manager"].includes(role)) { $("panel").innerHTML = '<div class="empty"><b>관리자 전용 페이지입니다</b></div>'; return; }
+        $("secA").hidden = false; $("secB").hidden = false; $("panelB").hidden = false;
         let showDone = false;
-        $("showDone").addEventListener("click", () => { showDone = !showDone; $("showDone").textContent = showDone ? "게시 완료 숨기기" : "게시 완료 표시분 보기"; render(showDone); });
+        $("showDone").addEventListener("click", () => { showDone = !showDone; $("showDone").textContent = showDone ? "게시 완료 숨기기" : "게시 완료 표시분 보기"; render(showDone); renderB(showDone); });
         render(showDone);
+        renderB(showDone);
       });
     })();
   </script>
