@@ -1,7 +1,7 @@
 // 에인연 서비스워커 — 오프라인 내성: 마지막 브리핑·시세 1회분 열람 가능
 // 전략: 내비게이션·데이터 = 네트워크 우선(성공 시 캐시 갱신, 실패 시 캐시 폴백)
 //       정적 자산 = 캐시 우선(백그라운드 갱신)
-const VERSION = 'ain-v14'; // v13: P3a 카드 작업대 / v14: P3b — B(제조사) 카드 배선 + og-card.png
+const VERSION = 'ain-v15'; // v14: P3b B카드+og / v15: P3b 배포분 — og-card 압축 + 작업대 로딩상태 대비
 const SHELL_CACHE = VERSION + '-shell';
 const DATA_CACHE = VERSION + '-data';
 
