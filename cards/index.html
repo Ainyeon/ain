@@ -31,14 +31,20 @@
     .gc-top .nb{padding:6px 16px;border-radius:10px;background:var(--c-accent);
       color:#fff;font-size:26px;font-weight:800;letter-spacing:.04em}
     .gc-top .cat{font-size:30px;font-weight:760;color:var(--c-ink-sub);letter-spacing:.02em}
+    /* flex:none 필수 — .gov-card가 height 1350 고정 flex 컬럼이라, 총 내용이 넘치면
+       flex-shrink 기본값(1)이 훅을 눌러 3번째 줄 하단을 잘라먹는다(실데이터 11/17건 실측:
+       자연높이 292px인데 박스가 253~278px로 눌림). 훅은 눌리지 않게 고정하고,
+       넘치는 만큼은 fitHook()이 폰트를 줄여 흡수한다 — 내용 손실 0. */
     .gc-hook{
       margin-top:56px;font-size:76px;font-weight:850;line-height:1.28;
-      letter-spacing:-0.03em;word-break:keep-all;
+      letter-spacing:-0.03em;word-break:keep-all;flex:none;
       display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
     }
-    /* 브랜드 플레이스홀더 밴드 — 그라데이션 + 아이콘 + 워드마크 (og:image 실이미지는 P3b) */
+    /* 브랜드 플레이스홀더 밴드 — 그라데이션 + 아이콘 + 워드마크 (og:image 실이미지는 P3b)
+       flex:none — 없으면 훅 대신 이 밴드가 눌려 카드마다 높이가 달라진다(실측 11/17건 300→260).
+       캐러셀에선 장마다 밴드 높이가 튀므로 고정이 필수. 넘침은 fitHook()이 폰트로 흡수한다. */
     .gc-visual{
-      margin-top:56px;height:300px;border-radius:24px;position:relative;overflow:hidden;
+      margin-top:56px;height:300px;flex:none;border-radius:24px;position:relative;overflow:hidden;
       background:linear-gradient(135deg,#2D4A9E,#9E2D3D); /* 리터럴 — html2canvas가 var()+다중배경 파싱 크래시(실측) */
       display:grid;place-items:center;
     }
@@ -197,6 +203,39 @@
         </div>`;
       }
 
+      // 훅 오토핏 — 훅·밴드가 flex:none이라 넘침은 여기서만 해소된다.
+      // 두 조건을 동시에 만족할 때까지 폰트를 줄인다:
+      //  ① 실제 래핑 줄 수 ≤ 3 — clamp:3이 4번째 줄을 소리없이 잘라먹는 걸 막는다.
+      //     ⚠️ 'card.scrollHeight ≤ 1350'만으로는 못 잡는다. clamp가 박스를 3줄로 가둬서
+      //        4줄짜리 훅도 카드는 멀쩡히 들어맞기 때문(실측 6/17건이 이렇게 잘려나감).
+      //  ② 카드 총 높이 ≤ 1350 — 내보내기 원본 크기.
+      const HOOK_MAX_PX = 76, HOOK_MIN_PX = 46, CARD_H = 1350, HOOK_MAX_LINES = 3;
+
+      // 클램프를 잠시 풀어 '잘리지 않았다면 몇 줄인지'를 잰다
+      function naturalLines(hook) {
+        const prev = hook.style.webkitLineClamp;
+        hook.style.webkitLineClamp = "unset";
+        const lineH = parseFloat(getComputedStyle(hook).lineHeight);
+        const lines = Math.round(hook.scrollHeight / lineH);
+        hook.style.webkitLineClamp = prev || "";
+        return lines;
+      }
+
+      function fitHook(card) {
+        const hook = card.querySelector(".gc-hook");
+        if (!hook) return;
+        let size = HOOK_MAX_PX;
+        hook.style.fontSize = `${size}px`;
+        while (size > HOOK_MIN_PX && (naturalLines(hook) > HOOK_MAX_LINES || card.scrollHeight > CARD_H)) {
+          size -= 2;
+          hook.style.fontSize = `${size}px`;
+        }
+      }
+
+      function fitAllHooks(panel) {
+        panel.querySelectorAll(".gov-card").forEach(fitHook);
+      }
+
       function fitScales() {
         document.querySelectorAll(".card-stage").forEach((stage) => {
           const scale = stage.clientWidth / 1080;
@@ -244,6 +283,8 @@
         statA = rows.length; updateStat();
         if (!rows.length) { panel.innerHTML = `<div class="empty"><b>표시할 A 카드가 없습니다</b></div>`; return; }
         panel.innerHTML = rows.map(cardHtml).join("");
+        await document.fonts.ready; // 폰트 로드 전 측정하면 줄 수가 달라져 오토핏이 빗나간다
+        fitAllHooks(panel);
         fitScales();
         bindCards(panel, "card", "gov-card", updateStat);
       }
@@ -265,6 +306,8 @@
         statB = rows.length; updateStat();
         if (!rows.length) { panel.innerHTML = `<div class="empty"><b>표시할 B 카드가 없습니다</b></div>`; return; }
         panel.innerHTML = rows.map(cardHtmlB).join("");
+        await document.fonts.ready;
+        fitAllHooks(panel);
         fitScales();
         bindCards(panel, "cardb", "maker-news", updateStat);
       }
