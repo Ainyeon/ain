@@ -356,10 +356,55 @@
         });
       }
 
+      // 카드가 쓰는 폰트×굵기 전부. Pretendard는 가변폰트(45~920 한 페이스)라 실제로는 한 번만
+      // 받지만, 굵기별로 요청해야 해당 글리프까지 준비된 것이 보장된다.
+      // ⚠️ document.fonts.ready만으론 부족하다 — @font-face는 lazy라 아직 안 쓴 폰트는
+      //    unloaded로 남는데 ready는 그대로 resolve된다. 그 상태로 캡처하면 폴백 렌더가 나온다.
+      const CARD_FONTS = [
+        '850 76px "Pretendard Variable"',
+        '800 46px "Pretendard Variable"',
+        '760 30px "Pretendard Variable"',
+        '600 36px "Pretendard Variable"',
+      ];
+      async function ensureFonts(el) {
+        const text = (el && el.textContent) || "";
+        try {
+          await Promise.all(CARD_FONTS.map((f) => document.fonts.load(f, text)));
+        } catch (exc) {
+          console.warn("[font] preload failed — 폴백 렌더 가능", exc);
+        }
+        await document.fonts.ready;
+      }
+
+      // 캡처는 반드시 '클론을 변형·클리핑 없는 곳에 놓고' 찍는다.
+      // ⚠️ 원본을 그대로 찍으면 안 된다(실측 재현): 작업대의 카드는 미리보기용으로
+      //    .card-scale{transform:scale(0.26)} 안에 들어있는데, html2canvas가 이 조상 변형을
+      //    그대로 적용해 1080×1350 캔버스 좌상단에 26% 크기로 그린다. 텍스트는 축소되며
+      //    글리프가 겹쳐 '검은 블록'처럼 뭉개진다 — 폰트 문제로 보이지만 폰트는 무죄다.
+      //    (실측: 원본 캡처 시 카드가 279×351만 채움 / 클론 캡처 시 1077×1347 = 정상)
+      // ⚠️ 원본의 transform을 잠시 'none'으로 바꾸는 우회는 금물 — 282px 스테이지의
+      //    overflow:hidden 안에서 1080px가 되며 기하가 깨져 html2canvas가
+      //    addColorStop non-finite로 크래시한다(실측).
+      async function captureCard(el) {
+        const holder = document.createElement("div");
+        // 화면 밖 + 변형/클리핑 없음 + 원본 크기
+        holder.style.cssText = "position:fixed;left:-99999px;top:0;width:1080px;height:1350px;overflow:visible";
+        const clone = el.cloneNode(true); // 인라인 스타일(fitHook이 정한 폰트 크기)도 함께 복제된다
+        clone.removeAttribute("id");      // id 중복 방지
+        holder.appendChild(clone);
+        document.body.appendChild(holder);
+        try {
+          await ensureFonts(clone);       // 클론 기준으로 폰트 로드 보장 후 캡처
+          return await html2canvas(clone, { width: 1080, height: 1350, scale: 1, backgroundColor: "#FFFFFF", useCORS: true });
+        } finally {
+          holder.remove();
+        }
+      }
+
       async function saveCard(domId, fname) {
         const el = document.getElementById(domId);
-        await document.fonts.ready;
-        const canvas = await html2canvas(el, { width: 1080, height: 1350, scale: 1, backgroundColor: "#FFFFFF", useCORS: true });
+        if (!el) { console.error(`[save] node not found: ${domId}`); return; }
+        const canvas = await captureCard(el);
         const a = document.createElement("a");
         a.download = `ainyeon-${fname}.png`;
         a.href = canvas.toDataURL("image/png");
