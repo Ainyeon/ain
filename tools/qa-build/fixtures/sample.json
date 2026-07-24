@@ -1,0 +1,109 @@
+{
+  "_comment": "로컬 검증 전용 더미 데이터 — 실제 발행 데이터 아님. build.mjs --fixture 로만 사용. published:false 행은 산출물 제외 검증용.",
+  "rows": [
+    {
+      "slug": "embedded-pipe-timing",
+      "category": "install",
+      "category_label": "설치·시공",
+      "error_code": null,
+      "error_title": null,
+      "question": "신축 아파트 매립배관은 어느 공정 단계에서 넣어야 하나요?",
+      "answer": "매립배관은 골조 마감 전, 방통(방바닥 통미장) 이전에 들어가는 것이 원칙입니다. 방통 이후에는 바닥을 깨지 않는 한 매립이 불가능하고, 천장 매립도 목공 틀 작업 전에 경로가 확정돼야 합니다.\n\n입주 후 시공이라면 매립이 아니라 노출 배관 또는 몰딩 마감으로 방향을 바꾸는 것이 일반적입니다. 인테리어 공사와 병행한다면 철거 직후, 목공 전에 에어컨 배관 팀이 먼저 들어가는 순서로 일정을 잡습니다.",
+      "price_flag": false,
+      "published": true,
+      "sort_order": 1,
+      "updated_at": "2026-07-20T09:00:00+09:00"
+    },
+    {
+      "slug": "outdoor-unit-low-floor-noise",
+      "category": "install",
+      "category_label": "설치·시공",
+      "error_code": null,
+      "error_title": null,
+      "question": "저층 세대 실외기 소음 민원, 시공 단계에서 줄일 방법이 있나요?",
+      "answer": "실외기 소음은 기계 자체보다 진동 전달이 원인인 경우가 많습니다. 시공 단계에서는 방진 패드나 방진 마운트를 실외기 다리와 앵글 사이에 넣고, 앵글이 난간·벽체에 직접 닿는 부위를 없애는 것이 기본입니다.\n\n배관이 벽을 관통하는 부위에 슬리브와 완충재를 쓰면 구조체를 타고 도는 저주파 진동을 줄일 수 있습니다. 설치 위치 자체를 침실 벽에서 떨어뜨리는 것이 가장 효과가 크므로, 위치 선정 단계에서 세대 도면을 먼저 확인하는 것을 권합니다.",
+      "price_flag": false,
+      "published": true,
+      "sort_order": 2,
+      "updated_at": "2026-07-21T09:00:00+09:00"
+    },
+    {
+      "slug": "aircon-cleaning-cycle",
+      "category": "maintenance",
+      "category_label": "유지보수",
+      "error_code": null,
+      "error_title": null,
+      "question": "시스템에어컨 분해 세척은 얼마 주기로 하는 게 맞나요?",
+      "answer": "사용 환경에 따라 다르지만 현장에서는 가정용 기준 2~3년 주기의 분해 세척을 권하는 경우가 많습니다. 조리 빈도가 높은 주방 인접 실내기, 반려동물이 있는 세대, 상업 공간은 주기가 짧아집니다.\n\n필터 세척은 사용자가 월 1회 수준으로 직접 하고, 열교환기와 송풍팬까지 들어가는 분해 세척은 전문 장비가 필요한 작업으로 구분해서 안내하는 것이 일반적입니다.",
+      "price_flag": false,
+      "published": true,
+      "sort_order": 1,
+      "updated_at": "2026-07-19T09:00:00+09:00"
+    },
+    {
+      "slug": "system-aircon-install-cost-factors",
+      "category": "price",
+      "category_label": "비용·시세",
+      "error_code": null,
+      "error_title": null,
+      "question": "시스템에어컨 설치 비용은 무엇으로 결정되나요?",
+      "answer": "설치 비용은 정찰가가 아니라 현장 조건의 함수입니다. 크게 네 가지가 좌우합니다. 첫째, 평형과 실내기 대수 — 배관 길이와 작업 인원이 함께 늘어납니다. 둘째, 배관 경로 — 매립인지 노출인지, 천장 구조가 배관을 돌리기 쉬운지에 따라 공수가 달라집니다. 셋째, 실외기 위치 — 실외기실이 없는 구조에서 앵글 설치나 고층 작업이 붙으면 비용이 올라갑니다. 넷째, 자재 시세 — 동배관 등 원자재 가격이 시기마다 움직입니다.\n\n같은 평형이라도 이 조건들의 조합에 따라 견적 차이가 크게 벌어지므로, 도면과 현장 사진을 기준으로 견적을 비교하는 것이 정확합니다.",
+      "price_flag": true,
+      "published": true,
+      "sort_order": 1,
+      "updated_at": "2026-07-22T09:00:00+09:00"
+    },
+    {
+      "slug": "error-ch05-first-check",
+      "category": "error-code",
+      "category_label": "에러코드",
+      "error_code": "CH05",
+      "error_title": "LG 시스템에어컨 실내외기 통신 이상",
+      "question": "CH05가 떴을 때 현장에서 가장 먼저 확인할 것은 무엇인가요?",
+      "answer": "CH05는 실내기와 실외기 사이 통신 이상 계열 코드입니다. 현장에서는 통신선 결선 상태를 가장 먼저 봅니다. 단자대에서 통신선이 헐겁게 물렸거나, 전원선과 통신선이 바뀌어 물린 경우가 실제로 잦습니다.\n\n결선이 정상이면 실외기 전원 리셋 후 재기동으로 일시적 통신 오류인지 확인하고, 재발하면 통신선 자체의 단선·피복 손상, 기판 쪽 문제로 범위를 좁혀 갑니다. 기판 진단부터 들어가기 전에 배선을 먼저 보는 것이 순서입니다.",
+      "price_flag": false,
+      "published": true,
+      "sort_order": 1,
+      "updated_at": "2026-07-21T09:00:00+09:00"
+    },
+    {
+      "slug": "error-ch05-wiring-order",
+      "category": "error-code",
+      "category_label": "에러코드",
+      "error_code": "CH05",
+      "error_title": "LG 시스템에어컨 실내외기 통신 이상",
+      "question": "CH05 통신선 점검은 어떤 순서로 진행하나요?",
+      "answer": "실외기 전원을 차단한 상태에서 시작합니다. 실외기 단자대에서 통신선 체결 상태와 극성을 확인하고, 실내기 쪽 단자대까지 같은 선이 같은 극성으로 이어지는지 대조합니다.\n\n여러 대 연결 현장이라면 분기 지점의 결선을 함께 확인합니다. 중간에서 선이 바뀌면 특정 실내기만 코드가 뜨는 형태로 나타나는 경우가 많습니다. 육안 점검으로 잡히지 않으면 통신선 도통 테스트로 단선 여부를 확인합니다.",
+      "price_flag": false,
+      "published": true,
+      "sort_order": 2,
+      "updated_at": "2026-07-21T09:00:00+09:00"
+    },
+    {
+      "slug": "error-e101-comm",
+      "category": "error-code",
+      "category_label": "에러코드",
+      "error_code": "E101",
+      "error_title": "삼성 시스템에어컨 실내외기 통신 오류",
+      "question": "E101 코드가 반복해서 뜨는 원인은 무엇인가요?",
+      "answer": "E101은 실내기가 실외기와의 통신을 잡지 못할 때 표시되는 코드입니다. 설치 직후라면 어드레스 설정 누락이나 통신선 결선 불량이 흔한 원인이고, 운영 중이던 현장이라면 통신선 노후·피복 손상, 노이즈 유입을 의심합니다.\n\n전원 리셋으로 일시 해소되더라도 반복된다면 근본 원인이 남아 있는 것이므로, 통신선 경로와 결선부를 점검한 뒤에도 재발하면 기판 점검으로 넘어갑니다.",
+      "price_flag": false,
+      "published": true,
+      "sort_order": 3,
+      "updated_at": "2026-07-18T09:00:00+09:00"
+    },
+    {
+      "slug": "unpublished-fixture-check",
+      "category": "install",
+      "category_label": "설치·시공",
+      "error_code": null,
+      "error_title": null,
+      "question": "이 항목은 published=false 검증용입니다. 산출물에 나오면 안 됩니다.",
+      "answer": "이 텍스트가 빌드 산출물 어디에서든 발견되면 published 필터가 깨진 것입니다.",
+      "price_flag": false,
+      "published": false,
+      "sort_order": 99,
+      "updated_at": "2026-07-23T09:00:00+09:00"
+    }
+  ]
+}
