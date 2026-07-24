@@ -10,15 +10,17 @@
 //   {out}/qa/index.html                      카테고리 그룹 인덱스 (FAQPage JSON-LD)
 //   {out}/qa/{slug}/index.html               개별 상세 (QAPage JSON-LD)
 //   {out}/qa/error-code/{code}/index.html    에러코드 서브클러스터 (코드가 URL·h1에 노출)
-//   {out}/sitemap.xml                        사이트 전체 단일 사이트맵 (정적 라우트 + /qa 병합)
+//   {out}/qa/sitemap-qa.xml                  /qa 범위 사이트맵 — 루트 sitemap.xml(sitemap index,
+//                                            수동 관리)이 참조한다. 이 빌드는 /qa 밖을 안 건드린다.
 //
 // 사용:
 //   node tools/qa-build/build.mjs                          # Supabase에서 읽어 레포 루트에 생성
 //   node tools/qa-build/build.mjs --fixture <json> --out <dir>   # 로컬 검증용 (네트워크 없이)
 //
 // 안전장치:
-//   · published=false 행은 이중 차단 (뷰가 1차, 여기서 2차 필터 + 카운트 로그)
-//   · price_flag=true 답변에 구체 금액 패턴이 있으면 빌드 전체 실패 (단정 서술 금지)
+//   · published=false 행은 이중 차단 (RLS+뷰가 1차, 여기서 2차 필터 + 카운트 로그)
+//   · price_flag=true 답변에 구체 금액 패턴이 있으면 해당 항목만 스킵 + 사유 로그
+//     (빌드는 계속 진행 — 스킵 slug 목록이 워크플로 로그에 남는다)
 //   · service_role 금지 — anon(publishable) 키만. 키가 sb_secret이면 즉시 중단
 // ═══════════════════════════════════════════════════════════════
 import { mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
@@ -31,14 +33,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://oqgoibbhnidsveueifet.s
 const ANON_KEY = process.env.SUPABASE_ANON_KEY || 'sb_publishable_SpAwevRkW29BHRuJeFdfSA_Ube6Z4Vo';
 const VIEW = 'v_qa_published';
 
-// 기존 정적 라우트 — sitemap.xml 병합 대상 (공개·색인 대상만. /me/·/cards/·/admin/ 제외)
-const STATIC_ROUTES = [
-  '/', '/calendar/', '/prices/', '/gov/', '/news/',
-  '/maker/', '/maker/notice/', '/maker/compare/',
-  '/board/free/', '/board/proposal/',
-];
-
-// price_flag 항목 금액 단정 검출 — 걸리면 빌드 실패 (데이터를 고쳐서 재실행)
+// price_flag 항목 금액 단정 검출 — 걸리면 해당 항목 스킵 (빌드는 계속)
 const AMOUNT_RE = /\d[\d,.]*\s*(억|만\s*원|천\s*원|원)/;
 const PRICE_NOTICE = '시세는 변동됩니다 — 평형·배관 길이·실외기 위치·자재 시세, 현장 조건에 따라 실제 금액은 달라집니다.';
 
@@ -91,15 +86,24 @@ function validate(rows) {
     if (r.category === 'error-code' && !(r.error_code && String(r.error_code).trim())) {
       errors.push(`${tag}: error-code 클러스터인데 error_code 누락`);
     }
-    if (r.price_flag && AMOUNT_RE.test(r.answer)) {
-      errors.push(`${tag}: price_flag=true인데 답변에 구체 금액 서술 — 변동 요인 설명형으로 데이터 수정 필요`);
-    }
   }
   if (errors.length) {
     console.error('빌드 실패 — 데이터 검증 오류:\n  ' + errors.join('\n  '));
     process.exit(1);
   }
-  return kept;
+
+  // price_flag 가드 — 금액 단정 항목은 그 항목만 스킵 (2차 발행부터 일부 불량이
+  // 전체 발행을 막지 않도록). 스킵 slug는 로그로 남겨 데이터 수정 대상을 특정한다.
+  const priceSkipped = [];
+  const publishable = kept.filter((r) => {
+    if (r.price_flag && AMOUNT_RE.test(r.answer)) { priceSkipped.push(r.slug); return false; }
+    return true;
+  });
+  if (priceSkipped.length) {
+    console.warn(`스킵: price_flag 금액 단정 ${priceSkipped.length}건 — 변동 요인 설명형으로 수정 후 재발행 필요`);
+    for (const s of priceSkipped) console.warn(`  - ${s}`);
+  }
+  return { rows: publishable, priceSkipped };
 }
 
 // ── 공통 헬퍼 ─────────────────────────────────────────
@@ -427,10 +431,9 @@ ${parasHtml(r.answer)}
   });
 }
 
-// ── 사이트맵 (사이트 전체 단일 파일 — 정적 라우트 + /qa 병합) ──
-function renderSitemap(general, errorGroups, maxUpdated) {
+// ── 사이트맵 (/qa 범위만 — 루트 sitemap.xml은 sitemap index로 수동 관리) ──
+function renderQaSitemap(general, errorGroups, maxUpdated) {
   const urls = [];
-  for (const p of STATIC_ROUTES) urls.push({ loc: SITE + p });
   urls.push({ loc: `${SITE}/qa/`, lastmod: maxUpdated });
   for (const r of general) urls.push({ loc: `${SITE}/qa/${r.slug}/`, lastmod: dateOf(r.updated_at) });
   for (const g of errorGroups) {
@@ -445,7 +448,7 @@ ${urls.map((u) => `  <url><loc>${u.loc}</loc>${u.lastmod ? `<lastmod>${u.lastmod
 }
 
 // ── 메인 ─────────────────────────────────────────────
-const rows = validate(await loadRows());
+const { rows, priceSkipped } = validate(await loadRows());
 if (!rows.length) {
   console.error('중단: published 항목이 0건 — 발행할 것이 없으면 산출물을 건드리지 않는다.');
   process.exit(1);
@@ -482,11 +485,12 @@ for (const r of general) {
 for (const g of errorGroups) writePage(join('qa', 'error-code', g.slug), renderErrorCode(g, errorGroups));
 
 const maxUpdated = rows.map((r) => dateOf(r.updated_at)).filter(Boolean).sort().pop() || null;
-writeFileSync(join(OUT, 'sitemap.xml'), renderSitemap(general, errorGroups, maxUpdated));
+writeFileSync(join(qaDir, 'sitemap-qa.xml'), renderQaSitemap(general, errorGroups, maxUpdated));
 
 console.log([
   `빌드 완료 → ${OUT}`,
-  `  문답 ${rows.length}건 (일반 ${general.length} · 에러코드 ${errRows.length})`,
+  `  문답 ${rows.length}건 (일반 ${general.length} · 에러코드 ${errRows.length})` +
+    (priceSkipped.length ? ` · price 가드 스킵 ${priceSkipped.length}건` : ''),
   `  페이지: /qa/ 1 + 상세 ${general.length} + 에러코드 ${errorGroups.length}`,
-  `  sitemap.xml: 정적 ${STATIC_ROUTES.length} + qa ${1 + general.length + errorGroups.length} URL`,
+  `  qa/sitemap-qa.xml: ${1 + general.length + errorGroups.length} URL (루트 sitemap.xml은 불변)`,
 ].join('\n'));

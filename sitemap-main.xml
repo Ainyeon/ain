@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 정적 라우트 사이트맵 — 수동 관리. 공개·색인 대상만 (/me/·/cards/·/admin/·/onboard/ 제외).
+     새 페이지를 만들면 여기에 한 줄 추가한다. /qa는 qa/sitemap-qa.xml 담당. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://ainyeon.com/</loc></url>
+  <url><loc>https://ainyeon.com/calendar/</loc></url>
+  <url><loc>https://ainyeon.com/prices/</loc></url>
+  <url><loc>https://ainyeon.com/gov/</loc></url>
+  <url><loc>https://ainyeon.com/news/</loc></url>
+  <url><loc>https://ainyeon.com/maker/</loc></url>
+  <url><loc>https://ainyeon.com/maker/notice/</loc></url>
+  <url><loc>https://ainyeon.com/maker/compare/</loc></url>
+  <url><loc>https://ainyeon.com/board/free/</loc></url>
+  <url><loc>https://ainyeon.com/board/proposal/</loc></url>
+</urlset>
