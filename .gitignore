@@ -2,3 +2,11 @@
 .playwright-mcp/
 /*.png
 .DS_Store
+
+# 로컬 브라우저 세션 산출물 — 저장소에 커밋하지 않음
+# (feat/p3a-cards 582fea2 의 방어를 main 으로 선반영. 공개 레포라 세션 쿠키 유입 차단이 우선)
+/cookies.txt
+/cookies*.txt
+
+# 머신 로컬 도구 설정 — 타 프로젝트 dev 서버 설정이 섞여 들어온 이력 있음
+.claude/
