@@ -1,7 +1,7 @@
 // 에인연 서비스워커 — 오프라인 내성: 마지막 브리핑·시세 1회분 열람 가능
 // 전략: 내비게이션·데이터 = 네트워크 우선(성공 시 캐시 갱신, 실패 시 캐시 폴백)
 //       정적 자산 = 캐시 우선(백그라운드 갱신)
-const VERSION = 'ain-v19'; // v18: 4장 캐러셀 / v19: 저장 PNG 깨짐 픽스(클론 캡처)
+const VERSION = 'ain-v20'; // v19: 저장 PNG 깨짐 픽스 / v20: 모바일 진입(탭바 5종·네비 칩·게시판 즉시 게이트)
 const SHELL_CACHE = VERSION + '-shell';
 const DATA_CACHE = VERSION + '-data';
 
@@ -22,12 +22,13 @@ const SHELL = [
   '/maker/fields.json',
   '/maker/formats.json',
   '/maker/copy.json',
-  '/board/board.css?v=11',
-  '/board/board-free.js?v=11',
-  '/board/board-proposal.js?v=11',
+  '/board/board.css?v=12',
+  '/board/gate.js?v=12',
+  '/board/board-free.js?v=12',
+  '/board/board-proposal.js?v=12',
   '/assets/js/ain-community.js',
   '/assets/css/design-tokens.css?v=11',
-  '/assets/css/components.css?v=12',
+  '/assets/css/components.css?v=13',
   '/assets/js/ain-common.js',
   '/auth.js',
   '/assets/fonts/PretendardVariable.subset.woff2',

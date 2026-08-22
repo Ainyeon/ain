@@ -92,3 +92,6 @@ a.board-card:hover { background: var(--c-surface-sub); }
   font-size: var(--fs-4); font-weight: var(--fw-bold); color: var(--c-ink-sub);
 }
 .board-tabs a.on { border-color: var(--c-accent); background: var(--c-accent-bg); color: var(--c-accent); }
+@media (max-width:768px){
+  .board-tabs a{flex:1;min-height:48px;font-size:var(--fs-3)}
+}

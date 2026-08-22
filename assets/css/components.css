@@ -251,8 +251,8 @@ a.row:hover{background:var(--c-surface-sub)}
 .tabbar a.on::before{content:"";position:absolute;top:0;left:28%;right:28%;height:3px;
   border-radius:0 0 3px 3px;background:var(--brand-gradient)}
 .tabbar svg{width:22px;height:22px;flex:none}
-@media (min-width:641px){.tabbar{display:none}}
-@media (max-width:640px){body.has-tabbar{padding-bottom:calc(64px + env(safe-area-inset-bottom))}}
+@media (min-width:769px){.tabbar{display:none}}
+@media (max-width:768px){body.has-tabbar{padding-bottom:calc(64px + env(safe-area-inset-bottom))}}
 
 /* ── PWA 설치 배너 (ain-common.js 주입) ── */
 .install-bar{position:fixed;left:var(--sp-3);right:var(--sp-3);z-index:90;
@@ -273,7 +273,6 @@ a.row:hover{background:var(--c-surface-sub)}
 @media (max-width:640px){
   .shell{padding:0 var(--sp-4)}
   .tnav-in{padding:0 var(--sp-4);gap:var(--sp-3)}
-  .tnav-links{display:none}
   .strip-in{padding:0 var(--sp-4);display:grid;grid-template-columns:1fr 1fr}
   .strip-cell{flex-direction:column;align-items:flex-start;gap:2px;
     padding:var(--sp-2) var(--sp-3) var(--sp-2) 0;margin-right:var(--sp-3)}
@@ -309,3 +308,19 @@ a.row:hover{background:var(--c-surface-sub)}
   }
   .dtable.stack td.no-th::before{display:none}
 }
+
+/* ── 모바일 상단 네비 (≤768px): 로고+로그인 한 줄, 메뉴 7개는 가로 스크롤 칩 ── */
+@media (max-width:768px){
+  .tnav-in{flex-wrap:wrap;gap:0 var(--sp-3);padding:0 var(--sp-4)}
+  .tnav .brand{min-height:48px}
+  .tnav-links{order:3;flex-basis:100%;margin:0 calc(-1*var(--sp-4));
+    padding:0 var(--sp-4) var(--sp-3);gap:var(--sp-2);
+    overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tnav-links::-webkit-scrollbar{display:none}
+  .tnav-links a{flex:none;min-height:34px;padding:0 var(--sp-3);margin:0;
+    border:1px solid var(--c-line-strong);border-radius:var(--r-1);
+    font-size:var(--fs-4);white-space:nowrap}
+  .tnav-links a.on{border-image:none;border-color:var(--c-accent-line);
+    background:var(--c-accent-bg);color:var(--c-accent)}
+}
+@media (max-width:400px){.tnav .brand-name{display:none}}
