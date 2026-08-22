@@ -18,12 +18,12 @@
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
   <link rel="stylesheet" href="/assets/css/components.css?v=13">
-  <link rel="stylesheet" href="/maker/maker.css?v=11">
+  <link rel="stylesheet" href="/maker/maker.css?v=12">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
-  <script defer src="/maker/maker-core.js"></script>
-  <script defer src="/maker/notice/notice.js?v=11"></script>
+  <script defer src="/maker/maker-core.js?v=12"></script>
+  <script defer src="/maker/notice/notice.js?v=12"></script>
 </head>
 <body class="has-tabbar">
   <nav class="tnav">
@@ -82,6 +82,10 @@
           <div class="field">
             <label>크기</label>
             <div id="fmtCtl"></div>
+          </div>
+          <div class="field">
+            <label>글씨 크기 (상호명 · 본문 · 연락처)</label>
+            <div id="fsCtl"></div>
           </div>
         </form>
 

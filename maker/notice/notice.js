@@ -13,6 +13,7 @@
   let sections = [];            // [{title, body}]
   let tone = '';                // 하단 인사 문구 (업종별)
   let adj = {};                 // 요소 조절값 {key:{size,gap,align}}
+  let fscale = null;            // 글씨 크기 배율 {biz,body,phone}
   let selKey = null;            // 미리보기에서 선택된 요소
   let regions = [];             // 렌더 시 기록되는 탭 영역 (논리 좌표)
   let copyData = null;
@@ -32,7 +33,7 @@
   function saveState() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        fmtSel, gray, color, field, tone, adj, sections,
+        fmtSel, gray, color, field, tone, adj, fscale, sections,
         biz: $('fBiz').value, phone: $('fPhone').value, area: $('fArea').value, title: $('fTitle') ? $('fTitle').value : ''
       }));
     } catch (e) {}
@@ -189,7 +190,7 @@
     sections.forEach((sec, i) => {
       if (y > FY - 90) return;
       const aSec = A('sec' + i);
-      const bodySize = C.adjSize(tight ? 26 : compact ? 28 : 31, aSec);
+      const bodySize = C.fsz(C.adjSize(tight ? 26 : compact ? 28 : 31, aSec), fscale, 'body');
       const chipSize = C.adjSize(tight ? 21 : compact ? 22 : 24, aSec);
       const maxLines = tight ? 1 : compact ? 2 : 4;
       const secTop = y - chipSize - 8;
@@ -230,8 +231,8 @@
     u.roundRect(MG, FY, 1080 - MG * 2, FH, T.radius);
     ctx.fill();
     const footTxt = st.footer === 'accent' ? C.idealTextOn(color) : '#FFFFFF';
-    const bizSize = C.adjSize(38, aF);              // v3: 상호명 1단계 축소 (42→38)
-    const phoneSize = C.adjSize(34, aF);
+    const bizSize = C.fsz(C.adjSize(38, aF), fscale, 'biz');   // v3: 상호명 1단계 축소 (42→38)
+    const phoneSize = C.fsz(C.adjSize(34, aF), fscale, 'phone');
     ctx.fillStyle = footTxt;
     ctx.font = `800 ${bizSize}px ${FONT}`;
     ctx.fillText(biz, MG + 44, FY + (tight ? 54 : 66));
@@ -298,6 +299,7 @@
     field = s.field || null;
     tone = s.tone || '';
     adj = s.adj || {};
+    fscale = s.fscale || null;
     sections = Array.isArray(s.sections) && s.sections.length ? s.sections : [];
     if (s.biz) $('fBiz').value = s.biz;
     if (s.title && $('fTitle')) $('fTitle').value = s.title;
@@ -328,6 +330,8 @@
     // 크기
     const fmtApi = C.mountFormatSelect($('fmtCtl'), fmtData, fmtSel, (v) => { fmtSel = v; render(); });
     fmtSel = fmtApi.get();
+    // 글씨 크기 (기본 px = 카톡 세로 규격 기준)
+    C.mountFontScale($('fsCtl'), fscale, { biz: 38, body: 31, phone: 34 }, (v) => { fscale = v; render(); });
 
     // 탭 선택 조절
     panel = C.mountAdjustPanel($('adjustPanel'), {

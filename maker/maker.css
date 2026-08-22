@@ -292,3 +292,17 @@
 .page-head .sec-label { font-size: var(--fs-4); font-weight: var(--fw-semi); color: var(--c-ink-faint); letter-spacing: .04em; text-transform: uppercase; }
 .page-title { font-size: var(--fs-1); font-weight: var(--fw-bold); letter-spacing: -0.025em; line-height: var(--lh-1); color: var(--c-ink); }
 .page-sub { margin-top: var(--sp-2); font-size: var(--fs-3); color: var(--c-ink-sub); line-height: 1.6; }
+
+/* 글씨 크기 슬라이더 (상호명/본문/연락처) */
+.fs-ctl { display: grid; gap: 6px; }
+.fs-row { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.fs-row > span { flex: none; width: 48px; font-size: 12.5px; font-weight: 700; color: var(--txt2); }
+.fs-row input[type=range] { flex: 1; min-height: 44px; accent-color: var(--c-ink); }
+.fs-row output { flex: none; width: 44px; text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--txt2); }
+.fs-reset {
+  min-height: 44px; border: 1px dashed var(--border); border-radius: 10px; background: none;
+  font: inherit; font-size: 12px; font-weight: 700; color: var(--txt2); cursor: pointer;
+}
+
+/* [hidden] 속성이 display:grid/flex 규칙에 지던 버그 — 조절 패널·직접입력 칸이 항상 보였음 */
+.adjust-panel[hidden], .fmt-custom[hidden], .fmt-hint[hidden] { display: none; }
