@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>OG Card v2</title>
+<style>
+  @font-face{
+    font-family:"Pretendard Variable";
+    src:url("../../assets/fonts/PretendardVariable.subset.woff2") format("woff2-variations");
+    font-weight:45 920;font-display:block;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1200px;height:630px;overflow:hidden}
+  body{
+    font-family:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo",sans-serif;
+    color:#1E1D1A;-webkit-font-smoothing:antialiased;
+    /* 브랜드 그라데이션은 배경 틴트로만 — 텍스트는 웜페이퍼 위 잉크로 읽는다 */
+    background:
+      radial-gradient(760px 620px at 8% -18%, rgba(45,74,158,.16), rgba(45,74,158,0) 70%),
+      radial-gradient(760px 620px at 94% 118%, rgba(158,45,61,.14), rgba(158,45,61,0) 70%),
+      #F3F2EF;
+  }
+  .stage{
+    position:relative;width:1200px;height:630px;
+    padding:60px;                    /* 안전영역 — 전 요소가 이 안쪽 */
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  /* 상단 그라데이션 바 — 안전영역 밖(잘려도 무해) */
+  .bar{position:absolute;top:0;left:0;right:0;height:10px;
+       background:linear-gradient(135deg,#2D4A9E,#9E2D3D)}
+  /* 로고·카피·키워드 전부 중앙 630px 안쪽 (카톡 정사각 크롭 대비) */
+  .safe-sq{width:600px;display:flex;flex-direction:column;align-items:center;text-align:center}
+  .logo{display:flex;align-items:center;gap:18px;margin-bottom:52px}
+  .logo svg{display:block}
+  .logo span{font-size:30px;font-weight:700;letter-spacing:-0.02em;color:#5C5850}
+  .copy{font-size:72px;font-weight:800;letter-spacing:-0.04em;line-height:1.34}
+  .kw{margin-top:56px;font-size:28px;font-weight:600;letter-spacing:-0.01em;color:#79756B;white-space:nowrap}
+  .kw i{font-style:normal;color:#C2BDB2;margin:0 10px}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="bar"></div>
+  <div class="safe-sq">
+    <div class="logo">
+      <svg width="138" height="46" viewBox="0 0 929 307" xmlns="http://www.w3.org/2000/svg" aria-label="A.IN">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#2D4A9E"/><stop offset="100%" stop-color="#9E2D3D"/></linearGradient></defs>
+        <g fill="url(#g)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g>
+      </svg>
+      <span>에어컨 인테리어 연구소</span>
+    </div>
+    <p class="copy">현장에 필요한 정보,<br>매일 아침 한 번에</p>
+    <p class="kw">자재시세<i>·</i>입주정보<i>·</i>정부사업<i>·</i>업계뉴스</p>
+  </div>
+</div>
+<script>
+  // 렌더 검증: 전 요소가 안전영역(60px) + 중앙 630px 정사각 안에 들어오는지 실측
+  document.fonts.ready.then(() => {
+    const R = (s) => { const r = document.querySelector(s).getBoundingClientRect();
+      return {sel:s, l:Math.round(r.left), r:Math.round(r.right), t:Math.round(r.top), b:Math.round(r.bottom)}; };
+    const boxes = ['.logo','.copy','.kw'].map(R);
+    const bad = boxes.filter(b => b.l < 60 || b.r > 1140 || b.t < 60 || b.b > 570 || b.l < 285 || b.r > 915);
+    document.body.dataset.check = (bad.length ? 'OVERFLOW ' + JSON.stringify(bad) : 'OK ') + JSON.stringify(boxes);
+    document.title = 'READY';
+  });
+</script>
+</body>
+</html>
