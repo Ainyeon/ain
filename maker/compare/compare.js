@@ -25,6 +25,7 @@
   let color = null;
   let fmtSel = { id: 'square', label: '인스타 정사각', W: 1080, H: 1080 };
   let adj = {};
+  let fscale = null;   // 글씨 크기 배율 {biz,body,phone}
   let selKey = null;
   let regions = [];   // 물리 좌표
   let panel = null;
@@ -42,7 +43,7 @@
   function saveState() {
     try {
       localStorage.setItem(STORE, JSON.stringify({
-        layout, labels, barStyle, color, fmtSel, adj,
+        layout, labels, barStyle, color, fmtSel, adj, fscale,
         biz: $('fBiz').value, phone: $('fPhone').value,
         head: $('fHead').value, sub: $('fSub').value
       }));
@@ -124,8 +125,8 @@
       ctx.fillRect(0, 0, W, PH);
       const txtColor = C.idealTextOn(color);
       const aH = adj.headline, aS2 = adj.sub;
-      const hSize = C.adjSize(Math.round(66 * scale), aH);
-      const sSize = C.adjSize(Math.round(32 * scale), aS2);
+      const hSize = C.fsz(C.adjSize(Math.round(66 * scale), aH), fscale, 'body');
+      const sSize = C.fsz(C.adjSize(Math.round(32 * scale), aS2), fscale, 'body');
       const head = $('fHead').value.trim() || '믿고 맡기는 시공, 확실한 마무리';
       const sub = $('fSub').value.trim() || '상담·견적 언제든 환영합니다';
       ctx.fillStyle = txtColor;
@@ -153,8 +154,8 @@
       ctx.fillStyle = ov;
       ctx.fillRect(0, 0, W, PH);
       const aH = adj.headline, aS2 = adj.sub;
-      const hSize = C.adjSize(Math.round(56 * scale), aH);
-      const sSize = C.adjSize(Math.round(30 * scale), aS2);
+      const hSize = C.fsz(C.adjSize(Math.round(56 * scale), aH), fscale, 'body');
+      const sSize = C.fsz(C.adjSize(Math.round(30 * scale), aS2), fscale, 'body');
       const head = $('fHead').value.trim() || '믿고 맡기는 시공, 확실한 마무리';
       const sub = $('fSub').value.trim() || '상담·견적 언제든 환영합니다';
       const mgx = Math.round(60 * scale);
@@ -213,8 +214,8 @@
     ctx.fillRect(0, PH, W, BAR);
     if (!ink) { ctx.fillStyle = '#E8E8EC'; ctx.fillRect(0, PH, W, 2); }
     const aB = adj.bar;
-    const bizSize = C.adjSize(Math.round(38 * scale), aB);   // v3: 상호명 1단계 축소 (40→38)
-    const phoneSize = C.adjSize(Math.round(34 * scale), aB);
+    const bizSize = C.fsz(C.adjSize(Math.round(38 * scale), aB), fscale, 'biz');   // v3: 상호명 1단계 축소 (40→38)
+    const phoneSize = C.fsz(C.adjSize(Math.round(34 * scale), aB), fscale, 'phone');
     ctx.fillStyle = ink ? '#FFFFFF' : '#0F1013';
     ctx.font = `800 ${bizSize}px ${FONT}`;
     ctx.fillText(biz, Math.round(60 * scale), PH + Math.round(70 * scale));
@@ -328,6 +329,7 @@
     barStyle = s.barStyle === 'white' ? 'white' : 'ink';
     color = s.color || Object.assign({}, C.DEFAULT_COLOR);
     adj = s.adj || {};
+    fscale = s.fscale || null;
     if (s.fmtSel && s.fmtSel.W) fmtSel = s.fmtSel;
     if (s.biz) $('fBiz').value = s.biz;
     if (s.phone) $('fPhone').value = s.phone;
@@ -367,6 +369,9 @@
     if (barStyle === 'white') {
       $('barToggle').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.bar === 'white'));
     }
+
+    // 글씨 크기 (기본 px = 1080 기준, 본문 = 한 줄 문구)
+    C.mountFontScale($('fsCtl'), fscale, { biz: 38, body: 66, phone: 34 }, (v) => { fscale = v; render(); });
 
     // 탭 선택 조절
     panel = C.mountAdjustPanel($('adjustPanel'), {

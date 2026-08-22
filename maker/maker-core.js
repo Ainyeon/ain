@@ -240,6 +240,34 @@
     return { get: () => Object.assign({}, val), set: (v) => { val = Object.assign({}, DEFAULT_COLOR, v); paint(); } };
   }
 
+  // ── 글씨 크기 슬라이더 (상호명/본문/연락처 독립, 기본값 대비 70~160%)
+  // bases = {biz,body,phone} 기본 px(표시용). 반환 {get,set}; 값은 {biz,body,phone} 배율.
+  const FS_KEYS = [['biz', '상호명'], ['body', '본문'], ['phone', '연락처']];
+  const defFontScale = () => ({ biz: 1, body: 1, phone: 1 });
+  function mountFontScale(rootEl, initial, bases, onChange) {
+    let val = Object.assign(defFontScale(), initial || {});
+    rootEl.className = 'fs-ctl';
+    rootEl.innerHTML = FS_KEYS.map(([k, label]) =>
+      '<label class="fs-row"><span>' + label + '</span>'
+      + '<input type="range" min="70" max="160" step="5" data-k="' + k + '" aria-label="' + label + ' 글씨 크기">'
+      + '<output data-o="' + k + '"></output></label>').join('')
+      + '<button type="button" class="fs-reset">글씨 크기 기본값으로</button>';
+    function paint() {
+      FS_KEYS.forEach(([k]) => {
+        rootEl.querySelector('[data-k="' + k + '"]').value = Math.round(val[k] * 100);
+        rootEl.querySelector('[data-o="' + k + '"]').textContent = Math.round(bases[k] * val[k]) + 'px';
+      });
+    }
+    rootEl.querySelectorAll('input').forEach((r) => r.addEventListener('input', () => {
+      val[r.dataset.k] = Number(r.value) / 100; paint(); onChange(Object.assign({}, val));
+    }));
+    rootEl.querySelector('.fs-reset').addEventListener('click', () => { val = defFontScale(); paint(); onChange(Object.assign({}, val)); });
+    paint();
+    return { get: () => Object.assign({}, val), set: (v) => { val = Object.assign(defFontScale(), v); paint(); } };
+  }
+  // 배율 적용: 값 없으면 1
+  function fsz(px, fs, k) { return Math.round(px * ((fs && fs[k]) || 1)); }
+
   // ── 배경 명도 슬라이더 (0 순백 ~ 100 순흑, 프리셋 점 3개 + 밝게/어둡게 버튼)
   function mountGraySlider(rootEl, initial, onChange) {
     let val = Math.min(100, Math.max(0, initial != null ? initial : 0));
@@ -473,8 +501,8 @@
   window.makerCore = {
     FONT, TOKENS, GRAD_PRESETS, DEFAULT_COLOR, ADJ,
     makeCtxUtils, darken, idealTextOn, colorAvgHex, accentPaint, grayStyle,
-    adjSize, adjGap, defAdj,
-    mountColorControl, mountGraySlider, mountFormatSelect, mountAdjustPanel, mountFieldSearch,
+    adjSize, adjGap, defAdj, fsz, defFontScale,
+    mountColorControl, mountGraySlider, mountFontScale, mountFormatSelect, mountAdjustPanel, mountFieldSearch,
     showGuideOnce, ensureFonts, loadJson, download, share, bumpUseCount, resizePhoto
   };
 })();
