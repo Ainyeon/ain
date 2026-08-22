@@ -126,28 +126,33 @@
     });
   }
 
-  // 하단 탭바 (모바일 전용 — ≥901px CSS 숨김). 한 손 조작 핵심 내비게이션.
+  // 모바일 상단 칩: 현재 페이지 칩이 스크롤 밖이면 보이게
+  const onChip=document.querySelector('.tnav-links a.on');
+  if(onChip&&onChip.scrollIntoView)onChip.scrollIntoView({inline:'center',block:'nearest'});
+
+  // 하단 탭바 (모바일 전용 — ≥769px CSS 숨김). 한 손 조작 핵심 내비게이션.
   (function buildTabbar(){
     const I={
       home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg>',
       radar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l6-6"/></svg>',
       brief:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
       price:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19 9.5 13l3.5 3.5L20 9"/><path d="M15.5 9H20v4.5"/></svg>',
-      me:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20c1.4-3.4 4.2-5 7.5-5s6.1 1.6 7.5 5"/></svg>'
+      maker:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M7 10h6M7 14h10"/></svg>',
+      board:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>'
     };
     const TABS=[
       {href:'/',label:'홈',icon:I.home},
-      {href:'/calendar/',label:'입주레이더',icon:I.radar},
-      {href:'/gov/',label:'정부사업',icon:I.brief},
+      {href:'/calendar/',label:'입주',icon:I.radar},
       {href:'/prices/',label:'시세',icon:I.price},
-      {href:'/me/',label:'내정보',icon:I.me}
+      {href:'/maker/',label:'메이커',icon:I.maker},
+      {href:'/board/free/',base:'/board/',label:'커뮤니티',icon:I.board}
     ];
     const here=location.pathname;
     const tb=document.createElement('nav');
     tb.className='tabbar';
     tb.setAttribute('aria-label','주요 메뉴');
     tb.innerHTML=TABS.map(t=>{
-      const on=t.href==='/'?(here==='/'||here==='/index.html'):here.startsWith(t.href);
+      const on=t.href==='/'?(here==='/'||here==='/index.html'):here.startsWith(t.base||t.href);
       return '<a href="'+t.href+'"'+(on?' class="on" aria-current="page"':'')+'>'+t.icon+'<span>'+t.label+'</span></a>';
     }).join('');
     document.body.appendChild(tb);

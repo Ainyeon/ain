@@ -29,9 +29,9 @@
       + '<time>' + C().timeAgo(r.created_at) + '</time></div></div>').join('');
     const total = rows && rows.length ? rows[0].total_count : 0;
     panel.innerHTML = rulesBanner()
-      + '<div class="gate-msg"><b>게시글 ' + total + '개</b> — 제안·투표는 에인연 회원 전용입니다.<br>'
-      + '필요한 기능에 직접 투표하세요.<br>'
-      + '<button type="button" class="gate-cta" id="gateLogin">카카오 3초 로그인</button></div>'
+      + '<div class="gate-msg"><b>회원 전용 공간입니다</b>' + (total ? ' — 제안 ' + total + '개' : '') + '<br>'
+      + '카카오로 3초 가입하면 필요한 기능을 올리고 투표할 수 있습니다.<br>'
+      + '<button type="button" class="gate-cta" id="gateLogin">카카오로 3초 가입</button></div>'
       + items;
     document.getElementById('gateLogin').addEventListener('click', () => {
       ainAuth.getClient().auth.signInWithOAuth({

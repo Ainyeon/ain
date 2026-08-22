@@ -14,9 +14,9 @@
       + '<div class="card-meta-line"><time>' + C().timeAgo(r.created_at) + '</time></div></div>').join('');
     const total = rows && rows.length ? rows[0].total_count : 0;
     panel.innerHTML =
-      '<div class="gate-msg"><b>게시글 ' + total + '개</b> — 게시판은 에인연 회원 전용입니다.<br>'
-      + '읽기·쓰기 모두 카카오 3초 로그인이면 충분합니다.<br>'
-      + '<button type="button" class="gate-cta" id="gateLogin">카카오 3초 로그인</button></div>'
+      '<div class="gate-msg"><b>회원 전용 공간입니다</b>' + (total ? ' — 게시글 ' + total + '개' : '') + '<br>'
+      + '카카오로 3초 가입하면 바로 읽고 쓸 수 있습니다.<br>'
+      + '<button type="button" class="gate-cta" id="gateLogin">카카오로 3초 가입</button></div>'
       + items;
     document.getElementById('gateLogin').addEventListener('click', () => {
       ainAuth.getClient().auth.signInWithOAuth({
