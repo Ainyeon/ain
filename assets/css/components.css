@@ -56,6 +56,19 @@ button{font-family:inherit;cursor:pointer}
   border-image:var(--brand-gradient) 1;border-bottom-color:var(--c-accent)}
 .tnav-auth{margin-left:auto}
 
+/* ── 커뮤니티 1줄 스트립 (네비 아래·시세 위, 44px 고정) ── */
+.cstrip{display:block;background:var(--c-surface-sub);border-bottom:1px solid var(--c-line)}
+.cstrip:hover .cstrip-t{color:var(--c-ink)}
+.cstrip-in{max-width:var(--w-max);margin:0 auto;padding:0 var(--sp-5);
+  height:44px;display:flex;align-items:center;gap:var(--sp-3);min-width:0}
+.cstrip-k{flex:none;display:inline-flex;align-items:center;gap:var(--sp-1);
+  font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint);white-space:nowrap}
+.cstrip-t{flex:1;min-width:0;font-size:var(--fs-3);font-weight:var(--fw-semi);color:var(--c-ink-sub);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cstrip-m{flex:none;font-size:var(--fs-4);color:var(--c-ink-faint);white-space:nowrap}
+.cstrip-in>.icon{flex:none;color:var(--c-ink-faint)}
+.cstrip-t.skel{height:12px;border-radius:var(--r-1);background:var(--c-line);max-width:220px}
+
 /* ── 시세 스트립 (상단 가로) ────────────────── */
 .strip{background:var(--c-surface);border-bottom:1px solid var(--c-line)}
 .strip-in{
@@ -273,6 +286,7 @@ a.row:hover{background:var(--c-surface-sub)}
 @media (max-width:640px){
   .shell{padding:0 var(--sp-4)}
   .tnav-in{padding:0 var(--sp-4);gap:var(--sp-3)}
+  .cstrip-in{padding:0 var(--sp-4)}
   .strip-in{padding:0 var(--sp-4);display:grid;grid-template-columns:1fr 1fr}
   .strip-cell{flex-direction:column;align-items:flex-start;gap:2px;
     padding:var(--sp-2) var(--sp-3) var(--sp-2) 0;margin-right:var(--sp-3)}

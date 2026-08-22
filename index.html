@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=13">
+  <link rel="stylesheet" href="/assets/css/components.css?v=14">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js"></script>
   <script defer src="/assets/js/ain-common.js"></script>
@@ -54,6 +54,16 @@
       <div class="tnav-auth" id="authSlot"></div>
     </div>
   </nav>
+
+  <!-- 커뮤니티 1줄 스트립 (진입점 — 향후 인기 게시물·투표 노출 자리) -->
+  <a class="cstrip" id="cstrip" href="/board/free/" aria-label="커뮤니티">
+    <div class="cstrip-in">
+      <span class="cstrip-k"><svg class="icon sm"><use href="#i-users"/></svg>커뮤니티</span>
+      <span class="cstrip-t skel" id="cstripText"></span>
+      <span class="cstrip-m num" id="cstripMeta"></span>
+      <svg class="icon sm"><use href="#i-chev"/></svg>
+    </div>
+  </a>
 
   <!-- 시세 스트립 -->
   <div class="strip" aria-label="자재시세 요약">
@@ -369,8 +379,40 @@
       ).join("") : emptyBox("오늘 수집된 뉴스가 없습니다", "다음 수집 07:00");
     }
 
+    // ── 커뮤니티 스트립: 표시 항목 선정은 pickStripItem 1곳 (현재 최신순 — 인기순 전환 시 이 함수만 교체)
+    function pickStripItem(rows) {
+      return (rows || []).slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] || null;
+    }
+    function timeAgo(iso) {
+      const s = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (s < 60) return "방금";
+      if (s < 3600) return Math.floor(s / 60) + "분 전";
+      if (s < 86400) return Math.floor(s / 3600) + "시간 전";
+      if (s < 86400 * 7) return Math.floor(s / 86400) + "일 전";
+      const d = new Date(iso); return (d.getMonth() + 1) + "." + d.getDate();
+    }
+    async function loadCommunityStrip(sb) {
+      const t = $("cstripText"), m = $("cstripMeta"), a = $("cstrip");
+      let item = null;
+      try {
+        const { data, error } = await sb.from("v_board_teaser").select("board_type,title,created_at");
+        if (!error) item = pickStripItem(data);
+      } catch (e) { console.warn(e); }
+      t.classList.remove("skel");
+      if (item) {
+        t.textContent = item.title;
+        m.textContent = timeAgo(item.created_at);
+        a.href = item.board_type === "proposal" ? "/board/proposal/" : "/board/free/";
+      } else {
+        t.textContent = "우리끼리 쓰는 게시판 · 첫 글을 기다립니다";
+        m.textContent = "";
+        a.href = "/board/free/";
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
       const sb = ainAuth.init("authSlot") || ainAuth.getClient();
+      loadCommunityStrip(sb);
       const session = await ainAuth.getSession();
       const today = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", weekday: "short", timeZone: "Asia/Seoul" }).format(new Date());
       $("pageTitle").textContent = `오늘의 업계 브리핑 — ${today}`;
