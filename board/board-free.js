@@ -15,8 +15,8 @@
     return m ? { type: m[1], id: m[2] } : null;
   };
   const FORM_PRESETS = {
-    review: { kind: 'review', ph: '수강 후기 — 언제 들으셨는지, 어떤 점이 도움이 됐는지 자유롭게 적어 주세요. 짧아도 됩니다.' },
-    edu_tip: { kind: 'tip', ph: '알려주실 교육 정보를 적어 주세요 — 기관, 과정, 확인하신 공식 페이지 주소.\n기관·업체시라면 어떤 관계인지도 함께 적어 주세요. 운영자가 원문을 확인한 뒤 반영합니다.' }
+    review: { kind: 'review', ph: '수강한 과정, 배운 내용, 도움이 된 점' },
+    edu_tip: { kind: 'tip', ph: '기관명, 과정명, 공식 페이지 주소.\n기관·업체 관계자면 어떤 관계인지도 적어 주세요.\n운영자가 원문을 확인한 뒤 반영합니다.' }
   };
   // 오래된 후기를 하단으로 몰지 않고 수료 시점으로 거른다 (SPEC §3.7).
   // ?since=12|24|36 (개월). 없으면 전체.
@@ -38,7 +38,7 @@
       + SINCE_OPTS.map(([v, l]) => '<option value="' + v + '"' + (v === cur ? ' selected' : '') + '>'
         + l + '</option>').join('')
       + '</select>'
-      + '<span class="write-hint">후기 ' + count + '건 · 수료 시점을 안 적은 후기는 걸러지지 않습니다</span>'
+      + '<span class="write-hint">후기 ' + count + '건 · 수료 시점 미기재는 걸러지지 않음</span>'
       + '</div>';
   }
 
@@ -49,10 +49,10 @@
     const now = new Date();
     const max = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
     return '<fieldset class="review-fields">'
-      + '<legend>선택 입력 — 비워 두셔도 등록됩니다</legend>'
+      + '<legend>선택 입력 (비워도 등록됩니다)</legend>'
       + '<div class="review-grid">'
       + '<label for="rCost">지출 금액 (원)</label>'
-      + '<input type="number" id="rCost" min="0" max="100000000" step="1" inputmode="numeric" placeholder="예: 22500 · 기억 안 나면 비워 두세요">'
+      + '<input type="number" id="rCost" min="0" max="100000000" step="1" inputmode="numeric" placeholder="예: 22500">'
       + '<label for="rSubsidy">국비 유형</label>'
       + '<select id="rSubsidy">'
       + '<option value="">선택 안 함</option>'
@@ -61,8 +61,8 @@
       + '<label for="rMonth">수료 시점</label>'
       + '<input type="month" id="rMonth" max="' + max + '" aria-describedby="rMonthHint">'
       + '</div>'
-      + '<p class="write-hint" id="rMonthHint">수료 시점을 적으면 오래된 후기를 걸러 볼 수 있습니다. '
-      + '기관 공식 링크·공고 링크는 그대로 적으셔도 됩니다. 개인 연락처만 가려 주세요.</p>'
+      + '<p class="write-hint" id="rMonthHint">수료 시점을 적으면 기간별로 걸러 볼 수 있습니다. '
+      + '공식 페이지 주소를 첨부할 수 있습니다. 개인 연락처는 본문에 적지 마세요.</p>'
       + '</fieldset>';
   }
 
@@ -74,9 +74,9 @@
       + '<div class="card-meta-line"><time>' + C().timeAgo(r.created_at) + '</time></div></div>').join('');
     const total = rows && rows.length ? rows[0].total_count : 0;
     panel.innerHTML =
-      '<div class="gate-msg"><b>회원 전용 공간입니다</b>' + (total ? ' — 게시글 ' + total + '개' : '') + '<br>'
-      + '카카오로 3초 가입하면 바로 읽고 쓸 수 있습니다.<br>'
-      + '<button type="button" class="gate-cta" id="gateLogin">카카오로 3초 가입</button></div>'
+      '<div class="gate-msg"><b>회원 전용입니다</b>' + (total ? ' — 글 ' + total + '개' : '') + '<br>'
+      + '카카오 계정으로 로그인하면 읽고 쓸 수 있습니다.<br>'
+      + '<button type="button" class="gate-cta" id="gateLogin">카카오 로그인</button></div>'
       + items;
     document.getElementById('gateLogin').addEventListener('click', () => C().loginWithKakao());
   }
@@ -89,12 +89,10 @@
     const isReview = !!preset && preset.kind === 'review';
     return '<button type="button" class="write-btn" id="writeOpen"' + (openNow ? ' hidden' : '') + '>글쓰기</button>'
       + '<form class="write-form" id="writeForm"' + (openNow ? '' : ' hidden') + '>'
-      + '<p class="write-hint">' + (isReview
-          ? '들으신 과정의 경험을 적어 주세요. 아래 항목은 모두 선택입니다.'
-          : '짧게 물어보셔도 됩니다. 초보 질문 환영합니다.') + '</p>'
-      + (ref ? '<p class="write-hint">이 글은 교육 과정 <b>' + escT(ref.id) + '</b>에 연결됩니다.</p>' : '')
+      + (isReview ? '<p class="write-hint">아래 항목은 모두 선택 입력입니다.</p>' : '')
+      + (ref ? '<p class="write-hint">교육 과정 <b>' + escT(ref.id) + '</b>에 연결됩니다.</p>' : '')
       + '<label class="write-hint" for="wTitle">제목</label>'
-      + '<input type="text" id="wTitle" placeholder="제목 (80자까지 · 한 글자도 됩니다)" maxlength="80" required>'
+      + '<input type="text" id="wTitle" placeholder="제목 (80자까지)" maxlength="80" required>'
       + '<label class="write-hint" for="wBody">내용</label>'
       + '<textarea id="wBody" placeholder="' + escT(preset ? preset.ph : '내용') + '" maxlength="4000" required></textarea>'
       + (isReview ? reviewFields() : '')
@@ -108,7 +106,7 @@
   function anonBox(id) {
     if (!C().anonymousReady()) return '';
     return '<label class="anon-row"><input type="checkbox" id="' + id + '">'
-      + '<span>익명으로 작성 — 닉네임과 분야를 함께 감춥니다. '
+      + '<span>익명으로 작성 (닉네임·분야 숨김). '
       + '운영자는 중복·악용 확인 목적으로만 작성자를 확인할 수 있습니다.</span></label>';
   }
 
@@ -135,9 +133,9 @@
     const sinceHtml = (r.mode === 'view' && (reviewCount || P().get('since'))) ? sinceBar(reviewCount) : '';
     const refHead = ref
       ? '<div class="rules-banner">' + (refFiltered
-          ? '교육 과정 <b>' + escT(ref.id) + '</b>에 연결된 글만 보고 있습니다. '
-            + '<a href="/board/free/">전체 글 보기</a> · <a href="/edu/?id=' + encodeURIComponent(ref.id) + '">과정 보기</a>'
-          : '이 과정에 연결된 글만 보는 기능은 아직 쓸 수 없어 전체 글을 보여 줍니다. '
+          ? '교육 과정 <b>' + escT(ref.id) + '</b>에 연결된 글만 표시 중. '
+            + '<a href="/board/free/">전체 글</a> · <a href="/edu/?id=' + encodeURIComponent(ref.id) + '">과정 보기</a>'
+          : '과정별 보기는 아직 쓸 수 없어 전체 글을 표시합니다. '
             + '<a href="/edu/?id=' + encodeURIComponent(ref.id) + '">과정 보기</a>')
         + '</div>'
       : '';
@@ -160,7 +158,7 @@
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadgeOf(p) + '</span>'
       + '<span><span class="cmt-count">공감 ' + (likeMap[p.id] || 0) + ' · 댓글 ' + (cmtMap[p.id] || 0) + ' · 조회 ' + (p.view_count || 0) + '</span>'
       + ' · <time>' + C().timeAgo(p.created_at) + '</time></span></div></a>').join('')
-      : '<p class="empty-note">' + (refFiltered ? '이 과정에 연결된 글이 아직 없습니다.' : '첫 글의 주인공이 되어 주세요.') + '</p>';
+      : '<p class="empty-note">' + (refFiltered ? '이 과정에 연결된 글이 없습니다.' : '등록된 글이 없습니다.') + '</p>';
 
     panel.innerHTML = refHead + writeBlock() + sinceHtml + list;
     bindWrite(me, 'free');

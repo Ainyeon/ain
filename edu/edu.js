@@ -190,11 +190,11 @@
   // ── 상세 (W3) ──
   function detailHtml(item) {
     const unknown = isBlank(item.unknowns) ? '' :
-      '<div class="edu-block"><h4>모르는 항목</h4><div class="edu-line">' + esc(item.unknowns)
+      '<div class="edu-block"><h4>미확인 정보</h4><div class="edu-line">' + esc(item.unknowns)
       + '</div><div class="edu-line" style="color:var(--c-ink-faint)">→ 신청 가능 여부는 기관에 확인하세요.</div></div>';
 
     const claimNone = /없음/.test(item.org_claim || '');
-    const claim = '<div class="edu-block claim"><h4>기관 주장</h4>'
+    const claim = '<div class="edu-block claim"><h4>기관 홍보 내용</h4>'
       + (claimNone
         ? '<div class="edu-line" style="color:var(--c-ink-faint)">이 과정에는 취업·수익 관련 주장이 없습니다.</div>'
         : '<div class="edu-line">' + esc(item.org_claim.replace(/^\[[^\]]*\]\s*/, ''))
@@ -213,10 +213,10 @@
       : all;
     const expHead = bucket ? ' (' + bucket.review + '건)' : '';
     const expBody = !bucket
-      ? '이 과정의 회원 후기는 로그인 후 확인할 수 있습니다. 후기가 없어도 공식 과정 안내는 그대로 게시합니다.'
+      ? '수강 후기는 로그인 후 확인할 수 있습니다.'
       : bucket.review
         ? ''
-        : '아직 남겨진 후기가 없습니다. 후기가 없어도 공식 과정 안내는 그대로 게시합니다.';
+        : '등록된 후기가 없습니다.';
 
     const sinceOpts = [['', '전체 기간'], ['12', '최근 1년'], ['24', '최근 2년'], ['36', '최근 3년']];
     const filterHtml = bucket && bucket.review
@@ -244,7 +244,7 @@
         ? '<div class="edu-line" style="color:var(--c-ink-faint)">고른 기간에 해당하는 후기가 없습니다.</div>' : '');
 
     const link = bucket && bucket.total
-      ? '<a class="btn-line" href="/board/free/?ref=edu:' + encodeURIComponent(item.id) + '">이 과정 이야기 ' + bucket.total + '건 보기</a>'
+      ? '<a class="btn-line" href="/board/free/?ref=edu:' + encodeURIComponent(item.id) + '">이 과정 글 ' + bucket.total + '건</a>'
       : '';
 
     const similar = L.listed(DATA.items)
@@ -257,7 +257,7 @@
       + '<h3>' + esc(item.course) + '</h3>'
       + '<div class="edu-org">' + esc(item.org) + ' · ' + esc(item.course_class) + '</div>'
 
-      + '<div class="edu-block"><h4>공식 사실 (기관 페이지에서 확인)</h4>'
+      + '<div class="edu-block"><h4>교육 안내</h4>'
       + kv('업무', item.work_raw)
       + kv('지역', item.region_raw)
       + kv('대상', item.target_raw)
@@ -287,11 +287,11 @@
       + unknown
       + claim
 
-      + '<div class="edu-block"><h4>회원 경험' + expHead + '</h4>'
+      + '<div class="edu-block"><h4>수강 후기' + expHead + '</h4>'
       + (expBody ? '<div class="edu-line">' + expBody + '</div>' : '')
       + filterHtml + reviewList
       + '<div class="edu-actions">'
-      + '<a class="btn-line" href="/board/free/?ref=edu:' + encodeURIComponent(item.id) + '&form=review">경험 남기기</a>'
+      + '<a class="btn-line" href="/board/free/?ref=edu:' + encodeURIComponent(item.id) + '&form=review">후기 작성</a>'
       + link + '</div></div>'
 
       + '<div class="edu-actions">' + saveBtn('edu', item.id, item.course, item.org) + '</div>'
@@ -324,11 +324,10 @@
         + '<span class="n num">' + s.items.length + '건</span></div>'
         + '<p class="edu-sec-note">' + esc(s.note) + '</p>'
         + s.items.map(cardHtml).join('') + '</section>').join('')
-      + '<div class="edu-note"><b>아는 교육이 여기 없나요?</b>'
-      + '기관·업체도 출처를 밝히고 알려줄 수 있습니다. 제보는 운영자가 공개 근거를 확인한 뒤 반영합니다.'
-      + '<div class="edu-actions"><a class="btn-line" href="/board/free/?form=edu_tip">알려주기</a></div></div>'
-      + '<div class="edu-note">지금 올라온 과정이 좁은 것은 운영자가 원문을 하나씩 확인하기 때문입니다. '
-      + '주거 현장의 모든 공종이 대상이며, 확인되는 대로 넓혀 갑니다.</div>';
+      + '<div class="edu-note"><b>교육 추가·수정 제보</b>'
+      + '기관명·과정명·공식 페이지 주소를 남겨 주세요. 확인 후 반영합니다. '
+      + '주거 현장의 모든 공종이 대상입니다.'
+      + '<div class="edu-actions"><a class="btn-line" href="/board/free/?form=edu_tip">제보하기</a></div></div>';
     bind();
   }
 

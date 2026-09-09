@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=25">
+  <link rel="stylesheet" href="/assets/css/components.css?v=26">
   <style>
     :root { color-scheme: light;
       /* 레거시 별칭 → 토큰 브릿지 */
@@ -49,9 +49,9 @@
     .gate-msg { padding: 28px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); text-align: center; font-size: 14px; color: var(--txt2); }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=25"></script>
-  <script defer src="/assets/js/ain-common.js?v=25"></script>
-  <script defer src="/assets/js/ain-community.js?v=25"></script>
+  <script defer src="/auth.js?v=26"></script>
+  <script defer src="/assets/js/ain-common.js?v=26"></script>
+  <script defer src="/assets/js/ain-community.js?v=26"></script>
 </head>
 <body class="has-tabbar">
   <nav class="tnav">
@@ -64,7 +64,7 @@
     <header class="page-head">
       <div class="sec-label">Welcome</div>
       <h1 class="page-title">프로필 설정</h1>
-      <p class="page-sub">게시판·커뮤니티에서 쓸 프로필을 만들어 주세요. 30초면 됩니다.</p>
+      <p class="page-sub">게시판에서 쓸 닉네임과 주력분야를 정합니다. 활동지역은 선택입니다.</p>
     </header>
     <div id="obBody"><div class="gate-msg">확인 중…</div></div>
   </main>
@@ -75,12 +75,12 @@
       const { user, profile, infraError } = await ainCommunity.getMyProfile();
 
       if (infraError) {
-        body.innerHTML = '<div class="gate-msg">커뮤니티 기능 준비 중입니다. 잠시 후 다시 시도해 주세요.</div>';
+        body.innerHTML = '<div class="gate-msg">지금은 프로필을 설정할 수 없습니다. 잠시 후 다시 시도해 주세요.</div>';
         return;
       }
       if (!user) {
         body.innerHTML = '<div class="gate-msg">카카오 로그인 후 프로필을 설정할 수 있습니다.<br><br>'
-          + '<button type="button" class="ob-submit" id="obLogin" style="padding:0 24px;background:#FEE500;color:#191919">카카오 3초 로그인</button></div>';
+          + '<button type="button" class="ob-submit" id="obLogin" style="padding:0 24px;background:#FEE500;color:#191919">카카오 로그인</button></div>';
         document.getElementById('obLogin').addEventListener('click', () => {
           ainAuth.getClient().auth.signInWithOAuth({
             provider: 'kakao',

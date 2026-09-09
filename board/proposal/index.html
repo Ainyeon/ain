@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>제안·투표 | 에어컨 인테리어 연구소</title>
-  <meta name="description" content="에인연에 필요한 기능을 제안하고 찬반 투표로 함께 정합니다. 회원 전용.">
+  <title>제안·건의 | 에어컨 인테리어 연구소</title>
+  <meta name="description" content="기능 제안과 개선 의견. 검토·진행 상황 안내.">
   <link rel="canonical" href="https://ainyeon.com/board/proposal/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="제안·투표 | 에어컨 인테리어 연구소">
-  <meta property="og:description" content="필요한 기능에 투표하세요 — 찬성 20명·70% 도달 시 검토 후 채택.">
+  <meta property="og:title" content="제안·건의 | 에어컨 인테리어 연구소">
+  <meta property="og:description" content="기능 제안과 개선 의견. 검토·진행 상황 안내.">
   <meta property="og:url" content="https://ainyeon.com/board/proposal/">
   <meta property="og:image" content="https://ainyeon.com/assets/og-card-v2.png">
   <meta property="og:image:width" content="1200">
@@ -20,12 +20,12 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=25">
-  <link rel="stylesheet" href="/board/board.css?v=25">
+  <link rel="stylesheet" href="/assets/css/components.css?v=26">
+  <link rel="stylesheet" href="/board/board.css?v=26">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=25"></script>
-  <script defer src="/assets/js/ain-common.js?v=25"></script>
-  <script defer src="/assets/js/ain-community.js?v=25"></script>
+  <script defer src="/auth.js?v=26"></script>
+  <script defer src="/assets/js/ain-common.js?v=26"></script>
+  <script defer src="/assets/js/ain-community.js?v=26"></script>
 </head>
 <body class="has-tabbar">
   <nav class="tnav">
@@ -36,7 +36,7 @@
         <a href="/edu/">교육</a>
         <a href="/area/">내 지역</a>
         <a href="/maker/">도구</a>
-        <a class="on" href="/board/free/">커뮤니티</a>
+        <a class="on" href="/board/free/">게시판</a>
       </div>
       <div class="tnav-auth" id="authSlot"></div>
     </div>
@@ -45,12 +45,12 @@
     <header class="phero">
       <div class="phero-bar">
         <div>
-          <div class="crumb">COMMUNITY · PROPOSALS</div>
-          <h1>제안·투표</h1>
-          <p class="sub">필요한 기능을 제안하고 투표로 우선순위를 정합니다. 회원 전용 공간입니다.</p>
+          <div class="crumb">게시판</div>
+          <h1>제안·건의</h1>
+          <p class="sub">필요한 기능과 개선 의견을 남겨 주세요.</p>
           <div class="board-tabs">
-            <a href="/board/free/">질문·경험</a>
-            <a class="on" href="/board/proposal/">제안</a>
+            <a href="/board/free/">자유게시판</a>
+            <a class="on" href="/board/proposal/">제안·건의</a>
             <a href="/me/">내 활동</a>
           </div>
         </div>
@@ -59,9 +59,9 @@
     <section class="board-wrap" id="panel" aria-live="polite">
       <div class="gate-msg">불러오는 중…</div>
     </section>
-    <script src="/board/gate.js?v=25"></script>
+    <script src="/board/gate.js?v=26"></script>
   </main>
   <script>addEventListener("DOMContentLoaded",()=>{if(window.ainAuth)ainAuth.init("authSlot")});</script>
-  <script src="/board/board-proposal.js?v=25" defer></script>
+  <script src="/board/board-proposal.js?v=26" defer></script>
 </body>
 </html>

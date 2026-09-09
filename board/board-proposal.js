@@ -1,4 +1,4 @@
-// 제안·투표 게시판 — 찬반 투표(1인 1표, upsert 변경), 채택 임계 하이라이트.
+// 제안·건의 게시판 — 찬반 투표(1인 1표, upsert 변경), 채택 임계 하이라이트.
 (function () {
   'use strict';
   // 표 수는 우선순위를 보는 신호일 뿐 개발 약속이 아니다 (SPEC ②).
@@ -21,9 +21,8 @@
   function gate(html) { panel.innerHTML = '<div class="gate-msg">' + html + '</div>'; }
 
   function rulesBanner() {
-    return '<div class="rules-banner">투표는 무엇이 급한지 보는 데 씁니다. '
-      + '표가 많다고 자동으로 개발되지는 않고, 표가 적어도 중요한 문제면 볼 수 있습니다. '
-      + '진행 상황은 각 제안의 상태로 표시합니다.<br>'
+    return '<div class="rules-banner">투표 결과는 검토 우선순위에 참고합니다. '
+      + '표가 많다고 자동으로 개발되지는 않습니다. 진행 상황은 각 제안의 상태로 표시합니다.<br>'
       + '상태: 투표중 · 채택됨 · 개발중 · 반영완료 · 보류(이유) · 안 함(이유)</div>';
   }
 
@@ -35,9 +34,9 @@
       + '<time>' + C().timeAgo(r.created_at) + '</time></div></div>').join('');
     const total = rows && rows.length ? rows[0].total_count : 0;
     panel.innerHTML = rulesBanner()
-      + '<div class="gate-msg"><b>회원 전용 공간입니다</b>' + (total ? ' — 제안 ' + total + '개' : '') + '<br>'
-      + '카카오로 3초 가입하면 필요한 기능을 올리고 투표할 수 있습니다.<br>'
-      + '<button type="button" class="gate-cta" id="gateLogin">카카오로 3초 가입</button></div>'
+      + '<div class="gate-msg"><b>회원 전용입니다</b>' + (total ? ' — 제안 ' + total + '개' : '') + '<br>'
+      + '카카오 계정으로 로그인하면 제안과 투표를 할 수 있습니다.<br>'
+      + '<button type="button" class="gate-cta" id="gateLogin">카카오 로그인</button></div>'
       + items;
     document.getElementById('gateLogin').addEventListener('click', () => C().loginWithKakao());
   }
@@ -113,14 +112,14 @@
       : new Date(b.created_at) - new Date(a.created_at));
 
     const writeBlock =
-      '<button type="button" class="write-btn" id="writeOpen">기능 제안하기</button>'
+      '<button type="button" class="write-btn" id="writeOpen">제안 쓰기</button>'
       + '<form class="write-form" id="writeForm" hidden>'
       + '<label class="write-hint" for="wTitle">제안 제목</label>'
       + '<input type="text" id="wTitle" placeholder="예: 세척 단가표 지역별 공유" maxlength="80" required>'
       + '<label class="write-hint" for="wBody">내용</label>'
-      + '<textarea id="wBody" placeholder="어떤 기능이 왜 필요한지 적어 주세요. 짧아도 괜찮습니다." maxlength="4000" required></textarea>'
+      + '<textarea id="wBody" placeholder="어떤 기능이 왜 필요한지" maxlength="4000" required></textarea>'
       + (C().anonymousReady()
-        ? '<label class="anon-row"><input type="checkbox" id="wAnon"><span>익명으로 작성 — 닉네임과 분야를 함께 감춥니다. '
+        ? '<label class="anon-row"><input type="checkbox" id="wAnon"><span>익명으로 작성 (닉네임·분야 숨김). '
           + '운영자는 중복·악용 확인 목적으로만 작성자를 확인할 수 있습니다.</span></label>' : '')
       + '<div class="form-actions"><button type="button" class="btn-ghost" id="writeCancel">취소</button>'
       + '<button type="submit" class="btn-primary">등록</button></div></form>';
@@ -136,7 +135,7 @@
         + '<div class="card-meta-line"><span class="author-line">' + C().authorBadgeOf(p) + '</span>'
         + '<span><span class="view-count">조회 ' + (p.view_count || 0) + '</span> <span class="status-badge status-' + escT(p.status) + '">' + (STATUS_LABELS[p.status] || p.status) + '</span></span></div>'
         + statusBlock(p) + voteRowHtml(p.id, tv) + '</article>';
-    }).join('') : '<p class="empty-note">첫 제안을 올려 주세요 — 필요한 기능이 있다면 지금이 기회입니다.</p>';
+    }).join('') : '<p class="empty-note">등록된 제안이 없습니다.</p>';
 
     panel.innerHTML = rulesBanner() + writeBlock + sortBlock + cards;
     bindVotes(me);

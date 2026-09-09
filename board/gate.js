@@ -5,9 +5,9 @@
   if (localStorage.getItem('sb-oqgoibbhnidsveueifet-auth-token')) return;
   var panel = document.getElementById('panel');
   if (!panel) return;
-  panel.innerHTML = '<div class="gate-msg"><b>회원 전용 공간입니다</b><br>'
-    + '카카오로 3초 가입하면 바로 읽고 쓸 수 있습니다.<br>'
-    + '<button type="button" class="gate-cta" id="gateLogin">카카오로 3초 가입</button></div>';
+  panel.innerHTML = '<div class="gate-msg"><b>회원 전용입니다</b><br>'
+    + '카카오 계정으로 로그인하면 읽고 쓸 수 있습니다.<br>'
+    + '<button type="button" class="gate-cta" id="gateLogin">카카오 로그인</button></div>';
   document.getElementById('gateLogin').addEventListener('click', function () {
     if (!window.ainAuth) return;
     ainAuth.getClient().auth.signInWithOAuth({

@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=25">
+  <link rel="stylesheet" href="/assets/css/components.css?v=26">
   <style>
     /* 페이지 로컬: 토큰만 소비. 예외 2건 주석 — 오브(브랜드 마크)·카카오 옐로(외부 브랜드) */
     .me-wrap{display:grid;gap:var(--sp-4);padding-bottom:var(--sp-8)}
@@ -44,9 +44,9 @@
     .me-note{color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=25"></script>
-  <script defer src="/assets/js/ain-common.js?v=25"></script>
-  <script defer src="/assets/js/ain-community.js?v=25"></script>
+  <script defer src="/auth.js?v=26"></script>
+  <script defer src="/assets/js/ain-common.js?v=26"></script>
+  <script defer src="/assets/js/ain-community.js?v=26"></script>
 </head>
 <body class="has-tabbar">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -66,7 +66,7 @@
         <a href="/edu/">교육</a>
         <a href="/area/">내 지역</a>
         <a href="/maker/">도구</a>
-        <a href="/board/free/">커뮤니티</a>
+        <a href="/board/free/">게시판</a>
       </div>
       <div class="tnav-auth" id="authSlot"></div>
     </div>
@@ -110,7 +110,7 @@
           <a class="row" href="/calendar/"><div class="row-main"><div class="row-title">입주 캘린더</div><div class="row-meta">단계별 입주 일정</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/"><div class="row-main"><div class="row-title">오늘의 브리핑</div><div class="row-meta">홈 대시보드</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/board/free/"><div class="row-main"><div class="row-title">자유게시판</div><div class="row-meta">업계 사람들끼리</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
-          <a class="row" href="/board/proposal/"><div class="row-main"><div class="row-title">제안·투표</div><div class="row-meta">필요한 기능에 투표</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/board/proposal/"><div class="row-main"><div class="row-title">제안·건의</div><div class="row-meta">필요한 기능·개선 의견</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/prices/"><div class="row-main"><div class="row-title">자재 시세</div><div class="row-meta">동관·알루미늄</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/news/"><div class="row-main"><div class="row-title">업계뉴스</div><div class="row-meta">국내·해외 이슈</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
         </div>
@@ -145,7 +145,7 @@
         const { profile, infraError } = await ainCommunity.getMyProfile();
         if (infraError) return '';
         if (!profile || !profile.nickname) {
-          return '<div class="me-email" style="margin-top:8px">커뮤니티 프로필 미설정 — 게시판 이용 전 설정이 필요합니다.</div>';
+          return '<div class="me-email" style="margin-top:8px">게시판 프로필 미설정 — 글을 쓰려면 닉네임·주력분야가 필요합니다.</div>';
         }
         return '<div class="me-email" style="margin-top:8px"><span class="author-line">'
           + ainCommunity.authorBadge(profile)
@@ -181,7 +181,7 @@
         meCard.innerHTML =
           '<div class="me-name">로그인이 필요합니다</div>'
           + '<div class="me-email">단지명 열람 등 회원 전용 기능은 로그인 후 이용할 수 있습니다.</div>'
-          + '<div class="me-actions"><button type="button" class="me-btn kakao" id="meLogin">카카오 3초 로그인</button></div>';
+          + '<div class="me-actions"><button type="button" class="me-btn kakao" id="meLogin">카카오 로그인</button></div>';
         document.getElementById("meLogin").addEventListener("click", () => {
           ainAuth.getClient().auth.signInWithOAuth({
             provider: "kakao",

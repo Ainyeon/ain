@@ -218,32 +218,36 @@ a.row:hover{background:var(--c-surface-sub)}
 .phero-stat .st .n{font-size:var(--fs-1);font-weight:var(--fw-bold);letter-spacing:-0.02em}
 .phero-stat .st .l{margin-top:2px;font-size:var(--fs-4);color:var(--c-ink-faint)}
 
-/* ── 홈 네 방향 진입 (SPEC §7.2) — 어느 하나가 홈을 독점하지 않는다 ── */
+/* ── 홈 메뉴 카드 — 이름 · 무엇이 있는지 · 어디로 가는지 ── */
 .ways{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
   gap:var(--sp-3);padding-bottom:var(--sp-4)}
 .way{display:flex;flex-direction:column;gap:var(--sp-1);min-width:0;
   padding:var(--sp-4);background:var(--c-surface);
   border:1px solid var(--c-line);border-radius:var(--r-2);box-shadow:var(--sh-1)}
 .way:hover{border-color:var(--c-accent-line);background:var(--c-surface-sub)}
-.way-k{font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint)}
-.way-k b{margin-left:var(--sp-1);padding:1px var(--sp-2);border-radius:var(--r-1);
-  font-size:var(--fs-4);font-weight:var(--fw-bold);
-  background:var(--c-accent-bg);color:var(--c-accent);border:1px solid var(--c-accent-line)}
-.way-t{font-size:var(--fs-2);font-weight:var(--fw-bold);color:var(--c-ink);letter-spacing:-0.015em}
+.way-t{font-size:var(--fs-2);font-weight:var(--fw-bold);color:var(--c-ink);
+  letter-spacing:-0.015em;white-space:nowrap}
+/* 짧은 설명은 낱말 단위로만 끊는다 — 한 글자만 다음 줄로 넘어가지 않게 */
 .way-m{flex:1;font-size:var(--fs-4);color:var(--c-ink-sub);line-height:1.6;word-break:keep-all}
-.way-go{margin-top:var(--sp-2);font-size:var(--fs-4);font-weight:var(--fw-bold);color:var(--c-accent)}
+.way-go{margin-top:var(--sp-2);font-size:var(--fs-4);font-weight:var(--fw-bold);color:var(--c-accent);
+  white-space:nowrap}
 
-/* ── 섹션 전환 탭 (커뮤니티 · 내 지역 공용) ── */
+/* ── 섹션 전환 탭 (게시판 · 내 지역 공용) ── */
 .board-tabs { display: flex; gap: var(--sp-2); margin-top: var(--sp-4); }
 .board-tabs a {
   display: inline-flex; align-items: center; justify-content: center;
   min-height: 40px; padding: 0 var(--sp-4); border-radius: var(--r-1);
   border: 1px solid var(--c-line-strong); background: var(--c-surface);
   font-size: var(--fs-4); font-weight: var(--fw-bold); color: var(--c-ink-sub);
+  white-space: nowrap;
 }
 .board-tabs a.on { border-color: var(--c-accent); background: var(--c-accent-bg); color: var(--c-accent); }
 @media (max-width:768px){
-  .board-tabs a{flex:1;min-height:48px;font-size:var(--fs-3)}
+  /* 탭 이름이 낱말 중간에서 잘리지 않게 — 폭이 모자라면 줄바꿈 대신 가로 스크롤 */
+  .board-tabs{margin:var(--sp-4) calc(-1*var(--sp-4)) 0;padding:0 var(--sp-4);
+    overflow-x:auto;scrollbar-width:none}
+  .board-tabs::-webkit-scrollbar{display:none}
+  .board-tabs a{flex:0 0 auto;min-height:48px;padding:0 var(--sp-3);font-size:var(--fs-3)}
 }
 
 /* ── 대시보드 그리드 ────────────────────────── */
@@ -333,8 +337,8 @@ a.row:hover{background:var(--c-surface-sub)}
   .strip-meta{grid-column:1/-1;margin:0;padding:var(--sp-1) 0 var(--sp-2)}
   .dash{grid-template-columns:1fr}
   .ways{grid-template-columns:1fr 1fr;gap:var(--sp-2)}
-  .way{padding:var(--sp-3)}
-  .way-m{display:none}
+  .way{padding:var(--sp-3);gap:2px}
+  .way-t{font-size:var(--fs-3)}
   .phero{padding:var(--sp-6) 0 var(--sp-4)}
   .phero-bar{flex-direction:column;align-items:flex-start}
   .phero-stat{margin-left:0;text-align:left}
