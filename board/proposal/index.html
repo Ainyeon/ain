@@ -20,12 +20,12 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=14">
-  <link rel="stylesheet" href="/board/board.css?v=12">
+  <link rel="stylesheet" href="/assets/css/components.css?v=25">
+  <link rel="stylesheet" href="/board/board.css?v=25">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js"></script>
-  <script defer src="/assets/js/ain-common.js"></script>
-  <script defer src="/assets/js/ain-community.js"></script>
+  <script defer src="/auth.js?v=25"></script>
+  <script defer src="/assets/js/ain-common.js?v=25"></script>
+  <script defer src="/assets/js/ain-community.js?v=25"></script>
 </head>
 <body class="has-tabbar">
   <nav class="tnav">
@@ -33,12 +33,10 @@
       <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
       <div class="tnav-links">
         <a href="/">홈</a>
-        <a href="/calendar/">입주정보</a>
-        <a href="/prices/">시세</a>
-        <a href="/gov/">정부사업</a>
-        <a href="/news/">업계뉴스</a>
-        <a href="/maker/">메이커</a>
-        <a class="on" href="/board/proposal/">커뮤니티</a>
+        <a href="/edu/">교육</a>
+        <a href="/area/">내 지역</a>
+        <a href="/maker/">도구</a>
+        <a class="on" href="/board/free/">커뮤니티</a>
       </div>
       <div class="tnav-auth" id="authSlot"></div>
     </div>
@@ -51,8 +49,9 @@
           <h1>제안·투표</h1>
           <p class="sub">필요한 기능을 제안하고 투표로 우선순위를 정합니다. 회원 전용 공간입니다.</p>
           <div class="board-tabs">
-            <a href="/board/free/">자유게시판</a>
-            <a class="on" href="/board/proposal/">제안·투표</a>
+            <a href="/board/free/">질문·경험</a>
+            <a class="on" href="/board/proposal/">제안</a>
+            <a href="/me/">내 활동</a>
           </div>
         </div>
       </div>
@@ -60,9 +59,9 @@
     <section class="board-wrap" id="panel" aria-live="polite">
       <div class="gate-msg">불러오는 중…</div>
     </section>
-    <script src="/board/gate.js?v=12"></script>
+    <script src="/board/gate.js?v=25"></script>
   </main>
   <script>addEventListener("DOMContentLoaded",()=>{if(window.ainAuth)ainAuth.init("authSlot")});</script>
-  <script src="/board/board-proposal.js?v=12" defer></script>
+  <script src="/board/board-proposal.js?v=25" defer></script>
 </body>
 </html>

@@ -11,7 +11,7 @@
   document.getElementById('gateLogin').addEventListener('click', function () {
     if (!window.ainAuth) return;
     ainAuth.getClient().auth.signInWithOAuth({
-      provider: 'kakao', options: { redirectTo: location.origin + location.pathname }
+      provider: 'kakao', options: { redirectTo: location.origin + location.pathname + location.search }
     });
   });
 })();

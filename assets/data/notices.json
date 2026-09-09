@@ -1,0 +1,80 @@
+{
+  "source": "운영자가 원문을 직접 확인한 모집 공고 요약 (CODE_IMPLEMENTATION_SPEC §4). 전문 전재 대신 필요한 사실 요약 + 원문 링크가 기본이며, 담당자 이메일·전화·QR는 옮기지 않는다. 단지명은 회원 전용이므로 이 공개 파일에 담지 않는다 — 회원 조회는 notice_complexes 테이블 경유.",
+  "checked_at": "2026-09-09",
+  "items": [
+    {
+      "id": "ARTGEN-CHEONGJU-2026",
+      "title": "입주박람회 협력업체 모집",
+      "host": "아트젠",
+      "region_code": "충북",
+      "region_raw": "충북 청주",
+      "households": "1,034세대",
+      "move_in_raw": "2027년 1월 입주예정(예정)",
+      "event_raw": "사검예정 미정 · 행사일정 미정",
+      "posted_raw": "2026-06-04",
+      "apply_start_raw": "원문에 없음",
+      "apply_end_raw": "2026년 6월 19일까지",
+      "apply_notice": "접수 마감일 명시",
+      "deadline_passed": true,
+      "after_deadline_raw": "원문에 \"이후 접수는 우순위로 됨\"이라는 문구가 함께 있음",
+      "status_label": "마감 경과 · 원문에 이후 접수 관련 문구 있음 · 현재 접수 여부 미확인",
+      "requirements": [
+        {
+          "label": "참가자격",
+          "count": 3,
+          "lines": [
+            "공고일 현재 해당품목 2년 이상 경과한 입주품목 업체",
+            "해당 단지에 광고 진행이 가능한 업체",
+            "입주박람회에 참여 가능한 업체"
+          ]
+        },
+        {
+          "label": "제출서류",
+          "count": 5,
+          "lines": [
+            "사업자등록증",
+            "인감·세금납부증명서",
+            "종사자 현황",
+            "하자보수방법",
+            "타입·스펙·옵션별 단가표"
+          ]
+        },
+        {
+          "label": "선정기준",
+          "count": 5,
+          "lines": [
+            "업체의 장점",
+            "가격과 품질 및 사후관리",
+            "업체신뢰도 평가",
+            "종합 채점",
+            "별도 연락"
+          ]
+        },
+        {
+          "label": "우대사항",
+          "count": 4,
+          "lines": [
+            "지역 업체",
+            "대전·세종·충청권",
+            "온라인 홍보가 잘 되는 업체",
+            "평판이 좋은 업체"
+          ]
+        },
+        {
+          "label": "입찰 무효",
+          "count": 2,
+          "lines": [
+            "제출 서류의 허위사실에 대한 이의제기 제한",
+            "선정 과정에서 협의회·주관사의 청탁에 따른 경우 입찰등록 불가"
+          ]
+        }
+      ],
+      "scope_note": "이 공고의 조건이며 다른 단지·주관사에 그대로 적용되지 않습니다.",
+      "unknowns": "행사일정, 사검일, 현재 접수 가능 여부, \"우순위\"의 실제 운용 방식",
+      "url": "https://www.atzen.co.kr/notice/notice.php?boardid=notice&idx=15&mode=view",
+      "url_note": "원문 판독 근거: 공고 페이지 + 첨부 이미지",
+      "complex_locked": true,
+      "url_image": "https://www.atzen.co.kr/uploaded/webedit/2606/d6c280a2cf486746b5fd0c7f988bdfdb9a3136f4.png"
+    }
+  ]
+}

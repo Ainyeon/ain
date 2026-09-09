@@ -56,6 +56,17 @@
 
   // ── 섹션 편집기
   function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+  // 빈 칸 안내 — 업체가 직접 확인해 적어야 하는 항목이라는 것을 칸 안에서 알려 준다
+  const SECTION_HINTS = {
+    'A/S 안내': '우리 업체가 실제로 해 드리는 범위를 직접 적어 주세요 (한 줄에 한 항목)',
+    '주의사항': '이번 작업에서 고객이 지켜야 할 것을 직접 적어 주세요 — 기간·온도 같은 수치는 쓰신 자재 기준으로',
+    '관리 요령': '이번 작업의 관리 방법을 직접 적어 주세요 — 건조·경화 시간은 쓰신 자재 기준으로'
+  };
+  function sectionHint(sec) {
+    if ((sec.body || '').trim()) return '한 줄에 한 항목씩 입력';
+    return SECTION_HINTS[sec.title] || '한 줄에 한 항목씩 입력';
+  }
+
   function renderSectionEditor() {
     const root = $('sections');
     root.innerHTML = '';
@@ -69,7 +80,10 @@
         + '<button type="button" class="sec-btn" data-down' + (i === sections.length - 1 ? ' disabled' : '') + '>아래로</button>'
         + '<button type="button" class="sec-btn del" data-del>삭제</button>'
         + '</div>'
-        + '<textarea placeholder="한 줄에 한 항목씩 입력" aria-label="내용"></textarea>';
+        // ⑤ A/S와 기술 조건(경화 시간·온도·거리·금지 지시)은 기본 문구를 넣지 않는다.
+        //    업체가 쓴 자재·제품에 따라 달라지므로, 확인하지 않은 조건이 고객 안내문에
+        //    그대로 나가면 안 된다. 빈 칸에는 무엇을 적을지 안내만 한다.
+        + '<textarea placeholder="' + esc(sectionHint(sec)) + '" aria-label="' + esc(sec.title || '내용') + '"></textarea>';
       card.querySelector('textarea').value = sec.body;
       card.querySelector('input').addEventListener('input', (e) => { sec.title = e.target.value; render(); });
       card.querySelector('textarea').addEventListener('input', (e) => { sec.body = e.target.value; render(); });

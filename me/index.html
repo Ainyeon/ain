@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>내정보 | 에어컨 인테리어 연구소</title>
+  <title>내 정보 · 내 활동 | 에어컨 인테리어 연구소</title>
   <meta name="description" content="에인연 계정 정보와 회원 전용 기능을 확인합니다.">
   <link rel="canonical" href="https://ainyeon.com/me/">
   <meta property="og:type" content="website">
@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=14">
+  <link rel="stylesheet" href="/assets/css/components.css?v=25">
   <style>
     /* 페이지 로컬: 토큰만 소비. 예외 2건 주석 — 오브(브랜드 마크)·카카오 옐로(외부 브랜드) */
     .me-wrap{display:grid;gap:var(--sp-4);padding-bottom:var(--sp-8)}
@@ -44,15 +44,17 @@
     .me-note{color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js"></script>
-  <script defer src="/assets/js/ain-common.js"></script>
-  <script defer src="/assets/js/ain-community.js"></script>
+  <script defer src="/auth.js?v=25"></script>
+  <script defer src="/assets/js/ain-common.js?v=25"></script>
+  <script defer src="/assets/js/ain-community.js?v=25"></script>
 </head>
 <body class="has-tabbar">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
       <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
       <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+      <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></symbol>
     </defs>
   </svg>
 
@@ -61,11 +63,9 @@
       <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
       <div class="tnav-links">
         <a href="/">홈</a>
-        <a href="/calendar/">입주정보</a>
-        <a href="/prices/">시세</a>
-        <a href="/gov/">정부사업</a>
-        <a href="/news/">업계뉴스</a>
-        <a href="/maker/">메이커</a>
+        <a href="/edu/">교육</a>
+        <a href="/area/">내 지역</a>
+        <a href="/maker/">도구</a>
         <a href="/board/free/">커뮤니티</a>
       </div>
       <div class="tnav-auth" id="authSlot"></div>
@@ -77,8 +77,8 @@
       <div class="phero-bar">
         <div>
           <div class="crumb">MY PAGE</div>
-          <h1>내정보</h1>
-          <p class="sub">계정 상태와 회원 전용 기능을 확인합니다.</p>
+          <h1>내 정보 · 내 활동</h1>
+          <p class="sub">계정 정보와 내 활동 — 저장한 항목, 내가 쓴 글과 제안, 운영자 답변이 여기에 모입니다.</p>
         </div>
       </div>
     </header>
@@ -89,10 +89,25 @@
         <div class="me-body" id="meCard"><div class="empty">계정 상태 확인 중</div></div>
       </section>
 
+      <section class="panel" aria-labelledby="hSaved">
+        <div class="phead"><svg class="icon"><use href="#i-heart"/></svg><h2 id="hSaved">관심 저장</h2>
+          <span class="cnt num" id="savedCnt">—</span></div>
+        <div class="rows" id="savedRows"><div class="empty">확인 중</div></div>
+      </section>
+
+      <section class="panel" aria-labelledby="hMine">
+        <div class="phead"><svg class="icon"><use href="#i-doc"/></svg><h2 id="hMine">내 글과 제안</h2>
+          <span class="cnt num" id="mineCnt">—</span></div>
+        <div class="rows" id="mineRows"><div class="empty">확인 중</div></div>
+      </section>
+
       <section class="panel" aria-label="빠른 이동">
         <div class="phead"><svg class="icon"><use href="#i-chev"/></svg><h2>빠른 이동</h2></div>
         <div class="rows">
-          <a class="row" href="/calendar/"><div class="row-main"><div class="row-title">입주 레이더</div><div class="row-meta">회원 전용 단지명 열람</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/edu/"><div class="row-main"><div class="row-title">교육 찾기</div><div class="row-meta">조건별로 과정 찾기</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/area/"><div class="row-main"><div class="row-title">내 지역</div><div class="row-meta">입주 예정 단지 · 모집 공고</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/maker/"><div class="row-main"><div class="row-title">도구</div><div class="row-meta">고객 안내문 · 홍보 카드</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/calendar/"><div class="row-main"><div class="row-title">입주 캘린더</div><div class="row-meta">단계별 입주 일정</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/"><div class="row-main"><div class="row-title">오늘의 브리핑</div><div class="row-meta">홈 대시보드</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/board/free/"><div class="row-main"><div class="row-title">자유게시판</div><div class="row-meta">업계 사람들끼리</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/board/proposal/"><div class="row-main"><div class="row-title">제안·투표</div><div class="row-meta">필요한 기능에 투표</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
@@ -100,7 +115,7 @@
           <a class="row" href="/news/"><div class="row-main"><div class="row-title">업계뉴스</div><div class="row-meta">국내·해외 이슈</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
         </div>
       </section>
-      <div class="me-note">로그인은 카카오 계정으로 처리되며, 에인연은 닉네임·이메일 외의 정보를 수집하지 않습니다.</div>
+      <div class="me-note">로그인은 카카오 계정으로 처리됩니다. 에인연에 남는 정보는 카카오에서 받은 계정 정보(닉네임·이메일)와 회원이 직접 입력·선택한 프로필(닉네임·주력분야·활동지역), 그리고 회원이 만든 활동 기록(글·댓글·투표·신고·관심 저장)입니다. 익명으로 쓴 글은 다른 회원과 비회원에게 나가는 응답에서 작성자를 지우며, 운영자는 중복·악용 확인 목적으로만 확인할 수 있습니다.</div>
     </div>
   </main>
 
@@ -152,7 +167,12 @@
           + '<div class="me-actions">'
           + '<a class="me-btn" href="/onboard/?next=/me/">프로필 수정 (닉네임·분야·지역)</a>'
           + '<button type="button" class="me-btn danger" id="meLogout">로그아웃</button></div>';
-        communityProfileLine().then((html) => { document.getElementById("commLine").innerHTML = html; });
+        // 응답이 늦게 오는 사이 로그아웃·계정 전환이 일어날 수 있다.
+        // 호출 전에 노드를 잡아 두고, 그 노드가 아직 문서에 붙어 있을 때만 채운다.
+        const commLine = document.getElementById("commLine");
+        communityProfileLine().then((html) => {
+          if (commLine && commLine.isConnected) commLine.innerHTML = html;
+        });
         document.getElementById("meLogout").addEventListener("click", async () => {
           await ainAuth.getClient().auth.signOut();
           renderMe(null);
@@ -165,14 +185,126 @@
         document.getElementById("meLogin").addEventListener("click", () => {
           ainAuth.getClient().auth.signInWithOAuth({
             provider: "kakao",
-            options: { redirectTo: location.origin + location.pathname }
+            options: { redirectTo: location.origin + location.pathname + location.search }
           });
         });
       }
     }
 
-    addEventListener("DOMContentLoaded", () => { ainAuth.init("authSlot"); ainAuth.getSession().then(renderMe); });
-    window.addEventListener("ain:auth", e => renderMe(e.detail && e.detail.session));
+    // ── 내 활동 (SPEC A3) — 저장 목록 + 내 글·제안 + 제안 상태·답변·결과 ──
+    const STATUS_LABELS = {
+      open: "투표중", adopted: "채택됨", building: "개발중", shipped: "반영완료",
+      held: "보류", declined: "안 함"
+    };
+    const SAVE_KINDS = {
+      edu: { label: "교육", href: (id) => "/edu/?id=" + encodeURIComponent(id) },
+      notice: { label: "모집 공고", href: () => "/area/?tab=notice" },
+      // 저장한 단지로 정확히 돌아가야 "다시 찾기"가 성립한다.
+      // 지역 기본값(수도권)만 열면 전국에서 저장한 단지는 목록에 없다.
+      complex: { label: "입주 단지", href: (id) => "/area/?complex=" + encodeURIComponent(id) }
+    };
+    const rowEl = (title, meta, href, side) => {
+      const inner = '<div class="row-main"><div class="row-title">' + title + '</div>'
+        + '<div class="row-meta">' + meta + '</div></div>'
+        + (side ? '<div class="row-side">' + side + '</div>' : '');
+      return href ? '<a class="row" href="' + href + '">' + inner + '</a>' : '<div class="row">' + inner + '</div>';
+    };
+    const emptyRow = (t, s) => '<div class="empty"><b>' + escT(t) + '</b>' + escT(s || '') + '</div>';
+
+    async function renderSaved(session, stale) {
+      const box = document.getElementById("savedRows");
+      const cnt = document.getElementById("savedCnt");
+      if (!session) {
+        box.innerHTML = emptyRow("로그인 후 확인할 수 있습니다", "저장한 항목은 계정에 남아 다른 기기에서도 보입니다");
+        cnt.textContent = "—"; return;
+      }
+      const map = await ainCommunity.loadSaves();
+      if (stale && stale()) return;          // 그 사이 세션이 바뀌었으면 값을 버린다
+      if (!map) {
+        box.innerHTML = emptyRow("관심 저장을 아직 쓸 수 없습니다", "잠시 후 다시 확인해 주세요");
+        cnt.textContent = "—"; return;
+      }
+      const rows = [...map.values()];
+      cnt.textContent = rows.length + "건";
+      // 링크 안에 버튼을 넣지 않는다 — 링크와 버튼을 형제로 두어야 키보드·스크린리더에서 각각 눌린다
+      box.innerHTML = rows.length ? rows.map((r) => {
+        const kind = SAVE_KINDS[r.target_type] || { label: r.target_type, href: () => "#" };
+        const name = escT(r.label || r.target_id);
+        return '<div class="row">'
+          + '<div class="row-main"><a class="row-title" href="' + kind.href(r.target_id) + '">' + name + '</a>'
+          + '<div class="row-meta">' + escT(kind.label + (r.meta ? " · " + r.meta : "")) + '</div></div>'
+          + '<div class="row-side"><button type="button" class="btn-line"'
+          + ' data-unsave="' + escT(r.target_type + "|" + r.target_id) + '"'
+          + ' aria-label="' + name + ' 저장 해제">저장 해제</button></div></div>';
+      }).join("") : emptyRow("저장한 항목이 없습니다", "교육 카드와 내 지역에서 관심 저장을 눌러 보세요");
+
+      box.querySelectorAll("[data-unsave]").forEach((b) =>
+        b.addEventListener("click", async () => {
+          const [t, id] = b.dataset.unsave.split("|");
+          const r = await ainCommunity.removeSave(t, id);
+          if (r.error) { alert("저장을 해제하지 못했습니다."); console.error(r.error); return; }
+          renderSaved(session, stale);
+        }));
+    }
+
+    async function renderMine(session, stale) {
+      const box = document.getElementById("mineRows");
+      const cnt = document.getElementById("mineCnt");
+      if (!session) {
+        box.innerHTML = emptyRow("로그인 후 확인할 수 있습니다", "내가 쓴 글과 제안, 운영자 답변이 여기에 모입니다");
+        cnt.textContent = "—"; return;
+      }
+      const r = await ainCommunity.readMyPosts(session.user.id, 100);
+      if (stale && stale()) return;          // 그 사이 세션이 바뀌었으면 값을 버린다
+      if (r.error) {
+        box.innerHTML = emptyRow("불러오지 못했습니다", "잠시 후 다시 확인해 주세요");
+        cnt.textContent = "—"; console.warn(r.error); return;
+      }
+      const mine = r.rows;
+      cnt.textContent = mine.length + "건";
+      if (!mine.length) {
+        box.innerHTML = emptyRow("아직 쓴 글이 없습니다", "질문이나 제안을 남기면 여기에 모입니다");
+        return;
+      }
+      box.innerHTML = mine.map((p) => {
+        const isProp = p.board_type === "proposal";
+        const href = (isProp ? "/board/proposal/?id=" : "/board/free/?id=") + p.id;
+        const badge = isProp
+          ? '<span class="status-badge status-' + escT(p.status) + '">' + escT(STATUS_LABELS[p.status] || p.status) + '</span>'
+          : '';
+        const extra = (p.status_reason
+            ? '<div class="status-reason"><b>' + escT(STATUS_LABELS[p.status] || p.status) + ' 이유</b>' + escT(p.status_reason) + '</div>' : '')
+          + (p.admin_answer
+            ? '<div class="admin-answer"><b>운영자 답변</b>' + escT(p.admin_answer) + '</div>' : '');
+        return rowEl(
+          (p.is_anonymous ? '<span class="field-badge">익명</span> ' : '') + escT(p.title),
+          escT((isProp ? "제안" : "질문·경험") + " · " + ainCommunity.timeAgo(p.created_at)) + extra,
+          href, badge);
+      }).join("");
+    }
+
+    // 요청 세대 — 로그아웃 뒤 늦게 도착한 회원 응답이 화면을 다시 덮지 않게 한다
+    let activityGen = 0;
+    async function renderActivity(session) {
+      const my = ++activityGen;
+      const stale = () => my !== activityGen;
+      // 세션이 바뀐 순간 회원 영역을 먼저 비운다 — 늦게 오는 응답을 기다리는 동안
+      // 이전 회원의 저장 목록·글이 화면에 남아 있으면 안 된다.
+      document.getElementById("savedRows").innerHTML = '<div class="empty">확인 중</div>';
+      document.getElementById("mineRows").innerHTML = '<div class="empty">확인 중</div>';
+      document.getElementById("savedCnt").textContent = "—";
+      document.getElementById("mineCnt").textContent = "—";
+      await Promise.all([renderSaved(session, stale), renderMine(session, stale)]);
+    }
+
+    addEventListener("DOMContentLoaded", () => {
+      ainAuth.init("authSlot");
+      ainAuth.getSession().then((s) => { renderMe(s); renderActivity(s); });
+    });
+    window.addEventListener("ain:auth", (e) => {
+      const s = e.detail && e.detail.session;
+      renderMe(s); renderActivity(s);
+    });
   </script>
 </body>
 </html>

@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=14">
+  <link rel="stylesheet" href="/assets/css/components.css?v=25">
   <style>
     /* 페이지 로컬: 토큰만 소비 — 뉴스 요약 4줄 클램프 */
     .news-summary{margin-top:2px;color:var(--c-ink-sub);font-size:var(--fs-4);line-height:1.55;
@@ -28,8 +28,8 @@
     .row-title{white-space:normal}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js"></script>
-  <script defer src="/assets/js/ain-common.js"></script>
+  <script defer src="/auth.js?v=25"></script>
+  <script defer src="/assets/js/ain-common.js?v=25"></script>
 </head>
 <body class="has-tabbar">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -45,11 +45,9 @@
       <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
       <div class="tnav-links">
         <a href="/">홈</a>
-        <a href="/calendar/">입주정보</a>
-        <a href="/prices/">시세</a>
-        <a href="/gov/">정부사업</a>
-        <a class="on" href="/news/">업계뉴스</a>
-        <a href="/maker/">메이커</a>
+        <a href="/edu/">교육</a>
+        <a href="/area/">내 지역</a>
+        <a href="/maker/">도구</a>
         <a href="/board/free/">커뮤니티</a>
       </div>
       <div class="tnav-auth" id="authSlot"></div>
@@ -141,7 +139,10 @@
     }
 
     function newsRow(row) {
-      const summary = row.summary ? `<div class="news-summary">${esc(row.summary)}</div>` : "";
+      // ⑥ 요약 문장 중간에 남은 SOURCE 자리표시자를 같은 행의 출처명으로 채운다.
+      //    예) "…선보인다. SOURCE에 따르면 습도…" → "…선보인다. 투데이에너지에 따르면 습도…"
+      const clean = window.fillNewsSource ? window.fillNewsSource(row.summary, row.source) : row.summary;
+      const summary = clean ? `<div class="news-summary">${esc(clean)}</div>` : "";
       return `<a class="row" href="${esc(row.url)}" target="_blank" rel="noopener">
         <div class="row-main">
           <div class="row-title">${newBadge(row.collected_at)}${esc(row.title || "제목 확인 필요")}</div>

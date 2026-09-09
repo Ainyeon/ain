@@ -1,12 +1,17 @@
 // 제안·투표 게시판 — 찬반 투표(1인 1표, upsert 변경), 채택 임계 하이라이트.
 (function () {
   'use strict';
-  // 채택 이중조건 — 회원 규모에 따라 조정 (규칙 배너에도 이 값이 찍힘)
-  const THRESHOLD_COUNT = 20;   // 찬성 최소 인원
-  const THRESHOLD_RATE = 0.7;   // 찬성률
-  const DELETE_LOCK_VOTES = 5;  // 이 수 이상 투표가 모인 제안은 작성자 삭제 불가 (sql/09 정책과 쌍)
+  // 표 수는 우선순위를 보는 신호일 뿐 개발 약속이 아니다 (SPEC ②).
+  // 임계 상수는 목록 하이라이트에만 쓰고, 화면 문구에 수치를 약속처럼 적지 않는다.
+  const THRESHOLD_COUNT = 20;
+  const THRESHOLD_RATE = 0.7;
+  // 작성자 본인 삭제는 A8 완료 기준이라 09의 5표 삭제 잠금을 뺐다 (supabase/15_launch.sql [B]).
 
-  const STATUS_LABELS = { open: '투표중', adopted: '채택됨', building: '개발중', shipped: '반영완료' };
+  // 기존 4상태 유지 + 보류/안 함만 추가 (개발중을 검토중에 합치지 않는다)
+  const STATUS_LABELS = {
+    open: '투표중', adopted: '채택됨', building: '개발중', shipped: '반영완료',
+    held: '보류', declined: '안 함'
+  };
   const panel = document.getElementById('panel');
   const db = () => ainAuth.getClient();
   const C = () => window.ainCommunity;
@@ -16,9 +21,10 @@
   function gate(html) { panel.innerHTML = '<div class="gate-msg">' + html + '</div>'; }
 
   function rulesBanner() {
-    return '<div class="rules-banner">채택 규칙 — 찬성 <b>' + THRESHOLD_COUNT + '명 이상</b> + 찬성률 <b>'
-      + Math.round(THRESHOLD_RATE * 100) + '% 이상</b> 도달 시 검토 후 채택됩니다. '
-      + '상태: 투표중 → 채택됨 → 개발중 → 반영완료</div>';
+    return '<div class="rules-banner">투표는 무엇이 급한지 보는 데 씁니다. '
+      + '표가 많다고 자동으로 개발되지는 않고, 표가 적어도 중요한 문제면 볼 수 있습니다. '
+      + '진행 상황은 각 제안의 상태로 표시합니다.<br>'
+      + '상태: 투표중 · 채택됨 · 개발중 · 반영완료 · 보류(이유) · 안 함(이유)</div>';
   }
 
   function teaserRender(rows) {
@@ -33,11 +39,7 @@
       + '카카오로 3초 가입하면 필요한 기능을 올리고 투표할 수 있습니다.<br>'
       + '<button type="button" class="gate-cta" id="gateLogin">카카오로 3초 가입</button></div>'
       + items;
-    document.getElementById('gateLogin').addEventListener('click', () => {
-      ainAuth.getClient().auth.signInWithOAuth({
-        provider: 'kakao', options: { redirectTo: location.origin + location.pathname }
-      });
-    });
+    document.getElementById('gateLogin').addEventListener('click', () => C().loginWithKakao());
   }
 
   // 투표 집계: votes 전체(회원 select) → {postId: {up, down, mine}}
@@ -53,6 +55,18 @@
   function reached(t) {
     const total = t.up + t.down;
     return t.up >= THRESHOLD_COUNT && total > 0 && t.up / total >= THRESHOLD_RATE;
+  }
+
+  // 제안 → 답변 → 진행 → 결과가 한 줄로 이어지게 (SPEC §6.2 / §6.3)
+  function statusBlock(p) {
+    const reason = p.status_reason
+      ? '<div class="status-reason"><b>' + escT(STATUS_LABELS[p.status] || p.status) + ' 이유</b>'
+        + escT(p.status_reason) + '</div>' : '';
+    const answer = p.admin_answer
+      ? '<div class="admin-answer"><b>운영자 답변</b>' + escT(p.admin_answer)
+        + (p.admin_answered_at ? ' <time>' + C().timeAgo(p.admin_answered_at) + '</time>' : '')
+        + '</div>' : '';
+    return reason + answer;
   }
 
   function voteRowHtml(postId, t) {
@@ -72,7 +86,7 @@
       { post_id: Number(postId), user_id: me.user.id, vote },
       { onConflict: 'post_id,user_id' }
     );
-    if (error) { alert('투표 실패: ' + error.message); return; }
+    if (error) { alert('투표하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(error); return; }
     location.reload();
   }
   function bindVotes(me) {
@@ -80,18 +94,16 @@
       b.addEventListener('click', () => castVote(me, b.dataset.post, b.dataset.vote)));
   }
 
-  async function fetchAll() {
-    const [{ data: posts, error }, { data: votes }] = await Promise.all([
-      db().from('posts')
-        .select('id,title,body,status,created_at,view_count,author_id,author:profiles(' + C().authorSelect() + ')')
-        .eq('board_type', 'proposal').limit(100),
+  async function fetchAll(myId) {
+    const [r, { data: votes }] = await Promise.all([
+      C().readPosts((q) => q.eq('board_type', 'proposal').limit(100), myId),
       db().from('votes').select('post_id,user_id,vote')
     ]);
-    return { posts, votes, error };
+    return { posts: r.rows, votes, error: r.error };
   }
 
   async function renderList(me) {
-    const { posts, votes, error } = await fetchAll();
+    const { posts, votes, error } = await fetchAll(me.user.id);
     if (error) { gate('게시판 준비 중입니다. 잠시 후 다시 확인해 주세요.'); console.warn(error); return; }
     const t = tally(votes, me.user.id);
     const get = (id) => t[id] || { up: 0, down: 0, mine: null };
@@ -103,8 +115,13 @@
     const writeBlock =
       '<button type="button" class="write-btn" id="writeOpen">기능 제안하기</button>'
       + '<form class="write-form" id="writeForm" hidden>'
-      + '<input type="text" id="wTitle" placeholder="제안 제목 (예: 세척 단가표 지역별 공유)" maxlength="80" required>'
-      + '<textarea id="wBody" placeholder="어떤 기능이 왜 필요한지 적어 주세요" maxlength="4000" required></textarea>'
+      + '<label class="write-hint" for="wTitle">제안 제목</label>'
+      + '<input type="text" id="wTitle" placeholder="예: 세척 단가표 지역별 공유" maxlength="80" required>'
+      + '<label class="write-hint" for="wBody">내용</label>'
+      + '<textarea id="wBody" placeholder="어떤 기능이 왜 필요한지 적어 주세요. 짧아도 괜찮습니다." maxlength="4000" required></textarea>'
+      + (C().anonymousReady()
+        ? '<label class="anon-row"><input type="checkbox" id="wAnon"><span>익명으로 작성 — 닉네임과 분야를 함께 감춥니다. '
+          + '운영자는 중복·악용 확인 목적으로만 작성자를 확인할 수 있습니다.</span></label>' : '')
       + '<div class="form-actions"><button type="button" class="btn-ghost" id="writeCancel">취소</button>'
       + '<button type="submit" class="btn-primary">등록</button></div></form>';
 
@@ -116,9 +133,9 @@
       const tv = get(p.id);
       return '<article class="board-card' + (reached(tv) && p.status === 'open' ? ' reach-highlight' : '') + (C().isStaff(p.author) ? ' staff-accent' : '') + '">'
         + '<a href="?id=' + p.id + '"><h2>' + escT(p.title) + '</h2></a>'
-        + '<div class="card-meta-line"><span class="author-line">' + C().authorBadge(p.author) + '</span>'
+        + '<div class="card-meta-line"><span class="author-line">' + C().authorBadgeOf(p) + '</span>'
         + '<span><span class="view-count">조회 ' + (p.view_count || 0) + '</span> <span class="status-badge status-' + escT(p.status) + '">' + (STATUS_LABELS[p.status] || p.status) + '</span></span></div>'
-        + voteRowHtml(p.id, tv) + '</article>';
+        + statusBlock(p) + voteRowHtml(p.id, tv) + '</article>';
     }).join('') : '<p class="empty-note">첫 제안을 올려 주세요 — 필요한 기능이 있다면 지금이 기회입니다.</p>';
 
     panel.innerHTML = rulesBanner() + writeBlock + sortBlock + cards;
@@ -133,12 +150,15 @@
     });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const { error: err } = await db().from('posts').insert({
-        board_type: 'proposal', author_id: me.user.id,
-        title: document.getElementById('wTitle').value.trim(),
-        body: document.getElementById('wBody').value.trim()
-      });
-      if (err) { alert('등록 실패: ' + err.message); return; }
+      const title = document.getElementById('wTitle').value.trim();
+      const body = document.getElementById('wBody').value.trim();
+      // 짧은 제안도 막지 않는다. 공백만 있는 글만 거른다 (DB 제약과 같은 규칙).
+      if (!title || !body) { alert('제목과 내용을 적어 주세요.'); return; }
+      const row = { board_type: 'proposal', author_id: me.user.id, title: title, body: body };
+      const anon = document.getElementById('wAnon');
+      if (C().anonymousReady()) row.is_anonymous = !!(anon && anon.checked);
+      const { error: err } = await db().from('posts').insert(row);
+      if (err) { alert('등록하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(err); return; }
       location.reload();
     });
     document.getElementById('sortVotes').addEventListener('click', () => { sortMode = 'votes'; renderList(me); });
@@ -146,11 +166,13 @@
   }
 
   async function renderDetail(me, id) {
-    const [{ data: post, error }, { data: votes }, { data: cmts }] = await Promise.all([
-      db().from('posts').select('id,title,body,status,created_at,view_count,author_id,author:profiles(' + C().authorSelect() + ')').eq('id', id).maybeSingle(),
+    const [r, { data: votes }, { data: cmts }] = await Promise.all([
+      C().readPosts((q) => q.eq('id', id), me.user.id),
       db().from('votes').select('post_id,user_id,vote').eq('post_id', id),
       db().from('comments').select('id,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('post_id', id).order('created_at')
     ]);
+    const post = r.rows && r.rows[0];
+    const error = r.error;
     if (error || !post) { gate('글을 찾을 수 없습니다. <br><br><a class="back-link" href="./">← 목록으로</a>'); return; }
     // 조회수: 세션당 1회 증가 (RPC 미생성이어도 무시)
     if (!sessionStorage.getItem('viewed_p' + id)) {
@@ -158,7 +180,7 @@
       db().rpc('increment_post_view', { p_post_id: Number(id) }).then(() => {}, () => {});
     }
     const tv = tally(votes, me.user.id)[post.id] || { up: 0, down: 0, mine: null };
-    const mine = post.author_id === me.user.id;
+    const mine = !!post.is_mine;
 
     const cmtHtml = (cmts || []).map((c) =>
       '<div class="cmt"><span class="author-line">' + C().authorBadge(c.author)
@@ -172,16 +194,24 @@
       + (STATUS_LABELS[post.status] || post.status) + '</span>'
       + '<span><span class="view-count">조회 ' + ((post.view_count || 0) + 1) + '</span> <time style="color:var(--txt3);font-size:12px">' + C().timeAgo(post.created_at) + '</time></span></div>'
       + '<h2 style="font-size:19px">' + escT(post.title) + '</h2>'
-      + '<div class="card-meta-line"><span class="author-line">' + C().authorBadge(post.author) + '</span></div>'
+      + '<div class="card-meta-line"><span class="author-line">' + C().authorBadgeOf(post) + '</span></div>'
       + '<div class="post-body">' + escT(post.body) + '</div>'
+      + statusBlock(post)
       + voteRowHtml(post.id, tv)
       + '<div class="post-tools">'
       + (mine
-        ? ((tv.up + tv.down) >= DELETE_LOCK_VOTES
-          ? '<span class="del-locked">투표 ' + DELETE_LOCK_VOTES + '명 이상 모인 제안은 삭제할 수 없습니다 (기록 보존)</span>'
-          : '<button type="button" class="tool-link" id="delPost">글 삭제</button>')
+        ? '<button type="button" class="tool-link" id="editPost">수정</button>'
+          + '<button type="button" class="tool-link" id="delPost">삭제</button>'
         : '<button type="button" class="tool-link" id="repPost">신고</button>')
-      + '</div></article>'
+      + '</div>'
+      + (mine ? '<form class="write-form" id="editForm" hidden>'
+          + '<label class="write-hint" for="eTitle">제목 수정</label>'
+          + '<input type="text" id="eTitle" maxlength="80" required value="' + escT(post.title) + '">'
+          + '<label class="write-hint" for="eBody">내용 수정</label>'
+          + '<textarea id="eBody" maxlength="4000" required>' + escT(post.body) + '</textarea>'
+          + '<div class="form-actions"><button type="button" class="btn-ghost" id="editCancel">취소</button>'
+          + '<button type="submit" class="btn-primary">수정 저장</button></div></form>' : '')
+      + '</article>'
       + '<section class="board-card"><b style="font-size:14px">의견 ' + (cmts || []).length + '</b>'
       + cmtHtml
       + '<form class="cmt-form" id="cmtForm">'
@@ -189,6 +219,23 @@
       + '<button type="submit">등록</button></form></section>';
 
     bindVotes(me);
+    const editBtn = document.getElementById('editPost');
+    const editForm = document.getElementById('editForm');
+    if (editBtn && editForm) {
+      editBtn.addEventListener('click', () => { editForm.hidden = !editForm.hidden; });
+      document.getElementById('editCancel').addEventListener('click', () => { editForm.hidden = true; });
+      editForm.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const t = document.getElementById('eTitle').value.trim();
+        const b = document.getElementById('eBody').value.trim();
+        if (!t || !b) { alert('제목과 내용을 적어 주세요.'); return; }
+        const { error: eErr } = await db().from('posts').update({
+          title: t, body: b, updated_at: new Date().toISOString()
+        }).eq('id', id);
+        if (eErr) { alert('수정하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(eErr); return; }
+        location.reload();
+      });
+    }
     const del = document.getElementById('delPost');
     if (del) del.addEventListener('click', async () => {
       if (!confirm('제안을 삭제할까요? 투표 기록도 함께 삭제됩니다.')) return;
@@ -200,11 +247,12 @@
     if (rep) rep.addEventListener('click', () => C().report('post', post.id));
     document.getElementById('cmtForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const cb = document.getElementById('cmtBody').value.trim();
+      if (!cb) { alert('의견 내용을 적어 주세요.'); return; }
       const { error: err } = await db().from('comments').insert({
-        post_id: Number(id), author_id: me.user.id,
-        body: document.getElementById('cmtBody').value.trim()
+        post_id: Number(id), author_id: me.user.id, body: cb
       });
-      if (err) { alert('등록 실패: ' + err.message); return; }
+      if (err) { alert('등록하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(err); return; }
       location.reload();
     });
   }

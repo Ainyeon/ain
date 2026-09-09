@@ -17,9 +17,11 @@
 }
 .ain-auth-login:hover{opacity:.88}
 .ain-auth-name{
-  color:#9BA3B0;font-size:11px;font-weight:700;letter-spacing:.02em;
+  display:inline-block;
+  color:#5C5850;font-size:11px;font-weight:700;letter-spacing:.02em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;
 }
+a.ain-auth-name:hover{color:#1E1D1A;text-decoration:underline}
 .ain-auth-logout{
   display:inline-flex;align-items:center;
   height:28px;padding:0 10px;border-radius:7px;cursor:pointer;
@@ -61,7 +63,8 @@
       var name = meta.full_name || meta.name || meta.preferred_username || '회원';
       container.innerHTML =
         '<div class="ain-auth">'
-        + '<span class="ain-auth-name">' + esc(name) + '</span>'
+        // 내 정보·내 활동 진입은 우측 상단 프로필에서 (SPEC §7.1)
+        + '<a class="ain-auth-name" href="/me/" title="내 정보 · 내 활동">' + esc(name) + '</a>'
         + '<button class="ain-auth-logout" id="_ain_out">로그아웃</button>'
         + '</div>';
       document.getElementById('_ain_out')
@@ -79,7 +82,9 @@
           getClient().auth.signInWithOAuth({
             provider: 'kakao',
             options: {
-              redirectTo: window.location.origin + window.location.pathname
+              // 쿼리까지 보존한다 — /edu/?id=… , /board/free/?ref=edu:… 처럼
+              // 검색 부분이 지금 보고 있는 화면을 결정하는 경로가 있다.
+              redirectTo: window.location.origin + window.location.pathname + window.location.search
             }
           });
         });
