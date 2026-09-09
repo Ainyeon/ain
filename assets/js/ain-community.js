@@ -1,4 +1,5 @@
-// 에인연 커뮤니티 공통 — 프로필 게이트·작성자 뱃지·티저·신고
+// 에인연 게시판 공통 — 프로필 게이트·작성자 뱃지·티저·신고
+// (모듈명 ainCommunity와 파일명은 내부 식별자라 그대로 둔다)
 // 로드 순서: supabase-js → auth.js → ain-common.js → 이 파일 → 페이지 스크립트
 (function () {
   'use strict';

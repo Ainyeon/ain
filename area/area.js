@@ -90,7 +90,7 @@
     if (!session) {
       return '<div class="edu-note"><b>저장한 단지</b>'
         + '단지명은 회원에게 공개됩니다. 로그인하면 저장한 단지로 바로 돌아옵니다.'
-        + '<div class="edu-actions"><button type="button" class="btn-line" id="areaLogin">카카오 3초 로그인</button></div></div>'
+        + '<div class="edu-actions"><button type="button" class="btn-line" id="areaLogin">카카오 로그인</button></div></div>'
         + back;
     }
     // 공개 조건은 서버에서 건다 — 공개 대상에서 빠진 단지는 이름 자체를 응답으로 받지 않는다.
@@ -152,7 +152,7 @@
           + '</article>').join('')
           : '<div class="edu-note">이 지역에서 공개할 단지가 없습니다.</div>')
         + '<div class="edu-note"><b>단지명은 회원에게 공개됩니다</b>'
-        + '<div class="edu-actions"><button type="button" class="btn-line" id="areaLogin">카카오 3초 로그인</button></div></div>';
+        + '<div class="edu-actions"><button type="button" class="btn-line" id="areaLogin">카카오 로그인</button></div></div>';
     }
 
     const { data, error } = await db().from('move_in_complexes')
@@ -239,7 +239,7 @@
         + n.requirements.map((r) =>
           '<div class="edu-block"><h4>' + esc(r.label) + ' ' + r.count + '항</h4>'
           + r.lines.map((l) => '<div class="edu-line">· ' + esc(l) + '</div>').join('') + '</div>').join('')
-        + '<div class="edu-block"><h4>모르는 항목</h4><div class="edu-line">' + esc(n.unknowns) + '</div></div>'
+        + '<div class="edu-block"><h4>미확인 정보</h4><div class="edu-line">' + esc(n.unknowns) + '</div></div>'
         + '</details>'
         + '<div class="edu-line" style="color:var(--c-ink-faint)">ⓘ ' + esc(n.scope_note) + '</div>'
         + '<div class="edu-line" style="color:var(--c-ink-faint)">최종 확인 ' + esc(notices.checked_at) + '</div>'

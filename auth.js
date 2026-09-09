@@ -74,7 +74,7 @@ a.ain-auth-name:hover{color:#1E1D1A;text-decoration:underline}
         '<div class="ain-auth">'
         + '<button class="ain-auth-login" id="_ain_in">'
         + kakaoIcon()
-        + '카카오 3초 로그인'
+        + '카카오 로그인'
         + '</button>'
         + '</div>';
       document.getElementById('_ain_in')

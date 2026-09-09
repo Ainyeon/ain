@@ -51,7 +51,7 @@
         const name=displayName(session.user);
         kakaoBtn.innerHTML='<span class="plus">'+escT(name.charAt(0))+'</span>'+escT(name);
       }else{
-        kakaoBtn.innerHTML='<span class="plus">+</span>카카오로 시작';
+        kakaoBtn.innerHTML='<span class="plus">+</span>카카오 로그인';
       }
     };
     const cleanAuthHash=()=>{
@@ -148,7 +148,7 @@
       {href:'/edu/',label:'교육',icon:I.book},
       {href:'/area/',label:'내 지역',icon:I.radar},
       {href:'/maker/',label:'도구',icon:I.maker},
-      {href:'/board/free/',base:'/board/',label:'커뮤니티',icon:I.board}
+      {href:'/board/free/',base:'/board/',label:'게시판',icon:I.board}
     ];
     const here=location.pathname;
     const tb=document.createElement('nav');
@@ -172,7 +172,7 @@
     deferredInstall=e;
     const bar=document.createElement('div');
     bar.className='install-bar';
-    bar.innerHTML='<span>홈 화면에 에인연을 추가하면 앱처럼 쓸 수 있어요</span>'
+    bar.innerHTML='<span>에인연을 홈 화면에 추가</span>'
       +'<button type="button" class="install-go">추가</button>'
       +'<button type="button" class="install-x" aria-label="닫기">✕</button>';
     document.body.appendChild(bar);

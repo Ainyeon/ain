@@ -19,10 +19,10 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=25">
+  <link rel="stylesheet" href="/assets/css/components.css?v=26">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=25"></script>
-  <script defer src="/assets/js/ain-common.js?v=25"></script>
+  <script defer src="/auth.js?v=26"></script>
+  <script defer src="/assets/js/ain-common.js?v=26"></script>
 </head>
 <body class="has-tabbar">
   <!-- lucide 라인 아이콘 스프라이트 (이모지 대체) -->
@@ -49,16 +49,16 @@
         <a href="/edu/">교육</a>
         <a href="/area/">내 지역</a>
         <a href="/maker/">도구</a>
-        <a href="/board/free/">커뮤니티</a>
+        <a href="/board/free/">게시판</a>
       </div>
       <div class="tnav-auth" id="authSlot"></div>
     </div>
   </nav>
 
-  <!-- 커뮤니티 1줄 스트립 (진입점 — 향후 인기 게시물·투표 노출 자리) -->
-  <a class="cstrip" id="cstrip" href="/board/free/" aria-label="커뮤니티">
+  <!-- 게시판 1줄 스트립 (진입점 — 향후 인기 게시물·투표 노출 자리) -->
+  <a class="cstrip" id="cstrip" href="/board/free/" aria-label="게시판 최신 글">
     <div class="cstrip-in">
-      <span class="cstrip-k"><svg class="icon sm"><use href="#i-users"/></svg>커뮤니티</span>
+      <span class="cstrip-k"><svg class="icon sm"><use href="#i-users"/></svg>게시판</span>
       <span class="cstrip-t skel" id="cstripText"></span>
       <span class="cstrip-m num" id="cstripMeta"></span>
       <svg class="icon sm"><use href="#i-chev"/></svg>
@@ -80,7 +80,7 @@
         <div>
           <div class="crumb">DAILY BRIEFING</div>
           <h1 id="pageTitle">오늘의 업계 브리핑</h1>
-          <p class="sub">입주 · 정부사업 · 자재시세 · 업계뉴스 — 매일 아침 자동 수집, 검수 후 게시</p>
+          <p class="sub">입주 · 정부사업 · 자재시세 · 업계뉴스</p>
         </div>
         <div class="phero-stat">
           <div class="st"><div class="n num" id="statMove">—</div><div class="l">공개 입주 예정 단지</div></div>
@@ -91,30 +91,26 @@
     </header>
 
     <!-- 네 방향 진입 — 어느 하나가 홈을 독점하지 않는다 (SPEC §7.2) -->
-    <section class="ways" aria-label="주요 기능">
+    <section class="ways" aria-label="주요 메뉴">
       <a class="way" href="/edu/">
-        <div class="way-k">무엇을 배울까</div>
-        <div class="way-t">교육 찾기</div>
-        <div class="way-m" id="wayEdu">공식 원문에서 확인한 과정</div>
-        <span class="way-go">교육 찾기 →</span>
+        <div class="way-t">교육정보</div>
+        <div class="way-m">공종별 교육 일정·비용</div>
+        <span class="way-go">교육 목록</span>
       </a>
       <a class="way" href="/area/">
-        <div class="way-k">내 지역 일감 정보</div>
-        <div class="way-t">입주 단지 · 모집 공고</div>
-        <div class="way-m" id="wayArea">입주 예정 단지와 확인된 공고 요약</div>
-        <span class="way-go">내 지역 →</span>
+        <div class="way-t">입주정보</div>
+        <div class="way-m">입주 단지·업체 모집</div>
+        <span class="way-go">입주정보</span>
       </a>
       <a class="way" href="/maker/">
-        <div class="way-k">바로 쓰는 도구 <b>로그인 없이 사용</b></div>
-        <div class="way-t">고객 안내문 · 홍보 카드</div>
-        <div class="way-m">상호와 연락처만 넣으면 완성됩니다. 사진과 내용은 기기 밖으로 나가지 않습니다.</div>
-        <span class="way-go">만들러 가기 →</span>
+        <div class="way-t">안내문·홍보물</div>
+        <div class="way-m">고객 안내문·홍보 카드</div>
+        <span class="way-go">만들기</span>
       </a>
       <a class="way" href="/board/free/">
-        <div class="way-k">물어보고 제안하기</div>
-        <div class="way-t">커뮤니티</div>
-        <div class="way-m">짧게 물어보셔도 됩니다. 초보 질문 환영합니다.</div>
-        <span class="way-go">질문·제안 →</span>
+        <div class="way-t">게시판</div>
+        <div class="way-m">현장 질문·정보 공유</div>
+        <span class="way-go">글 보기</span>
       </a>
     </section>
 
@@ -185,8 +181,8 @@
               <div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div>
             </a>
             <a class="row" href="/board/proposal/">
-              <div class="row-main"><div class="row-title">제안·투표</div>
-              <div class="row-meta">필요한 기능 직접 올리고 투표</div></div>
+              <div class="row-main"><div class="row-title">제안·건의</div>
+              <div class="row-meta">필요한 기능·개선 의견</div></div>
               <div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div>
             </a>
             <a class="row" href="/me/">
@@ -208,7 +204,7 @@
           </div>
         </div>
         <div class="rows">
-          <div class="row"><div class="row-main"><div class="row-meta">디자이너 없이도 상호와 연락처만 넣으면 현장에서 바로 쓰는 홍보물이 완성됩니다. 입력 내용은 기기에 저장되어 이어서 수정할 수 있습니다.</div></div></div>
+          <div class="row"><div class="row-main"><div class="row-meta">입력 내용은 기기에 저장되어 이어서 수정할 수 있습니다.</div></div></div>
           <a class="row" href="/maker/notice/">
             <div class="row-main"><div class="row-title">고객 안내문</div>
             <div class="row-meta">전 업종 기본 문구 · 설치 전중후 안내</div></div>
@@ -377,7 +373,7 @@
             esc([loc, r.move_in_month ? `${r.move_in_month} 입주예정 (월 단위)` : "", r.stage].filter(Boolean).join(" · ")));
         });
       });
-      html += `<div class="row"><div class="row-main"><div class="row-meta">단지명은 회원에게 공개됩니다 — 카카오 3초 로그인</div></div></div>`;
+      html += `<div class="row"><div class="row-main"><div class="row-meta">단지명은 회원에게 공개됩니다 — 카카오 로그인</div></div></div>`;
       html += `<div class="row"><div class="row-main"><div class="row-meta">${DENOM_NOTE}</div></div></div>`;
       $("moveRows").innerHTML = html;
       $("moveCnt").textContent = total ? `${total.toLocaleString("ko-KR")}건` : "회원 공개";
@@ -421,7 +417,7 @@
         rowHtml(`${newBadge(r.collected_at)}<span class="src-tag">${OVERSEAS.has(r.source) ? "해외" : "국내"}</span>${esc(r.title)}`,
           `${esc(r.source)} · ${fmtMD(r.collected_at)}`,
           '<svg class="icon sm" style="color:var(--c-ink-faint)"><use href="#i-ext"/></svg>', r.url)
-      ).join("") : emptyBox("오늘 수집된 뉴스가 없습니다", "다음 수집 07:00");
+      ).join("") : emptyBox("오늘 수집된 뉴스가 없습니다", "");
     }
 
     // ── 커뮤니티 스트립: 표시 항목 선정은 pickStripItem 1곳 (현재 최신순 — 인기순 전환 시 이 함수만 교체)
@@ -449,7 +445,7 @@
         m.textContent = timeAgo(item.created_at);
         a.href = item.board_type === "proposal" ? "/board/proposal/" : "/board/free/";
       } else {
-        t.textContent = "우리끼리 쓰는 게시판 · 첫 글을 기다립니다";
+        t.textContent = "아직 등록된 글이 없습니다";
         m.textContent = "";
         a.href = "/board/free/";
       }
