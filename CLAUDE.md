@@ -64,6 +64,7 @@
 - 완료: supabase/15_launch.sql 운영 적용 (2026-09-09, migration version 20260909091041
   `ain_first_launch_saved_items_anonymous_community`) — saved_items · 익명 v_posts ·
   제안 상태 확장 · notice_complexes · 연락처 정리 트리거 · 반복 작성 RPC.
-  단지명 시드 1건도 같은 날 적용(공개 repo 밖 파일). 관심 저장과 익명 선택지가 실제로 동작한다
+  단지명 시드 1건도 같은 날 적용(공개 repo 밖 파일).
+  실제 로그인 계정의 관심 저장·내 활동 조회와 익명 선택지 노출을 확인
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10
