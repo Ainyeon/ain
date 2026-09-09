@@ -47,12 +47,19 @@
 - 완료: 02(profiles+트리거)·07(커뮤니티) SQL 실행 (2026-07-04, psql) — ※ 02는 기록과 달리
   미실행 상태였음이 07 적용 중 발견되어 이날 백필과 함께 적용됨. 원본 5테이블 anon 401 검증
 - 완료: 캘린더·브리핑 티저 UI (move_in_teaser 기반, 단지명 잠금, total_count 노출)
-- 참고: 티저 total_count(561)는 전체 추적 단지 기준 — 캘린더 전문(73)과 집계 기준 다름
+- 참고: 티저 total_count는 **전체 이력이 아니다** — move_in_teaser·v_stat_movein 실측 정의는
+  `is_public = true AND expected_move_in >= CURRENT_DATE`를 complex_name_ad 기준으로 중복 제거한 수
+  (2026-09-09 실측 567). 캘린더 전문(73)과 집계 기준이 다르며, 화면에는 이 분모를 함께 적는다
 - 완료: 메이커 v2+v3 main 배포 (2026-07-05) — 허브 + /maker/notice/(고객 안내문) + /maker/compare/(홍보 카드),
   그라데이션 대표색·배경 슬라이더·크기 12종+직접입력·탭 선택 조절·레이아웃 6종. sw ain-v6
-- ⚠️ 미실행: sql/10-fields-expand.sql (profiles_field_check 확장) — 온보딩이 신규 업종 22종을 노출 중이라
-  실행 전까지 신규 업종(보일러 등 15종) 선택 시 프로필 저장이 제약 위반으로 실패. 실행엔 사용자 명시 승인 필요
+- 완료: sql/10-fields-expand.sql — 2026-09-09 읽기 전용 실측으로 profiles_field_check가 이미
+  기존 9종 + 신규 15종(총 24개 id)으로 확장돼 있음을 확인. 이전 "미실행" 기록은 낡은 것이었다
 - 완료: 전면 개편 P1 (2026-07-10) — 디자인 토큰 체계(design-tokens.css+components.css, 웜그레이+딥블루 #2D4A9E),
   홈=브리핑 대시보드 승격, /briefing/→/ 리다이렉트(구 URL 보존), /gov/ 신설(v_gov_list 실데이터),
   이모지 전수 제거(라인 SVG 대체), 로고 이원화(symbol.svg+모노 파비콘+PWA 아이콘), sw ain-v7.
   구 홈(오브 히어로)·구 브리핑은 git 히스토리에만 존재. calendar/news/prices는 네비·배선만 신규(풀 리스킨 = 후속)
+- 진행: 첫 출시 구현 (2026-09-09, 브랜치 codex/ain-launch) — /edu/ 교육 찾기, /area/ 내 지역,
+  홈 네 방향 진입, 메뉴 5개(홈·교육·내 지역·도구·커뮤니티), 관심 저장·익명 글·제안 루프 확장,
+  내 활동(/me/), sw ain-v24 + 전 자산 ?v=24. 상세는 docs/launch/IMPLEMENTATION.md
+- ⚠️ 미실행: supabase/15_launch.sql (saved_items · 익명 v_posts · 제안 상태 확장 · notice_complexes)
+  — 적용 전까지 관심 저장 버튼은 비활성, 익명 선택지는 표시되지 않음. 실행엔 사용자 명시 승인 필요

@@ -218,6 +218,34 @@ a.row:hover{background:var(--c-surface-sub)}
 .phero-stat .st .n{font-size:var(--fs-1);font-weight:var(--fw-bold);letter-spacing:-0.02em}
 .phero-stat .st .l{margin-top:2px;font-size:var(--fs-4);color:var(--c-ink-faint)}
 
+/* ── 홈 네 방향 진입 (SPEC §7.2) — 어느 하나가 홈을 독점하지 않는다 ── */
+.ways{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:var(--sp-3);padding-bottom:var(--sp-4)}
+.way{display:flex;flex-direction:column;gap:var(--sp-1);min-width:0;
+  padding:var(--sp-4);background:var(--c-surface);
+  border:1px solid var(--c-line);border-radius:var(--r-2);box-shadow:var(--sh-1)}
+.way:hover{border-color:var(--c-accent-line);background:var(--c-surface-sub)}
+.way-k{font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint)}
+.way-k b{margin-left:var(--sp-1);padding:1px var(--sp-2);border-radius:var(--r-1);
+  font-size:var(--fs-4);font-weight:var(--fw-bold);
+  background:var(--c-accent-bg);color:var(--c-accent);border:1px solid var(--c-accent-line)}
+.way-t{font-size:var(--fs-2);font-weight:var(--fw-bold);color:var(--c-ink);letter-spacing:-0.015em}
+.way-m{flex:1;font-size:var(--fs-4);color:var(--c-ink-sub);line-height:1.6;word-break:keep-all}
+.way-go{margin-top:var(--sp-2);font-size:var(--fs-4);font-weight:var(--fw-bold);color:var(--c-accent)}
+
+/* ── 섹션 전환 탭 (커뮤니티 · 내 지역 공용) ── */
+.board-tabs { display: flex; gap: var(--sp-2); margin-top: var(--sp-4); }
+.board-tabs a {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 40px; padding: 0 var(--sp-4); border-radius: var(--r-1);
+  border: 1px solid var(--c-line-strong); background: var(--c-surface);
+  font-size: var(--fs-4); font-weight: var(--fw-bold); color: var(--c-ink-sub);
+}
+.board-tabs a.on { border-color: var(--c-accent); background: var(--c-accent-bg); color: var(--c-accent); }
+@media (max-width:768px){
+  .board-tabs a{flex:1;min-height:48px;font-size:var(--fs-3)}
+}
+
 /* ── 대시보드 그리드 ────────────────────────── */
 .dash{display:grid;grid-template-columns:minmax(0,8fr) minmax(0,4fr);
   gap:var(--sp-4);padding-bottom:var(--sp-8)}
@@ -244,6 +272,16 @@ a.row:hover{background:var(--c-surface-sub)}
 .status-adopted{background:var(--c-down-bg);color:var(--c-down)}
 .status-building{background:var(--c-surface-sub);color:var(--c-ink-sub);border:1px solid var(--c-line)}
 .status-shipped{background:var(--c-ink);color:var(--c-surface)}
+.status-held{background:var(--c-surface-sub);color:var(--c-ink-sub);border:1px solid var(--c-line-strong)}
+.status-declined{background:var(--c-up-bg);color:var(--c-up)}
+/* 제안 루프 — 상태 이유 · 운영자 답변 (게시판과 내 활동 공용) */
+.status-reason,.admin-answer{margin-top:var(--sp-3);padding:var(--sp-3);
+  border-radius:var(--r-1);font-size:var(--fs-4);line-height:1.65}
+.status-reason{background:var(--c-surface-sub);border:1px solid var(--c-line);color:var(--c-ink-sub)}
+.admin-answer{background:var(--c-accent-bg);border:1px solid var(--c-accent-line);color:var(--c-ink)}
+.status-reason b,.admin-answer b{display:block;font-weight:var(--fw-bold);margin-bottom:2px}
+.admin-answer b{color:var(--c-accent)}
+.admin-answer time{color:var(--c-ink-faint)}
 .role-badge{padding:1px var(--sp-2);border-radius:var(--r-1);
   font-size:var(--fs-4);font-weight:var(--fw-bold)}
 .role-badge.role-admin{background:var(--c-ink);color:var(--c-surface)}
@@ -294,6 +332,9 @@ a.row:hover{background:var(--c-surface-sub)}
   .strip-cell .delta{white-space:nowrap}
   .strip-meta{grid-column:1/-1;margin:0;padding:var(--sp-1) 0 var(--sp-2)}
   .dash{grid-template-columns:1fr}
+  .ways{grid-template-columns:1fr 1fr;gap:var(--sp-2)}
+  .way{padding:var(--sp-3)}
+  .way-m{display:none}
   .phero{padding:var(--sp-6) 0 var(--sp-4)}
   .phero-bar{flex-direction:column;align-items:flex-start}
   .phero-stat{margin-left:0;text-align:left}

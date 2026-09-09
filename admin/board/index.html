@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=14">
-  <link rel="stylesheet" href="/board/board.css?v=12">
+  <link rel="stylesheet" href="/assets/css/components.css?v=25">
+  <link rel="stylesheet" href="/board/board.css?v=25">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js"></script>
-  <script defer src="/assets/js/ain-common.js"></script>
-  <script defer src="/assets/js/ain-community.js"></script>
+  <script defer src="/auth.js?v=25"></script>
+  <script defer src="/assets/js/ain-common.js?v=25"></script>
+  <script defer src="/assets/js/ain-community.js?v=25"></script>
 </head>
 <body>
   <nav class="tnav">
@@ -46,12 +46,17 @@
   <script>
     (function () {
       'use strict';
-      const STATUS_LABELS = { open: '투표중', adopted: '채택됨', building: '개발중', shipped: '반영완료' };
+      const STATUS_LABELS = {
+        open: '투표중', adopted: '채택됨', building: '개발중', shipped: '반영완료',
+        held: '보류', declined: '안 함'
+      };
+      const NEEDS_REASON = ['held', 'declined'];   // 보류·안 함은 이유 없이 두지 않는다 (RPC도 강제)
       const THRESHOLD_COUNT = 20, THRESHOLD_RATE = 0.7;
       const panel = document.getElementById('panel');
       const db = () => ainAuth.getClient();
       const gate = (h) => panel.innerHTML = '<div class="gate-msg">' + h + '</div>';
       let filterReached = false;
+      let meUserId = null;
       let tab = 'mod'; // 'mod' | 'members'
       let memberQuery = '';
 
@@ -115,7 +120,8 @@
 
       async function render() {
         const [{ data: posts, error: pe }, { data: votes }, { data: reports, error: re }, { data: cmts }] = await Promise.all([
-          db().from('posts').select('id,board_type,title,status,created_at,author:profiles(nickname)').order('created_at', { ascending: false }).limit(200),
+          ainCommunity.readPosts((q) => q.order('created_at', { ascending: false }).limit(200), meUserId)
+            .then((r) => ({ data: r.rows, error: r.error })),
           db().from('votes').select('post_id,vote'),
           db().from('reports').select('target_type,target_id,reason,created_at'),
           db().from('comments').select('id,post_id,body,author:profiles(nickname)')
@@ -132,6 +138,16 @@
         });
         const cmtById = {};
         (cmts || []).forEach((c) => cmtById[c.id] = c);
+
+        // 동일 계정 단시간 반복 작성 (SPEC §3.7) — 작성자 기준이라 서버에서 센다.
+        // RPC는 post_id와 플래그만 돌려주므로 author_id가 화면으로 새지 않는다(익명 보호 유지).
+        // 자동 비공개·작성 금지가 아니라 운영자 검토 신호다. RPC가 없으면 조용히 표시하지 않는다.
+        const REPEAT_MIN = 10;
+        const burst = new Set();
+        {
+          const { data: flags } = await db().rpc('admin_repeat_flags', { p_window_min: REPEAT_MIN, p_limit: 3 });
+          (flags || []).forEach((f) => { if (f.repeat_flag) burst.add(f.post_id); });
+        }
 
         // 신고 많은 순 목록
         const reportedRows = Object.entries(repCount).sort((a, b) => b[1] - a[1]).map(([k, n]) => {
@@ -157,14 +173,30 @@
           const tv = t[p.id] || { up: 0, down: 0 };
           const opts = Object.entries(STATUS_LABELS).map(([v, l]) =>
             '<option value="' + v + '"' + (p.status === v ? ' selected' : '') + '>' + l + '</option>').join('');
-          return '<div class="board-card admin-row' + (reached(tv) && p.status === 'open' ? ' reach-highlight' : '') + '">'
-            + '<span><a href="/board/proposal/?id=' + p.id + '"><b>' + escT(p.title) + '</b></a><br>'
+          return '<div class="board-card' + (reached(tv) && p.status === 'open' ? ' reach-highlight' : '') + '">'
+            + '<div class="admin-row">'
+            + '<span><a href="/board/proposal/?id=' + p.id + '"><b>' + escT(p.title) + '</b></a>'
+            + (p.is_anonymous ? ' <span class="field-badge">익명</span>' : '')
+            + (burst.has(p.id) ? ' <span class="report-count">단시간 반복 작성</span>' : '') + '<br>'
             + '<span style="font-size:12px;color:var(--c-ink-faint)">찬 ' + tv.up + ' · 반 ' + tv.down
             + (reached(tv) ? ' · <span class="reach-note">채택 기준 도달</span>' : '') + '</span></span>'
-            + '<select data-status="' + p.id + '" aria-label="상태 변경">' + opts + '</select></div>';
+            + '<select data-status="' + p.id + '" aria-label="상태 변경">' + opts + '</select></div>'
+            + '<form class="write-form" data-state-form="' + p.id + '" style="margin-top:8px">'
+            + '<label class="write-hint" for="sr' + p.id + '">상태 이유 (보류·안 함은 필수)</label>'
+            + '<input type="text" id="sr' + p.id + '" data-reason="' + p.id + '" maxlength="500" value="' + escT(p.status_reason || '') + '">'
+            + '<label class="write-hint" for="sa' + p.id + '">운영자 답변 — 제안자의 내 활동에 그대로 보입니다</label>'
+            + '<textarea id="sa' + p.id + '" data-answer="' + p.id + '" maxlength="2000">' + escT(p.admin_answer || '') + '</textarea>'
+            + '<div class="form-actions"><button type="button" class="btn-ghost" data-who="' + p.id + '">작성자 확인</button>'
+            + '<button type="submit" class="btn-primary">상태·답변 저장</button></div></form>'
+            + '</div>';
         }).join('') || '<p class="empty-note">' + (filterReached ? '임계 도달 제안 없음' : '제안 없음') + '</p>';
 
-        panel.innerHTML = tabsHtml()
+        const burstNote = burst.size
+          ? '<div class="rules-banner">같은 계정이 ' + REPEAT_MIN + '분 안에 3건 이상 올린 글 '
+            + burst.size + '건이 있습니다. 검토 신호일 뿐 자동으로 가려지거나 막히지 않습니다.</div>'
+          : '';
+
+        panel.innerHTML = tabsHtml() + burstNote
           + '<h2 style="font-size:15px;font-weight:800">신고 많은 순</h2>' + reportedRows
           + '<h2 style="font-size:15px;font-weight:800;margin-top:14px">제안 상태 관리 '
           + '<button type="button" class="tool-link" id="fltReached" style="font-size:12px">'
@@ -173,12 +205,36 @@
 
         bindTabs();
         document.getElementById('fltReached').addEventListener('click', () => { filterReached = !filterReached; render(); });
-        panel.querySelectorAll('[data-status]').forEach((sel) =>
-          sel.addEventListener('change', async () => {
-            const { error } = await db().rpc('admin_set_post_status', {
-              p_post_id: Number(sel.dataset.status), p_status: sel.value
+        panel.querySelectorAll('[data-state-form]').forEach((form) => {
+          const id = Number(form.dataset.stateForm);
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const status = panel.querySelector('[data-status="' + id + '"]').value;
+            const reason = panel.querySelector('[data-reason="' + id + '"]').value.trim();
+            const answer = panel.querySelector('[data-answer="' + id + '"]').value.trim();
+            if (NEEDS_REASON.includes(status) && !reason) {
+              alert('보류·안 함은 이유를 함께 적어야 합니다.'); return;
+            }
+            const { error } = await db().rpc('admin_set_post_state', {
+              p_post_id: id, p_status: status, p_reason: reason || null, p_answer: answer || null
             });
-            alert(error ? '변경 실패: ' + error.message : '상태 변경 완료: ' + STATUS_LABELS[sel.value]);
+            if (error) { alert('저장하지 못했습니다.'); console.error(error); return; }
+            render();
+          });
+        });
+        // 작성자 확인 — 익명 글도 운영자만, 목적을 정해서, 열람 기록을 남기며 조회한다
+        panel.querySelectorAll('[data-who]').forEach((b) =>
+          b.addEventListener('click', async () => {
+            const purpose = prompt('작성자 확인 목적을 고르세요:\n1. 중복 확인\n2. 악용 확인', '1');
+            if (purpose == null) return;
+            const p_purpose = purpose.trim() === '2' ? 'abuse' : 'duplicate';
+            const { data, error } = await db().rpc('admin_post_author', {
+              p_post_id: Number(b.dataset.who), p_purpose
+            });
+            if (error) { alert('작성자를 확인하지 못했습니다.'); console.error(error); return; }
+            const row = (data || [])[0];
+            alert(row ? row.nickname + ' (' + row.role + ') · 총 작성 ' + row.post_count + '건\n이 조회는 기록에 남습니다.'
+                      : '작성자 정보를 찾을 수 없습니다.');
           }));
         panel.querySelectorAll('[data-del]').forEach((b) =>
           b.addEventListener('click', async () => {
@@ -193,7 +249,10 @@
         const me = await ainCommunity.getMyProfile();
         if (me.infraError) { gate('커뮤니티 준비 중입니다.'); return; }
         if (!me.user) { gate('로그인이 필요합니다.'); return; }
-        if (!me.profile || !me.profile.is_admin) { gate('관리자 전용 페이지입니다.'); return; }
+        if (!me.profile || !(me.profile.role === 'admin' || me.profile.is_admin)) {
+          gate('관리자 전용 페이지입니다.'); return;
+        }
+        meUserId = me.user.id;
         render();
       });
     })();

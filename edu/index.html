@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>교육 찾기 | 에어컨 인테리어 연구소</title>
+  <meta name="description" content="주거 현장 직군의 교육 과정을 공식 원문 기준으로 정리합니다. 지역·업무·비용 조건으로 찾고, 접수 마감과 정원 표기를 원문 그대로 확인하세요.">
+  <link rel="canonical" href="https://ainyeon.com/edu/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="교육 찾기 | 에어컨 인테리어 연구소">
+  <meta property="og:description" content="공식 원문에서 확인한 교육 과정 — 조건·비용·일정을 한 화면에서. 순위나 별점은 매기지 않습니다.">
+  <meta property="og:url" content="https://ainyeon.com/edu/">
+  <meta property="og:image" content="https://ainyeon.com/assets/og-card-v2.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="theme-color" content="#F3F2EF">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+  <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
+  <link rel="stylesheet" href="/assets/css/components.css?v=25">
+  <link rel="stylesheet" href="/edu/edu.css?v=25">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="/auth.js?v=25"></script>
+  <script defer src="/assets/js/ain-common.js?v=25"></script>
+  <script defer src="/assets/js/ain-community.js?v=25"></script>
+  <script defer src="/edu/edu-logic.js?v=25"></script>
+  <script defer src="/edu/edu.js?v=25"></script>
+</head>
+<body class="has-tabbar">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+      <symbol id="i-ext" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+      <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    </defs>
+  </svg>
+
+  <nav class="tnav">
+    <div class="tnav-in">
+      <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
+      <div class="tnav-links">
+        <a href="/">홈</a>
+        <a class="on" href="/edu/">교육</a>
+        <a href="/area/">내 지역</a>
+        <a href="/maker/">도구</a>
+        <a href="/board/free/">커뮤니티</a>
+      </div>
+      <div class="tnav-auth" id="authSlot"></div>
+    </div>
+  </nav>
+
+  <main class="shell">
+    <header class="phero">
+      <div class="phero-bar">
+        <div>
+          <div class="crumb">EDUCATION</div>
+          <h1 id="eduTitle">교육 찾기</h1>
+          <p class="sub" id="eduSub">내게 맞는 기술 교육을 조건별로 찾아보세요.</p>
+        </div>
+        <div class="phero-stat">
+          <div class="st"><div class="n num" id="statEdu">—</div><div class="l">교육 기록</div></div>
+          <div class="st"><div class="n num" id="statOrg">—</div><div class="l">기관</div></div>
+          <div class="st"><div class="n num" id="statDeadline">—</div><div class="l">접수 마감 명시</div></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="edu-wrap" id="eduPanel" aria-live="polite">
+      <div class="empty">교육 목록을 불러오는 중</div>
+    </div>
+  </main>
+
+  <footer class="tfoot">
+    <div class="tfoot-in">
+      <div>에인연은 교육기관을 검증하지 않고 등재 대가를 받지 않습니다. 순위·별점·추천 정렬을 만들지 않고 사실 항목만 정리하며, 채용 공고는 교육 집계에서 제외합니다. 표시 내용은 공식 페이지 확인분이므로 신청 가능 여부는 기관에 확인하세요.</div>
+      <div class="links"><a href="/">홈</a><a href="/board/free/">커뮤니티</a></div>
+    </div>
+  </footer>
+
+  <script>addEventListener("DOMContentLoaded",()=>{if(window.ainAuth)ainAuth.init("authSlot")});</script>
+</body>
+</html>

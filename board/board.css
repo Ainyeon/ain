@@ -15,6 +15,12 @@ a.board-card:hover { background: var(--c-surface-sub); }
 }
 .write-btn:hover { opacity: .92; }
 .write-form { display: grid; gap: var(--sp-3); border: 1px solid var(--c-line); border-radius: var(--r-2); background: var(--c-surface); padding: var(--sp-4); box-shadow: var(--sh-1); }
+/* ① hidden 속성이 걸린 작성창이 display:grid에 밀려 계속 보이던 문제.
+   UA의 [hidden]{display:none}보다 위 규칙이 우선하므로 여기서 다시 눌러 준다. */
+.write-form[hidden] { display: none; }
+.write-hint { font-size: var(--fs-4); color: var(--c-ink-faint); line-height: 1.6; }
+.anon-row { display: flex; align-items: flex-start; gap: var(--sp-2); font-size: var(--fs-4); color: var(--c-ink-sub); line-height: 1.6; cursor: pointer; }
+.anon-row input { width: 18px; height: 18px; margin-top: 2px; flex: none; accent-color: var(--c-accent); }
 .write-form input, .write-form textarea {
   min-height: 46px; padding: var(--sp-3); border: 1px solid var(--c-line-strong); border-radius: var(--r-1);
   background: var(--c-surface-sub); font: inherit; font-size: var(--fs-3); width: 100%;
@@ -83,15 +89,22 @@ a.board-card:hover { background: var(--c-surface-sub); }
 .view-count { font-size: var(--fs-4); color: var(--c-ink-faint); }
 .del-locked { font-size: var(--fs-4); color: var(--c-ink-faint); }
 
-/* 게시판 전환 탭 (자유 ↔ 제안) */
-.board-tabs { display: flex; gap: var(--sp-2); margin-top: var(--sp-4); }
-.board-tabs a {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-height: 40px; padding: 0 var(--sp-4); border-radius: var(--r-1);
-  border: 1px solid var(--c-line-strong); background: var(--c-surface);
-  font-size: var(--fs-4); font-weight: var(--fw-bold); color: var(--c-ink-sub);
+/* 교육 후기 선택 입력 (A6) — 전부 선택이라는 것이 보이게 */
+.review-fields { border: 1px solid var(--c-line); border-radius: var(--r-1); padding: var(--sp-3); }
+.review-fields legend { padding: 0 var(--sp-2); font-size: var(--fs-4); font-weight: var(--fw-bold); color: var(--c-ink-faint); }
+.review-grid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--sp-2) var(--sp-3); align-items: center; }
+.review-grid label { font-size: var(--fs-4); color: var(--c-ink-sub); white-space: nowrap; }
+.review-grid input, .review-grid select {
+  min-height: 44px; padding: 0 var(--sp-3); border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-1); background: var(--c-surface-sub); font: inherit; font-size: var(--fs-3); width: 100%;
 }
-.board-tabs a.on { border-color: var(--c-accent); background: var(--c-accent-bg); color: var(--c-accent); }
-@media (max-width:768px){
-  .board-tabs a{flex:1;min-height:48px;font-size:var(--fs-3)}
-}
+@media (max-width: 480px) { .review-grid { grid-template-columns: 1fr; gap: var(--sp-1); } }
+
+/* 후기 수료 시점 필터 (A6) */
+.review-filter { display: flex; align-items: center; gap: var(--sp-2); flex-wrap: wrap;
+  padding: var(--sp-2) var(--sp-3); border: 1px solid var(--c-line);
+  border-radius: var(--r-1); background: var(--c-surface); }
+.review-filter label { font-size: var(--fs-4); font-weight: var(--fw-semi); color: var(--c-ink-faint); }
+.review-filter select { min-height: 40px; padding: 0 var(--sp-2); border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-1); background: var(--c-surface-sub); font: inherit; font-size: var(--fs-4); }
+.review-filter .write-hint { flex: 1; min-width: 0; }

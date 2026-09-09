@@ -1,12 +1,16 @@
 // 에인연 서비스워커 — 오프라인 내성: 마지막 브리핑·시세 1회분 열람 가능
 // 전략: 내비게이션·데이터 = 네트워크 우선(성공 시 캐시 갱신, 실패 시 캐시 폴백)
 //       정적 자산 = 캐시 우선(백그라운드 갱신)
-const VERSION = 'ain-v23'; // v21: 메이커 글씨 크기 / v22: 홈 커뮤니티 스트립 / v23: OG 카드 v2
+const VERSION = 'ain-v25'; // v22: 홈 커뮤니티 스트립 / v23: OG 카드 v2 / v24: 첫 출시(교육·내 지역·저장·익명)
+// SHELL의 ?v= 는 페이지가 실제로 요청하는 URL과 글자 그대로 같아야 한다.
+// 다르면 프리캐시가 다른 키로 저장돼, 재방문 첫 로드에서 구 스크립트가 새 페이지에 섞인다.
 const SHELL_CACHE = VERSION + '-shell';
 const DATA_CACHE = VERSION + '-data';
 
 const SHELL = [
   '/',
+  '/edu/',
+  '/area/',
   '/gov/',
   '/prices/',
   '/calendar/',
@@ -15,22 +19,30 @@ const SHELL = [
   '/maker/',
   '/maker/notice/',
   '/maker/compare/',
-  '/maker/maker.css?v=12',
-  '/maker/maker-core.js?v=12',
-  '/maker/notice/notice.js?v=12',
-  '/maker/compare/compare.js?v=12',
-  '/maker/fields.json',
-  '/maker/formats.json',
-  '/maker/copy.json',
-  '/board/board.css?v=12',
-  '/board/gate.js?v=12',
-  '/board/board-free.js?v=12',
-  '/board/board-proposal.js?v=12',
-  '/assets/js/ain-community.js',
+  '/board/free/',
+  '/board/proposal/',
   '/assets/css/design-tokens.css?v=11',
-  '/assets/css/components.css?v=14',
-  '/assets/js/ain-common.js',
-  '/auth.js',
+  '/assets/css/components.css?v=25',
+  '/assets/js/ain-common.js?v=25',
+  '/assets/js/ain-community.js?v=25',
+  '/auth.js?v=25',
+  '/edu/edu.css?v=25',
+  '/edu/edu-logic.js?v=25',
+  '/edu/edu.js?v=25',
+  '/area/area.js?v=25',
+  '/board/board.css?v=25',
+  '/board/gate.js?v=25',
+  '/board/board-free.js?v=25',
+  '/board/board-proposal.js?v=25',
+  '/maker/maker.css?v=25',
+  '/maker/maker-core.js?v=25',
+  '/maker/notice/notice.js?v=25',
+  '/maker/compare/compare.js?v=25',
+  '/maker/fields.json?v=25',
+  '/maker/formats.json?v=25',
+  '/maker/copy.json?v=25',
+  '/assets/data/education.json',
+  '/assets/data/notices.json',
   '/assets/fonts/PretendardVariable.subset.woff2',
   '/assets/favicon.svg',
   '/assets/og-card-v2.png',
@@ -38,9 +50,12 @@ const SHELL = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
 ];
 
+
 // 오프라인 캐싱 허용 데이터: 공개 읽기 전용 REST GET만 (인증·토큰 요청은 절대 캐시 안 함)
 const DATA_HOST = 'oqgoibbhnidsveueifet.supabase.co';
 const DATA_PATH = '/rest/v1/';
+// 공개 읽기 전용만. v_posts·saved_items·notice_complexes 같은 회원 전용 응답은 넣지 않는다
+// (기기에 남으면 로그아웃 뒤에도 다른 사람이 볼 수 있다).
 const DATA_ALLOW = ['v_ticker_metals', 'v_stat_movein', 'v_stat_gov', 'v_gov_list', 'move_in_teaser', 'news_items', 'prices'];
 
 self.addEventListener('install', (e) => {

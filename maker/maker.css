@@ -18,6 +18,11 @@
 .page-head .sec-label { margin-bottom: 10px; }
 
 .maker-grid { display: grid; gap: 18px; padding: 10px 24px 0; }
+/* ⑩ 좁은 화면에서는 미리보기를 폼 위로 올린다.
+   폼이 길어 결과를 보려면 끝까지 내려야 했고, 값이 반영되는지 보이지 않아 확인이 늦었다. */
+@media (max-width: 900px) {
+  .preview-col { order: -1; }
+}
 @media (min-width: 901px) {
   .maker-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: start; }
   .preview-col { position: sticky; top: 86px; }
