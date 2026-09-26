@@ -309,4 +309,19 @@ await db4.exec(`drop policy "leftover" on public.work_jobs; create policy "anyon
 await fails(db4.exec(SQL), /bucket_id 조건 없는 storage 정책/, '버킷 조건 없는 storage 정책');
 ok('권한 단언 블록 음성 대조');
 
+// 19_admin_drafts: 운영자 전용 초안(요금제) — 운영자만 읽고, 회원 0행, anon·회원 쓰기 불가
+const DRAFTS = fs.readFileSync(path.join(repo, 'supabase/19_admin_drafts.sql'), 'utf8');
+await db.exec(DRAFTS);
+await db.exec(DRAFTS);   // 재실행 안전
+await db.exec(`insert into public.admin_drafts (slug, html) values ('pricing', '<p>초안</p>')`);
+assert.equal((await as(ADMIN, `select html from public.admin_drafts where slug = 'pricing'`)).length, 1, '운영자는 읽는다');
+assert.equal((await as(A, `select html from public.admin_drafts`)).length, 0, '회원은 0행');
+await fails(as(null, `select html from public.admin_drafts`), /permission denied/, 'anon 은 권한 없음');
+await fails(as(ADMIN, `update public.admin_drafts set html = 'x'`), /permission denied/, '운영자도 화면에서 고치지 못한다(SQL로만)');
+await fails(as(A, `insert into public.admin_drafts (slug, html) values ('x', 'y')`), /permission denied/, '회원 쓰기 불가');
+const db5 = new PGlite();
+await db5.exec(STUB);
+await fails(db5.exec(DRAFTS.replace('revoke all on public.admin_drafts from anon, authenticated, public;', '')), /권한 잔존/, '단언이 revoke 누락을 잡는다');
+ok('운영자 전용 초안');
+
 console.log(`test-work-sql: OK (${n}개 묶음)`);

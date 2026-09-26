@@ -93,9 +93,12 @@ def cost_level(subsidy_raw, cost_raw):
     negative = ['사용불가', '사용 불가']
     if any(k in subsidy_raw for k in positive) and not any(n in subsidy_raw for n in negative):
         return 'subsidy'
-    # 원문에 실제 청구 금액이 있으면 자비. '무료'는 자비도 국비도 아니므로 미확인으로 남긴다.
-    if re.search(r'[0-9][0-9,]*\s*원|[0-9]+\s*만원', cost_raw or ''):
+    # 원문에 실제 청구 금액(0보다 큰)이 있으면 자비. '무료'·0원은 자비도 국비도 아닌 '무료'다(수집기와 같은 규칙).
+    amounts = [int(a.replace(',', '')) for a in re.findall(r'([0-9][0-9,]*)\s*(?:만)?\s*원', cost_raw or '')]
+    if any(a > 0 for a in amounts):
         return 'self'
+    if '무료' in (cost_raw or '') or amounts:
+        return 'free'
     return 'unknown'
 
 
@@ -168,7 +171,9 @@ def self_test():
     assert region_code('인천본원(인천 남동구 소래로 688), 오프라인') == '인천'
     assert region_code('원문에 없음') == '미확인'
     assert cost_level('원문에 없음', '23만원') == 'self'
-    assert cost_level('원문에 없음', '교육비 무료. 중식 제공') == 'unknown'   # 무료 != 자비 != 국비
+    assert cost_level('원문에 없음', '교육비 무료. 중식 제공') == 'free'      # 무료 != 자비 != 국비
+    assert cost_level('원문에 없음', '0 원') == 'free'
+    assert cost_level('원문에 없음', '원문에 없음') == 'unknown'
     assert cost_level('내일배움카드 사용불가', '원문에 없음') == 'unknown'
     assert cost_level('국민내일배움카드 사용 가능', '원문에 없음') == 'subsidy'
     assert apply_end_at('~ 2026.10.09 18:00') == '2026-10-09T18:00:00+09:00'
@@ -272,8 +277,8 @@ def main():
 
     # 이미 기록된 원문 내부 충돌은 지우지 않는다 (SPEC §3.5)
     KNOWN_CONFLICTS = {
-        'KRRC-NEW-C112': 'date',      # 접수 시작 상단 08-19 / 본문 08-24
-        'KRRC-NEW-C110': 'date',      # 접수 시작 상단 08-28 / 본문 09-14
+        'KRRC-NEW-C112': 'date',      # 접수 기간 표 08-19~09-18 / 비고 08-24~10-09 (09-26 재확인)
+        # KRRC-NEW-C110: 09-26 재확인 때 원문이 접수 시작을 08-28 10:00 하나로 고쳤다 — 원문이 해소한 충돌이라 뺐다
         'KRRC-EXPERT-C116': 'date',   # 교육 일정 연도 상단 2026 / 본문 2025
         'HANKOOKOK-SN': 'cost',       # 훈련비 40만원과 전액 국비 지원이 병존
     }

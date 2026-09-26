@@ -52,6 +52,17 @@ const AUTO_ROW = {
 
 // 원장에 이미 있는 회차와 같은 원문 주소 — 중복으로 실리면 안 된다
 const LEDGER_DUP = LEDGER.items.find((i) => /^http/.test(i.url));
+// 원장 URL과 파라미터 순서만 다른 수집분 (KRRC 실측: 원장 ?top=…&code=113, 예전 수집기 ?code=113&key=…)
+const LEDGER_KRRC = LEDGER.items.find((i) => /krrc\.or\.kr\/web\/\?top=education/.test(i.url));
+const REORDERED = (() => {
+  const u = new URL(LEDGER_KRRC.url);
+  const q = [...u.searchParams].reverse();
+  return u.origin + u.pathname + '?' + q.map(([k, v]) => k + '=' + v).join('&') + '&course=&state=';
+})();
+// ain-common.js 의 실제 비교 함수를 그대로 잘라 쓴다 (복사본을 두지 않는다)
+const COMMON = fs.readFileSync(path.join(ROOT, 'assets', 'js', 'ain-common.js'), 'utf8');
+const sourceUrlKey = new Function('URL', COMMON.slice(COMMON.indexOf('function sourceUrlKey'),
+  COMMON.indexOf('  window.escT')) + '; return sourceUrlKey;')(URL);
 const AUTO_DUP = Object.assign({}, AUTO_ROW, {
   notice_id: 'AUTO-KRRC-9999999999',
   title: '중복이어야 하는 자동 수집분',
@@ -81,7 +92,7 @@ function run({ eduRows, error, search }) {
   const ctx = {
     console: { log() {}, warn() {}, error() {} },
     Promise, Object, Map, Set, Array, String, Number, Boolean, JSON, Date, RegExp, Intl,
-    URLSearchParams, encodeURIComponent, setTimeout, setImmediate,
+    URLSearchParams, URL, encodeURIComponent, setTimeout, setImmediate, sourceUrlKey,
     escT: (v) => String(v == null ? '' : v),
     location: { href: 'http://x/edu/' + search, pathname: '/edu/', search: search, origin: 'http://x' },
     history: { replaceState() {} },
@@ -167,6 +178,46 @@ const settle = async () => { for (let i = 0; i < 12; i++) await new Promise((r) 
     await g.boot(); await settle();
     assert.ok(g.panel.innerHTML.includes('모양이 어긋난 자동 수집분'), 'jsonb 모양이 어긋난 행 때문에 화면이 멈췄다');
     assert.ok(!g.panel.innerHTML.includes('javascript:'), 'http(s)가 아닌 원문 주소가 href로 나갔다');
+  }
+
+  // 7. 파라미터 순서만 다른 같은 원문 — 원장 쪽만 남는다 (09-26 dry-run 감사: KRRC 4건 중복)
+  {
+    const DUP2 = Object.assign({}, AUTO_ROW, { notice_id: 'AUTO-KRRC-dup0000000', title: '순서만 다른 중복분',
+      detail_url: REORDERED });
+    const h = run({ eduRows: [DUP2] });
+    await h.boot(); await settle();
+    assert.ok(!h.panel.innerHTML.includes('순서만 다른 중복분'), '파라미터 순서만 다른 같은 원문이 두 번 실렸다');
+    assert.strictEqual(h.el('statEdu').textContent, LEDGER.counts.education);
+  }
+
+  // 8. 개강일이 지난 회차(수집기 status=closed, 마감 표기 없음)는 '접수 마감 경과' 구역으로, 문구는 개강일 기준
+  {
+    const STARTED = Object.assign({}, AUTO_ROW, { notice_id: 'AUTO-IDO-0000000001', title: '개강 지난 타일 과정',
+      detail_url: 'https://idoedu.kr/bbs/board.php?bo_table=yp_recruit01&wr_id=1', apply_end_at: null, status: 'closed',
+      fields: Object.assign({}, AUTO_ROW.fields, { conflicts: [] }) });
+    const k = run({ eduRows: [STARTED] });
+    await k.boot(); await settle();
+    const html = k.panel.innerHTML;
+    const expired = html.slice(html.indexOf('접수 마감 경과'));
+    assert.ok(html.includes('접수 마감 경과') && expired.includes('개강 지난 타일 과정'), '개강 지난 과정이 현재 모집처럼 보인다');
+    assert.ok(expired.includes('<span class="edu-tag">접수 마감 경과</span>'), '목록 카드에 경과 표시가 없다');
+    const k2 = run({ eduRows: [STARTED], search: '?id=' + encodeURIComponent(STARTED.notice_id) });
+    await k2.boot(); await settle();
+    assert.ok(k2.panel.innerHTML.includes('원문 개강일이 지남'), '상세가 개강일 경과를 알리지 않는다');
+  }
+
+  // 9. 상세를 아직 못 읽은 행 — '원문에 없음'이 아니라 '상세 미확인'. 자동 수집분은 홍보 문구 '없음'을 단정하지 않는다
+  {
+    const UNREAD = Object.assign({}, AUTO_ROW, { notice_id: 'AUTO-KRRC-unread0000', title: '상세 안 읽은 회차',
+      detail_url: 'http://www.krrc.or.kr/web/?top=education&sub=schedule&key=detail&code=999999',
+      fields: { work_codes: ['hvac'], detail_read: false, conflicts: [], images: [] } });
+    const m = run({ eduRows: [UNREAD], search: '?id=' + encodeURIComponent(UNREAD.notice_id) });
+    await m.boot(); await settle();
+    const html = m.panel.innerHTML;
+    assert.ok(html.includes('상세 미확인'), '안 읽은 상세를 모른다고 적지 않았다');
+    assert.ok(!html.includes('원문에 금액 표기 없음'), '안 읽은 상세를 원문에 금액이 없다고 적었다');
+    assert.ok(!html.includes('취업·수익 관련 주장이 없습니다'), '확인하지 않은 홍보 문구를 없다고 단정했다');
+    assert.ok(html.includes('홍보 문구를 확인하지 않았습니다'));
   }
 
   console.log('edu-auto OK — 뷰 부재 폴백 · 병합 · 중복 제거 · 충돌 표시 · 이미지 게이트 · 모양 방어');

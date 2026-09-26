@@ -48,6 +48,7 @@
   const isAuto = (item) => AUTO_ID.test(String(item && item.id));
 
   function groupOfAuto(row, f) {
+    if (row.status === 'closed') return 'expired';     // 원문 마감 또는 원문 개강일이 지남 (수집기가 판정)
     if (row.apply_end_at) return 'deadline';
     if (row.record_type === '모집회차' || f.schedule_raw) return 'posted_no_deadline';
     return 'unconfirmed';
@@ -59,6 +60,8 @@
     const arr = (v) => Array.isArray(v) ? v : [];   // jsonb 모양이 어긋나도 페이지 전체가 멈추지 않게
     const codes = arr(f.work_codes);
     const conflicts = arr(f.conflicts);
+    // 상세 페이지를 아직 못 읽은 행 — 빈 값은 '원문에 없음'이 아니라 '아직 모름'이다
+    const unread = f.detail_read === false;
     return {
       id: row.notice_id,
       record_type: row.record_type || '과정소개',
@@ -67,7 +70,7 @@
       course_class: f.course_class || '',
       work_raw: codes.map((c) => labels[c] || c).join(' · ') || '업무 분류 미확인',
       work_codes: codes,
-      region_raw: f.region_raw || '원문에 없음',
+      region_raw: f.region_raw ? f.region_raw + (f.region_basis ? ' (기관 소재지)' : '') : (unread ? '상세 미확인' : '원문에 없음'),
       region_code: row.region_code && row.region_code !== '미확인' ? row.region_code : '',   // 모르는 지역은 필터 선택지에 넣지 않는다
       target_raw: f.target_raw || '',
       target_level: f.target_level || 'unknown',
@@ -83,16 +86,16 @@
       // 원문 안에서 표기가 엇갈린 항목은 전부 이어 붙여 그대로 보여 준다 (어느 쪽도 고르지 않는다)
       conflict: conflicts.length
         ? { kind: conflicts[0].kind, text: conflicts.map((c) => c.text).join(' / ') } : null,
-      status_label: row.status === 'closed' ? '원문에 적힌 접수 마감이 지남'
+      status_label: row.status === 'closed' ? (row.apply_end_at ? '원문에 적힌 접수 마감이 지남' : '원문 개강일이 지남')
         : row.apply_end_at ? '접수 마감일시 명시' : '접수 마감 미확인',
-      cost_raw: f.cost_raw || '',
+      cost_raw: f.cost_raw || (unread ? '상세 미확인' : ''),
       cost_condition: '',
-      subsidy_raw: '',
+      subsidy_raw: f.subsidy_raw || '',
       cost_level: f.cost_level || 'unknown',
       practice_raw: '',
       cert_type: '',
       cert_basis: '',
-      org_claim: '없음',
+      org_claim: '',                 // 자동 수집분은 기관 홍보 문구를 확인하지 않았다 — detailHtml 이 따로 적는다
       url: isHttpUrl(row.detail_url) ? row.detail_url : '',
       url_note: '',
       url_aux: row.list_url && row.list_url !== row.detail_url ? row.list_url : '',
@@ -135,9 +138,8 @@
   function allItems() {
     const ledger = (DATA && DATA.items) || [];
     if (!Array.isArray(AUTO) || !AUTO.length) return ledger;
-    const seen = new Set(ledger.map((i) => String(i.url || '').replace(/^https?:\/\//, '').replace(/\/$/, '')));
-    return ledger.concat(AUTO.filter((i) =>
-      !seen.has(String(i.url || '').replace(/^https?:\/\//, '').replace(/\/$/, ''))));
+    const seen = new Set(ledger.map((i) => window.sourceUrlKey(i.url)));
+    return ledger.concat(AUTO.filter((i) => !seen.has(window.sourceUrlKey(i.url))));
   }
 
   const heartSvg = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
@@ -198,7 +200,7 @@
   }
 
   function staleTag(item) {
-    return (L.isExpired(item) ? '<span class="edu-tag">접수 마감 경과</span>' : '')
+    return (L.isExpired(item) || item.group === 'expired' ? '<span class="edu-tag">접수 마감 경과</span>' : '')
       + (L.isStale(item.checked_at, kstToday()) ? '<span class="edu-tag accent">재확인 필요</span>' : '');
   }
 
@@ -305,7 +307,7 @@
     const region = L.optionsOf(allItems(), 'region_code').filter(Boolean).map((v) => ({ v, l: v }));
     const status = L.SECTIONS.map((s) => ({ v: s.key, l: s.title }));
     const target = ['beginner', 'experience', 'condition', 'unknown'].map((v) => ({ v, l: L.TARGET_LABELS[v] }));
-    const cost = ['subsidy', 'self', 'unknown'].map((v) => ({ v, l: L.COST_LABELS[v] }));
+    const cost = ['subsidy', 'self', 'free', 'unknown'].map((v) => ({ v, l: L.COST_LABELS[v] }));
     // 상세 조건에 값이 들어 있으면 접힌 채로 두지 않는다
     const detailOpen = (f.status || f.target || f.cost) ? ' open' : '';
     const on = [f.work, f.region, f.status, f.target, f.cost].filter(Boolean).length;
@@ -335,7 +337,9 @@
 
     const claimNone = /없음/.test(item.org_claim || '');
     const claim = '<div class="edu-block claim"><h4>기관 홍보 내용</h4>'
-      + (claimNone
+      + (isAuto(item)
+        ? '<div class="edu-line" style="color:var(--c-ink-faint)">자동 수집 항목은 기관의 취업·수익 홍보 문구를 확인하지 않았습니다. 원문에서 확인하세요.</div>'
+        : claimNone
         ? '<div class="edu-line" style="color:var(--c-ink-faint)">이 과정에는 취업·수익 관련 주장이 없습니다.</div>'
         : '<div class="edu-line">' + esc(item.org_claim.replace(/^\[[^\]]*\]\s*/, ''))
           + ' <span class="edu-unverified">에인연 미검증</span></div>'

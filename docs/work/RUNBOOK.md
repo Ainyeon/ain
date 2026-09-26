@@ -41,7 +41,7 @@ select o.name from storage.objects o where o.bucket_id = 'work'
 세 곳을 같이 바꾼다.
 - `supabase/17_work.sql`의 `work_user_is_pro()` 날짜(SQL 재실행)
 - `work/work-logic.js`의 `PLAN.betaEnd`(`?v=`와 sw VERSION도 올린다)
-- `_dev/pricing/`·약관 문구
+- 요금제 초안(`_private/pricing.html` → `admin_drafts` slug=pricing)·약관 문구
 `tools/test-work-sql.mjs`가 SQL과 JS 날짜가 같은지 검사한다.
 
 ## 5. 용량

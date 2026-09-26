@@ -234,16 +234,20 @@
         + '공고 제목에 단지명이 들어 있어 회원만 볼 수 있습니다.'
         + '<div class="edu-actions"><button type="button" class="btn-line" id="areaLoginAuto">카카오 로그인</button></div></div>';
     }
-    if (!autoRecruits.length) return '';
-    return '<div class="edu-note"><b>자동 수집 모집 공고 ' + autoRecruits.length + '건</b>'
+    // 운영자가 확인한 공고(notices.json)와 같은 원문은 한 번만 — 확인본을 남긴다
+    const seen = new Set(((notices && notices.items) || []).map((n) => window.sourceUrlKey(n.url)));
+    const rows = autoRecruits.filter((n) => !seen.has(window.sourceUrlKey(n.detail_url)));
+    if (!rows.length) return '';
+    return '<div class="edu-note"><b>자동 수집 모집 공고 ' + rows.length + '건</b>'
       + '수집기가 주관사 공개 게시판에서 읽은 공고입니다. 사람이 원문을 검수하지 않았습니다. '
       + '협약식·행사 안내는 모집 공고로 싣지 않습니다.</div>'
-      + autoRecruits.map((n) => {
+      + rows.map((n) => {
         const f = n.fields || {};
         const line = (k, v) => v ? '<div class="edu-line"><span class="edu-k">' + esc(k) + '</span>' + esc(v) + '</div>' : '';
         return '<article class="edu-card">'
           + '<div class="edu-tags"><span class="edu-tag">자동 수집 · 사람 검수 전</span>'
-          + (n.status === 'closed' ? '<span class="edu-tag">원문 마감 경과</span>' : '')
+          + (n.status === 'closed' ? '<span class="edu-tag">원문 마감 경과</span>'
+            : !n.apply_end_at ? '<span class="edu-tag">접수 마감 미확인</span>' : '')
           + (n.parse_status === 'partial' ? '<span class="edu-tag accent">일부만 읽음</span>' : '')
           + (n.parse_status === 'failed' ? '<span class="edu-tag accent">상세를 읽지 못함</span>' : '')
           + '</div>'

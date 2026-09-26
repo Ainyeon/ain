@@ -18,7 +18,7 @@
   - 파일 끝 권한 단언 블록의 테이블 이름 패턴 `work\_%`에 자동으로 포함된다.
 - 공유: 고객에게 보여 주려면 `get_card`에 필드를 **골라서** 추가한다. 경로·id·금액은 넣지 않는다.
   카드 페이지(`c/card.js`)는 textContent로만 그린다.
-- 요금표: 출시되면 `_dev/pricing/`의 "계획 중인 기능"에서 표로 옮기고, `work.js` 설정 화면의 요금제 목록도 고친다.
+- 요금표: 출시되면 요금제 초안(`_private/pricing.html` → `admin_drafts`)의 "계획 중인 기능"에서 표로 옮기고, `work.js` 설정 화면의 요금제 목록도 고친다.
 
 ## 지켜야 할 것 (CLAUDE.md·SPEC 요약)
 - service_role 키는 어떤 파일에도 넣지 않는다. 비밀 키가 필요한 호출은 Supabase Edge Function 환경변수로 처리한다.

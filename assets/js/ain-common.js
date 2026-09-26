@@ -237,7 +237,19 @@
     return t.replace(SOURCE_INLINE,(m,pre)=>pre+name).replace(SOURCE_LEADING,'');
   }
 
+  // 같은 원문 주소인지 비교하는 키 — 스킴·빈 파라미터·파라미터 순서·끝 슬래시 차이는 같은 글로 본다.
+  // (교육 원장은 사람이 붙여 넣은 순서, 수집기는 원문 순서라 글자 비교로는 같은 과정이 두 번 실린다 — 09-26 실측)
+  function sourceUrlKey(u){
+    const raw=String(u??'').trim();
+    try{
+      const x=new URL(raw);
+      const q=[...x.searchParams].filter(([,v])=>v!=='').map(([k,v])=>k+'='+v).sort();
+      return x.host+x.pathname.replace(/\/$/,'')+(q.length?'?'+q.join('&'):'');
+    }catch(e){ return raw.replace(/^https?:\/\//,'').replace(/\/$/,''); }
+  }
+
   window.escT=escT;
+  window.sourceUrlKey=sourceUrlKey;
   window.renderTicker=renderTicker;
   window.fillNewsSource=fillNewsSource;
   window.govDedupKey=govDedupKey;
