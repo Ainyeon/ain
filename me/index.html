@@ -269,7 +269,7 @@
       }
       box.innerHTML = mine.map((p) => {
         const isProp = p.board_type === "proposal";
-        const href = (isProp ? "/board/proposal/?id=" : "/board/free/?id=") + p.id;
+        const href = ainCommunity.postHref(p);   // 구인·구직 글은 /edu/jobs/ 로 (마감 버튼이 거기 있다)
         const badge = isProp
           ? '<span class="status-badge status-' + escT(p.status) + '">' + escT(STATUS_LABELS[p.status] || p.status) + '</span>'
           : '';
@@ -279,7 +279,7 @@
             ? '<div class="admin-answer"><b>운영자 답변</b>' + escT(p.admin_answer) + '</div>' : '');
         return rowEl(
           (p.is_anonymous ? '<span class="field-badge">익명</span> ' : '') + escT(p.title),
-          escT((isProp ? "제안" : "질문·경험") + " · " + ainCommunity.timeAgo(p.created_at)) + extra,
+          escT(ainCommunity.boardName(p) + (p.closed_at ? " · 마감" : "") + " · " + ainCommunity.timeAgo(p.created_at)) + extra,
           href, badge);
       }).join("");
     }

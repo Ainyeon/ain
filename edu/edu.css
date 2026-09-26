@@ -101,4 +101,4 @@
 .edu-photo{margin:var(--sp-2) 0 0}
 .edu-photo img{display:block;width:100%;height:auto;border-radius:var(--r-1);
   border:1px solid var(--c-line);background:var(--c-surface)}
-.edu-photo figcaption{margin-top:var(--sp-1);font-size:var(--fs-5);color:var(--c-ink-faint)}
+.edu-photo figcaption{margin-top:var(--sp-1);font-size:var(--fs-4);color:var(--c-ink-faint)}

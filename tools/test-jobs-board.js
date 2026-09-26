@@ -27,7 +27,7 @@ function makeRow(over) {
   }, over);
 }
 
-function run({ boardType, search, rows, mine }) {
+function run({ boardType, search, rows, mine, member, teaser }) {
   const calls = { filters: [], inserted: null, updated: null };
   const panel = { innerHTML: '', querySelectorAll: () => [], addEventListener() {} };
   const els = {};
@@ -62,8 +62,8 @@ function run({ boardType, search, rows, mine }) {
     authorSelect: () => 'nickname,field,role', timeAgo: () => '방금',
     maskContacts: (t) => t, subsidyLabel: () => null, report() {},
     SUBSIDY_LABELS: { none: '국비 없이 자비' }, loginWithKakao() {},
-    requireMember: async () => ({ user: { id: 'u1' }, profile: { nickname: 'ㅇㅇ' } }),
-    fetchTeaser: async () => []
+    requireMember: async () => (member === false ? {} : { user: { id: 'u1' }, profile: { nickname: 'ㅇㅇ' } }),
+    fetchTeaser: async () => teaser || []
   };
 
   const ctx = {
@@ -83,7 +83,7 @@ function run({ boardType, search, rows, mine }) {
   };
   ctx.window = ctx;
   vm.runInNewContext(SRC, ctx, { filename: 'board/board-free.js' });
-  return { panel, el, calls, boot: () => handlers['DOMContentLoaded']() };
+  return { panel, el, calls, loc: ctx.location, boot: () => handlers['DOMContentLoaded']() };
 }
 
 const settle = async () => { for (let i = 0; i < 10; i++) await new Promise((r) => setImmediate(r)); };
@@ -168,5 +168,37 @@ const settle = async () => { for (let i = 0; i < 10; i++) await new Promise((r) 
     assert.ok(!h.panel.innerHTML.includes('id="closePost"'), '자유게시판 글에 마감 버튼이 나왔다');
   }
 
-  console.log('jobs-board OK — board_type 분리 · review_kind 미부착 · 마감 표시/권한');
+  // 6. 구직(?kind=seek): 글 링크·등록 뒤 이동·목록 복귀에서 kind를 잃지 않는다 (잃으면 구인 화면으로 튄다)
+  {
+    const k = run({ boardType: 'job_seek', search: '?kind=seek', rows: [makeRow({ id: 5, board_type: 'job_seek' })] });
+    await k.boot(); await settle();
+    assert.ok(k.panel.innerHTML.includes('href="?kind=seek&id=5"'), '구직 글 링크에 kind가 없다: ' + k.panel.innerHTML.slice(0, 300));
+    k.el('wTitle').value = '타일 일 찾습니다'; k.el('wBody').value = '서울 · 경력 3년';
+    await k.el('writeForm').onsubmit({ preventDefault() {} }); await settle();
+    assert.strictEqual(k.loc.href, '/edu/jobs/?kind=seek', '등록 뒤 구직 목록으로 돌아가야 한다');
+    const kd = run({ boardType: 'job_seek', search: '?kind=seek&id=5', rows: [makeRow({ id: 5, board_type: 'job_seek' })] });
+    await kd.boot(); await settle();
+    assert.ok(kd.panel.innerHTML.includes('href="/edu/jobs/?kind=seek">← 목록으로'), '상세의 목록 복귀가 구직 목록이 아니다');
+    assert.ok(kd.calls.filters.some((f) => f[1] === 'board_type' && f[2] === 'job_seek'), '상세 조회가 게시판 종류를 확인하지 않는다');
+  }
+  // 7. 비회원: 구인·구직 페이지에는 게시판 글 제목(티저)을 보여 주지 않는다
+  {
+    const t = run({ boardType: 'job_offer', member: false, teaser: [{ title: '자유게시판 비밀 제목', created_at: '2026-09-10T00:00:00Z', total_count: 7 }] });
+    await t.boot(); await settle();
+    assert.ok(!t.panel.innerHTML.includes('자유게시판 비밀 제목') && !t.panel.innerHTML.includes('글 7개'), '구인 페이지에 게시판 티저가 나왔다');
+    assert.ok(t.panel.innerHTML.includes('회원 전용'));
+    const tf = run({ member: false, teaser: [{ title: '자유 제목', created_at: '2026-09-10T00:00:00Z', total_count: 1 }] });
+    await tf.boot(); await settle();
+    assert.ok(tf.panel.innerHTML.includes('자유 제목'), '자유게시판 티저는 그대로');
+  }
+  // 8. 구인 글에 후기 양식(?form=review)·교육 연결(?ref=)이 붙지 않는다 (교육 후기 집계에 섞임 방지)
+  {
+    const r = run({ boardType: 'job_offer', search: '?form=review&ref=edu:A1', rows: [] });
+    await r.boot(); await settle();
+    r.el('wTitle').value = 't'; r.el('wBody').value = 'b';
+    await r.el('writeForm').onsubmit({ preventDefault() {} }); await settle();
+    assert.ok(!('review_kind' in r.calls.inserted) && !('ref_type' in r.calls.inserted), '구인 글에 후기·연결이 붙었다: ' + JSON.stringify(r.calls.inserted));
+  }
+
+  console.log('jobs-board OK — board_type 분리 · review_kind 미부착 · 마감 표시/권한 · kind 유지 · 티저 차단 · 후기 양식 차단');
 })().catch((e) => { console.error(e.message); process.exitCode = 1; });

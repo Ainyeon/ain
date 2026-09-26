@@ -293,7 +293,7 @@ def main():
         assert i['apply_end_at'] == apply_end_at(i['apply_end_raw']), (i['id'], i['apply_end_at'])
 
     payload = {
-        'source': 'EDUCATION_SEED_REVIEWED.csv (검수 원장 15행) — tools/education-seed.csv',
+        'source': f'EDUCATION_SEED_REVIEWED.csv (검수 원장 {len(items)}행) — tools/education-seed.csv',
         'checked_at': max(i['checked_at'] for i in items),
         'counts': counts,
         'field_labels': FIELD_LABELS,

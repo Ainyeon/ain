@@ -83,7 +83,9 @@ const ctx = {
   ainCommunity: {
     getMyProfile: async () => ({ user: { id: 'admin-user' }, profile: { role: 'admin', nickname: '운영자' } }),
     readPosts: async () => ({ rows, mode: 'view' }),
-    authorBadge: (p) => '<span>' + (p && p.nickname || '') + '</span>'
+    authorBadge: (p) => '<span>' + (p && p.nickname || '') + '</span>',
+    postHref: (p) => '/board/proposal/?id=' + p.id,
+    boardName: () => '제안'
   },
   document: {
     getElementById: (id) => byId[id] || (byId[id] = makeEl()),

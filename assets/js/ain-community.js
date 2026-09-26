@@ -110,6 +110,17 @@
     return true;
   }
 
+  // 글 → 그 글이 속한 게시판 주소·이름 (내 활동·관리 화면 공용)
+  function postHref(p) {
+    const id = encodeURIComponent(p.id);
+    if (p.board_type === 'proposal') return '/board/proposal/?id=' + id;
+    if (p.board_type === 'job_offer') return '/edu/jobs/?kind=offer&id=' + id;
+    if (p.board_type === 'job_seek') return '/edu/jobs/?kind=seek&id=' + id;
+    return '/board/free/?id=' + id;
+  }
+  const BOARD_NAMES = { proposal: '제안', job_offer: '구인', job_seek: '구직', free: '질문·경험' };
+  const boardName = (p) => BOARD_NAMES[p.board_type] || '질문·경험';
+
   // 비회원 티저 데이터
   async function fetchTeaser() {
     const { data, error } = await db().from('v_board_teaser').select('*');
@@ -217,9 +228,10 @@
   async function addSave(targetType, targetId, label, meta) {
     const user = await getSessionUser();
     if (!user) return { error: { message: '로그인이 필요합니다' }, needLogin: true };
+    // DB CHECK(1~200자)에 맞춰 자른다 — 긴 자동 수집 제목 하나로 저장 기능 전체가 꺼지지 않게
     const { error } = await db().from('saved_items').insert({
-      user_id: user.id, target_type: targetType, target_id: String(targetId),
-      label: label || null, meta: meta || null
+      user_id: user.id, target_type: targetType, target_id: String(targetId).slice(0, 200),
+      label: label ? String(label).slice(0, 200) : null, meta: meta || null
     });
     if (error && error.code === '23505') return {};   // 이미 저장됨 = 성공으로 취급
     if (error) caps.saves = false;
@@ -267,7 +279,7 @@
   }
 
   window.ainCommunity = { FIELD_LABELS, FIELD_LEGACY, fieldLabel, getMyProfile, requireMember,
-    authorBadge, authorBadgeOf, isStaff, authorSelect, timeAgo, report, fetchTeaser,
+    authorBadge, authorBadgeOf, isStaff, authorSelect, timeAgo, report, fetchTeaser, postHref, boardName,
     readPosts, readMyPosts, anonymousReady, loadSaves, addSave, removeSave, savesReady, saveKey,
     loginWithKakao, maskContacts, REPORT_REASONS, SUBSIDY_LABELS, subsidyLabel, caps };
 })();

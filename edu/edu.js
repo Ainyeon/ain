@@ -66,7 +66,7 @@
       work_raw: codes.map((c) => labels[c] || c).join(' · ') || '업무 분류 미확인',
       work_codes: codes,
       region_raw: f.region_raw || '원문에 없음',
-      region_code: row.region_code || '미확인',
+      region_code: row.region_code && row.region_code !== '미확인' ? row.region_code : '',   // 모르는 지역은 필터 선택지에 넣지 않는다
       target_raw: f.target_raw || '',
       target_level: f.target_level || 'unknown',
       posted_raw: row.posted_raw || '',
@@ -300,7 +300,7 @@
   function filtersHtml(f) {
     const labels = DATA.field_labels || {};
     const work = L.optionsOf(allItems(), 'work').map((v) => ({ v, l: labels[v] || v }));
-    const region = L.optionsOf(allItems(), 'region_code').map((v) => ({ v, l: v }));
+    const region = L.optionsOf(allItems(), 'region_code').filter(Boolean).map((v) => ({ v, l: v }));
     const status = L.SECTIONS.map((s) => ({ v: s.key, l: s.title }));
     const target = ['beginner', 'experience', 'condition', 'unknown'].map((v) => ({ v, l: L.TARGET_LABELS[v] }));
     const cost = ['subsidy', 'self', 'unknown'].map((v) => ({ v, l: L.COST_LABELS[v] }));
@@ -530,7 +530,9 @@
     updateStats();
     $('eduSub').textContent = '내게 맞는 기술 교육을 조건별로 찾아보세요.';
 
-    render();                       // 원장만으로 먼저 그린다 (비회원도 즉시 열람)
+    // 원장만으로 먼저 그린다(비회원도 즉시 열람). 단, 자동 수집 과정 딥링크(?id=AUTO-…)는
+    // 원장에 없으니 먼저 그리면 '찾을 수 없음'이 잠깐 뜬다 → 자동 수집분을 받은 뒤 그린다.
+    if (!/^AUTO-/.test(qs().get('id') || '')) render();
     AUTO = await loadAuto();        // 자동 수집분이 오면 합쳐서 다시 그린다
     updateStats();
     render();

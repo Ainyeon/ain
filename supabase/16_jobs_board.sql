@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- 16_jobs_board.sql — 회원 직접 등록 구인·구직
--- 실행 금지: 검토 후 Supabase SQL Editor에서 수동 실행한다 (CLAUDE.md 규약).
+-- 적용: 검토·검증 후 운영에 적용한다(2026-09-26부터 사용자 위임으로 Claude가 Supabase MCP로 적용, 전후 점검).
 --
 -- 왜 새 테이블이 아닌가: 등록·수정·삭제·신고·익명 보호·운영자 조회가 이미 posts 에 있다.
 --   board_type 을 늘리면 v_posts·RLS·연락처 가림 트리거·신고가 그대로 따라온다.
@@ -33,6 +33,11 @@ alter table public.posts add column if not exists closed_at timestamptz;
 alter table public.posts drop constraint if exists posts_closed_at_check;
 alter table public.posts add constraint posts_closed_at_check
   check (closed_at is null or board_type in ('job_offer', 'job_seek'));
+
+-- 구인·구직 글에는 후기 항목·교육 연결을 붙이지 않는다(교육 후기 집계에 섞임 방지). posts 0행이라 바로 건다.
+alter table public.posts drop constraint if exists posts_job_plain_check;
+alter table public.posts add constraint posts_job_plain_check
+  check (board_type not in ('job_offer', 'job_seek') or (review_kind is null and ref_type is null));
 
 grant select (closed_at) on public.posts to authenticated;
 grant update (closed_at) on public.posts to authenticated;   -- RLS 의 본인 글 정책이 범위를 정한다
@@ -70,5 +75,26 @@ limit 5;
 
 revoke all on public.v_board_teaser from anon, authenticated, public;
 grant select on public.v_board_teaser to anon, authenticated;
+
+-- ── [E] 적용 확인: 하나라도 어긋나면 전체 롤백 ──────────────────────
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'posts_board_type_check'
+                  and pg_get_constraintdef(oid) like '%job_seek%') then
+    raise exception 'board_type 확장 실패';
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'posts_job_plain_check') then
+    raise exception '구인·구직 후기 차단 제약 없음';
+  end if;
+  if not exists (select 1 from information_schema.columns
+                  where table_schema = 'public' and table_name = 'v_posts' and column_name = 'closed_at') then
+    raise exception 'v_posts.closed_at 없음';
+  end if;
+  if has_table_privilege('anon', 'public.v_posts', 'SELECT') then raise exception 'v_posts가 anon에 열림'; end if;
+  if has_table_privilege('anon', 'public.v_board_teaser', 'INSERT') or has_table_privilege('authenticated', 'public.v_board_teaser', 'UPDATE') then
+    raise exception 'v_board_teaser 쓰기 권한 잔존';
+  end if;
+  if has_column_privilege('anon', 'public.posts', 'closed_at', 'UPDATE') then raise exception 'closed_at이 anon에 열림'; end if;
+end $$;
 
 commit;

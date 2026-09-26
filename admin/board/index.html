@@ -153,15 +153,16 @@
         const reportedRows = Object.entries(repCount).sort((a, b) => b[1] - a[1]).map(([k, n]) => {
           const [type, idStr] = k.split('-');
           const id = Number(idStr);
-          let label = '';
+          let label = '', href = null;
           if (type === 'post') {
             const p = (posts || []).find((x) => x.id === id);
-            label = p ? '글: ' + p.title : '글 #' + id + ' (삭제됨?)';
+            label = p ? '글(' + ainCommunity.boardName(p) + '): ' + p.title : '글 #' + id + ' (삭제됨?)';
+            if (p) href = ainCommunity.postHref(p);   // 구인·구직 신고도 해당 게시판에서 열어 확인
           } else {
             const c = cmtById[id];
             label = c ? '댓글: ' + c.body.slice(0, 40) : '댓글 #' + id + ' (삭제됨?)';
           }
-          return '<div class="board-card admin-row"><span>' + escT(label) + '</span>'
+          return '<div class="board-card admin-row"><span>' + (href ? '<a href="' + escT(href) + '">' + escT(label) + '</a>' : escT(label)) + '</span>'
             + '<span><span class="report-count">신고 ' + n + '건</span> '
             + '<button type="button" class="tool-link" data-del="' + type + ':' + id + '">삭제</button></span></div>';
         }).join('') || '<p class="empty-note">신고된 게시물이 없습니다.</p>';
