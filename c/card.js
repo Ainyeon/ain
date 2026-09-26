@@ -111,6 +111,8 @@
     return h('section', { class: 'panel' }, h('div', { class: 'phead' }, h('h2', { text: 'AS·재설치 문의' })), box);
   }
 
+  // 같은 창에서 다른 카드 링크(# 뒤만 다름)를 열면 새로 읽는다
+  addEventListener('hashchange', () => location.reload());
   addEventListener('DOMContentLoaded', async () => {
     try {
       const c = await load();
