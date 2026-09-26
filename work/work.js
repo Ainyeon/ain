@@ -103,7 +103,9 @@
         dlg.close();
       } }, h('b', { text: k.label }), h('span', { text: body }));
     }));
-    const dlg = openDialog('문자 보내기', [list, h('div', { class: 'w-note', text: '문자 앱이 열리고 내용이 채워집니다. 발송은 폰에서 직접 누르세요(비용 없음). 문구는 설정에서 고칠 수 있어요.' })]);
+    const dlg = openDialog('문자 보내기', [
+      !S.d.profile.biz_name ? h('div', { class: 'w-warn' }, '상호가 비어 있어 모르는 번호처럼 보일 수 있어요. ', h('a', { href: '#settings', text: '업체 정보 넣기' })) : null,
+      list, h('div', { class: 'w-note', text: '문자 앱이 열리고 내용이 채워집니다. 발송은 폰에서 직접 누르세요(비용 없음). 문구는 설정에서 고칠 수 있어요.' })]);
   }
 
   // ── 부팅·세션
@@ -117,7 +119,10 @@
       } else {
         const session = await ainAuth.getSession();
         if (gen !== S.gen) return;
-        if (!session) { S.store = null; S.uid = null; S.d = null; document.body.classList.remove('w-app'); renderLanding(); return; }
+        if (!session) {
+          forgetDevice(null);   // 다른 화면에서 로그아웃했어도 이 기기의 업무 흔적을 지운다
+          S.store = null; S.uid = null; S.d = null; document.body.classList.remove('w-app'); renderLanding(); return;
+        }
         S.uid = session.user.id;
         // 카카오 로그인 복귀 토큰은 getSession이 이미 읽었다 — 주소창에서 지운다
         if (/access_token/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search);
@@ -132,19 +137,37 @@
     } catch (e) {
       if (gen !== S.gen) return;
       console.error(e);
+      const snap = S.store && S.store.offline && S.store.offline();
+      if (snap && snap.jobs) { renderOffline(snap); return; }
       const missing = e && (e.code === '42P01' || e.code === 'PGRST205' || e.code === 'PGRST202');
       app.replaceChildren(empty(missing ? '업무 기능 준비 중입니다' : '불러오지 못했어요',
         missing ? '운영 DB 적용 전이에요. 체험 모드로 먼저 둘러보세요.' : '네트워크를 확인하고 새로고침 해 주세요.'),
       h('div', { class: 'w-actions' }, linkBtn('체험 모드로 보기', '/work/?demo=1', 'primary'), btn('다시 시도', boot)));
     }
   }
+  // 전파가 없을 때: 마지막으로 불러온 오늘·내일 일정만 읽기 전용으로
+  function renderOffline(snap) {
+    const byId = Object.fromEntries((snap.customers || []).map((c) => [c.id, c]));
+    const jobs = snap.jobs.slice().sort(L.byTime);
+    app.replaceChildren(
+      h('div', { class: 'w-warn', text: '연결이 안 돼서 ' + L.fmtDay(snap.at) + ' ' + L.fmtTime(snap.at) + '에 불러온 오늘·내일 일정만 보여 드려요. 수정은 연결된 뒤에 할 수 있어요.' }),
+      panel('오늘·내일 일정 (읽기 전용)', 'cal', jobs.length ? h('div', { class: 'rows' }, jobs.map((j) => {
+        const c = byId[j.customer_id] || {};
+        return h('div', { class: 'w-row' },
+          h('div', { class: 'w-time num' }, h('b', { text: L.fmtTime(j.scheduled_at, j.all_day) }), L.fmtDay(j.scheduled_at).replace(/ \(.\)$/, '')),
+          h('div', { class: 'w-main' }, h('div', { class: 'w-title', text: c.name || '고객' }), h('div', { class: 'w-meta', text: [j.address, j.memo].filter(Boolean).join(' · ') })),
+          h('div', { class: 'w-side' }),
+          h('div', { class: 'w-quick' }, c.phone ? linkBtn('전화', L.telHref(c.phone), 'sm', 'phone') : null));
+      })) : empty('저장된 일정이 없어요')),
+      h('div', { class: 'w-actions' }, btn('다시 연결', boot, 'primary')));
+  }
   function renderLanding() {
     app.replaceChildren(
       panel('현장 업무, 폰 하나로', 'home', h('div', { class: 'w-hero' },
-        h('p', { text: '오늘 갈 곳, 받을 돈, 다시 연락할 고객을 한 화면에서 봅니다. 견적서는 현장에서 1분, 작업이 끝나면 시공 카드 링크를 문자로 보내고 AS 문의는 내 폰으로 받습니다.' }),
+        h('p', { text: '오늘 갈 곳, 받을 돈, 다시 연락할 고객을 한 화면에서 봅니다. 견적서는 현장에서 1분, 작업이 끝나면 시공 카드 링크를 문자로 보내고, 고객의 AS 문의는 업무 화면으로 받습니다.' }),
         h('ul', { class: 'w-list' },
           h('li', { text: '오늘·내일 일정, 동선(구별), 겹치는 예약 경고' }),
-          h('li', { text: '고객 장부 · 전화 뒷번호 검색 · 재방문 알림' }),
+          h('li', { text: '고객 장부 · 전화 뒷번호 검색 · 재방문 명단' }),
           h('li', { text: '견적서·작업 보고서 이미지 (카톡 공유·PDF)' }),
           h('li', { text: '수금 이력(계약금·잔금)과 미수금, 입금 요청 문자' }),
           h('li', { text: '시공 카드: 고객이 앱 없이 시공 이력 확인 + AS 문의' }),
@@ -227,13 +250,38 @@
     }
     return row;
   }
-  async function markDone(j) {
-    try {
-      const saved = await S.store.save('work_jobs', { id: j.id, status: 'done', completed_at: j.completed_at || new Date().toISOString() });
-      Object.assign(j, saved);
-      toast('완료 처리했어요');
-      route();
-    } catch (e) { fail(e); }
+  // 완료 시각: 작업일이 지났으면 그 날(매출 달·보증 시작이 작업일 기준), 아니면 지금
+  const doneAt = (scheduled) => (scheduled && new Date(scheduled) < new Date() ? scheduled : new Date().toISOString());
+  // 세척·설치를 마친 고객은 재방문 주기가 비어 있으면 12개월로 켠다 (다음 시즌 명단이 비지 않게)
+  async function autoRevisit(j) {
+    const c = custOf(j.customer_id);
+    if (!c || c.revisit_months || !['clean', 'install'].includes(j.work_type)) return;
+    try { Object.assign(c, await S.store.save('work_customers', { id: c.id, revisit_months: 12 })); } catch (e) { console.error(e); }
+  }
+  // 완료 → 한 창에서 수금·완료 문자(시공 카드)·보고서까지
+  function markDone(j) {
+    const c = custOf(j.customer_id);
+    const left = Math.max(0, L.toInt(j.total_amount) - L.paid(j));
+    const amt = h('input', { type: 'number', inputmode: 'numeric', class: 'w-in', value: left ? String(left) : '', 'aria-label': '받은 금액' });
+    const meth = sel(L.PAY_METHODS.map((m) => [m.id, m.label]), 'transfer', { class: 'w-in', 'aria-label': '결제 수단' });
+    const body = h('div', { class: 'w-form', style: { padding: 0 } },
+      h('div', { class: 'w-title', text: (c ? c.name : '고객') + ' · 합계 ' + L.won(j.total_amount) }),
+      field('지금 받은 금액 (없으면 비워 두세요)', amt), field('결제 수단', meth));
+    const dlg = openDialog('작업 완료', body, [btn('완료 처리', async (e) => {
+      e.currentTarget.disabled = true;
+      const a = L.toInt(amt.value);
+      const pays = L.cleanPayments(j.payments).concat(a > 0 ? [{ amount: a, method: meth.value, at: L.dayKey(today()) }] : []);
+      try {
+        Object.assign(j, await S.store.save('work_jobs', { id: j.id, status: 'done', completed_at: j.completed_at || doneAt(j.scheduled_at), payments: pays }));
+        await autoRevisit(j);
+      } catch (err) { fail(err); dlg.close(); return; }
+      // 다음 할 일
+      dlg.querySelector('.db').replaceChildren(h('div', { class: 'w-note', text: '완료했어요' + (L.unpaid(j) ? ' · 남은 금액 ' + L.won(L.unpaid(j)) : ' · 수금 완료') + '. 고객에게 시공 카드 링크를 보내 두면 다음 AS·재방문 문의가 나에게 옵니다.' }),
+        h('div', { class: 'w-actions grid' },
+          c && c.phone ? btn('완료 문자 보내기', () => { dlg.close(); smsDialog(c.phone, j, c, L.unpaid(j) > 0 ? ['done', 'pay'] : ['done']); }, 'primary', 'msg') : null,
+          btn('작업 보고서 만들기', () => { dlg.close(); go('#job/' + j.id); setTimeout(() => showDoc('report', j), 50); }, '', 'doc')));
+      dlg.querySelector('.df').replaceChildren(btn('닫기', () => { dlg.close(); route(); }));
+    }, 'primary', 'check')]);
   }
 
   // ── 오늘
@@ -249,6 +297,7 @@
     const inquiries = S.d.jobs.filter((j) => (j.status === 'inquiry' || j.status === 'quote') && !j.scheduled_at);
     const p = plan();
     const out = [];
+    if (!S.store.isDemo && !S.d.profile.biz_name) out.push(setupCard());
 
     out.push(h('section', { class: 'panel' },
       h('div', { class: 'phead' }, icon('cal'), h('h2', { text: L.fmtDay(now) }),
@@ -284,6 +333,19 @@
     loadNearby(nearby);
     return out;
   }
+  // 처음 쓰는 사람: 견적서·문자에 찍힐 업체 정보 3칸부터
+  function setupCard() {
+    const nm = h('input', { type: 'text', class: 'w-in', placeholder: '상호 (예: 시원설비)', maxlength: 40, 'aria-label': '상호' });
+    const ph = h('input', { type: 'tel', class: 'w-in', inputmode: 'tel', placeholder: '연락처', 'aria-label': '연락처' });
+    const ac = h('input', { type: 'text', class: 'w-in', placeholder: '입금 계좌 (은행 번호 예금주)', maxlength: 60, 'aria-label': '입금 계좌' });
+    return panel('업체 정보부터 넣어 주세요', 'home', h('div', { class: 'w-form' },
+      h('div', { class: 'w-note', text: '견적서·보고서·문자·시공 카드에 찍힙니다. 나머지는 설정에서 언제든 고칠 수 있어요.' }),
+      nm, ph, ac, btn('저장', async () => {
+        if (!nm.value.trim()) { toast('상호를 적어 주세요'); return; }
+        if (ph.value.trim() && !L.normPhone(ph.value)) { toast('연락처 형식을 확인해 주세요'); return; }
+        try { S.d.profile = await S.store.save('work_profiles', { biz_name: nm.value.trim(), phone: L.normPhone(ph.value), account: ac.value.trim() || null }); toast('저장했어요'); route(); } catch (e) { fail(e); }
+      }, 'primary')));
+  }
   function requestRow(r) {
     const c = custOf(r.customer_id);
     const kind = { as: 'AS', reinstall: '재설치·이전', etc: '기타' }[r.kind] || r.kind;
@@ -300,7 +362,14 @@
         c ? linkBtn('AS 작업 등록', '#job/new?customer=' + c.id + '&type=as', 'sm', 'plus') : null,
         btn('처리함', async () => {
           try { Object.assign(r, await S.store.resolveRequest(r.id)); toast('처리함으로 표시했어요'); route(); } catch (e) { fail(e); }
-        }, 'sm', 'check')));
+        }, 'sm', 'check'),
+        requestDeleteBtn(r)));
+  }
+  function requestDeleteBtn(r) {
+    return btn('삭제', async () => {
+      if (!confirm('이 문의를 지울까요? 고객이 삭제를 요청한 경우에 쓰세요. 되돌릴 수 없어요.')) return;
+      try { await S.store.deleteRequest(r.id); S.d.requests = S.d.requests.filter((x) => x.id !== r.id); toast('지웠어요'); route(); } catch (e) { fail(e); }
+    }, 'sm danger');
   }
   function revisitRow(r) {
     const c = r.customer;
@@ -450,6 +519,7 @@
       h('div', { class: 'w-pad w-actions' },
         j.status !== 'done' ? btn('완료 처리', () => markDone(j), 'primary', 'check') : null,
         linkBtn('수정', '#job/' + j.id + '/edit'),
+        j.scheduled_at && j.status !== 'done' ? btn('폰 캘린더에 넣기', () => DOC.download(new Blob([L.icsFor(j, c, S.d.profile)], { type: 'text/calendar' }), '작업_' + ((c && c.name) || j.id) + '.ics'), '', 'cal') : null,
         linkBtn('같은 구성으로 새 작업', '#job/new?copy=' + j.id),
         j.status !== 'canceled' && j.status !== 'done' ? btn('취소로 바꾸기', async () => {
           try { Object.assign(j, await S.store.save('work_jobs', { id: j.id, status: 'canceled', completed_at: null })); route(); } catch (e) { fail(e); }
@@ -473,7 +543,7 @@
     out.push(panel('금액·수금', 'won', [
       items.length ? tbl : null,
       h('div', { class: 'w-pad' },
-        j.vat_mode !== 'none' ? h('div', { class: 'w-meta', text: '공급가 ' + L.won(t.supply) + ' · 부가세 ' + L.won(t.vat) }) : null,
+        j.vat_mode !== 'none' && items.length ? h('div', { class: 'w-meta', text: '공급가 ' + L.won(t.supply) + ' · 부가세 ' + L.won(t.vat) }) : null,
         h('div', { class: 'w-total' }, h('span', { text: '합계' }), h('span', { class: 'n num', text: L.won(j.total_amount) })),
         h('div', { class: 'w-meta', text: '받은 금액 ' + L.won(L.paid(j)) + (L.unpaid(j) ? ' · 남은 금액 ' + L.won(L.unpaid(j)) : '') })),
       pays.length ? payList : null,
@@ -533,7 +603,7 @@
     if (c) out.push(cardPanel(c, j));
     out.push(h('div', { class: 'w-actions' }, btn('이 작업 지우기', async () => {
       if (!confirm('이 작업을 지울까요? 금액·수금 기록과 보관한 사진도 함께 지워집니다.')) return;
-      try { await S.store.remove('work_jobs', j.id); S.d.jobs = S.d.jobs.filter((x) => x.id !== j.id); S.d.photos = S.d.photos.filter((p) => p.job_id !== j.id); toast('지웠어요'); go('#jobs'); } catch (e) { fail(e); }
+      try { await S.store.remove('work_jobs', j.id); S.d.jobs = S.d.jobs.filter((x) => x.id !== j.id); S.d.jobs.forEach((x) => { if (x.parent_job_id === j.id) x.parent_job_id = null; }); S.d.photos = S.d.photos.filter((p) => p.job_id !== j.id); toast('지웠어요'); go('#jobs'); } catch (e) { fail(e); }
     }, 'danger')));
     return out;
   }
@@ -592,7 +662,7 @@
     const copyFrom = q.get('copy') ? jobOf(+q.get('copy')) : null;
     const pasted = q.get('paste') ? JSON.parse(sessionStorage.getItem('work_paste') || '{}') : {};
     if (q.get('paste')) sessionStorage.removeItem('work_paste');
-    const draftKey = 'work_draft_' + (j ? j.id : 'new');
+    const draftKey = 'work_draft_' + S.uid + '_' + (j ? j.id : 'new');   // 사용자별 (공용 기기에서 남의 입력이 뜨지 않게)
     let draft = null;
     try { draft = JSON.parse(localStorage.getItem(draftKey) || 'null'); } catch (e) { draft = null; }
 
@@ -610,7 +680,7 @@
     const dt = base.scheduled_at ? new Date(base.scheduled_at) : null;
 
     const phone = h('input', { type: 'tel', inputmode: 'tel', autocomplete: 'off', value: customer ? L.fmtPhone(customer.phone) : (pasted.phone ? L.fmtPhone(pasted.phone) : ''), placeholder: '010-0000-0000' });
-    const name = h('input', { type: 'text', autocomplete: 'off', value: customer ? customer.name : (pasted.name || ''), placeholder: '이름 또는 상호' });
+    const name = h('input', { type: 'text', autocomplete: 'off', maxlength: 40, value: customer ? customer.name : (pasted.name || ''), placeholder: '이름 또는 상호' });
     const suggest = h('div', { class: 'w-suggest', hidden: true });
     const picked = h('div', { hidden: true });
     const date = h('input', { type: 'date', value: dt ? L.dayKey(dt) : (q.get('date') || pasted.date || '') });
@@ -619,8 +689,8 @@
     const status = sel(L.STATUS.map((s) => [s.id, s.label]), base.status || 'booked');
     const address = h('input', { type: 'text', value: base.address || pasted.address || (customer && customer.address) || '', placeholder: '인천 서구 청라동 123 101동 1203호', autocomplete: 'street-address' });
     const memo = h('textarea', { rows: 3, placeholder: '현장 메모 (주차, 기기 상태, 요청 사항)', value: base.memo || (pasted.memo || '') });
-    const fieldSel = sel(FIELD_OPTIONS.map(([k, v]) => [k, v]), base.field);
-    const typeSel = sel(L.WORK_TYPES.map((t) => [t.id, t.label]), base.work_type);
+    const fieldSel = sel([['', '선택 안 함']].concat(FIELD_OPTIONS.map(([k, v]) => [k, v])), base.field || '');
+    const typeSel = sel([['', '선택 안 함']].concat(L.WORK_TYPES.map((t) => [t.id, t.label])), base.work_type || '');
     const dur = h('input', { type: 'number', inputmode: 'numeric', min: 0, max: 1440, step: 10, value: base.duration_min || '', placeholder: '기본 ' + L.durationOf(base) + '분' });
     const vat = sel([['none', '부가세 없음(간이·면세)'], ['excl', '부가세 별도 (+10%)'], ['incl', '부가세 포함가']], base.vat_mode);
     const warranty = sel([['', '없음'], ['1', '1개월'], ['3', '3개월'], ['6', '6개월'], ['12', '12개월'], ['24', '24개월']], base.warranty_months || '');
@@ -634,6 +704,14 @@
     const checkBox = h('div', { class: 'w-form', style: { padding: 0 } });
     const warnBox = h('div');
     const errBox = h('div');
+    const regionHint = h('small', { class: 'w-meta' });
+    const paintRegion = () => {
+      const r = L.parseRegion(address.value);
+      regionHint.textContent = !address.value.trim() ? '시·군·구까지는 동선 묶음과 시공 카드 지역 표시에 쓰여요'
+        : r.sigungu ? '지역: ' + [r.sido, r.sigungu].filter(Boolean).join(' ')
+          : '지역을 못 찾았어요 — 주소 앞에 "인천 서구"처럼 시·구를 적으면 동선·시공 카드에 쓰여요';
+    };
+    address.addEventListener('input', paintRegion);
 
     // 기존 고객 연결
     function setCustomer(c) {
@@ -643,7 +721,7 @@
       picked.hidden = !c;
       if (c) {
         name.value = c.name; phone.value = L.fmtPhone(c.phone);
-        if (!address.value && c.address) address.value = c.address;
+        if (!address.value && c.address) { address.value = c.address; paintRegion(); }
       }
       suggest.hidden = true;
     }
@@ -722,8 +800,12 @@
         memo: memo.value, field: fieldSel.value, type: typeSel.value, dur: dur.value, vat: vat.value, warranty: warranty.value, source: source.value,
         refParty: refParty.value, refFee: refFee.value, manual: manualTotal.value, items: st.items, checklist: st.checklist, customerId: customer && customer.id };
     }
-    let draftTimer = null;
-    function saveDraft() { clearTimeout(draftTimer); draftTimer = setTimeout(() => { try { localStorage.setItem(draftKey, JSON.stringify(collect())); } catch (e) {} }, 400); }
+    let draftTimer = null, submitted = false;
+    function saveDraft() {
+      if (submitted) return;
+      clearTimeout(draftTimer);
+      draftTimer = setTimeout(() => { if (!submitted) try { localStorage.setItem(draftKey, JSON.stringify(collect())); } catch (e) {} }, 400);
+    }
     function restore(dr) {
       phone.value = dr.phone || ''; name.value = dr.name || ''; date.value = dr.date || ''; time.value = dr.time || '09:00'; allDay.checked = !!dr.allDay;
       status.value = dr.status || 'booked'; address.value = dr.address || ''; memo.value = dr.memo || ''; fieldSel.value = dr.field || fieldSel.value;
@@ -731,7 +813,7 @@
       refParty.value = dr.refParty || ''; refFee.value = dr.refFee || ''; manualTotal.value = dr.manual || '';
       st.items = dr.items || []; st.checklist = dr.checklist || [];
       if (dr.customerId) setCustomer(custOf(dr.customerId));
-      paintItems(); paintPresets(); paintChecklist(); paintTotal(); paintOverlap();
+      paintItems(); paintPresets(); paintChecklist(); paintTotal(); paintOverlap(); paintRegion(); dupCheck();
     }
 
     async function submit() {
@@ -745,28 +827,40 @@
       saveBtn.disabled = true;
       try {
         let c = customer;
+        const nm = (payload.customer_name || L.fmtPhone(payload.customer_phone)).slice(0, 40);
+        const ph = L.normPhone(payload.customer_phone);
         if (!c) {
-          const addr = address.value.trim() || null;
-          c = await S.store.save('work_customers', { name: payload.customer_name || L.fmtPhone(payload.customer_phone), phone: L.normPhone(payload.customer_phone), address: addr });
+          c = await S.store.save('work_customers', { name: nm, phone: ph, address: address.value.trim().slice(0, 200) || null });
           S.d.customers.unshift(c);
-        } else if (!c.address && address.value.trim()) {
-          Object.assign(c, await S.store.save('work_customers', { id: c.id, address: address.value.trim() }));
+          setCustomer(c);                                   // 작업 저장이 실패해 다시 눌러도 고객이 두 번 생기지 않게
+        } else {
+          const patch = { id: c.id };
+          if (payload.customer_name && nm !== c.name) patch.name = nm;
+          if (ph && ph !== c.phone) patch.phone = ph;
+          if (!c.address && address.value.trim()) patch.address = address.value.trim().slice(0, 200);
+          if (Object.keys(patch).length > 1) Object.assign(c, await S.store.save('work_customers', patch));
         }
         const reg = L.parseRegion(address.value);
         const items = L.cleanItems(st.items);
         const wasDone = j && j.status === 'done';
         const row = {
-          id: j ? j.id : undefined, customer_id: c.id, field: fieldSel.value, work_type: typeSel.value, status: payload.status,
-          scheduled_at: payload.scheduled_at, all_day: allDay.checked, duration_min: L.toInt(dur.value) || null,
-          address: address.value.trim() || null, sido: reg.sido, sigungu: reg.sigungu, items, vat_mode: vat.value, total_amount: computeTotal(),
+          id: j ? j.id : undefined, customer_id: c.id, field: fieldSel.value || null, work_type: typeSel.value || null, status: payload.status,
+          scheduled_at: payload.scheduled_at, all_day: allDay.checked, duration_min: Math.min(1440, Math.max(0, L.toInt(dur.value))) || null,
+          address: address.value.trim().slice(0, 200) || null, sido: reg.sido, sigungu: reg.sigungu, items, vat_mode: vat.value,
+          total_amount: Math.min(2000000000, computeTotal()),
           checklist: st.checklist.filter((x) => x.label).map((x) => ({ label: x.label, value: String(x.value || '').slice(0, 40) })),
-          memo: memo.value.trim() || null, source: source.value || null, referral_party: refParty.value.trim() || null, referral_fee: L.toInt(refFee.value) || null,
-          warranty_months: warranty.value ? +warranty.value : null, parent_job_id: base.parent_job_id || null,
+          memo: memo.value.trim().slice(0, 2000) || null, source: source.value || null, referral_party: refParty.value.trim().slice(0, 40) || null,
+          referral_fee: Math.min(2000000000, Math.max(0, L.toInt(refFee.value))) || null,
+          warranty_months: warranty.value ? +warranty.value : null,
+          parent_job_id: j ? undefined : (base.parent_job_id || null),   // 수정 때는 보내지 않는다(부모가 지워졌을 수 있다)
           payments: j ? j.payments : [],
-          completed_at: payload.status === 'done' ? (wasDone && j.completed_at) || (payload.scheduled_at && new Date(payload.scheduled_at) < new Date() ? payload.scheduled_at : new Date().toISOString()) : null
+          completed_at: payload.status === 'done'
+            ? (payload.scheduled_at && new Date(payload.scheduled_at) < new Date() ? payload.scheduled_at : (wasDone && j.completed_at) || new Date().toISOString()) : null
         };
         const saved = await S.store.save('work_jobs', row);
+        submitted = true; clearTimeout(draftTimer);
         if (j) Object.assign(j, saved); else S.d.jobs.unshift(saved);
+        if (saved.status === 'done') await autoRevisit(saved);
         try { localStorage.removeItem(draftKey); } catch (e) {}
         toast(isNew ? '등록했어요' : '저장했어요');
         go('#job/' + saved.id);
@@ -786,7 +880,7 @@
       suggest, warnBox,
       h('div', { class: 'w-2' }, field('날짜', date, '비우면 일정 미정 문의로 저장'), field('시간', time)),
       h('div', { class: 'w-2' }, h('label', { class: 'w-check' }, allDay, '종일'), field('상태', status)),
-      field('주소', address, '시·군·구까지는 동선 묶음과 시공 카드 지역 표시에 쓰여요'),
+      field('주소', address), regionHint,
       field('메모', memo),
       h('details', { open: !isNew || !!copyFrom || (base.items || []).length > 0 },
         h('summary', { text: '견적·품목·확인 항목 (자세히)' }),
@@ -796,10 +890,10 @@
           itemsBox, manualTotal, h('div', { class: 'w-2' }, field('부가세', vat), field('소요 시간(분)', dur)), totalBox,
           h('div', { class: 'w-lab', text: '작업 확인 항목 (보고서·시공 카드에 찍혀요)' }), checkBox,
           h('div', { class: 'w-2' }, field('무상 AS 기간', warranty), field('유입 경로', source)),
-          h('div', { class: 'w-2' }, field('넘긴·받은 업체', refParty), field('소개 몫', refFee)))),
+          h('div', { class: 'w-2' }, field('넘긴·받은 업체', refParty, '나만 보는 기록'), field('소개 몫', refFee, '나만 보는 기록')))),
       errBox);
     if (customer) setCustomer(customer);
-    paintItems(); paintPresets(); paintChecklist(); paintTotal(); paintOverlap();
+    paintItems(); paintPresets(); paintChecklist(); paintTotal(); paintOverlap(); paintRegion(); dupCheck();
     return h('section', { class: 'panel' },
       h('div', { class: 'phead' }, icon('plus'), h('h2', { text: isNew ? (copyFrom ? '같은 구성으로 새 작업' : '작업 등록') : '작업 수정' })),
       isNew ? h('div', { class: 'w-pad' }, btn('문자·카톡 붙여넣기로 채우기', pasteDialog, 'sm', 'msg')) : null,
@@ -867,12 +961,16 @@
       cardPanel(c, done[0] || null),
       reqs.length ? panel('AS·재설치 문의 기록', 'bell', h('div', { class: 'rows' }, reqs.map((r) => r.resolved_at
         ? h('div', { class: 'w-row' }, h('div', { class: 'w-time num' }, h('b', { text: '처리' }), L.fmtDay(r.created_at).replace(/ \(.\)$/, '')),
-          h('div', { class: 'w-main' }, h('div', { class: 'w-title', text: r.message }), h('div', { class: 'w-meta', text: r.contact ? L.fmtPhone(r.contact) : '' })), h('div', { class: 'w-side' }))
+          h('div', { class: 'w-main' }, h('div', { class: 'w-title', text: r.message }), h('div', { class: 'w-meta', text: r.contact ? L.fmtPhone(r.contact) : '' })), h('div', { class: 'w-side' }, requestDeleteBtn(r)))
         : requestRow(r)))) : null,
       panel('작업 이력', 'doc', jobs.length ? h('div', { class: 'rows' }, jobs.map((j) => jobRow(j, { dateFirst: true }))) : empty('아직 작업이 없어요'), h('span', { class: 'cnt num', text: String(jobs.length) })),
       h('div', { class: 'w-actions' }, btn('이 고객 지우기', async () => {
-        if (!confirm(c.name + ' 고객을 지울까요? 작업 기록(금액)은 남고 고객 연결만 풀립니다. 시공 카드 링크와 문의 기록은 함께 지워집니다.')) return;
-        try { await S.store.remove('work_customers', c.id); S.d.customers = S.d.customers.filter((x) => x.id !== c.id); S.d.jobs.forEach((j) => { if (j.customer_id === c.id) j.customer_id = null; }); S.d.requests = S.d.requests.filter((r) => r.customer_id !== c.id); toast('지웠어요'); go('#customers'); } catch (e) { fail(e); }
+        if (!confirm(c.name + ' 고객을 지울까요? 매출 집계용 금액은 남기고, 작업에 적힌 주소·메모와 시공 카드 링크·문의 기록은 함께 지웁니다.')) return;
+        try {
+          for (const j of S.d.jobs.filter((x) => x.customer_id === c.id)) {
+            Object.assign(j, await S.store.save('work_jobs', { id: j.id, address: null, memo: null, referral_party: null }));
+          }
+          await S.store.remove('work_customers', c.id); S.d.customers = S.d.customers.filter((x) => x.id !== c.id); S.d.jobs.forEach((j) => { if (j.customer_id === c.id) j.customer_id = null; }); S.d.requests = S.d.requests.filter((r) => r.customer_id !== c.id); toast('지웠어요'); go('#customers'); } catch (e) { fail(e); }
       }, 'danger'))
     ];
   }
@@ -951,7 +1049,7 @@
       h('div', { class: 'w-pad' }, h('ol', { class: 'w-list' },
         h('li', { text: '엑셀에서 "다른 이름으로 저장 → CSV UTF-8(쉼표로 분리)"로 저장하세요. 일반 CSV(한글 윈도)도 읽습니다.' }),
         h('li', { text: '첫 줄 머리글에 이름(고객명·성함), 연락처(전화·휴대폰), 주소, 메모, 최근 작업일(서비스일·시공일)이 있으면 자동으로 맞춥니다.' }),
-        h('li', { text: '브리젤 등 다른 앱에서 내려받은 고객 엑셀도 같은 방법으로 옮길 수 있어요. 같은 전화번호는 한 명으로 합칩니다.' })),
+        h('li', { text: '다른 업무 앱에서 내려받은 고객 엑셀도 같은 방법으로 옮길 수 있어요. 같은 전화번호는 한 명으로 합칩니다.' })),
         h('label', { class: 'w-check' }, asJob, '최근 작업일이 있으면 완료 작업으로 기록 (재방문 알림 12개월 주기 켜기)'),
         h('div', { class: 'w-actions' }, h('label', { class: 'w-btn primary', for: 'csvPick' }, 'CSV 파일 고르기'), file)),
       out
@@ -1019,7 +1117,7 @@
     } });
     const tpl = {};
     const tplBox = h('div', { class: 'w-form', style: { padding: 0 } }, L.SMS_KINDS.map((k) => field(k.label,
-      (tpl[k.id] = h('textarea', { rows: 3, value: (p.sms_templates || {})[k.id] || k.text })))));
+      (tpl[k.id] = h('textarea', { rows: 3, maxlength: 300, value: (p.sms_templates || {})[k.id] || k.text })))));
     return [
       panel('업체 정보', 'home', [
         h('div', { class: 'w-form' },
@@ -1038,20 +1136,30 @@
       panel('문자 문구', 'msg', [h('div', { class: 'w-form' }, h('div', { class: 'w-note', text: '{고객} {상호} {일시} {주소} {금액} {미수금} {계좌} {링크} 자리에 값이 들어갑니다.' }), tplBox),
         h('div', { class: 'w-sticky' }, btn('기본 문구로', () => { L.SMS_KINDS.forEach((k) => { tpl[k.id].value = k.text; }); }), btn('문구 저장', async () => {
           const obj = {};
-          L.SMS_KINDS.forEach((k) => { const v = tpl[k.id].value.trim().slice(0, 500); if (v && v !== k.text) obj[k.id] = v; });
+          L.SMS_KINDS.forEach((k) => { const v = tpl[k.id].value.trim().slice(0, 300); if (v && v !== k.text) obj[k.id] = v; });
           try { S.d.profile = await S.store.save('work_profiles', { sms_templates: obj }); toast('문구를 저장했어요'); } catch (e) { fail(e); }
         }, 'primary'))]),
       panel('요금제', 'won', h('div', { class: 'w-pad', style: { display: 'grid', gap: 'var(--sp-3)' } },
         h('div', { class: 'w-title' }, '지금: ', h('span', { class: 'w-st ' + (pv.isPro ? 'pro' : ''), text: pv.label }),
           pv.until ? ' ' + L.fmtDay(pv.until) + '까지' : pv.inBeta ? ' (베타 · ' + pv.betaEndLabel + '까지 무료)' : ''),
         h('ul', { class: 'w-list' },
-          h('li', { text: '무료: 작업·고객·일정·수금·시공 카드·AS 문의·견적서·보고서·엑셀 가져오기/내보내기 — 제한 없음' }),
-          h('li', { text: '프로: 사진 서버 보관(작업당 ' + L.PLAN.pro.photosPerJob + '장), 업체 로고, 문서·카드의 에인연 표기 제거' }),
-          h('li', { text: '준비 중: 3D 배치도(현장 사진·치수로 설치 위치 미리보기) — 나오면 프로 혜택에 더해집니다' })),
+          h('li', { text: '무료: 작업·고객·일정·수금·시공 카드·AS 문의·견적서·보고서·엑셀 가져오기/내보내기 — 건수 제한 없음' }),
+          h('li', { text: '프로: 사진 서버 보관(작업당 ' + L.PLAN.pro.photosPerJob + '장, 월 ' + L.PLAN.pro.photosPerMonth + '장), 업체 로고, 문서·카드의 에인연 표기 제거' }),
+          h('li', { text: '계획(확정 아님): 3D 배치도 — 현장 사진·치수로 설치 위치 미리보기' })),
         h('div', { class: 'w-actions' }, linkBtn('요금제 자세히', '/pricing/'), linkBtn('이용약관', '/legal/terms/'), linkBtn('개인정보처리방침', '/legal/privacy/')))),
       panel('데이터', 'doc', h('div', { class: 'w-pad w-actions' }, btn('작업 엑셀(CSV) 내보내기', exportJobs), btn('고객 엑셀(CSV) 내보내기', exportCustomers), linkBtn('엑셀로 고객 가져오기', '#import'),
-        h('div', { class: 'w-note', text: '내 업무 데이터는 나만 봅니다(운영자도 열람 불가). 무료에서도 언제든 전부 내보낼 수 있어요. 탈퇴하면 업무 데이터와 사진이 함께 지워지니 먼저 내보내 두세요.' })))
+        h('div', { class: 'w-note', text: '업무 데이터는 내 계정에서만 보이게 저장됩니다. 운영자는 법령상 요구나 내가 요청한 장애 대응 외에는 열람하지 않습니다. 고객·작업·수금 기록은 무료에서도 언제든 엑셀로 내보낼 수 있어요(사진은 작업 화면에서 길게 눌러 저장). 백업은 보장하지 않으니 정기적으로 내보내 두세요.' })))
     ];
+  }
+
+  // 이 기기에 남긴 업무 흔적(임시 입력·오프라인 요약)을 지운다. uid가 없으면 체험용을 뺀 전부
+  function forgetDevice(uid) {
+    try { sessionStorage.removeItem('work_paste'); } catch (e) { /* 무시 */ }
+    try {
+      Object.keys(localStorage).filter((k) => uid
+        ? k.startsWith('work_draft_' + uid + '_') || k === window.ainWorkStore.offlineKey(uid)
+        : (k.startsWith('work_draft_') && !k.startsWith('work_draft_demo_')) || k.startsWith('work_offline_')).forEach((k) => localStorage.removeItem(k));
+    } catch (e) { /* 저장소 접근 불가 */ }
   }
 
   // ── 시작
@@ -1059,7 +1167,11 @@
   addEventListener('ain:auth', (e) => {
     const uid = e.detail && e.detail.session ? e.detail.session.user.id : null;
     if (DEMO) return;
-    if (uid !== S.uid) { document.querySelectorAll('.w-fab').forEach((x) => x.remove()); S.d = null; boot(); }
+    if (uid !== S.uid) {
+      if (S.uid && S.uid !== 'demo') forgetDevice(S.uid);
+      document.querySelectorAll('.w-fab, dialog.w-dialog, #printArea').forEach((x) => x.remove());
+      S.d = null; boot();
+    }
     else if (S.d && /access_token/.test(location.hash)) { history.replaceState(null, '', location.pathname + location.search); route(); }
   });
   addEventListener('DOMContentLoaded', () => {

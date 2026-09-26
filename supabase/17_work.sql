@@ -37,7 +37,7 @@ create table if not exists public.subscriptions (
 );
 alter table public.subscriptions enable row level security;
 revoke all on public.subscriptions from anon, authenticated, public;
-grant select on public.subscriptions to authenticated;
+grant select (user_id, source, current_period_end, updated_at) on public.subscriptions to authenticated;   -- note(관리자 메모)는 제외
 drop policy if exists "user reads own subscription" on public.subscriptions;
 create policy "user reads own subscription" on public.subscriptions
   for select to authenticated using (user_id = auth.uid());
@@ -210,7 +210,7 @@ drop policy if exists "user manages own jobs" on public.work_jobs;
 create policy "user manages own jobs" on public.work_jobs
   for all to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
 
--- ── 5) 작업 사진 (프로: 서버 보관. 작업당 30장, 월 1000장) ───────────
+-- ── 5) 작업 사진 (프로: 서버 보관. 작업당 30장, 월 300장) ────────────
 -- 흐름: 경로 생성 → work_photos 행 insert(여기서 요금제·한도 검사) → 그 경로로만 storage 업로드 허용.
 create table if not exists public.work_photos (
   id         bigserial primary key,
@@ -258,7 +258,7 @@ begin
   values (new.user_id, to_char(now() at time zone 'Asia/Seoul', 'YYYY-MM'), 1)
   on conflict (user_id, ym) do update set photos = u.photos + 1
   returning u.photos into v_n;                                   -- 행 잠금 → 동시 insert 직렬화
-  if v_n > 1000 then raise exception 'photo_limit_month' using errcode = 'P0001'; end if;
+  if v_n > 300 then raise exception 'photo_limit_month' using errcode = 'P0001'; end if;
   return new;
 end $$;
 revoke all on function public.work_photos_before_insert() from public, anon, authenticated;
@@ -336,7 +336,7 @@ $$;
 revoke all on function public.get_card(text) from public, anon, authenticated;
 grant execute on function public.get_card(text) to anon, authenticated;
 
--- 고객의 AS·재설치 문의. 삽입은 submit_card_request로만. 업체는 읽기·처리 표시만(삭제·수정 불가 → 기록 보존).
+-- 고객의 AS·재설치 문의. 삽입은 submit_card_request로만. 업체는 읽기·처리 표시·삭제(고객의 삭제 요구 대응)만, 내용 수정 불가.
 create table if not exists public.work_card_requests (
   id          bigserial primary key,
   user_id     uuid not null references public.profiles(id) on delete cascade,  -- 받는 업체. default auth.uid() 없음(anon 호출)
@@ -352,12 +352,15 @@ create index if not exists work_card_requests_user on public.work_card_requests 
 create index if not exists work_card_requests_customer on public.work_card_requests (customer_id, created_at desc);
 alter table public.work_card_requests enable row level security;
 revoke all on public.work_card_requests from anon, authenticated, public;
-grant select on public.work_card_requests to authenticated;
+grant select, delete on public.work_card_requests to authenticated;
 grant update (resolved_at) on public.work_card_requests to authenticated;
 revoke all on sequence public.work_card_requests_id_seq from anon, authenticated, public;
 drop policy if exists "owner reads own card requests" on public.work_card_requests;
 create policy "owner reads own card requests" on public.work_card_requests
   for select to authenticated using (user_id = auth.uid());
+drop policy if exists "owner deletes own card requests" on public.work_card_requests;
+create policy "owner deletes own card requests" on public.work_card_requests
+  for delete to authenticated using (user_id = auth.uid());
 drop policy if exists "owner resolves own card requests" on public.work_card_requests;
 create policy "owner resolves own card requests" on public.work_card_requests
   for update to authenticated using (user_id = auth.uid()) with check (user_id = auth.uid());
@@ -385,9 +388,9 @@ end $$;
 revoke all on function public.submit_card_request(text, text, text, text) from public, anon, authenticated;
 grant execute on function public.submit_card_request(text, text, text, text) to anon, authenticated;
 
--- ── 7) 사진 저장소 (비공개 버킷 'work', 2MB — 클라이언트가 긴 변 1600px JPEG로 줄여 올린다) ──
+-- ── 7) 사진 저장소 (비공개 버킷 'work', 1MB — 클라이언트가 긴 변 1600px JPEG로 줄여 올린다) ──
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('work', 'work', false, 2097152, array['image/jpeg', 'image/png', 'image/webp'])
+values ('work', 'work', false, 1048576, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do update set public = false,
   file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
 
@@ -434,7 +437,7 @@ begin
           or x.p in ('TRUNCATE', 'REFERENCES', 'TRIGGER')
           or c.relname in ('billing_events', 'work_usage')
           or (c.relname = 'subscriptions' and x.p <> 'SELECT')
-          or (c.relname = 'work_card_requests' and x.p in ('INSERT', 'DELETE')));
+          or (c.relname = 'work_card_requests' and x.p = 'INSERT'));
   if bad is not null then raise exception '권한 잔존: %', bad; end if;
 
   -- 서버 전용 열은 클라이언트가 못 쓴다
@@ -458,6 +461,30 @@ begin
   if has_function_privilege('authenticated', 'public.work_user_is_pro(uuid)', 'EXECUTE') then
     raise exception 'work_user_is_pro는 내부 전용';
   end if;
+  if has_column_privilege('authenticated', 'public.subscriptions', 'note', 'SELECT') then
+    raise exception 'subscriptions.note는 관리자 전용';
+  end if;
+
+  -- 정책은 정해진 것만 (예전 시험 정책이 남아 using(true)로 열리는 일 방지)
+  select string_agg(tablename || ':' || policyname, ', ') into bad
+    from pg_policies
+   where schemaname = 'public'
+     and (tablename like 'work\_%' or tablename in ('subscriptions', 'billing_events'))
+     and (tablename || ':' || policyname) not in (
+       'subscriptions:user reads own subscription',
+       'work_profiles:user reads own work profile', 'work_profiles:user writes own work profile', 'work_profiles:user updates own work profile',
+       'work_customers:user manages own customers', 'work_jobs:user manages own jobs', 'work_photos:user manages own photos',
+       'work_card_requests:owner reads own card requests', 'work_card_requests:owner resolves own card requests',
+       'work_card_requests:owner deletes own card requests');
+  if bad is not null then raise exception '예상 밖 정책: %', bad; end if;
+
+  -- 저장소: work 버킷은 비공개. storage.objects 정책은 OR로 합쳐지므로 bucket_id 조건 없는 다른 정책이 있으면 work 버킷이 열린다
+  if exists (select 1 from storage.buckets where id = 'work' and public) then raise exception 'work 버킷이 공개로 되어 있음'; end if;
+  select string_agg(policyname, ', ') into bad
+    from pg_policies
+   where schemaname = 'storage' and tablename = 'objects' and policyname not like 'work:%'
+     and coalesce(qual, '') || coalesce(with_check, '') not like '%bucket_id%';
+  if bad is not null then raise exception 'bucket_id 조건 없는 storage 정책(work 버킷까지 열림): %', bad; end if;
 end $$;
 
 commit;

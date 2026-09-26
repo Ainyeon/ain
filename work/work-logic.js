@@ -11,7 +11,7 @@
   // ── 요금제. 기록(작업·고객·일정·수금·시공 카드)은 요금제로 막지 않는다.
   //    서버 강제: 사진 보관(supabase/17_work.sql work_photos_before_insert). 베타 종료 시각은 SQL work_user_is_pro()와 같아야 한다.
   const PLAN = {
-    pro: { photosPerJob: 30, photosPerMonth: 1000 },
+    pro: { photosPerJob: 30, photosPerMonth: 300 },
     priceWon: 19900,                            // 정식 과금 예정가 (VAT 포함). 과금 개시 전 별도 동의
     betaEnd: '2027-05-01T00:00:00+09:00'        // 이 시각 전까지 전원 프로. 끝나면 무료로 돌아간다(자동 결제 없음)
   };
@@ -340,13 +340,14 @@
   const findByPhone = (customers, phone) => { const d = normPhone(phone); return d ? (customers || []).filter((c) => c.phone === d) : []; };
 
   // ── 문자 템플릿. {고객} {상호} {일시} {주소} {금액} {미수금} {계좌} {링크} 를 채운다. 업체가 설정에서 고칠 수 있다.
+  // 모르는 번호·링크로 보이지 않게 상호를 앞에 둔다. 재방문 안내는 광고성 문자라 (광고)·수신거부를 넣는다(정보통신망법 제50조).
   const SMS_KINDS = [
-    { id: 'remind', label: '방문 안내', text: '{고객}님 안녕하세요, {상호}입니다. {일시}에 방문 예정입니다. 변동 있으시면 편하게 연락 주세요.' },
-    { id: 'arrive', label: '출발·도착', text: '{고객}님, {상호}입니다. 지금 출발해서 곧 도착합니다.' },
-    { id: 'quote', label: '견적 안내', text: '{고객}님, {상호}입니다. 말씀하신 작업 견적은 {금액}입니다. 편하실 때 답 주시면 일정 잡아 드리겠습니다.' },
-    { id: 'pay', label: '입금 요청', text: '{고객}님, {상호}입니다. 작업 대금 {미수금} 입금 부탁드립니다. {계좌}' },
-    { id: 'done', label: '작업 완료', text: '{고객}님, 오늘 작업 마쳤습니다. 시공 내역과 AS 문의는 여기서 보실 수 있어요. {링크}' },
-    { id: 'revisit', label: '재방문 안내', text: '{고객}님 안녕하세요, {상호}입니다. 지난번 작업하고 시간이 지나 점검·관리 시기를 안내드립니다. 편하신 날 알려 주세요.' }
+    { id: 'remind', label: '방문 안내', text: '[{상호}] {고객}님, {일시}에 방문 예정입니다. 변동 있으시면 편하게 연락 주세요.' },
+    { id: 'arrive', label: '출발·도착', text: '[{상호}] {고객}님, 지금 출발해서 곧 도착합니다.' },
+    { id: 'quote', label: '견적 안내', text: '[{상호}] {고객}님, 말씀하신 작업 견적은 {금액}입니다. 편하실 때 답 주시면 일정 잡아 드리겠습니다.' },
+    { id: 'pay', label: '입금 요청', text: '[{상호}] {고객}님, 작업 대금 {미수금} 입금 부탁드립니다. {계좌}' },
+    { id: 'done', label: '작업 완료', text: '[{상호}] {고객}님, 오늘 작업 마쳤습니다. 시공 내역·보증 기간 확인과 AS 문의는 아래 링크에서 하실 수 있어요.\n{링크}' },
+    { id: 'revisit', label: '재방문 안내', text: '(광고) [{상호}] {고객}님, 지난 작업 뒤 점검·관리 시기를 안내드립니다. 편하신 날 알려 주세요.\n수신거부: \'거부\'라고 답장 주세요.' }
   ];
   function smsText(kind, job, customer, biz, extra) {
     const custom = biz && biz.sms_templates && biz.sms_templates[kind];
@@ -362,7 +363,26 @@
       링크: (extra && extra.link) || ''
     };
     return base.replace(/\{(고객|상호|일시|주소|금액|미수금|계좌|링크)\}/g, (_, k) => vars[k])
-      .replace(/[ \t]+$/gm, '').replace(/\s+$/, '');
+      .replace(/^\[\] /, '').replace(/[ \t]+$/gm, '').replace(/\s+$/, '');
+  }
+
+  // 폰 캘린더에 넣기 (.ics, 1시간 전 알림). 시각은 UTC로 적는다.
+  function icsFor(job, customer, biz) {
+    if (!job || !job.scheduled_at) return null;
+    const s = new Date(job.scheduled_at);
+    const e = new Date(s.getTime() + durationOf(job) * 60000);
+    const utc = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const day = (d) => dayKey(d).replace(/-/g, '');
+    const esc = (t) => String(t || '').replace(/[\\;,]/g, (m) => '\\' + m).replace(/\r?\n/g, '\\n');
+    const title = [customer && customer.name, WORK_TYPE_LABEL[job.work_type]].filter(Boolean).join(' ') || '작업';
+    const desc = [customer && customer.phone ? '전화 ' + fmtPhone(customer.phone) : '', job.memo || ''].filter(Boolean).join('\n');
+    return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//ainyeon//work//KO', 'BEGIN:VEVENT',
+      'UID:work-' + (job.id || 'new') + '@ainyeon.com', 'DTSTAMP:' + utc(new Date()),
+      job.all_day ? 'DTSTART;VALUE=DATE:' + day(s) : 'DTSTART:' + utc(s),
+      job.all_day ? 'DTEND;VALUE=DATE:' + day(addDays(s, 1)) : 'DTEND:' + utc(e),
+      'SUMMARY:' + esc(title), job.address ? 'LOCATION:' + esc(job.address) : null, desc ? 'DESCRIPTION:' + esc(desc) : null,
+      'BEGIN:VALARM', 'TRIGGER:-PT1H', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(title), 'END:VALARM',
+      'END:VEVENT', 'END:VCALENDAR'].filter(Boolean).join('\r\n');
   }
 
   // 네이버 블로그용 후기 글 초안 (API 없이 작업 기록으로 조립)
@@ -420,21 +440,23 @@
 
   // ── 붙여넣기 해석: 카톡·문자·숨고 메시지에서 전화·날짜·시간·주소를 뽑는다
   function parsePaste(text, today) {
-    const s = String(text || '');
+    const raw = String(text || '');
     const out = {};
-    const ph = s.match(/0\d{1,2}[\s.-]?\d{3,4}[\s.-]?\d{4}/);
+    const PHONE = /(?<!\d)0\d{1,2}[\s.-]?\d{3,4}[\s.-]?\d{4}(?!\d)/;
+    const ph = raw.match(PHONE);
     if (ph) out.phone = normPhone(ph[0]);
+    const s = raw.replace(new RegExp(PHONE.source, 'g'), ' ');           // 번호 속 숫자를 날짜로 읽지 않게
     const now = new Date(today || Date.now());
     let d = null;
-    const md = s.match(/(\d{1,2})\s*[월/.]\s*(\d{1,2})\s*일?/);
-    if (md && +md[1] >= 1 && +md[1] <= 12 && +md[2] >= 1 && +md[2] <= 31) {
-      d = new Date(now.getFullYear(), +md[1] - 1, +md[2]);
-      if (d < addDays(now, -60)) d.setFullYear(d.getFullYear() + 1);   // 12월에 받은 "1월 5일"은 내년
+    const md = s.match(/(?<![\d.])(?:(20\d{2})\s*[년/.-]\s*)?(\d{1,2})\s*[월/.]\s*(\d{1,2})(?!\d)(?!\s*(?:만|천|원|%))\s*일?/);
+    if (md && +md[2] >= 1 && +md[2] <= 12 && +md[3] >= 1 && +md[3] <= 31) {
+      d = new Date(md[1] ? +md[1] : now.getFullYear(), +md[2] - 1, +md[3]);
+      if (!md[1] && d < addDays(now, -60)) d.setFullYear(d.getFullYear() + 1);   // 12월에 받은 "1월 5일"은 내년
     } else if (/모레/.test(s)) d = addDays(now, 2);
     else if (/내일/.test(s)) d = addDays(now, 1);
     else if (/오늘/.test(s)) d = new Date(now);
     if (d) out.date = dayKey(d);
-    const tm = s.match(/(오전|오후|아침|저녁|밤)?\s*(\d{1,2})\s*(?:시|:)\s*(반|\d{1,2})?\s*분?/);
+    const tm = s.match(/(오전|오후|아침|저녁|밤)?\s*(?<![\d.])(\d{1,2})\s*(?:시(?!간)|:)\s*(반|\d{1,2})?\s*분?/);
     if (tm && !(md && tm.index === md.index)) {
       let h = +tm[2];
       const m = tm[3] === '반' ? 30 : tm[3] ? +tm[3] : 0;
@@ -462,7 +484,8 @@
   }
   function jobsCsv(jobs, customersById, fieldLabels) {
     const fl = fieldLabels || {};
-    const header = ['일정', '상태', '고객', '연락처', '주소', '공종', '작업', '품목', '합계', '받은 금액', '미수금', '수금 내역', '유입 경로', '넘긴·받은 업체', '소개 몫', '메모'];
+    const header = ['일정', '상태', '고객', '연락처', '주소', '공종', '작업', '품목', '합계', '받은 금액', '미수금', '수금 내역', '유입 경로', '넘긴·받은 업체', '소개 몫', '메모',
+      '완료일', '부가세', '보증(개월)', '확인 항목'];
     const rows = (jobs || []).map((j) => {
       const c = (customersById || {})[j.customer_id] || {};
       return [
@@ -472,7 +495,9 @@
         cleanItems(j.items).map((i) => [i.name, i.model].filter(Boolean).join(' ') + ' x' + i.qty + (i.unit || '')).join(' / '),
         toInt(j.total_amount), paid(j), unpaid(j),
         cleanPayments(j.payments).map((p) => p.at + ' ' + PAY_LABEL[p.method] + ' ' + p.amount).join(' / '),
-        SOURCE_LABEL[j.source] || '', j.referral_party || '', j.referral_fee || '', j.memo || ''
+        SOURCE_LABEL[j.source] || '', j.referral_party || '', j.referral_fee || '', j.memo || '',
+        dayKey(j.completed_at), { incl: '포함', excl: '별도', none: '없음' }[j.vat_mode] || '', j.warranty_months || '',
+        (j.checklist || []).filter((c) => c && c.value).map((c) => c.label + ': ' + c.value).join(' / ')
       ];
     });
     return toCsv(header, rows);
@@ -516,7 +541,7 @@
   }
   // 머리글 이름으로 열 찾기 (브리젤·일반 명부·에인연 내보내기 공통)
   const IMPORT_COLS = {
-    name: /^(이름|고객\s*명?|성함|고객\s*이름|상호|name)$/i,
+    name: /^(이름|성명|고객\s*명?|성함|고객\s*이름|상호|name)$/i,
     phone: /(연락처|전화|휴대폰|핸드폰|phone|mobile)/i,
     address: /(주소|현장|address)/i,
     memo: /(메모|비고|특이|note|memo)/i,
@@ -567,7 +592,7 @@
     monthSummary, last12, halfYear, bySource, revisitDue,
     SIDO, normSido, parseRegion,
     maskName, digits, normPhone, fmtPhone, telHref, smsHref, mapHref, naverMapHref, matchCustomer, findByPhone,
-    SMS_KINDS, smsText, blogDraft, planView, limitMessage, validateJob, parsePaste,
+    SMS_KINDS, smsText, icsFor, blogDraft, planView, limitMessage, validateJob, parsePaste,
     csvCell, toCsv, jobsCsv, customersCsv, parseCsv, mapImport
   };
 }));

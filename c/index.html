@@ -7,7 +7,7 @@
   <meta name="description" content="시공 이력과 보증 기간을 확인하고 AS를 문의하는 시공 카드입니다.">
   <meta name="robots" content="noindex, nofollow">
   <meta name="referrer" content="no-referrer">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://oqgoibbhnidsveueifet.supabase.co https://cdn.jsdelivr.net; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://oqgoibbhnidsveueifet.supabase.co; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
   <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
@@ -38,7 +38,8 @@
     .card-foot{text-align:center;font-size:var(--fs-4);color:var(--c-ink-faint);line-height:1.7}
     .card-foot a{color:var(--c-accent);font-weight:var(--fw-semi)}
   </style>
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- 고객 개인정보를 다루는 화면이라 버전 고정 + 무결성(SRI). 올릴 때는 해시도 함께 -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
   <script defer src="/auth.js?v=26"></script>
   <script defer src="/assets/js/ain-community.js?v=26"></script>
   <script defer src="/work/work-logic.js?v=27"></script>

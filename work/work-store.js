@@ -3,8 +3,9 @@
 //   save(table, row)        → 저장된 행 (id 있으면 수정, 없으면 등록)
 //   remove(table, id)
 //   issueCard(customerId) / revokeCard(customerId) / resolveRequest(id)
-//   addPhoto(jobId, blob, kind) / photoUrls(photos) / removePhoto(photo)
-// ponytail: 전량 로드 — 작업이 수천 건을 넘으면 기간 필터를 붙인다.
+//   addPhoto(jobId, blob, kind) / photoUrls(photos) / removePhoto(photo) / deleteRequest(id)
+//   offline() → 마지막으로 불러온 오늘·내일 일정 요약 (지하·기계실에서 읽기 전용)
+// ponytail: 전량 로드(1000행씩 나눠 읽기) — 작업이 수만 건이면 기간 필터를 붙인다.
 (function () {
   'use strict';
   const L = window.ainWorkLogic;
@@ -27,16 +28,43 @@
   // 업로드 전 줄이기: 긴 변 1600px JPEG 0.8 (버킷 한도 2MB, 폰 원본은 5MB를 넘기 쉽다)
   async function shrink(file) {
     const bmp = await createImageBitmap(file);
-    const s = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
     const cv = document.createElement('canvas');
-    cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s);
-    cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+    let blob = null;
+    for (const [side, q] of [[1600, 0.8], [1600, 0.65], [1280, 0.6], [1024, 0.55]]) {   // 버킷 한도 1MB 안으로
+      const s = Math.min(1, side / Math.max(bmp.width, bmp.height));
+      cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s);
+      cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+      blob = await new Promise((res) => cv.toBlob(res, 'image/jpeg', q));
+      if (blob.size < 950000) break;
+    }
     if (bmp.close) bmp.close();
-    return new Promise((res) => cv.toBlob(res, 'image/jpeg', 0.8));
+    return blob;
   }
   const rid = () => (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()).replace(/[^A-Za-z0-9]/g, '').slice(0, 24);
 
   // ── 실제 저장소
+  // 서버 기본 최대 1000행 → id 순으로 나눠 끝까지 읽는다 (소리 없이 잘리는 일 방지)
+  async function readAll(make) {
+    const out = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await make().order('id', { ascending: true }).range(from, from + 999);
+      if (error) throw error;
+      out.push(...data);
+      if (data.length < 1000) return out;
+    }
+  }
+  const offlineKey = (uid) => 'work_offline_' + uid;
+  function saveOffline(uid, d) {
+    const from = L.dayKey(new Date()), to = L.dayKey(L.addDays(new Date(), 1));
+    const jobs = d.jobs.filter((j) => j.scheduled_at && L.dayKey(j.scheduled_at) >= from && L.dayKey(j.scheduled_at) <= to && j.status !== 'canceled');
+    const ids = new Set(jobs.map((j) => j.customer_id));
+    try {
+      localStorage.setItem(offlineKey(uid), JSON.stringify({ at: new Date().toISOString(),
+        jobs: jobs.map((j) => ({ id: j.id, customer_id: j.customer_id, scheduled_at: j.scheduled_at, all_day: j.all_day, address: j.address, status: j.status, work_type: j.work_type, memo: j.memo })),
+        customers: d.customers.filter((c) => ids.has(c.id)).map((c) => ({ id: c.id, name: c.name, phone: c.phone })) }));
+    } catch (e) { /* 저장 공간이 없으면 건너뛴다 */ }
+  }
+
   function supabaseStore(client, userId) {
     const must = ({ data, error }) => { if (error) throw error; return data; };
     return {
@@ -45,15 +73,19 @@
       async load() {
         const [profile, customers, jobs, requests, photos, sub, pro] = await Promise.all([
           client.from('work_profiles').select('*').maybeSingle().then(must),
-          client.from('work_customers').select('*').order('created_at', { ascending: false }).limit(5000).then(must),
-          client.from('work_jobs').select('*').order('scheduled_at', { ascending: false, nullsFirst: true }).limit(5000).then(must),
-          client.from('work_card_requests').select('*').order('created_at', { ascending: false }).limit(200).then(must),
-          client.from('work_photos').select('*').order('created_at', { ascending: true }).limit(5000).then(must),
+          readAll(() => client.from('work_customers').select('*')),
+          readAll(() => client.from('work_jobs').select('*')),
+          client.from('work_card_requests').select('*').order('created_at', { ascending: false }).limit(500).then(must),
+          readAll(() => client.from('work_photos').select('*')),
           client.from('subscriptions').select('source,current_period_end').maybeSingle().then(must),
           client.rpc('work_is_pro').then(must)
         ]);
-        return { profile: profile || {}, customers, jobs, requests, photos, sub, isPro: !!pro };
+        const d = { profile: profile || {}, customers: customers.reverse(), jobs: jobs.reverse(), requests, photos, sub, isPro: !!pro };
+        saveOffline(userId, d);
+        return d;
       },
+      offline() { try { return JSON.parse(localStorage.getItem(offlineKey(userId)) || 'null'); } catch (e) { return null; } },
+      deleteRequest: (id) => client.from('work_card_requests').delete().eq('id', id).then(must),
       async save(table, row) {
         const body = pick(table, row);
         if (table === 'work_profiles') {
@@ -192,6 +224,8 @@
       async issueCard(customerId) { const c = state.customers.find((x) => x.id === customerId); c.card_token = 'demo'; return 'demo'; },
       async revokeCard(customerId) { const c = state.customers.find((x) => x.id === customerId); c.card_token = null; },
       async resolveRequest(id) { const r = state.requests.find((x) => x.id === id); r.resolved_at = new Date().toISOString(); return clone(r); },
+      async deleteRequest(id) { state.requests = state.requests.filter((r) => r.id !== id); },
+      offline() { return null; },
       async addPhoto(jobId, file, kind) {
         if (state.photos.filter((p) => p.job_id === jobId).length >= L.PLAN.pro.photosPerJob) throw new Error('photo_limit_job');
         const p = { id: ++seq, job_id: jobId, path: 'demo/' + jobId + '/' + rid() + '.jpg', kind: kind || 'etc', created_at: new Date().toISOString() };
@@ -204,5 +238,5 @@
     };
   }
 
-  window.ainWorkStore = { supabaseStore, demoStore, shrink, COLS };
+  window.ainWorkStore = { supabaseStore, demoStore, shrink, COLS, offlineKey };
 })();

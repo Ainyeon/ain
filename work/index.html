@@ -7,7 +7,7 @@
   <meta name="description" content="현장 기술자를 위한 업무 관리 — 오늘 일정, 고객 장부, 1분 견적서, 수금·미수금, 시공 카드와 AS 문의까지 폰 하나로.">
   <meta name="robots" content="noindex">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://oqgoibbhnidsveueifet.supabase.co; connect-src 'self' https://oqgoibbhnidsveueifet.supabase.co wss://oqgoibbhnidsveueifet.supabase.co https://cdn.jsdelivr.net; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://oqgoibbhnidsveueifet.supabase.co; connect-src 'self' https://oqgoibbhnidsveueifet.supabase.co wss://oqgoibbhnidsveueifet.supabase.co; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
   <link rel="canonical" href="https://ainyeon.com/work/">
   <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
@@ -17,7 +17,8 @@
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
   <link rel="stylesheet" href="/assets/css/components.css?v=26">
   <link rel="stylesheet" href="/work/work.css?v=27">
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- 고객 개인정보를 다루는 화면이라 버전 고정 + 무결성(SRI). 올릴 때는 해시도 함께 -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
   <script defer src="/auth.js?v=26"></script>
   <script defer src="/assets/js/ain-common.js?v=26"></script>
   <script defer src="/assets/js/ain-community.js?v=26"></script>

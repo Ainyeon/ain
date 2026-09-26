@@ -125,7 +125,14 @@ assert.strictEqual(L.smsHref('010-1234-5678', '안녕 &'), 'sms:01012345678?&bod
 assert.ok(L.mapHref('인천 서구 청라동').startsWith('https://map.kakao.com/link/search/'));
 assert.ok(L.smsText('remind', { scheduled_at: new Date(2026, 8, 26, 10).toISOString() }, { name: '김고객' }, { biz_name: '시원설비' }).includes('9월 26일 (토) 오전 10:00'));
 assert.strictEqual(L.smsText('pay', { status: 'done', total_amount: 100000, payments: pay([[30000, '', 'cash']]) }, { name: '김고객' }, { biz_name: '시원설비', account: '농협 123' }),
-  '김고객님, 시원설비입니다. 작업 대금 70,000원 입금 부탁드립니다. 농협 123');
+  '[시원설비] 김고객님, 작업 대금 70,000원 입금 부탁드립니다. 농협 123');
+assert.ok(L.smsText('revisit', null, { name: '김' }, { biz_name: 'A' }).startsWith('(광고) [A] 김님'), '재방문 안내는 광고 표시');
+assert.ok(L.smsText('revisit', null, { name: '김' }, { biz_name: 'A' }).includes('수신거부'));
+assert.ok(L.smsText('remind', {}, { name: '김' }, {}).startsWith('김님'), '상호가 비면 [] 없이');
+const ics = L.icsFor({ id: 7, work_type: 'clean', scheduled_at: new Date(Date.UTC(2026, 9, 1, 5, 0)).toISOString(), address: '인천 서구, 청라동', memo: 'a;b' }, { name: '김', phone: '01012345678' }, {});
+assert.ok(ics.includes('DTSTART:20261001T050000Z') && ics.includes('DTEND:20261001T063000Z'), '세척 기본 90분');
+assert.ok(ics.includes('LOCATION:인천 서구\\, 청라동') && ics.includes('TRIGGER:-PT1H') && ics.includes('a\\;b'));
+assert.strictEqual(L.icsFor({ scheduled_at: null }), null);
 assert.strictEqual(L.smsText('arrive', {}, { name: '김' }, { biz_name: 'A', sms_templates: { arrive: '{고객}님 {상호} 도착 {없는키}' } }), '김님 A 도착 {없는키}', '업체가 고친 문구');
 assert.ok(L.smsText('done', {}, {}, {}, { link: 'https://ainyeon.com/c/#t=x' }).endsWith('https://ainyeon.com/c/#t=x'));
 const blog = L.blogDraft({ address: '인천 서구 청라동', work_type: 'clean', completed_at: new Date(2026, 8, 20).toISOString(),
@@ -159,6 +166,12 @@ assert.deepStrictEqual(L.parsePaste('안녕하세요 에어컨 청소 문의요\
 assert.deepStrictEqual(L.parsePaste('내일 3시 반 가능? 01012345678', today2), { phone: '01012345678', date: '2026-09-27', time: '15:30' });
 assert.strictEqual(L.parsePaste('1/5 오전 10시', new Date(2026, 11, 20)).date, '2027-01-05', '연말에 받은 1월 날짜는 내년');
 assert.deepStrictEqual(L.parsePaste('그냥 인사', today2), {});
+// 리뷰에서 찾은 오인식: 전화번호 숫자·금액·"5시간"을 날짜·시간으로 읽지 않는다, 연도 표기는 읽는다
+assert.deepStrictEqual(L.parsePaste('010.2345.6789 연락주세요', today2), { phone: '01023456789' });
+assert.deepStrictEqual(L.parsePaste('견적 9.5만원이요', today2), {});
+assert.deepStrictEqual(L.parsePaste('5시간 걸려요?', today2), {});
+assert.deepStrictEqual(L.parsePaste('2026.10.2 오전 10시', today2), { date: '2026-10-02', time: '10:00' });
+assert.deepStrictEqual(L.parsePaste('10월 2일 오후 2시 010-1111-2222', today2), { phone: '01011112222', date: '2026-10-02', time: '14:00' });
 
 
 // CSV: BOM, 따옴표, 수식 주입 차단
@@ -187,6 +200,8 @@ assert.strictEqual(im.customers[0].last, '2026-07-10', '같은 번호는 최근 
 assert.strictEqual(im.customers[0].memo, '벽걸이\n2대 / 재방문');
 assert.strictEqual(im.customers[1].phone, '021234567');
 assert.strictEqual(im.skipped, 0);
+assert.strictEqual(L.mapImport(L.parseCsv('성명,전화\n홍길동,01012345678')).customers[0].name, '홍길동', '성명 머리글');
+assert.ok(L.jobsCsv([], {}, {}).includes('완료일,부가세,보증(개월),확인 항목'), 'CSV에 완료일·부가세·보증·확인 항목');
 assert.strictEqual(L.checklistFor('ac-install', 'install')[0], '배관 길이(m)');
 assert.deepStrictEqual(L.checklistFor('tile', 'repair'), []);
 assert.strictEqual(L.durationOf({ work_type: 'install' }), 240);

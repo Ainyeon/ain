@@ -172,7 +172,7 @@ await fails(as(B, `insert into public.work_photos (job_id, path) values (${jA.id
 ok('사진 예약 업로드·한도·경로·스토리지 정책');
 
 // 월 1000장: 지워도 줄지 않는 카운터 (올리고 지우기 반복 차단)
-await db.exec(`update public.work_usage set photos = 999 where user_id = '${A}'`);
+await db.exec(`update public.work_usage set photos = ${L.PLAN.pro.photosPerMonth - 1} where user_id = '${A}'`);
 await reserve(A, jA2.id, 'm0000000.jpg');
 await as(A, `delete from public.work_photos where job_id = ${jA2.id}`);
 await fails(reserve(A, jA2.id, 'm0000001.jpg'), /photo_limit_month/, '월 한도: 삭제 후 재등록도 센다');
@@ -191,8 +191,9 @@ ok('베타 종료 뒤 무료 전환');
 await fails(as(A, `select public.admin_set_plan('${A}', now() + interval '30 days', 'x')`), /admin only/, '비관리자 부여');
 await as(ADMIN, `select public.admin_set_plan('${A}', now() + interval '30 days', '계좌이체 확인')`);
 assert.equal((await one(A, 'select public.work_is_pro() as v')).v, true, '수동 부여 → 프로');
-assert.equal((await as(A, 'select * from public.subscriptions')).length, 1, '내 구독은 보임');
-assert.equal((await as(B, 'select * from public.subscriptions')).length, 0, '남의 구독 안 보임');
+assert.equal((await as(A, 'select source, current_period_end from public.subscriptions')).length, 1, '내 구독은 보임');
+await fails(as(A, 'select note from public.subscriptions'), /permission denied/, '관리자 메모는 안 보임');
+assert.equal((await as(B, 'select source, current_period_end from public.subscriptions')).length, 0, '남의 구독 안 보임');
 await reserve(A, jA2.id, 'granted0.jpg');
 await as(ADMIN, `select public.admin_set_plan('${A}', null, '환불')`);
 assert.equal((await one(A, 'select public.work_is_pro() as v')).v, false, '회수 → 무료');
@@ -263,14 +264,15 @@ assert.ok(reqs[0].message.startsWith('<img'), '문의 원문은 그대로 저장
 assert.equal((await as(B, 'select * from public.work_card_requests')).length, 0, '남의 문의 안 보임');
 await as(A, `update public.work_card_requests set resolved_at = now() where id = ${reqs[0].id}`);
 await fails(as(A, `update public.work_card_requests set message = '조작' where id = ${reqs[1].id}`), /permission denied/, '문의 내용 수정 불가');
-await fails(as(A, `delete from public.work_card_requests where id = ${reqs[1].id}`), /permission denied/, '문의 삭제 불가(기록 보존)');
+assert.equal((await as(B, `delete from public.work_card_requests where id = ${reqs[1].id} returning id`)).length, 0, '남의 문의 삭제 0행');
+assert.equal((await as(A, `delete from public.work_card_requests where id = ${reqs[2].id} returning id`)).length, 1, '업체는 고객 요구 시 문의 삭제 가능');
 assert.equal((await as(B, `update public.work_card_requests set resolved_at = now() where id = ${reqs[1].id} returning id`)).length, 0);
-ok('AS 문의 제출·제한·격리·보존');
+ok('AS 문의 제출·제한·격리·삭제');
 
 // 작업 삭제 → 사진 행 연쇄 삭제, 고객·문의는 남음
 await as(A, `delete from public.work_jobs where id = ${jA.id}`);
 assert.equal((await as(A, `select * from public.work_photos where job_id = ${jA.id}`)).length, 0);
-assert.equal((await as(A, `select * from public.work_card_requests`)).length, 3);
+assert.equal((await as(A, `select * from public.work_card_requests`)).length, 2);
 assert.equal((await one(null, `select public.get_card($1) as c`, [tok2])).c.jobs.length, 0, '완료 작업이 없으면 빈 이력');
 // 고객 삭제 → 카드·문의 함께 삭제
 await as(A, `delete from public.work_customers where id = ${cA.id}`);
@@ -296,6 +298,15 @@ const mutated2 = SQL.replace(/revoke all on function public\.issue_card\(bigint\
 const db3 = new PGlite();
 await db3.exec(STUB);
 await fails(db3.exec(mutated2), /anon 실행 가능/, '단언 블록이 함수 revoke 누락을 잡는다');
+// 남아 있던 시험 정책(using true)과 bucket_id 없는 storage 정책도 잡는다
+const db4 = new PGlite();
+await db4.exec(STUB);
+await db4.exec(SQL);
+await db4.exec(`create policy "leftover" on public.work_jobs for select to authenticated using (true)`);
+await fails(db4.exec(SQL), /예상 밖 정책/, '남은 정책');
+await db4.exec('rollback');   // 실패한 적용은 트랜잭션째 롤백된다
+await db4.exec(`drop policy "leftover" on public.work_jobs; create policy "anyone uploads" on storage.objects for insert to authenticated with check (true)`);
+await fails(db4.exec(SQL), /bucket_id 조건 없는 storage 정책/, '버킷 조건 없는 storage 정책');
 ok('권한 단언 블록 음성 대조');
 
 console.log(`test-work-sql: OK (${n}개 묶음)`);

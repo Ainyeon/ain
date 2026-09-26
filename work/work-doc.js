@@ -12,14 +12,22 @@
   }
 
   // 사진 → ImageBitmap. 서명 URL은 fetch→blob으로 받아 캔버스를 오염시키지 않는다.
+  // data:·blob: 주소는 <img>로 읽는다(CSP img-src 허용, connect-src 밖). 서명 URL(https)만 fetch.
+  async function fromImg(url) {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return createImageBitmap(img);
+  }
   async function toBitmap(src) {
     if (src instanceof Blob) return createImageBitmap(src);
+    if (/^(data|blob):/.test(src)) return fromImg(src);
     const res = await fetch(src);
     return createImageBitmap(await res.blob());
   }
   async function loadImage(dataUrl) {
     if (!dataUrl) return null;
-    try { return await createImageBitmap(await (await fetch(dataUrl)).blob()); } catch (e) { return null; }
+    try { return await fromImg(dataUrl); } catch (e) { return null; }
   }
 
   // kind: 'quote' | 'report'. d = { job, customer, biz, pro, photos: [Blob|url], fieldLabel }
@@ -32,7 +40,8 @@
     const logo = d.pro ? await loadImage(d.biz.logo_data) : null;
     const job = d.job, biz = d.biz || {}, cust = d.customer || {};
     const items = L.cleanItems(job.items);
-    const t = L.totals(items, job.vat_mode);
+    // 품목 없이 합계만 적은 작업은 저장된 합계를 쓴다
+    const t = items.length ? L.totals(items, job.vat_mode) : { supply: L.toInt(job.total_amount), vat: 0, total: L.toInt(job.total_amount) };
     const checks = (job.checklist || []).filter((c) => c && c.value);
     const title = kind === 'quote' ? '견 적 서' : '작업 보고서';
     const when = kind === 'quote' ? new Date() : new Date(job.completed_at || job.scheduled_at || Date.now());
@@ -98,7 +107,7 @@
         text(v, W - M - 16, y, `${big ? 800 : 600} ${big ? 40 : 27}px ${F}`, big ? C.accent : C.ink, 'right');
         y += big ? 64 : 44;
       };
-      if (job.vat_mode !== 'none') { sumRow('공급가액', L.won(t.supply)); sumRow('부가세', L.won(t.vat)); }
+      if (job.vat_mode !== 'none' && items.length) { sumRow('공급가액', L.won(t.supply)); sumRow('부가세', L.won(t.vat)); }
       sumRow(job.vat_mode === 'excl' ? '합계 (부가세 포함)' : job.vat_mode === 'incl' ? '합계 (부가세 포함)' : '합계', L.won(t.total), true);
       if (kind === 'report') {
         const p = L.paid(job);
@@ -141,7 +150,7 @@
         y += 100;
       }
       const notes = [];
-      if (kind === 'quote' && biz.quote_note) notes.push(biz.quote_note);
+      if (kind === 'quote') notes.push(biz.quote_note || '이 견적은 작성일로부터 30일 동안 유효합니다. 현장 상황에 따라 금액이 달라질 수 있습니다.');
       if (biz.account) notes.push('입금 계좌  ' + biz.account);
       if (notes.length) {
         y += 6;

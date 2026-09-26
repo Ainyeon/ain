@@ -69,9 +69,8 @@
 
     out.push(asForm(c));
     out.push(h('p', { class: 'card-foot' },
-      '이 페이지에는 고객님 이름 일부와 시·군·구까지만 보이며, 금액·연락처·상세 주소는 표시하지 않습니다.', h('br'),
-      '문의에 남긴 연락처는 이 업체에만 전달됩니다.',
-      c.pro ? null : [h('br'), '에인연 업무로 만든 시공 카드 · ', h('a', { href: '/pricing/', text: '현장 기술자라면' })]));
+      '이 페이지에는 고객님 이름 일부와 시·군·구까지만 보이며, 금액·고객 연락처·상세 주소는 표시하지 않습니다.',
+      c.pro ? null : [h('br'), '에인연 업무로 만든 시공 카드']));
     root.replaceChildren(...out);
   }
 
@@ -96,15 +95,20 @@
         }
         const label = kinds.find((k) => k[0] === kind)[1];
         const smsBody = '[시공 카드 문의] ' + label + '\n' + text + (contact.value.trim() ? '\n연락처 ' + L.fmtPhone(contact.value) : '') + '\n' + location.href;
-        box.replaceChildren(h('div', { class: 'w-note', text: isDemo ? '체험용 카드라 실제로 접수되지는 않았어요. 실제 카드에서는 업체 업무 화면의 "오늘"에 바로 뜹니다.' : '접수됐어요. 업체 업무 화면에 표시됩니다.' }),
-          c.biz_phone ? h('a', { class: 'w-btn primary', href: L.smsHref(c.biz_phone, smsBody) }, '업체에 문자로도 알리기 (더 빨라요)') : null);
+        box.replaceChildren(h('div', { class: 'w-note', text: isDemo ? '체험용 카드라 실제로 접수되지는 않았어요. 실제 카드에서는 업체 업무 화면의 "오늘"에 바로 뜹니다.'
+          : '접수됐어요. 업체가 앱을 열면 바로 보입니다. 더 빨리 연락받으려면 아래 문자도 보내 주세요.' }),
+          c.biz_phone ? h('a', { class: 'w-btn primary', href: L.smsHref(c.biz_phone, smsBody) }, '업체에 문자 보내기') : null);
+        // 업체 폰으로 바로 알림이 가도록 문자 앱을 연다 (발송은 고객이 누른다. 막히면 위 버튼)
+        if (c.biz_phone && !isDemo) location.href = L.smsHref(c.biz_phone, smsBody);
       } catch (e) {
         console.error(e);
         send.disabled = false;
         status.replaceChildren(h('div', { class: 'w-warn', text: L.limitMessage(e) || '접수하지 못했어요. 업체에 전화로 연락해 주세요.' }));
       }
     }
-    box.append(h('div', { class: 'card-kinds', role: 'radiogroup', 'aria-label': '문의 종류' }, radios), msg, contact, status, send);
+    const notice = h('p', { class: 'w-meta' }, '남기신 내용과 연락처(선택)는 이 업체에만 전달되며, 업체가 처리한 뒤 지울 수 있습니다. ',
+      h('a', { href: '/legal/privacy/', target: '_blank', rel: 'noopener', text: '개인정보처리방침' }));
+    box.append(h('div', { class: 'card-kinds', role: 'radiogroup', 'aria-label': '문의 종류' }, radios), msg, contact, notice, status, send);
     return h('section', { class: 'panel' }, h('div', { class: 'phead' }, h('h2', { text: 'AS·재설치 문의' })), box);
   }
 
