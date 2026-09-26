@@ -174,8 +174,7 @@
           h('li', { text: '엑셀(CSV) 가져오기·내보내기 — 내 데이터는 언제든 가지고 나갑니다' })),
         h('div', { class: 'w-actions' },
           btn('카카오로 로그인하고 시작', () => ainAuth.getClient().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/work/' } }), 'primary'),
-          linkBtn('로그인 없이 체험하기', '/work/?demo=1'),
-          linkBtn('요금제 보기', '/pricing/')),
+          linkBtn('로그인 없이 체험하기', '/work/?demo=1')),
         h('p', { class: 'w-note', text: '베타 기간(' + L.planView(true, null).betaEndLabel + '까지)에는 프로 기능까지 모두 무료입니다. 끝나도 자동으로 결제되지 않고 무료로 돌아갑니다. 작업·고객·일정·수금·시공 카드는 무료에서도 제한 없이 씁니다.' })))
     );
   }
@@ -1146,7 +1145,7 @@
           h('li', { text: '무료: 작업·고객·일정·수금·시공 카드·AS 문의·견적서·보고서·엑셀 가져오기/내보내기 — 건수 제한 없음' }),
           h('li', { text: '프로: 사진 서버 보관(작업당 ' + L.PLAN.pro.photosPerJob + '장, 월 ' + L.PLAN.pro.photosPerMonth + '장), 업체 로고, 문서·카드의 에인연 표기 제거' }),
           h('li', { text: '계획(확정 아님): 3D 배치도 — 현장 사진·치수로 설치 위치 미리보기' })),
-        h('div', { class: 'w-actions' }, linkBtn('요금제 자세히', '/pricing/'), linkBtn('이용약관', '/legal/terms/'), linkBtn('개인정보처리방침', '/legal/privacy/')))),
+)),
       panel('데이터', 'doc', h('div', { class: 'w-pad w-actions' }, btn('작업 엑셀(CSV) 내보내기', exportJobs), btn('고객 엑셀(CSV) 내보내기', exportCustomers), linkBtn('엑셀로 고객 가져오기', '#import'),
         h('div', { class: 'w-note', text: '업무 데이터는 내 계정에서만 보이게 저장됩니다. 운영자는 법령상 요구나 내가 요청한 장애 대응 외에는 열람하지 않습니다. 고객·작업·수금 기록은 무료에서도 언제든 엑셀로 내보낼 수 있어요(사진은 작업 화면에서 길게 눌러 저장). 백업은 보장하지 않으니 정기적으로 내보내 두세요.' })))
     ];

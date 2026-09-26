@@ -106,8 +106,7 @@
         status.replaceChildren(h('div', { class: 'w-warn', text: L.limitMessage(e) || '접수하지 못했어요. 업체에 전화로 연락해 주세요.' }));
       }
     }
-    const notice = h('p', { class: 'w-meta' }, '남기신 내용과 연락처(선택)는 이 업체에만 전달되며, 업체가 처리한 뒤 지울 수 있습니다. ',
-      h('a', { href: '/legal/privacy/', target: '_blank', rel: 'noopener', text: '개인정보처리방침' }));
+    const notice = h('p', { class: 'w-meta', text: '남기신 내용과 연락처(선택)는 이 업체에만 전달되며, 업체가 처리한 뒤 지울 수 있습니다.' });
     box.append(h('div', { class: 'card-kinds', role: 'radiogroup', 'aria-label': '문의 종류' }, radios), msg, contact, notice, status, send);
     return h('section', { class: 'panel' }, h('div', { class: 'phead' }, h('h2', { text: 'AS·재설치 문의' })), box);
   }

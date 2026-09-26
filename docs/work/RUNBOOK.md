@@ -10,7 +10,7 @@
    - 시공 카드 링크를 문자로 보내고 고객 폰에서 열기
    - AS 문의가 오늘 화면에 뜨는지
    - 견적서 공유와 인쇄
-4. `legal/terms`, `legal/privacy`의 〔채울 것〕을 채운다. `node tools/check-legal.js`가 OK인지 본 뒤 법률 검토를 받는다.
+4. `_dev/legal/terms`, `_dev/legal/privacy`의 〔채울 것〕을 채운다. `node tools/check-legal.js`가 OK이고 법률 검토를 받은 뒤 `legal/`로 옮겨 공개하고, /work/ 푸터·카드 문의 고지에 링크를 다시 단다.
 5. 배포 전 회귀 체크(CLAUDE.md)를 하고 main에 합친다.
 
 ## 2. 유료 부여·회수 (계좌이체 확인 후)
@@ -41,7 +41,7 @@ select o.name from storage.objects o where o.bucket_id = 'work'
 세 곳을 같이 바꾼다.
 - `supabase/17_work.sql`의 `work_user_is_pro()` 날짜(SQL 재실행)
 - `work/work-logic.js`의 `PLAN.betaEnd`(`?v=`와 sw VERSION도 올린다)
-- `/pricing/`·약관 문구
+- `_dev/pricing/`·약관 문구
 `tools/test-work-sql.mjs`가 SQL과 JS 날짜가 같은지 검사한다.
 
 ## 5. 용량

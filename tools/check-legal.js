@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const root = path.resolve(__dirname, '..');
 let bad = 0;
-for (const f of ['legal/terms/index.html', 'legal/privacy/index.html']) {
+for (const f of ['_dev/legal/terms/index.html', '_dev/legal/privacy/index.html']) {
   const s = fs.readFileSync(path.join(root, f), 'utf8');
   const left = s.match(/〔채울 것:[^〕]*〕/g) || [];
   if (left.length) { bad += left.length; console.error(f + ': ' + left.length + '곳 — ' + [...new Set(left)].join(', ')); }
