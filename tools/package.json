@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "검사 스크립트 전용 의존성. 사이트 빌드와 무관 (정적 사이트). 설치: npm i --prefix tools",
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.0"
+  }
+}

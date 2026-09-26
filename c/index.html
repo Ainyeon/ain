@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>시공 카드 | 시공 이력 · AS 문의</title>
+  <meta name="description" content="시공 이력과 보증 기간을 확인하고 AS를 문의하는 시공 카드입니다.">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://oqgoibbhnidsveueifet.supabase.co https://cdn.jsdelivr.net; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="theme-color" content="#F3F2EF">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
+  <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
+  <link rel="stylesheet" href="/assets/css/components.css?v=26">
+  <link rel="stylesheet" href="/work/work.css?v=27">
+  <style>
+    /* 고객(소비자)이 보는 공개 페이지: 기술자용 탭바·설치 배너·서비스워커 없이 토큰만 */
+    .card-wrap{max-width:560px;margin:0 auto;padding:var(--sp-5) var(--sp-4) var(--sp-9);display:grid;gap:var(--sp-4)}
+    .card-biz{display:grid;gap:var(--sp-2);padding:var(--sp-5) var(--sp-4)}
+    .card-biz img{max-height:56px;max-width:180px;object-fit:contain}
+    .card-biz h1{font-size:var(--fs-1);font-weight:var(--fw-bold);letter-spacing:-0.02em}
+    .card-biz p{color:var(--c-ink-sub);font-size:var(--fs-3)}
+    .card-call{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-2);padding:0 var(--sp-4) var(--sp-4)}
+    .card-call .w-btn{min-height:52px;font-size:var(--fs-2)}
+    .card-warranty{margin:0 var(--sp-4) var(--sp-4);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-2);
+      background:var(--c-accent-bg);border:1px solid var(--c-accent-line);color:var(--c-accent);font-weight:var(--fw-bold)}
+    .card-warranty.over{background:var(--c-surface-sub);border-color:var(--c-line);color:var(--c-ink-sub)}
+    .card-job{padding:var(--sp-4);border-top:1px solid var(--c-line);display:grid;gap:var(--sp-2)}
+    .card-job:first-child{border-top:0}
+    .card-job h3{font-size:var(--fs-2);font-weight:var(--fw-bold)}
+    .card-job ul{list-style:none;display:grid;gap:2px;font-size:var(--fs-3);color:var(--c-ink-sub)}
+    .card-kinds{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+    .card-kinds label{display:inline-flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:0 var(--sp-3);
+      border:1px solid var(--c-line-strong);border-radius:var(--r-1);font-size:var(--fs-3);background:var(--c-surface)}
+    .card-kinds input{width:18px;height:18px}
+    .card-foot{text-align:center;font-size:var(--fs-4);color:var(--c-ink-faint);line-height:1.7}
+    .card-foot a{color:var(--c-accent);font-weight:var(--fw-semi)}
+  </style>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="/auth.js?v=26"></script>
+  <script defer src="/assets/js/ain-community.js?v=26"></script>
+  <script defer src="/work/work-logic.js?v=27"></script>
+  <script defer src="/c/card.js?v=27"></script>
+</head>
+<body>
+  <main class="card-wrap" id="card" aria-live="polite"><div class="empty">시공 카드를 여는 중</div></main>
+</body>
+</html>

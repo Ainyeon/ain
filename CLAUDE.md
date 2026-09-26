@@ -32,10 +32,13 @@
 ## 배포 전 회귀 체크 (P1 회귀 사고 이후 강제 — 2026-07-10)
 "새로 만든 것" 검증만으론 부족하다. 기존 기능 보존을 아래 목록으로 확인한 뒤에만 push:
 1. **전 라우트 200 + 렌더**: `/` `/calendar/` `/prices/` `/gov/` `/news/` `/maker/`
-   `/maker/notice/` `/maker/compare/` `/board/free/` `/board/proposal/` `/me/` — 390px·1280px 각각
+   `/maker/notice/` `/maker/compare/` `/board/free/` `/board/proposal/` `/me/` `/edu/` `/area/`
+   `/work/`(비로그인 안내) `/work/?demo=1`(오늘·일정·작업·고객·매출·설정) `/c/#demo` `/pricing/`
+   `/legal/terms/` `/legal/privacy/` — 390px·1280px 각각
 2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
 3. **구 기능 목록 통과**: 메이커 캔버스 실렌더(#cv 크기>0) · 게시판 게이트/티저 렌더 ·
-   입주 게이팅(비로그인 잠금 카드) · 시세 실데이터
+   입주 게이팅(비로그인 잠금 카드) · 시세 실데이터 · 업무 데모 견적서/보고서 이미지 생성 · 카드 데모 문의 접수
+   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`(PGlite) · 약관을 채운 뒤 `node tools/check-legal.js`
 4. **룩 혼재 push 금지**: 전 라우트가 design-tokens/components만 소비하는지
    `grep -rln "assets/css/ain.css" --include="*.html" .` 로 확인 (legacy/ 제외 0이어야 함)
 5. **로그인 필요 기능**(글 작성·삭제, 단지명 열람)은 무인 검증 불가 — 종료 요약에 사각으로 명시
@@ -66,5 +69,8 @@
   제안 상태 확장 · notice_complexes · 연락처 정리 트리거 · 반복 작성 RPC.
   단지명 시드 1건도 같은 날 적용(공개 repo 밖 파일).
   실제 로그인 계정의 관심 저장·내 활동 조회와 익명 선택지 노출을 확인
+- 작업 중(2026-09-26, 브랜치 feat/work-pro): 업무 관리 /work/ · 시공 카드 /c/ · 요금제 /pricing/ · 약관·처리방침 초안.
+  스펙 docs/work/SPEC.md. **supabase/17_work.sql 미적용**(사용자 검토 후 SQL Editor 실행). sw ain-v27, 업무 자산 ?v=27.
+  업무·카드 화면은 innerHTML 금지(test-work-contract.js가 검사). 베타 종료일은 SQL work_user_is_pro()와 work-logic.js PLAN.betaEnd 두 곳.
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10

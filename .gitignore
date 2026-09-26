@@ -24,3 +24,4 @@ API.ini
 *credential*
 *.pem
 *.key
+node_modules/
