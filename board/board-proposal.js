@@ -166,7 +166,7 @@
 
   async function renderDetail(me, id) {
     const [r, { data: votes }, { data: cmts }] = await Promise.all([
-      C().readPosts((q) => q.eq('id', id), me.user.id),
+      C().readPosts((q) => q.eq('id', id).eq('board_type', 'proposal'), me.user.id),
       db().from('votes').select('post_id,user_id,vote').eq('post_id', id),
       db().from('comments').select('id,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('post_id', id).order('created_at')
     ]);

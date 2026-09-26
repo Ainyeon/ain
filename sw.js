@@ -103,7 +103,7 @@ self.addEventListener('fetch', (e) => {
           caches.open(SHELL_CACHE).then((c) => c.put(req, copy));
           return res;
         })
-        .catch(() => caches.match(req).then((hit) => hit || caches.match('/')))
+        .catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || caches.match('/')))   // /edu/jobs/?kind= 등 쿼리 붙은 주소도 오프라인 셸로
     );
     return;
   }

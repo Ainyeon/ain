@@ -156,5 +156,18 @@ const settle = async () => { for (let i = 0; i < 12; i++) await new Promise((r) 
     assert.ok(!html.includes('undefined'), '빈 값이 undefined로 새어 나왔다');
   }
 
-  console.log('edu-auto OK — 뷰 부재 폴백 · 병합 · 중복 제거 · 충돌 표시 · 이미지 게이트');
+  // 6. 모양이 어긋난 행 — 페이지가 멈추지 않고, http(s)가 아닌 원문 주소는 링크로 쓰지 않는다
+  {
+    const BAD = Object.assign({}, AUTO_ROW, {
+      notice_id: 'AUTO-KRRC-bad0000000', title: '모양이 어긋난 자동 수집분',
+      detail_url: 'javascript:alert(1)',
+      fields: Object.assign({}, AUTO_ROW.fields, { work_codes: 'hvac', conflicts: {}, images: 'x' })
+    });
+    const g = run({ eduRows: [BAD], search: '?id=' + encodeURIComponent(BAD.notice_id) });
+    await g.boot(); await settle();
+    assert.ok(g.panel.innerHTML.includes('모양이 어긋난 자동 수집분'), 'jsonb 모양이 어긋난 행 때문에 화면이 멈췄다');
+    assert.ok(!g.panel.innerHTML.includes('javascript:'), 'http(s)가 아닌 원문 주소가 href로 나갔다');
+  }
+
+  console.log('edu-auto OK — 뷰 부재 폴백 · 병합 · 중복 제거 · 충돌 표시 · 이미지 게이트 · 모양 방어');
 })().catch((e) => { console.error(e.message); process.exitCode = 1; });

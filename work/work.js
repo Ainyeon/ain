@@ -328,7 +328,7 @@
     }
     if (due.length) out.push(panel('다시 연락할 고객', 'user', h('div', { class: 'rows' }, due.slice(0, 8).map(revisitRow)), h('span', { class: 'cnt num', text: String(due.length) })));
     const nearby = h('div', { class: 'rows' }, h('div', { class: 'empty', text: '확인 중' }));
-    out.push(panel('내 작업 지역 입주 예정 단지', 'home', nearby, h('a', { class: 'more', href: '/area/', text: '내 지역' })));
+    out.push(panel('내 작업 지역 입주 예정 단지', 'home', nearby, h('a', { class: 'more', href: '/area/', text: '입주정보' })));
     loadNearby(nearby);
     return out;
   }

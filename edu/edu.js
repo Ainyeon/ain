@@ -56,7 +56,9 @@
   function fromDb(row) {
     const f = row.fields || {};
     const labels = (DATA && DATA.field_labels) || {};
-    const codes = f.work_codes || [];
+    const arr = (v) => Array.isArray(v) ? v : [];   // jsonb 모양이 어긋나도 페이지 전체가 멈추지 않게
+    const codes = arr(f.work_codes);
+    const conflicts = arr(f.conflicts);
     return {
       id: row.notice_id,
       record_type: row.record_type || '과정소개',
@@ -79,8 +81,8 @@
       capacity_raw: f.capacity_raw || '',
       seats_level: f.capacity_raw ? '정원 표기만 있음. 정원은 잔여석이 아니며 잔여석은 미확인' : '',
       // 원문 안에서 표기가 엇갈린 항목은 전부 이어 붙여 그대로 보여 준다 (어느 쪽도 고르지 않는다)
-      conflict: (f.conflicts || []).length
-        ? { kind: f.conflicts[0].kind, text: f.conflicts.map((c) => c.text).join(' / ') } : null,
+      conflict: conflicts.length
+        ? { kind: conflicts[0].kind, text: conflicts.map((c) => c.text).join(' / ') } : null,
       status_label: row.status === 'closed' ? '원문에 적힌 접수 마감이 지남'
         : row.apply_end_at ? '접수 마감일시 명시' : '접수 마감 미확인',
       cost_raw: f.cost_raw || '',
@@ -91,7 +93,7 @@
       cert_type: '',
       cert_basis: '',
       org_claim: '없음',
-      url: row.detail_url,
+      url: isHttpUrl(row.detail_url) ? row.detail_url : '',
       url_note: '',
       url_aux: row.list_url && row.list_url !== row.detail_url ? row.list_url : '',
       url_aux_note: row.list_url ? '기관 목록 페이지' : '',
@@ -105,7 +107,7 @@
       group: groupOfAuto(row, f),
       parse_status: row.parse_status,
       parse_note: row.parse_note,
-      images: f.images || []
+      images: arr(f.images)
     };
   }
 

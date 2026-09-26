@@ -142,7 +142,8 @@
       const { data, error } = await db().from('move_in_teaser')
         .select('region,sido,sigungu,move_in_month,stage,total_count');
       if (error) return tabs + '<div class="edu-note"><b>입주 정보를 불러오지 못했습니다</b>잠시 후 새로고침 해주세요.</div>';
-      const rows = (data || []).filter((r) => r.region === region);
+      // 수도권 단지는 METRO·NATION 두 행으로 저장되고 티저는 단지명당 한 행(임의)만 준다 — region 열 대신 시·도로 가른다
+      const rows = (data || []).filter((r) => region !== 'METRO' || /^(서울|경기|인천)/.test(r.sido || ''));
       const total = data && data.length ? Number(data[0].total_count) || 0 : 0;
       return tabs
         + '<div class="edu-note"><b>추적 중인 입주 예정 단지 ' + total.toLocaleString('ko-KR') + '건</b>' + esc(DENOM_NOTE) + '</div>'
@@ -251,14 +252,14 @@
           + line('게시일', n.posted_raw)
           + line('접수 마감', f.apply_end_raw || f.apply_period_raw)
           + line('대상', f.target_raw)
-          + (f.conflicts && f.conflicts.length
+          + (Array.isArray(f.conflicts) && f.conflicts.length
             ? '<div class="edu-warn"><span>⚠ 공고 안에서 표기가 서로 다릅니다</span>'
               + f.conflicts.map((c) => '<span class="sub">' + esc(c.text) + '</span>').join('') + '</div>'
             : '')
           + '<div class="edu-line" style="color:var(--c-ink-faint)">최종 확인 ' + esc(n.checked_at)
           + ' · ' + esc(n.verified_by) + '</div>'
           + '<div class="edu-actions">'
-          + '<a class="btn-src" href="' + esc(n.detail_url) + '" target="_blank" rel="noopener">공고 원문<svg class="icon sm"><use href="#i-ext"/></svg></a>'
+          + (/^https?:\/\/\S+$/.test(String(n.detail_url || '')) ? '<a class="btn-src" href="' + esc(n.detail_url) + '" target="_blank" rel="noopener">공고 원문<svg class="icon sm"><use href="#i-ext"/></svg></a>' : '')
           + saveBtn('notice', n.notice_id, n.title, n.org) + '</div>'
           + '</article>';
       }).join('');
