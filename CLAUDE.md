@@ -33,7 +33,7 @@
 ## 배포 전 회귀 체크 (P1 회귀 사고 이후 강제 — 2026-07-10)
 "새로 만든 것" 검증만으론 부족하다. 기존 기능 보존을 아래 목록으로 확인한 뒤에만 push:
 1. **전 라우트 200 + 렌더**: `/` `/calendar/` `/prices/` `/gov/` `/news/` `/maker/`
-   `/maker/notice/` `/maker/compare/` `/board/free/` `/board/proposal/` `/me/` `/edu/` `/area/`
+   `/maker/notice/` `/maker/compare/` `/board/free/` `/board/proposal/` `/me/` `/edu/` `/edu/jobs/` `/edu/jobs/?kind=seek` `/area/`
    `/work/`(비로그인 안내) `/work/?demo=1`(오늘·일정·작업·고객·매출·설정) `/c/#demo` — 390px·1280px 각각
    (`_dev/` 아래 요금제·약관 초안은 Jekyll이 배포하지 않는 개발 전용. 로컬 서버에서 `/_dev/pricing/`로 확인)
 2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
@@ -70,8 +70,10 @@
   제안 상태 확장 · notice_complexes · 연락처 정리 트리거 · 반복 작성 RPC.
   단지명 시드 1건도 같은 날 적용(공개 repo 밖 파일).
   실제 로그인 계정의 관심 저장·내 활동 조회와 익명 선택지 노출을 확인
-- 작업 중(2026-09-26, 브랜치 feat/work-pro): 업무 관리 /work/ · 시공 카드 /c/ · 요금제·약관·처리방침 초안(_dev/, 미배포).
-  스펙 docs/work/SPEC.md. **supabase/17_work.sql 미적용**(사용자 검토 후 SQL Editor 실행). sw ain-v27, 업무 자산 ?v=27.
+- 2026-09-26: 업무 관리 /work/ · 시공 카드 /c/ (feat/work-pro) + Codex 콘텐츠 자동화 인수(교육·일자리 묶기, 입주정보 개명,
+  회원 구인·구직 /edu/jobs/, 교육 자동 수집 표시). 요금제·약관·처리방침 초안은 _dev/(미배포). 스펙 docs/work/SPEC.md.
+  **운영 SQL 적용 완료(Claude, 사용자 위임)**: site_17_work · site_16_jobs_board · pipe_18_program_notices (apply_migration, 전후 점검).
+  sw ain-v28, 전 자산 ?v=28(design-tokens ?v=11 유지), maker-core ASSET_V=28.
   업무·카드 화면은 innerHTML 금지(test-work-contract.js가 검사). 베타 종료일은 SQL work_user_is_pro()와 work-logic.js PLAN.betaEnd 두 곳.
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10

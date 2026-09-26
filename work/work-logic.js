@@ -12,7 +12,6 @@
   //    서버 강제: 사진 보관(supabase/17_work.sql work_photos_before_insert). 베타 종료 시각은 SQL work_user_is_pro()와 같아야 한다.
   const PLAN = {
     pro: { photosPerJob: 30, photosPerMonth: 300 },
-    priceWon: 19900,                            // 정식 과금 예정가 (VAT 포함). 과금 개시 전 별도 동의
     betaEnd: '2027-05-01T00:00:00+09:00'        // 이 시각 전까지 전원 프로. 끝나면 무료로 돌아간다(자동 결제 없음)
   };
 
