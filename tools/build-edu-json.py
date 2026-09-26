@@ -246,26 +246,54 @@ def main():
         'conflict_cost': sum(1 for i in listed if i['conflict'] and i['conflict']['kind'] == 'cost'),
     }
 
-    # ── 원장과 화면 계수가 어긋나면 여기서 멈춘다 (SPEC §3.2 / §3.3) ──
-    assert counts['rows'] == 15, counts
-    assert counts['education'] == 14, counts
-    assert counts['excluded_recruit'] == 1, counts
-    assert counts['orgs'] == 7, counts
-    assert counts['by_group'] == {'deadline': 6, 'posted_no_deadline': 2, 'unconfirmed': 6}, counts
-    assert counts['by_record_type'] == {'과정소개': 4, '기관과정목록': 2, '모집회차': 8}, counts
-    assert counts['conflict_date'] == 3, counts   # KRRC 112 / 110 / 116
-    assert counts['conflict_cost'] == 1, counts   # 한국건설직업전문학원 성남
+    # ── 검증 (SPEC §3.2 / §3.3) ──
+    # 고정 건수로 막지 않는다 — 원장이 늘면 그게 정상이다. 대신 입력 스키마·ID 중복·
+    # 집계 일치를 확인하고, 이미 기록된 날짜·비용 충돌이 사라지지 않았는지만 못박는다.
+    assert items, '원장이 비어 있습니다'
+    required = ['EDU_ID', 'record_type', '기관명', '과정명', '공식원문URL', '최종확인일', '출시노출']
+    for r in rows:
+        missing = [c for c in required if not (r.get(c) or '').strip()]
+        assert not missing, (r.get('EDU_ID'), '빈 필수 칸: ' + ', '.join(missing))
+        assert set(r) == set(rows[0]), (r.get('EDU_ID'), '열 구성이 다릅니다')
+    ids = [i['id'] for i in items]
+    dupes = sorted({x for x in ids if ids.count(x) > 1})
+    assert not dupes, 'EDU_ID 중복: ' + ', '.join(dupes)
+    for i in items:
+        assert re.fullmatch(r'[A-Za-z0-9._-]+', i['id']), i['id']
+        assert i['checked_at'] and DATE_RE.match(i['checked_at'].replace('-', '.')), (i['id'], i['checked_at'])
+
+    # 집계는 스스로 맞아야 한다 (숫자를 손으로 적어 두지 않는다)
+    assert counts['rows'] == counts['education'] + counts['excluded_recruit'], counts
+    assert counts['education'] == len(listed), counts
+    assert counts['orgs'] == len({i['org'] for i in listed}), counts
+    assert sum(counts['by_group'].values()) == counts['education'], counts
+    assert sum(counts['by_record_type'].values()) == counts['education'], counts
+    assert counts['conflict_date'] + counts['conflict_cost'] <= counts['education'], counts
+
+    # 이미 기록된 원문 내부 충돌은 지우지 않는다 (SPEC §3.5)
+    KNOWN_CONFLICTS = {
+        'KRRC-NEW-C112': 'date',      # 접수 시작 상단 08-19 / 본문 08-24
+        'KRRC-NEW-C110': 'date',      # 접수 시작 상단 08-28 / 본문 09-14
+        'KRRC-EXPERT-C116': 'date',   # 교육 일정 연도 상단 2026 / 본문 2025
+        'HANKOOKOK-SN': 'cost',       # 훈련비 40만원과 전액 국비 지원이 병존
+    }
+    by_id = {i['id']: i for i in items}
+    for cid, kind in KNOWN_CONFLICTS.items():
+        got = by_id.get(cid, {}).get('conflict')
+        assert got and got['kind'] == kind, (cid, '기록된 원문 충돌이 사라졌습니다', got)
+
     # 공식원문URL은 작동하는 단일 URL 하나만 (SPEC §11.1). 보조출처도 href에 들어가므로 같은 규칙.
     for i in items:
         assert i['url'].startswith('http') and ' ' not in i['url'], i['id']
         assert not i['url_note'], (i['id'], i['url_note'])
         assert i['url_aux'] == '' or (i['url_aux'].startswith('http') and ' ' not in i['url_aux']), i['id']
-    # 접수 마감이 확정된 회차만 ISO 값을 갖는다 (마감 경과 계산용)
-    assert sum(1 for i in listed if i['apply_end_at']) == 6, \
-        [(i['id'], i['apply_end_at']) for i in listed]
+    # 접수 마감이 원문에서 하나로 확정된 회차만 ISO 값을 갖는다 (마감 경과 계산용).
+    # 건수를 고정하지 않고, apply_end_at 이 원문 표기와 일치하는지 다시 계산해 대조한다.
+    for i in items:
+        assert i['apply_end_at'] == apply_end_at(i['apply_end_raw']), (i['id'], i['apply_end_at'])
 
     payload = {
-        'source': 'EDUCATION_SEED_REVIEWED.csv (검수 원장 15행) — tools/education-seed.csv',
+        'source': f'EDUCATION_SEED_REVIEWED.csv (검수 원장 {len(items)}행) — tools/education-seed.csv',
         'checked_at': max(i['checked_at'] for i in items),
         'counts': counts,
         'field_labels': FIELD_LABELS,

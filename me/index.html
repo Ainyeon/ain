@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=26">
+  <link rel="stylesheet" href="/assets/css/components.css?v=28">
   <style>
     /* 페이지 로컬: 토큰만 소비. 예외 2건 주석 — 오브(브랜드 마크)·카카오 옐로(외부 브랜드) */
     .me-wrap{display:grid;gap:var(--sp-4);padding-bottom:var(--sp-8)}
@@ -44,9 +44,9 @@
     .me-note{color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=26"></script>
-  <script defer src="/assets/js/ain-common.js?v=26"></script>
-  <script defer src="/assets/js/ain-community.js?v=26"></script>
+  <script defer src="/auth.js?v=28"></script>
+  <script defer src="/assets/js/ain-common.js?v=28"></script>
+  <script defer src="/assets/js/ain-community.js?v=28"></script>
 </head>
 <body class="has-tabbar">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -63,8 +63,8 @@
       <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
       <div class="tnav-links">
         <a href="/">홈</a>
-        <a href="/edu/">교육</a>
-        <a href="/area/">내 지역</a>
+        <a href="/edu/">교육·일자리</a>
+        <a href="/area/">입주정보</a>
         <a href="/maker/">도구</a>
         <a href="/board/free/">게시판</a>
       </div>
@@ -104,8 +104,9 @@
       <section class="panel" aria-label="빠른 이동">
         <div class="phead"><svg class="icon"><use href="#i-chev"/></svg><h2>빠른 이동</h2></div>
         <div class="rows">
-          <a class="row" href="/edu/"><div class="row-main"><div class="row-title">교육 찾기</div><div class="row-meta">조건별로 과정 찾기</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
-          <a class="row" href="/area/"><div class="row-main"><div class="row-title">내 지역</div><div class="row-meta">입주 예정 단지 · 모집 공고</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/work/"><div class="row-main"><div class="row-title">업무 관리</div><div class="row-meta">일정·고객·견적서·수금·시공 카드</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/edu/"><div class="row-main"><div class="row-title">교육·일자리</div><div class="row-meta">교육 과정 · 구인 · 구직</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/area/"><div class="row-main"><div class="row-title">입주정보</div><div class="row-meta">입주 예정 단지 · 업체 모집 공고</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/maker/"><div class="row-main"><div class="row-title">도구</div><div class="row-meta">고객 안내문 · 홍보 카드</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/calendar/"><div class="row-main"><div class="row-title">입주 캘린더</div><div class="row-meta">단계별 입주 일정</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/"><div class="row-main"><div class="row-title">오늘의 브리핑</div><div class="row-meta">홈 대시보드</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
@@ -236,7 +237,7 @@
           + '<div class="row-side"><button type="button" class="btn-line"'
           + ' data-unsave="' + escT(r.target_type + "|" + r.target_id) + '"'
           + ' aria-label="' + name + ' 저장 해제">저장 해제</button></div></div>';
-      }).join("") : emptyRow("저장한 항목이 없습니다", "교육 카드와 내 지역에서 관심 저장을 눌러 보세요");
+      }).join("") : emptyRow("저장한 항목이 없습니다", "교육 카드와 입주정보에서 관심 저장을 눌러 보세요");
 
       box.querySelectorAll("[data-unsave]").forEach((b) =>
         b.addEventListener("click", async () => {
@@ -268,7 +269,7 @@
       }
       box.innerHTML = mine.map((p) => {
         const isProp = p.board_type === "proposal";
-        const href = (isProp ? "/board/proposal/?id=" : "/board/free/?id=") + p.id;
+        const href = ainCommunity.postHref(p);   // 구인·구직 글은 /edu/jobs/ 로 (마감 버튼이 거기 있다)
         const badge = isProp
           ? '<span class="status-badge status-' + escT(p.status) + '">' + escT(STATUS_LABELS[p.status] || p.status) + '</span>'
           : '';
@@ -278,7 +279,7 @@
             ? '<div class="admin-answer"><b>운영자 답변</b>' + escT(p.admin_answer) + '</div>' : '');
         return rowEl(
           (p.is_anonymous ? '<span class="field-badge">익명</span> ' : '') + escT(p.title),
-          escT((isProp ? "제안" : "질문·경험") + " · " + ainCommunity.timeAgo(p.created_at)) + extra,
+          escT(ainCommunity.boardName(p) + (p.closed_at ? " · 마감" : "") + " · " + ainCommunity.timeAgo(p.created_at)) + extra,
           href, badge);
       }).join("");
     }

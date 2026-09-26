@@ -84,7 +84,7 @@ function load(file, ctx, expose) {
     }
   });
   areaCtx.ainAuth.getClient = () => ({ from: () => q });
-  const areaState = load('area/area.js', areaCtx, '{noticeNames, saves}');
+  const areaState = load('area/area.js', areaCtx, '{noticeNames, saves, autoRecruits}');
 
   aHandlers['ain:auth']({ detail: { session: { user: { id: 'u1' } } } });
   await tick();
@@ -92,11 +92,15 @@ function load(file, ctx, expose) {
   aHandlers['ain:auth']({ detail: { session: null } });
   await tick();
   assert.strictEqual(areaState().noticeNames, 'anon', '로그아웃 즉시 단지명 상태가 비회원으로 돌아가야 한다');
+  assert.strictEqual(areaState().autoRecruits, 'anon',
+    '로그아웃 즉시 자동 수집 모집 공고도 비회원으로 돌아가야 한다 (제목에 단지명이 있다)');
 
   finishNames({ data: [{ notice_id: 'N1', complex_name: '어느 단지' }], error: null });
   await tick(); await tick();
   assert.strictEqual(areaState().noticeNames, 'anon', '로그아웃 뒤 옛 응답이 단지명을 되살리면 안 된다');
   assert.strictEqual(areaState().saves, null);
+  assert.strictEqual(areaState().autoRecruits, 'anon',
+    '로그아웃 뒤 옛 응답이 회원 전용 모집 목록을 되살리면 안 된다');
 
   // ── area render 세대 ── 늦게 끝난 단지 조회가 최신 화면을 덮지 않는다
   //    (noticeNames loader와는 다른 요청 경로다)

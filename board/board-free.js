@@ -1,8 +1,29 @@
-// 자유게시판 — 목록·글쓰기·상세·댓글·본인 수정/삭제. 회원 전용(비회원 티저).
+// 게시판 목록·글쓰기·상세·댓글·본인 수정/삭제. 회원 전용(비회원 티저).
 // 읽기는 ainCommunity.readPosts 경유 (v_posts). 익명 글의 작성자는 API 응답에 들어 있지 않다.
+//
+// 자유게시판이 기본이고, 구인·구직 페이지는 window.AIN_BOARD 로 board_type 만 바꿔 쓴다.
+// 등록·수정·삭제·댓글·신고·익명 보호·연락처 가림이 모두 같은 경로라 따로 만들지 않는다.
 (function () {
   'use strict';
   const panel = document.getElementById('panel');
+  const BOARDS = {
+    free: { type: 'free', empty: '등록된 글이 없습니다.' },
+    job_offer: {
+      type: 'job_offer', closable: true,
+      empty: '등록된 구인 글이 없습니다.',
+      hint: '사람을 구하는 글입니다. 지역·공종·기간·조건을 본문에 적어 주세요.'
+    },
+    job_seek: {
+      type: 'job_seek', closable: true,
+      empty: '등록된 구직 글이 없습니다.',
+      hint: '일할 곳을 찾는 글입니다. 지역·공종·경력·가능한 기간을 본문에 적어 주세요.'
+    }
+  };
+  const CFG = BOARDS[(window.AIN_BOARD || {}).type] || BOARDS.free;
+  // 구인/구직은 같은 주소(/edu/jobs/)에 ?kind 로 갈린다. 글 열기·목록 복귀·등록 뒤 이동에서 kind 를 잃지 않게 한다.
+  const KIND_Q = CFG.type === 'job_seek' ? 'kind=seek' : CFG.type === 'job_offer' ? 'kind=offer' : '';
+  const listUrl = () => location.pathname + (KIND_Q ? '?' + KIND_Q : '');
+  const postUrl = (id) => '?' + (KIND_Q ? KIND_Q + '&' : '') + 'id=' + encodeURIComponent(id);
   const db = () => ainAuth.getClient();
   const C = () => window.ainCommunity;
   const P = () => new URLSearchParams(location.search);
@@ -10,14 +31,21 @@
 
   // 교육 카드에서 넘어온 경우 — 글을 그 과정에 연결한다 (SPEC §3.8)
   const refParam = () => {
+    if (CFG.type !== 'free') return null;            // 구인·구직 글은 교육 과정에 연결하지 않는다
     const v = P().get('ref') || '';
     const m = v.match(/^(edu|notice):(.+)$/);
     return m ? { type: m[1], id: m[2] } : null;
   };
+  // ⚠️ preset.kind 는 posts.review_kind 로 저장된다. DB 제약이 review/tip 만 받으므로
+  //    구인·구직 프리셋의 kind 는 반드시 null 이다 (kind 를 붙이면 등록이 거부된다).
   const FORM_PRESETS = {
     review: { kind: 'review', ph: '수강한 과정, 배운 내용, 도움이 된 점' },
-    edu_tip: { kind: 'tip', ph: '기관명, 과정명, 공식 페이지 주소.\n기관·업체 관계자면 어떤 관계인지도 적어 주세요.\n운영자가 원문을 확인한 뒤 반영합니다.' }
+    edu_tip: { kind: 'tip', ph: '기관명, 과정명, 공식 페이지 주소.\n기관·업체 관계자면 어떤 관계인지도 적어 주세요.\n운영자가 원문을 확인한 뒤 반영합니다.' },
+    job_offer: { kind: null, ph: '지역, 공종, 기간, 급여 조건, 지원 방법.\n개인 연락처는 본문에 적지 마세요 — 저장할 때 가려집니다.' },
+    job_seek: { kind: null, ph: '지역, 공종, 경력, 가능한 기간.\n개인 연락처는 본문에 적지 마세요 — 저장할 때 가려집니다.' }
   };
+  // 후기·제보 양식(?form=)은 자유게시판에서만. 구인·구직은 항상 자기 양식(후기 항목이 붙지 않게)
+  const formKey = () => (CFG.type === 'free' && P().get('form')) || CFG.type;
   // 오래된 후기를 하단으로 몰지 않고 수료 시점으로 거른다 (SPEC §3.7).
   // ?since=12|24|36 (개월). 없으면 전체.
   const SINCE_OPTS = [['', '전체 기간'], ['12', '최근 1년'], ['24', '최근 2년'], ['36', '최근 3년']];
@@ -84,8 +112,8 @@
   // 글쓰기 폼 — 짧은 글도 막지 않는다 (최소 글자 수·필수 양식 없음, SPEC §6.1)
   function writeBlock() {
     const ref = refParam();
-    const preset = FORM_PRESETS[P().get('form')] || null;
-    const openNow = !!(ref || preset);
+    const preset = FORM_PRESETS[formKey()] || null;
+    const openNow = !!(ref || P().get('form'));
     const isReview = !!preset && preset.kind === 'review';
     return '<button type="button" class="write-btn" id="writeOpen"' + (openNow ? ' hidden' : '') + '>글쓰기</button>'
       + '<form class="write-form" id="writeForm"' + (openNow ? '' : ' hidden') + '>'
@@ -116,8 +144,8 @@
     // legacy 경로에서는 필터를 걸지 않고 그 사실을 화면에 적는다.
     const since = sinceMonth();
     const r = await C().readPosts((q, mode) => {
-      let x = q.eq('board_type', 'free');
-      if (mode === 'view') {
+      let x = q.eq('board_type', CFG.type);
+      if (mode === 'view' && CFG.type === 'free') {
         if (ref) x = x.eq('ref_type', ref.type).eq('ref_id', ref.id);
         // 수료 시점 필터는 서버에서 건다. 후기가 아닌 글과 시점을 안 적은 후기는
         // 거르지 않는다 — 모른다는 이유로 감추면 안 되기 때문(SPEC §3.7).
@@ -150,18 +178,20 @@
     const cmtMap = {};
     (cmtRows || []).forEach((c) => { cmtMap[c.post_id] = (cmtMap[c.post_id] || 0) + 1; });
 
+    const closedTag = (p) => p.closed_at ? '<span class="field-badge">마감</span>' : '';
     const reviewTag = (p) => p.review_kind !== 'review' ? '' :
       '<span class="field-badge">' + escT(p.review_done_month
         ? p.review_done_month.replace('-', '.') + ' 수료' : '수료 시점 미기재') + '</span>';
     const list = data.length ? data.map((p) =>
-      '<a class="board-card' + (C().isStaff(p.author) ? ' staff-accent' : '') + '" href="?id=' + p.id + '"><h2>' + reviewTag(p) + ' ' + escT(p.title) + '</h2>'
+      '<a class="board-card' + (C().isStaff(p.author) ? ' staff-accent' : '') + '" href="' + postUrl(p.id) + '"><h2>' + closedTag(p) + reviewTag(p) + ' ' + escT(p.title) + '</h2>'
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadgeOf(p) + '</span>'
       + '<span><span class="cmt-count">공감 ' + (likeMap[p.id] || 0) + ' · 댓글 ' + (cmtMap[p.id] || 0) + ' · 조회 ' + (p.view_count || 0) + '</span>'
       + ' · <time>' + C().timeAgo(p.created_at) + '</time></span></div></a>').join('')
-      : '<p class="empty-note">' + (refFiltered ? '이 과정에 연결된 글이 없습니다.' : '등록된 글이 없습니다.') + '</p>';
+      : '<p class="empty-note">' + (refFiltered ? '이 과정에 연결된 글이 없습니다.' : CFG.empty) + '</p>';
 
-    panel.innerHTML = refHead + writeBlock() + sinceHtml + list;
-    bindWrite(me, 'free');
+    const boardHint = CFG.hint ? '<div class="rules-banner">' + escT(CFG.hint) + '</div>' : '';
+    panel.innerHTML = boardHint + refHead + writeBlock() + sinceHtml + list;
+    bindWrite(me, CFG.type);
     const fs = document.getElementById('fSince');
     if (fs) fs.addEventListener('change', () => {
       const q = P();
@@ -184,7 +214,7 @@
       e.preventDefault();
       const ref = refParam();
       const anon = document.getElementById('wAnon');
-      const preset = FORM_PRESETS[P().get('form')] || null;
+      const preset = FORM_PRESETS[formKey()] || null;
       const title = document.getElementById('wTitle').value.trim();
       const body = document.getElementById('wBody').value.trim();
       // 최소 글자 수로 막지 않는다 (짧은 질문 환영). 공백만 있는 글만 거른다.
@@ -193,7 +223,7 @@
       if (C().anonymousReady()) {
         row.is_anonymous = !!(anon && anon.checked);
         if (ref) { row.ref_type = ref.type; row.ref_id = ref.id; }
-        if (preset) row.review_kind = preset.kind;
+        if (preset && preset.kind) row.review_kind = preset.kind;   // null 이면 넣지 않는다
         // 후기 선택 입력 — 비어 있으면 넣지 않는다. 금액이 없다고 막지 않는다.
         if (preset && preset.kind === 'review') {
           const cost = document.getElementById('rCost');
@@ -207,7 +237,7 @@
       }
       const { error: err } = await db().from('posts').insert(row);
       if (err) { alert('등록하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(err); return; }
-      location.href = location.pathname;
+      location.href = listUrl();
     });
   }
 
@@ -242,12 +272,12 @@
 
   async function renderDetail(me, id) {
     const [r, { data: cmts }, { data: likes }] = await Promise.all([
-      C().readPosts((q) => q.eq('id', id), me.user.id),
+      C().readPosts((q) => q.eq('id', id).eq('board_type', CFG.type), me.user.id),   // 다른 게시판 글은 이 화면에서 열지 않는다
       db().from('comments').select('id,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('post_id', id).order('created_at'),
       db().from('votes').select('user_id').eq('post_id', id).eq('vote', 'up')
     ]);
     const post = r.rows && r.rows[0];
-    if (r.error || !post) { gate('글을 찾을 수 없습니다. <br><br><a class="back-link" href="./">← 목록으로</a>'); return; }
+    if (r.error || !post) { gate('글을 찾을 수 없습니다. <br><br><a class="back-link" href="' + escT(listUrl()) + '">← 목록으로</a>'); return; }
     if (!sessionStorage.getItem('viewed_f' + id)) {
       sessionStorage.setItem('viewed_f' + id, '1');
       db().rpc('increment_post_view', { p_post_id: Number(id) }).then(() => {}, () => {});
@@ -279,16 +309,20 @@
       : '';
 
     panel.innerHTML =
-      '<a class="back-link" href="./">← 목록으로</a>'
+      '<a class="back-link" href="' + escT(listUrl()) + '">← 목록으로</a>'
       + '<article class="board-card"><h2 style="font-size:19px">' + escT(post.title) + '</h2>'
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadgeOf(post) + '</span>'
       + '<span><span class="view-count">조회 ' + ((post.view_count || 0) + 1) + '</span> <time style="color:var(--c-ink-faint);font-size:12px">' + C().timeAgo(post.created_at) + '</time></span></div>'
+      + (post.closed_at ? '<div class="card-meta-line"><span class="field-badge">마감된 글</span></div>' : '')
       + reviewFacts + refLink
       + '<div class="post-body">' + escT(C().maskContacts(post.body)) + '</div>'
       + '<div class="vote-row"><button type="button" class="like-btn' + (iLiked ? ' on' : '') + '" id="likeBtn"><svg width=\'13\' height=\'13\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' style=\'vertical-align:-2px\' aria-hidden=\'true\'><path d=\'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\'/></svg> 공감 ' + likeCount + '</button></div>'
       + '<div class="post-tools">'
       + (mine
         ? '<button type="button" class="tool-link" id="editPost">수정</button>'
+          + (post.board_type === 'job_offer' || post.board_type === 'job_seek'
+            ? '<button type="button" class="tool-link" id="closePost">'
+              + (post.closed_at ? '마감 해제' : '마감') + '</button>' : '')
           + '<button type="button" class="tool-link" id="delPost">삭제</button>'
         : '<button type="button" class="tool-link" id="repPost">신고</button>')
       + '</div>'
@@ -313,7 +347,15 @@
       if (!confirm('글을 삭제할까요?')) return;
       const { error: delErr } = await db().from('posts').delete().eq('id', id);
       if (delErr) { alert('삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(delErr); return; }
-      location.href = './';
+      location.href = listUrl();
+    });
+    const closeBtn = document.getElementById('closePost');
+    if (closeBtn) closeBtn.addEventListener('click', async () => {
+      // 글을 지우지 않고 마감만 표시한다 — 기록은 남는다.
+      const { error: cErr } = await db().from('posts')
+        .update({ closed_at: post.closed_at ? null : new Date().toISOString() }).eq('id', id);
+      if (cErr) { alert('마감 표시를 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(cErr); return; }
+      location.reload();
     });
     const rep = document.getElementById('repPost');
     if (rep) rep.addEventListener('click', () => C().report('post', post.id));
@@ -342,7 +384,8 @@
     const me = await ainCommunity.requireMember();
     if (me.redirecting) return;
     if (me.infraError) { gate('게시판 준비 중입니다. 잠시 후 다시 확인해 주세요.'); return; }
-    if (!me.user) { teaserRender(await ainCommunity.fetchTeaser()); return; }
+    // 비회원 티저는 자유게시판에서만 글 제목을 보여 준다. 구인·구직에서 게시판 글이 보이면 구인 글로 오해한다.
+    if (!me.user) { teaserRender(CFG.type === 'free' ? await ainCommunity.fetchTeaser() : []); return; }
     const id = qsId();
     id ? renderDetail(me, id) : renderList(me);
   });

@@ -110,6 +110,17 @@
     return true;
   }
 
+  // 글 → 그 글이 속한 게시판 주소·이름 (내 활동·관리 화면 공용)
+  function postHref(p) {
+    const id = encodeURIComponent(p.id);
+    if (p.board_type === 'proposal') return '/board/proposal/?id=' + id;
+    if (p.board_type === 'job_offer') return '/edu/jobs/?kind=offer&id=' + id;
+    if (p.board_type === 'job_seek') return '/edu/jobs/?kind=seek&id=' + id;
+    return '/board/free/?id=' + id;
+  }
+  const BOARD_NAMES = { proposal: '제안', job_offer: '구인', job_seek: '구직', free: '질문·경험' };
+  const boardName = (p) => BOARD_NAMES[p.board_type] || '질문·경험';
+
   // 비회원 티저 데이터
   async function fetchTeaser() {
     const { data, error } = await db().from('v_board_teaser').select('*');
@@ -132,10 +143,19 @@
 
   // v_posts가 내보내는 열과 짝을 이룬다. 뷰에 열이 있어도 여기서 빠지면
   // PostgREST가 그 열을 내려보내지 않아 후기가 일반 글로 취급된다(계약 검사 있음).
-  const POST_COLS = 'id,board_type,title,body,status,status_reason,admin_answer,'
+  const POST_COLS_BASE = 'id,board_type,title,body,status,status_reason,admin_answer,'
     + 'admin_answered_at,created_at,updated_at,view_count,is_anonymous,ref_type,ref_id,'
     + 'review_kind,review_cost,review_subsidy,review_done_month,'
     + 'is_mine,author_nick,author_field,author_role';
+  // 나중 마이그레이션(16_jobs_board)에서 붙는 열. 프런트가 SQL보다 먼저 배포돼도
+  // 게시판이 통째로 멈추지 않게, 없으면 한 번만 빼고 다시 읽는다.
+  const POST_COLS_OPTIONAL = ['closed_at'];
+  let postColsOptional = POST_COLS_OPTIONAL.slice();
+  const postCols = () => postColsOptional.length
+    ? POST_COLS_BASE + ',' + postColsOptional.join(',') : POST_COLS_BASE;
+  const POST_COLS = postCols();      // 계약 검사가 읽는 전체 목록
+  const missingColumn = (e) => !!e && (e.code === '42703'
+    || /column .* does not exist/i.test(String(e.message || '')));
 
   function fromView(r) {
     return Object.assign({}, r, {
@@ -157,7 +177,13 @@
   //   legacy 경로에 그대로 걸면 쿼리가 깨진다. 호출부가 모드별로 다른 필터를 건다.
   async function readPosts(build, myId) {
     if (caps.posts !== 'legacy') {
-      const r = await build(db().from('v_posts').select(POST_COLS), 'view');
+      let r = await build(db().from('v_posts').select(postCols()), 'view');
+      // 아직 없는 선택 열 때문에 실패한 것이면 그 열만 빼고 한 번 더 — legacy로 내려가면
+      // author_id 조인이 필요해져서 오히려 게시판 전체가 막힌다.
+      if (r.error && postColsOptional.length && missingColumn(r.error)) {
+        postColsOptional = [];
+        r = await build(db().from('v_posts').select(postCols()), 'view');
+      }
       if (!r.error) { caps.posts = 'view'; return { rows: (r.data || []).map(fromView), mode: 'view' }; }
       if (!missingRelation(r.error)) return { rows: [], mode: 'view', error: r.error };
       caps.posts = 'legacy';
@@ -202,9 +228,10 @@
   async function addSave(targetType, targetId, label, meta) {
     const user = await getSessionUser();
     if (!user) return { error: { message: '로그인이 필요합니다' }, needLogin: true };
+    // DB CHECK(1~200자)에 맞춰 자른다 — 긴 자동 수집 제목 하나로 저장 기능 전체가 꺼지지 않게
     const { error } = await db().from('saved_items').insert({
-      user_id: user.id, target_type: targetType, target_id: String(targetId),
-      label: label || null, meta: meta || null
+      user_id: user.id, target_type: targetType, target_id: String(targetId).slice(0, 200),
+      label: label ? String(label).slice(0, 200) : null, meta: meta || null
     });
     if (error && error.code === '23505') return {};   // 이미 저장됨 = 성공으로 취급
     if (error) caps.saves = false;
@@ -252,7 +279,7 @@
   }
 
   window.ainCommunity = { FIELD_LABELS, FIELD_LEGACY, fieldLabel, getMyProfile, requireMember,
-    authorBadge, authorBadgeOf, isStaff, authorSelect, timeAgo, report, fetchTeaser,
+    authorBadge, authorBadgeOf, isStaff, authorSelect, timeAgo, report, fetchTeaser, postHref, boardName,
     readPosts, readMyPosts, anonymousReady, loadSaves, addSave, removeSave, savesReady, saveKey,
     loginWithKakao, maskContacts, REPORT_REASONS, SUBSIDY_LABELS, subsidyLabel, caps };
 })();

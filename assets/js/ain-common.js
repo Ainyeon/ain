@@ -142,11 +142,11 @@
       board:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>'
     };
     // 메뉴 5개 (SPEC §7.1). 시세·정부사업·업계뉴스·캘린더는 라우트 유지 —
-    // 홈 패널과 내 지역 페이지에서 연결한다.
+    // 홈 패널과 입주정보 페이지에서 연결한다.
     const TABS=[
       {href:'/',label:'홈',icon:I.home},
-      {href:'/edu/',label:'교육',icon:I.book},
-      {href:'/area/',label:'내 지역',icon:I.radar},
+      {href:'/edu/',label:'교육·일자리',icon:I.book},
+      {href:'/area/',label:'입주정보',icon:I.radar},
       {href:'/maker/',label:'도구',icon:I.maker},
       {href:'/board/free/',base:'/board/',label:'게시판',icon:I.board}
     ];

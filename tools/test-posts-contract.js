@@ -15,9 +15,13 @@ const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 
-// v_posts가 실제로 내보내는 열 (supabase/15_launch.sql의 뷰 정의에서 읽는다)
-const sql = fs.readFileSync(path.join(ROOT, 'supabase', '15_launch.sql'), 'utf8');
-const viewBody = sql.slice(sql.indexOf('create view public.v_posts as'), sql.indexOf('from public.posts p'));
+// v_posts가 실제로 내보내는 열. 뷰는 15에서 만들고 16(구인·구직)에서 열이 하나 늘어난다 —
+// 마지막 정의를 기준으로 읽는다.
+const sql15 = fs.readFileSync(path.join(ROOT, 'supabase', '15_launch.sql'), 'utf8');
+const sql16 = fs.readFileSync(path.join(ROOT, 'supabase', '16_jobs_board.sql'), 'utf8');
+const sql = sql16.includes('view public.v_posts as') ? sql16 : sql15;
+const head = sql.indexOf('view public.v_posts as');
+const viewBody = sql.slice(head, sql.indexOf('from public.posts p', head));
 const VIEW_COLS = new Set(
   [...viewBody.matchAll(/(?:^|\s)(?:p\.)?([a-z_]+)(?:\s*$|,)/gm)].map((m) => m[1])
     .concat([...viewBody.matchAll(/as\s+([a-z_]+)/g)].map((m) => m[1]))
@@ -30,7 +34,8 @@ const FULL_ROW = {
   created_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z', view_count: 3,
   is_anonymous: false, ref_type: 'edu', ref_id: 'IDOEDU-C217',
   review_kind: 'review', review_cost: 22500, review_subsidy: 'card', review_done_month: '2026-08',
-  is_mine: true, author_nick: 'ㅇㅇ', author_field: 'tile', author_role: 'member'
+  is_mine: true, author_nick: 'ㅇㅇ', author_field: 'tile', author_role: 'member',
+  closed_at: null
 };
 
 let requested = null;
@@ -85,9 +90,15 @@ vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'assets', 'js', 'ain-communit
   assert.strictEqual(row.author_nick, 'ㅇㅇ');
   // author_id는 절대 요청하지 않는다 (익명 보호)
   assert.ok(!requested.includes('author_id'), 'author_id를 요청하면 익명 보호가 깨진다');
+  // 구인·구직 마감 표시도 같은 계약이다 — 빠지면 마감된 글이 열려 있는 것처럼 보인다
+  assert.ok(Object.hasOwn(row, 'closed_at'), 'closed_at이 선택에서 빠짐 → 마감 표시가 화면에 오지 않음');
 
   // 실제 소비처가 이 행을 후기로 인식하는지 (edu 상세의 집계 조건과 같은 식)
   assert.strictEqual(row.review_kind === 'review', true, '교육 상세 후기 집계 조건 불일치');
+
+  // ── SQL 이 아직 적용되지 않은 순간 ── 선택 열이 없으면 그 열만 빼고 계속 읽어야 한다.
+  //    legacy 로 내려가면 author_id 조인이 필요해져 게시판 전체가 막힌다(15_launch 가 회수함).
+  await missingColumnFallbackCheck();
 
   // ── 실제 상세 렌더까지 흘려 보낸다 ──
   // 키 존재만 보면 국비 유형 매핑이 어느 스코프에 있는지 같은 문제를 놓친다.
@@ -95,6 +106,49 @@ vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'assets', 'js', 'ain-communit
   await renderDetailCheck();
   console.log('posts-contract OK — 선택 열이 v_posts와 일치, 후기 메타가 상세 렌더까지 도달');
 })().catch((e) => { console.error(e.message); process.exitCode = 1; });
+
+async function missingColumnFallbackCheck() {
+  let asked = [];
+  const q = {
+    select(cols) { asked.push(cols); return q; },
+    eq: () => q, or: () => q, order: () => q, limit: () => q,
+    then: (res) => {
+      const cols = asked[asked.length - 1];
+      if (cols.includes('closed_at')) {
+        return Promise.resolve(res({
+          data: null,
+          error: { code: '42703', message: 'column v_posts.closed_at does not exist' }
+        }));
+      }
+      const row = {};
+      cols.split(',').map((c) => c.trim()).forEach((k) => { row[k] = FULL_ROW[k]; });
+      return Promise.resolve(res({ data: [row], error: null }));
+    }
+  };
+  const c2 = {
+    console: { log() {}, warn() {}, error() {} },
+    Promise, Object, Map, Set, Array, String, Number, Boolean, JSON, Date, RegExp,
+    escT: (v) => String(v == null ? '' : v),
+    location: { href: 'http://x/', pathname: '/', search: '', origin: 'http://x' },
+    ainAuth: { getClient: () => ({ from: () => q }), getSession: async () => ({ user: { id: 'u1' } }) }
+  };
+  c2.window = c2;
+  vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'assets', 'js', 'ain-community.js'), 'utf8'),
+    c2, { filename: 'assets/js/ain-community.js' });
+
+  const r = await c2.ainCommunity.readPosts((qq) => qq.eq('board_type', 'free').limit(1), 'u1');
+  assert.strictEqual(r.mode, 'view', '선택 열 부재로 legacy까지 내려가면 게시판이 막힌다');
+  assert.ok(!r.error, '선택 열 부재가 에러로 남으면 안 됨: ' + JSON.stringify(r.error || {}));
+  assert.strictEqual(r.rows.length, 1, '재시도로 글을 읽어 와야 함');
+  assert.strictEqual(r.rows[0].title, FULL_ROW.title);
+  assert.strictEqual(asked.length, 2, '한 번만 다시 시도해야 함 (무한 재시도 금지)');
+  assert.ok(!asked[1].includes('closed_at'), '재시도 때 없는 열을 또 요청함');
+
+  // 같은 세션에서 다음 조회는 이미 뺀 목록으로 한 번에 끝나야 한다
+  const r2 = await c2.ainCommunity.readPosts((qq) => qq.limit(1), 'u1');
+  assert.strictEqual(asked.length, 3, '이후 조회에서 다시 붙이면 매번 실패-재시도가 된다');
+  assert.ok(!r2.error);
+}
 
 async function renderDetailCheck() {
   const panel = { innerHTML: '', querySelectorAll: () => [], addEventListener() {} };

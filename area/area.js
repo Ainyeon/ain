@@ -1,4 +1,5 @@
-// 내 지역 — 입주 예정 단지 + 확인된 모집 공고 요약 (SPEC §4).
+// 입주정보 — 입주 예정 단지 + 업체 모집 공고 (SPEC §4).
+// 지역은 메뉴 이름이 아니라 목록 필터다 (수도권/전국 선택).
 // 게이팅은 현행 유지: 지역·입주월·건수는 비회원도, 단지명은 회원만.
 (function () {
   'use strict';
@@ -18,6 +19,9 @@
 
   let saves = null;
   let notices = null;
+  // 자동 수집 모집 공고: 'anon' = 비회원(제목에 단지명이 있어 뷰가 회원 전용) /
+  // 'unavailable' = 뷰 미적용 / [] = 조회했고 0건
+  let autoRecruits = 'anon';
   // 공고 단지명은 회원 전용 (입주 단지와 같은 선). 공개 JSON에는 없고 회원만 조회한다.
   //   'anon'   = 비회원 → 로그인 안내
   //   'failed' = 회원인데 조회 실패 → 이미 로그인한 사람에게 재로그인을 권하지 않는다
@@ -138,7 +142,8 @@
       const { data, error } = await db().from('move_in_teaser')
         .select('region,sido,sigungu,move_in_month,stage,total_count');
       if (error) return tabs + '<div class="edu-note"><b>입주 정보를 불러오지 못했습니다</b>잠시 후 새로고침 해주세요.</div>';
-      const rows = (data || []).filter((r) => r.region === region);
+      // 수도권 단지는 METRO·NATION 두 행으로 저장되고 티저는 단지명당 한 행(임의)만 준다 — region 열 대신 시·도로 가른다
+      const rows = (data || []).filter((r) => region !== 'METRO' || /^(서울|경기|인천)/.test(r.sido || ''));
       const total = data && data.length ? Number(data[0].total_count) || 0 : 0;
       return tabs
         + '<div class="edu-note"><b>추적 중인 입주 예정 단지 ' + total.toLocaleString('ko-KR') + '건</b>' + esc(DENOM_NOTE) + '</div>'
@@ -196,6 +201,68 @@
       .in('notice_id', notices.items.map((n) => n.id));
     return error ? 'failed'
       : new Map((data || []).map((r) => [r.notice_id, r.complex_name]));
+  }
+
+  // ── 자동 수집 모집 공고 ──────────────────────────────────────────
+  // v_recruit_list 는 회원 전용이다 — 모집 공고 제목에 단지명이 그대로 들어 있기 때문(실측).
+  // 비회원에게는 목록 자체를 보내지 않고 로그인 안내만 한다.
+  const relationMissing = (e) => !!e && (e.code === '42P01' || e.code === 'PGRST205'
+    || e.code === 'PGRST200' || /does not exist|schema cache/i.test(String(e.message || '')));
+
+  async function fetchAutoRecruits(session) {
+    // 비회원은 조회하지 않고 로그인 안내만 (v_recruit_list 는 운영에 있다: pipe_18_program_notices, 2026-09-26).
+    // 비회원으로 조회하면 권한 오류(401)가 콘솔에 남는다.
+    if (!session) return 'anon';
+    let res;
+    try {
+      res = await db().from('v_recruit_list')
+        .select('notice_id,org,record_type,title,detail_url,posted_raw,region_code,'
+          + 'apply_end_at,status,parse_status,parse_note,fields,checked_at,verified_by')
+        .order('checked_at', { ascending: false }).limit(100);
+    } catch (e) { console.warn('v_recruit_list', e); return 'unavailable'; }
+    if (res.error) {
+      if (!relationMissing(res.error)) console.warn('v_recruit_list', res.error);
+      return 'unavailable';
+    }
+    return res.data || [];
+  }
+
+  function autoRecruitHtml() {
+    if (autoRecruits === 'unavailable') return '';
+    if (autoRecruits === 'anon') {
+      return '<div class="edu-note"><b>자동 수집 모집 공고</b>'
+        + '공고 제목에 단지명이 들어 있어 회원만 볼 수 있습니다.'
+        + '<div class="edu-actions"><button type="button" class="btn-line" id="areaLoginAuto">카카오 로그인</button></div></div>';
+    }
+    if (!autoRecruits.length) return '';
+    return '<div class="edu-note"><b>자동 수집 모집 공고 ' + autoRecruits.length + '건</b>'
+      + '수집기가 주관사 공개 게시판에서 읽은 공고입니다. 사람이 원문을 검수하지 않았습니다. '
+      + '협약식·행사 안내는 모집 공고로 싣지 않습니다.</div>'
+      + autoRecruits.map((n) => {
+        const f = n.fields || {};
+        const line = (k, v) => v ? '<div class="edu-line"><span class="edu-k">' + esc(k) + '</span>' + esc(v) + '</div>' : '';
+        return '<article class="edu-card">'
+          + '<div class="edu-tags"><span class="edu-tag">자동 수집 · 사람 검수 전</span>'
+          + (n.status === 'closed' ? '<span class="edu-tag">원문 마감 경과</span>' : '')
+          + (n.parse_status === 'partial' ? '<span class="edu-tag accent">일부만 읽음</span>' : '')
+          + (n.parse_status === 'failed' ? '<span class="edu-tag accent">상세를 읽지 못함</span>' : '')
+          + '</div>'
+          + '<h3>' + esc(n.title) + '</h3>'
+          + '<div class="edu-org">주관사 ' + esc(n.org) + '</div>'
+          + line('게시일', n.posted_raw)
+          + line('접수 마감', f.apply_end_raw || f.apply_period_raw)
+          + line('대상', f.target_raw)
+          + (Array.isArray(f.conflicts) && f.conflicts.length
+            ? '<div class="edu-warn"><span>⚠ 공고 안에서 표기가 서로 다릅니다</span>'
+              + f.conflicts.map((c) => '<span class="sub">' + esc(c.text) + '</span>').join('') + '</div>'
+            : '')
+          + '<div class="edu-line" style="color:var(--c-ink-faint)">최종 확인 ' + esc(n.checked_at)
+          + ' · ' + esc(n.verified_by) + '</div>'
+          + '<div class="edu-actions">'
+          + (/^https?:\/\/\S+$/.test(String(n.detail_url || '')) ? '<a class="btn-src" href="' + esc(n.detail_url) + '" target="_blank" rel="noopener">공고 원문<svg class="icon sm"><use href="#i-ext"/></svg></a>' : '')
+          + saveBtn('notice', n.notice_id, n.title, n.org) + '</div>'
+          + '</article>';
+      }).join('');
   }
 
   function complexNameHtml(id) {
@@ -266,7 +333,7 @@
     // complexHtml은 회원/비회원에 따라 다른 테이블을 읽는다. await 하는 동안
     // 로그아웃하거나 지역을 다시 바꾸면 이 결과는 버려야 한다 —
     // 그러지 않으면 로그인 시절 단지명이나 이전 지역 결과가 화면에 남는다.
-    const html = tab === 'notice' ? noticeHtml()
+    const html = tab === 'notice' ? (noticeHtml() + autoRecruitHtml())
       : focusId ? await focusComplexHtml(mySession, focusId)
       : await complexHtml(mySession, region);
     if (my !== renderGen || mySession !== session) return;
@@ -280,6 +347,8 @@
     });
     const lg = document.getElementById('areaLogin');
     if (lg) lg.addEventListener('click', () => C().loginWithKakao());
+    const lgAuto = document.getElementById('areaLoginAuto');
+    if (lgAuto) lgAuto.addEventListener('click', () => C().loginWithKakao());
     panel.querySelectorAll('[data-save]').forEach((b) =>
       b.addEventListener('click', () => onSave(b)));
   }
@@ -297,14 +366,17 @@
     // 세션이 바뀐 순간 회원 상태를 먼저 비우고 다시 그린다
     saves = null;
     noticeNames = 'anon';
+    autoRecruits = 'anon';
     render();
-    const [nextSaves, nextNames] = await Promise.all([
+    const [nextSaves, nextNames, nextAuto] = await Promise.all([
       C().loadSaves(),
-      fetchNoticeNames(next)
+      fetchNoticeNames(next),
+      fetchAutoRecruits(next)
     ]);
     if (my !== gen) return;                  // 그 사이 세션이 바뀌었으면 값을 버린다
     saves = nextSaves;
     noticeNames = nextNames;
+    autoRecruits = nextAuto;
     render();
   }
 

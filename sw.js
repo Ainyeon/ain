@@ -1,7 +1,10 @@
 // 에인연 서비스워커 — 오프라인 내성: 마지막 브리핑·시세 1회분 열람 가능
 // 전략: 내비게이션·데이터 = 네트워크 우선(성공 시 캐시 갱신, 실패 시 캐시 폴백)
 //       정적 자산 = 캐시 우선(백그라운드 갱신)
-const VERSION = 'ain-v26'; // v22: 홈 커뮤니티 스트립 / v23: OG 카드 v2 / v24: 첫 출시(교육·내 지역·저장·익명)
+const VERSION = 'ain-v28'; // v22: 홈 커뮤니티 스트립 / v23: OG 카드 v2 / v24: 첫 출시(교육·내 지역·저장·익명)
+// v26: 화면 문구 정리 / v27: 업무(/work/)·시공 카드(/c/) / v28: 교육·일자리 묶기 + 입주정보 개명 + 교육 자동 수집 병합 + 구인·구직
+// 업무 자산(/work/*)은 SHELL에 넣지 않는다(업무를 안 쓰는 방문자가 설치 때 받지 않게) — 방문 시 런타임 캐시.
+// 업무 테이블·RPC는 DATA_ALLOW에 넣지 않는다(회원 전용 응답이 기기에 남는다).
 // SHELL의 ?v= 는 페이지가 실제로 요청하는 URL과 글자 그대로 같아야 한다.
 // 다르면 프리캐시가 다른 키로 저장돼, 재방문 첫 로드에서 구 스크립트가 새 페이지에 섞인다.
 const SHELL_CACHE = VERSION + '-shell';
@@ -21,26 +24,27 @@ const SHELL = [
   '/maker/compare/',
   '/board/free/',
   '/board/proposal/',
+  '/edu/jobs/',
   '/assets/css/design-tokens.css?v=11',
-  '/assets/css/components.css?v=26',
-  '/assets/js/ain-common.js?v=26',
-  '/assets/js/ain-community.js?v=26',
-  '/auth.js?v=26',
-  '/edu/edu.css?v=26',
-  '/edu/edu-logic.js?v=26',
-  '/edu/edu.js?v=26',
-  '/area/area.js?v=26',
-  '/board/board.css?v=26',
-  '/board/gate.js?v=26',
-  '/board/board-free.js?v=26',
-  '/board/board-proposal.js?v=26',
-  '/maker/maker.css?v=26',
-  '/maker/maker-core.js?v=26',
-  '/maker/notice/notice.js?v=26',
-  '/maker/compare/compare.js?v=26',
-  '/maker/fields.json?v=26',
-  '/maker/formats.json?v=26',
-  '/maker/copy.json?v=26',
+  '/assets/css/components.css?v=28',
+  '/assets/js/ain-common.js?v=28',
+  '/assets/js/ain-community.js?v=28',
+  '/auth.js?v=28',
+  '/edu/edu.css?v=28',
+  '/edu/edu-logic.js?v=28',
+  '/edu/edu.js?v=28',
+  '/area/area.js?v=28',
+  '/board/board.css?v=28',
+  '/board/gate.js?v=28',
+  '/board/board-free.js?v=28',
+  '/board/board-proposal.js?v=28',
+  '/maker/maker.css?v=28',
+  '/maker/maker-core.js?v=28',
+  '/maker/notice/notice.js?v=28',
+  '/maker/compare/compare.js?v=28',
+  '/maker/fields.json?v=28',
+  '/maker/formats.json?v=28',
+  '/maker/copy.json?v=28',
   '/assets/data/education.json',
   '/assets/data/notices.json',
   '/assets/fonts/PretendardVariable.subset.woff2',
@@ -99,7 +103,7 @@ self.addEventListener('fetch', (e) => {
           caches.open(SHELL_CACHE).then((c) => c.put(req, copy));
           return res;
         })
-        .catch(() => caches.match(req).then((hit) => hit || caches.match('/')))
+        .catch(() => caches.match(req, { ignoreSearch: true }).then((hit) => hit || caches.match('/')))   // /edu/jobs/?kind= 등 쿼리 붙은 주소도 오프라인 셸로
     );
     return;
   }

@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=26">
+  <link rel="stylesheet" href="/assets/css/components.css?v=28">
   <style>
     :root { color-scheme: light;
       /* 레거시 별칭 → 토큰 브릿지 */
@@ -49,9 +49,9 @@
     .gate-msg { padding: 28px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); text-align: center; font-size: 14px; color: var(--txt2); }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=26"></script>
-  <script defer src="/assets/js/ain-common.js?v=26"></script>
-  <script defer src="/assets/js/ain-community.js?v=26"></script>
+  <script defer src="/auth.js?v=28"></script>
+  <script defer src="/assets/js/ain-common.js?v=28"></script>
+  <script defer src="/assets/js/ain-community.js?v=28"></script>
 </head>
 <body class="has-tabbar">
   <nav class="tnav">
@@ -70,7 +70,10 @@
   </main>
   <script>
     addEventListener('DOMContentLoaded', async () => {
-      const next = new URLSearchParams(location.search).get('next') || '/';
+      const rawNext = new URLSearchParams(location.search).get('next') || '/';
+      // 같은 사이트 경로만 (오픈 리다이렉트 차단: //evil.com, 탭·역슬래시 우회도 URL로 해석해 출처를 비교)
+      let next = '/';
+      try { const u = new URL(rawNext, location.origin); if (u.origin === location.origin) next = u.href; } catch (e) {}
       const body = document.getElementById('obBody');
       const { user, profile, infraError } = await ainCommunity.getMyProfile();
 
