@@ -200,7 +200,8 @@ const settle = async () => { for (let i = 0; i < 12; i++) await new Promise((r) 
     const html = k.panel.innerHTML;
     const expired = html.slice(html.indexOf('접수 마감 경과'));
     assert.ok(html.includes('접수 마감 경과') && expired.includes('개강 지난 타일 과정'), '개강 지난 과정이 현재 모집처럼 보인다');
-    assert.ok(expired.includes('<span class="edu-tag">접수 마감 경과</span>'), '목록 카드에 경과 표시가 없다');
+    assert.ok(expired.includes('<span class="edu-tag">원문 개강일 지남</span>'), '목록 카드에 경과 표시가 없다');
+    assert.ok(!expired.includes('<span class="edu-tag">접수 마감 경과</span>'), '원문에 없는 마감을 지났다고 적었다');
     const k2 = run({ eduRows: [STARTED], search: '?id=' + encodeURIComponent(STARTED.notice_id) });
     await k2.boot(); await settle();
     assert.ok(k2.panel.innerHTML.includes('원문 개강일이 지남'), '상세가 개강일 경과를 알리지 않는다');

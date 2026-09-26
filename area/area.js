@@ -246,7 +246,7 @@
         const line = (k, v) => v ? '<div class="edu-line"><span class="edu-k">' + esc(k) + '</span>' + esc(v) + '</div>' : '';
         return '<article class="edu-card">'
           + '<div class="edu-tags"><span class="edu-tag">자동 수집 · 사람 검수 전</span>'
-          + (n.status === 'closed' ? '<span class="edu-tag">원문 마감 경과</span>'
+          + (n.status === 'closed' ? '<span class="edu-tag">' + (n.apply_end_at ? '원문 마감 경과' : '원문 개강일 지남') + '</span>'
             : !n.apply_end_at ? '<span class="edu-tag">접수 마감 미확인</span>' : '')
           + (n.parse_status === 'partial' ? '<span class="edu-tag accent">일부만 읽음</span>' : '')
           + (n.parse_status === 'failed' ? '<span class="edu-tag accent">상세를 읽지 못함</span>' : '')

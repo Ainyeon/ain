@@ -15,7 +15,7 @@
 
 ## 2. 유료 부여·회수 (계좌이체 확인 후)
 ```sql
-select public.admin_set_plan('<회원 uuid>', '2027-06-01 00:00+09', '계좌이체 9/30 19,900원');  -- 부여
+select public.admin_set_plan('<회원 uuid>', '2027-06-01 00:00+09', '계좌이체 <날짜> <금액>');  -- 부여
 select public.admin_set_plan('<회원 uuid>', null, '환불');                                  -- 회수
 select * from public.billing_events order by id desc limit 20;                               -- 원장 (FK 없음, 5년 보존)
 ```

@@ -18,7 +18,7 @@ assert.ok(!L.listed(items).some((i) => i.record_type.startsWith('채용접점'))
 const BEFORE = Date.parse('2026-09-09T00:00:00+09:00');
 const secs = L.groupSections(items, {}, BEFORE);
 assert.deepStrictEqual(secs.map((s) => [s.key, s.items.length]),
-  [['deadline', 5], ['posted_no_deadline', 2], ['unconfirmed', 7]]);   // 09-26: C112 목록에서 내려감·마감 표기 충돌 → 미확인
+  [['deadline', 5], ['posted_no_deadline', 3], ['unconfirmed', 6]]);   // 09-26: C112 접수 마감 표기 충돌 → 마감 미확인
 // 섹션 제목이 "지금 신청 가능"을 만들지 않는다
 assert.ok(!secs.some((s) => /신청 가능|모집 중|모집중/.test(s.title)));
 
@@ -138,4 +138,4 @@ assert.strictEqual(sinceMonth('0', LEAP), null);
   assert.strictEqual(shown.length, 2, '미기재 1건 + 경계 이후 1건이 남아야 함');
 }
 
-console.log('edu-logic OK — 15행 / 교육 14 / 섹션 5·2·7 / 충돌 2+1 / 마감경과 분리 / 수료시점 필터');
+console.log('edu-logic OK — 15행 / 교육 14 / 섹션 5·3·6 / 충돌 2+1 / 마감경과 분리 / 수료시점 필터');

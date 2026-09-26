@@ -200,7 +200,9 @@
   }
 
   function staleTag(item) {
-    return (L.isExpired(item) || item.group === 'expired' ? '<span class="edu-tag">접수 마감 경과</span>' : '')
+    // 마감 표기 없이 원문 개강일로 닫힌 수집분은 '마감 경과'라고 하지 않는다(모르는 마감을 지났다고 단정하지 않음)
+    return (L.isExpired(item) ? '<span class="edu-tag">접수 마감 경과</span>'
+      : item.group === 'expired' ? '<span class="edu-tag">원문 개강일 지남</span>' : '')
       + (L.isStale(item.checked_at, kstToday()) ? '<span class="edu-tag accent">재확인 필요</span>' : '');
   }
 
