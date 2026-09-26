@@ -1,7 +1,8 @@
 // 에인연 서비스워커 — 오프라인 내성: 마지막 브리핑·시세 1회분 열람 가능
 // 전략: 내비게이션·데이터 = 네트워크 우선(성공 시 캐시 갱신, 실패 시 캐시 폴백)
 //       정적 자산 = 캐시 우선(백그라운드 갱신)
-const VERSION = 'ain-v27'; // v22: 홈 커뮤니티 스트립 / v23: OG 카드 v2 / v24: 첫 출시(교육·내 지역·저장·익명) / v27: 업무(/work/)·시공 카드(/c/)·요금제
+const VERSION = 'ain-v28'; // v22: 홈 커뮤니티 스트립 / v23: OG 카드 v2 / v24: 첫 출시(교육·내 지역·저장·익명)
+// v26: 화면 문구 정리 / v27: 업무(/work/)·시공 카드(/c/) / v28: 교육·일자리 묶기 + 입주정보 개명 + 교육 자동 수집 병합 + 구인·구직
 // 업무 자산(/work/*)은 SHELL에 넣지 않는다(업무를 안 쓰는 방문자가 설치 때 받지 않게) — 방문 시 런타임 캐시.
 // 업무 테이블·RPC는 DATA_ALLOW에 넣지 않는다(회원 전용 응답이 기기에 남는다).
 // SHELL의 ?v= 는 페이지가 실제로 요청하는 URL과 글자 그대로 같아야 한다.
@@ -23,26 +24,27 @@ const SHELL = [
   '/maker/compare/',
   '/board/free/',
   '/board/proposal/',
+  '/edu/jobs/',
   '/assets/css/design-tokens.css?v=11',
-  '/assets/css/components.css?v=26',
-  '/assets/js/ain-common.js?v=26',
-  '/assets/js/ain-community.js?v=26',
-  '/auth.js?v=26',
-  '/edu/edu.css?v=26',
-  '/edu/edu-logic.js?v=26',
-  '/edu/edu.js?v=26',
-  '/area/area.js?v=26',
-  '/board/board.css?v=26',
-  '/board/gate.js?v=26',
-  '/board/board-free.js?v=26',
-  '/board/board-proposal.js?v=26',
-  '/maker/maker.css?v=26',
-  '/maker/maker-core.js?v=26',
-  '/maker/notice/notice.js?v=26',
-  '/maker/compare/compare.js?v=26',
-  '/maker/fields.json?v=26',
-  '/maker/formats.json?v=26',
-  '/maker/copy.json?v=26',
+  '/assets/css/components.css?v=27',
+  '/assets/js/ain-common.js?v=27',
+  '/assets/js/ain-community.js?v=27',
+  '/auth.js?v=27',
+  '/edu/edu.css?v=27',
+  '/edu/edu-logic.js?v=27',
+  '/edu/edu.js?v=27',
+  '/area/area.js?v=27',
+  '/board/board.css?v=27',
+  '/board/gate.js?v=27',
+  '/board/board-free.js?v=27',
+  '/board/board-proposal.js?v=27',
+  '/maker/maker.css?v=27',
+  '/maker/maker-core.js?v=27',
+  '/maker/notice/notice.js?v=27',
+  '/maker/compare/compare.js?v=27',
+  '/maker/fields.json?v=27',
+  '/maker/formats.json?v=27',
+  '/maker/copy.json?v=27',
   '/assets/data/education.json',
   '/assets/data/notices.json',
   '/assets/fonts/PretendardVariable.subset.woff2',

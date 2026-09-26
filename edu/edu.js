@@ -1,5 +1,9 @@
 // 교육 찾기 — 목록·필터·카드·상세. 비회원도 열람 가능 (SPEC §2.1).
-// 데이터: /assets/data/education.json (검수 원장 tools/education-seed.csv → build-edu-json.py)
+// 데이터 두 갈래를 같은 카드 모양으로 합친다:
+//   1) 검수 원장  /assets/data/education.json (tools/education-seed.csv → build-edu-json.py)
+//   2) 자동 수집  Supabase v_edu_list (ain-automation scripts/collect_edu_programs.py)
+// 자동 수집분은 '사람 검수 전'으로 표시한다 — 접속 성공은 검수가 아니다.
+// v_edu_list 가 아직 없으면(SQL 미적용) 원장만 그린다. 실패를 0건처럼 꾸미지 않는다.
 // 저장·제보·후기만 로그인 필요. 로직은 edu-logic.js(테스트 있음), 여기는 렌더만.
 (function () {
   'use strict';
@@ -17,6 +21,8 @@
   };
 
   let DATA = null;
+  // 자동 수집 목록: null = 아직 조회 안 함 / 'unavailable' = 뷰 미적용 / [] = 조회했고 0건
+  let AUTO = null;
   let saves = null;
   let gen = 0;   // 요청 세대 — 늦게 도착한 이전 세션의 응답이 화면을 덮지 않게 한다           // Map | null (비로그인 또는 미적용)
   // edu id -> {total, review, rows[]}. null = 아직 조회하지 않음(비회원·미적용) — 0건과 구분한다.
@@ -34,6 +40,102 @@
     d.setDate(1);
     d.setMonth(d.getMonth() - n);
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  // ── 자동 수집분 → 원장과 같은 카드 모양 ──────────────────────────
+  // 원문에 없는 값을 만들지 않는다. 못 읽은 칸은 빈 값으로 두고 화면이 '원문에 없음'으로 적는다.
+  const AUTO_ID = /^AUTO-/;
+  const isAuto = (item) => AUTO_ID.test(String(item && item.id));
+
+  function groupOfAuto(row, f) {
+    if (row.apply_end_at) return 'deadline';
+    if (row.record_type === '모집회차' || f.schedule_raw) return 'posted_no_deadline';
+    return 'unconfirmed';
+  }
+
+  function fromDb(row) {
+    const f = row.fields || {};
+    const labels = (DATA && DATA.field_labels) || {};
+    const codes = f.work_codes || [];
+    return {
+      id: row.notice_id,
+      record_type: row.record_type || '과정소개',
+      org: row.org,
+      course: row.title,
+      course_class: f.course_class || '',
+      work_raw: codes.map((c) => labels[c] || c).join(' · ') || '업무 분류 미확인',
+      work_codes: codes,
+      region_raw: f.region_raw || '원문에 없음',
+      region_code: row.region_code || '미확인',
+      target_raw: f.target_raw || '',
+      target_level: f.target_level || 'unknown',
+      posted_raw: row.posted_raw || '',
+      schedule_raw: f.schedule_raw || '',
+      schedule_meaning: '',
+      apply_start_raw: f.apply_start_raw || '',
+      apply_end_raw: f.apply_end_raw || f.apply_period_raw || '',
+      apply_end_at: row.apply_end_at || null,
+      apply_notice: row.apply_end_at ? '접수 마감일시 명시' : '',
+      capacity_raw: f.capacity_raw || '',
+      seats_level: f.capacity_raw ? '정원 표기만 있음. 정원은 잔여석이 아니며 잔여석은 미확인' : '',
+      // 원문 안에서 표기가 엇갈린 항목은 전부 이어 붙여 그대로 보여 준다 (어느 쪽도 고르지 않는다)
+      conflict: (f.conflicts || []).length
+        ? { kind: f.conflicts[0].kind, text: f.conflicts.map((c) => c.text).join(' / ') } : null,
+      status_label: row.status === 'closed' ? '원문에 적힌 접수 마감이 지남'
+        : row.apply_end_at ? '접수 마감일시 명시' : '접수 마감 미확인',
+      cost_raw: f.cost_raw || '',
+      cost_condition: '',
+      subsidy_raw: '',
+      cost_level: f.cost_level || 'unknown',
+      practice_raw: '',
+      cert_type: '',
+      cert_basis: '',
+      org_claim: '없음',
+      url: row.detail_url,
+      url_note: '',
+      url_aux: row.list_url && row.list_url !== row.detail_url ? row.list_url : '',
+      url_aux_note: row.list_url ? '기관 목록 페이지' : '',
+      source_limit: '자동 수집기가 공개 목록·상세 페이지에서 읽은 표기입니다. 사람이 원문을 검수하지 않았습니다.',
+      checked_at: row.checked_at,
+      unknowns: [f.cost_raw ? '' : '비용', f.capacity_raw ? '' : '정원',
+                 f.target_raw ? '' : '대상', row.apply_end_at ? '' : '접수 마감']
+        .filter(Boolean).join(', '),
+      exposure: '',
+      verified_by: row.verified_by || '자동 수집 (사람 검수 전)',
+      group: groupOfAuto(row, f),
+      parse_status: row.parse_status,
+      parse_note: row.parse_note,
+      images: f.images || []
+    };
+  }
+
+  // v_edu_list 가 없으면(운영 SQL 미적용) 조용히 원장만 쓴다.
+  const relationMissing = (e) => !!e && (e.code === '42P01' || e.code === 'PGRST205'
+    || e.code === 'PGRST200' || /does not exist|schema cache/i.test(String(e.message || '')));
+
+  async function loadAuto() {
+    if (!window.ainAuth || !ainAuth.getClient) return 'unavailable';
+    let res;
+    try {
+      res = await ainAuth.getClient().from('v_edu_list')
+        .select('notice_id,org,record_type,title,detail_url,list_url,posted_raw,region_code,'
+          + 'apply_end_at,status,parse_status,parse_note,fields,checked_at,verified_by')
+        .order('checked_at', { ascending: false }).limit(300);
+    } catch (e) { console.warn('v_edu_list', e); return 'unavailable'; }
+    if (res.error) {
+      if (!relationMissing(res.error)) console.warn('v_edu_list', res.error);
+      return 'unavailable';
+    }
+    return (res.data || []).map(fromDb);
+  }
+
+  // 원장 + 자동 수집. 같은 원문 주소를 가리키면 사람이 검수한 원장 쪽을 남긴다.
+  function allItems() {
+    const ledger = (DATA && DATA.items) || [];
+    if (!Array.isArray(AUTO) || !AUTO.length) return ledger;
+    const seen = new Set(ledger.map((i) => String(i.url || '').replace(/^https?:\/\//, '').replace(/\/$/, '')));
+    return ledger.concat(AUTO.filter((i) =>
+      !seen.has(String(i.url || '').replace(/^https?:\/\//, '').replace(/\/$/, ''))));
   }
 
   const heartSvg = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
@@ -98,6 +200,21 @@
       + (L.isStale(item.checked_at, kstToday()) ? '<span class="edu-tag accent">재확인 필요</span>' : '');
   }
 
+  // 자동으로 읽어 온 항목임을 감추지 않는다. 접속 성공은 원문 검수가 아니다.
+  function autoTag(item) {
+    if (!isAuto(item)) return '';
+    return '<span class="edu-tag">자동 수집 · 사람 검수 전</span>'
+      + (item.parse_status === 'partial' ? '<span class="edu-tag accent">일부만 읽음</span>' : '')
+      + (item.parse_status === 'failed' ? '<span class="edu-tag accent">상세를 읽지 못함</span>' : '');
+  }
+
+  function autoNote(item) {
+    if (!isAuto(item)) return '';
+    return '<div class="edu-warn"><span>이 항목은 수집기가 기관 페이지에서 읽은 표기입니다</span>'
+      + '<span class="sub">사람이 원문을 검수하지 않았습니다. 신청 전에 공식 페이지에서 확인하세요.</span>'
+      + (item.parse_note ? '<span class="sub">' + esc(item.parse_note) + '</span>' : '') + '</div>';
+  }
+
   function cardHtml(item) {
     const tags = [
       item.record_type === '기관과정목록' ? '기관 과정 소개(회차 아님)' : '',
@@ -116,7 +233,7 @@
       + ' <span class="edu-tag">잔여석 아님</span></div>';
 
     return '<article class="edu-card">'
-      + '<div class="edu-tags">' + tags + staleTag(item) + '</div>'
+      + '<div class="edu-tags">' + tags + staleTag(item) + autoTag(item) + '</div>'
       + '<h3><a href="?id=' + encodeURIComponent(item.id) + '">' + esc(item.course) + '</a></h3>'
       + '<div class="edu-org">' + esc(item.work_raw) + ' · ' + esc(item.org) + ' · ' + esc(item.region_raw) + '</div>'
       + kv('일정', item.schedule_raw)
@@ -133,6 +250,27 @@
       + '<a class="btn-line" href="?id=' + encodeURIComponent(item.id) + '">자세히</a>'
       + saveBtn('edu', item.id, item.course, item.org)
       + '</div></article>';
+  }
+
+  // ── 원문 사진 ────────────────────────────────────────────────────
+  // 추출과 허락은 다르다. 개별 이미지에 이용 근거가 기록된 것(use.state === 'allowed')만
+  // 띄우고, 나머지는 원문 링크로 보낸다. 사진이 없어도 카드 레이아웃은 그대로다.
+  // 크롭·가공하지 않는다 — 원본 비율·전체 유지가 허락 조건에 포함된다.
+  function imagesHtml(item) {
+    const ok = (item.images || []).filter((im) => im && im.use && im.use.state === 'allowed'
+      && /^https:\/\//.test(String(im.url || '')));
+    if (!ok.length) return '';
+    return '<div class="edu-block"><h4>원문 사진</h4>'
+      + ok.slice(0, 3).map((im) =>
+        '<figure class="edu-photo">'
+        + '<img src="' + esc(im.url) + '" alt="' + esc(im.alt || (item.course + ' 원문 사진')) + '"'
+        + ' loading="lazy" decoding="async" referrerpolicy="no-referrer"'
+        + ' onerror="this.closest(\'figure\').remove()">'
+        + '<figcaption>출처: ' + esc(item.org)
+        + ' · <a href="' + esc(item.url) + '" target="_blank" rel="noopener">원문 보기</a>'
+        + (im.use.verified_at ? ' · 이용 조건 확인 ' + esc(im.use.verified_at) : '')
+        + '</figcaption></figure>').join('')
+      + '</div>';
   }
 
   // ── 필터 ──
@@ -161,8 +299,8 @@
 
   function filtersHtml(f) {
     const labels = DATA.field_labels || {};
-    const work = L.optionsOf(DATA.items, 'work').map((v) => ({ v, l: labels[v] || v }));
-    const region = L.optionsOf(DATA.items, 'region_code').map((v) => ({ v, l: v }));
+    const work = L.optionsOf(allItems(), 'work').map((v) => ({ v, l: labels[v] || v }));
+    const region = L.optionsOf(allItems(), 'region_code').map((v) => ({ v, l: v }));
     const status = L.SECTIONS.map((s) => ({ v: s.key, l: s.title }));
     const target = ['beginner', 'experience', 'condition', 'unknown'].map((v) => ({ v, l: L.TARGET_LABELS[v] }));
     const cost = ['subsidy', 'self', 'unknown'].map((v) => ({ v, l: L.COST_LABELS[v] }));
@@ -247,13 +385,13 @@
       ? '<a class="btn-line" href="/board/free/?ref=edu:' + encodeURIComponent(item.id) + '">이 과정 글 ' + bucket.total + '건</a>'
       : '';
 
-    const similar = L.listed(DATA.items)
+    const similar = L.listed(allItems())
       .filter((x) => x.id !== item.id && (x.work_codes || []).some((c) => (item.work_codes || []).includes(c)))
       .slice(0, 4);
 
     return '<a class="back-link" href="/edu/">← 교육 목록으로</a>'
       + '<article class="edu-card">'
-      + '<div class="edu-tags"><span class="edu-tag accent">' + esc(item.status_label) + '</span>' + staleTag(item) + '</div>'
+      + '<div class="edu-tags"><span class="edu-tag accent">' + esc(item.status_label) + '</span>' + staleTag(item) + autoTag(item) + '</div>'
       + '<h3>' + esc(item.course) + '</h3>'
       + '<div class="edu-org">' + esc(item.org) + ' · ' + esc(item.course_class) + '</div>'
 
@@ -284,6 +422,8 @@
       + '</div>'
 
       + conflictHtml(item)
+      + autoNote(item)
+      + imagesHtml(item)
       + unknown
       + claim
 
@@ -306,7 +446,7 @@
     if (!DATA) return;
     const id = qs().get('id');
     if (id) {
-      const item = L.listed(DATA.items).find((x) => x.id === id);   // 교육 집계 제외분은 상세도 없음
+      const item = L.listed(allItems()).find((x) => x.id === id);   // 교육 집계 제외분은 상세도 없음
       panel.innerHTML = item ? detailHtml(item)
         : '<div class="edu-note"><b>과정을 찾을 수 없습니다</b><a href="/edu/">교육 목록으로</a></div>';
       bind();
@@ -314,7 +454,7 @@
     }
     const f = currentFilter();
     const now = Date.now();
-    const secs = L.groupSections(DATA.items, f, now);
+    const secs = L.groupSections(allItems(), f, now);
     const shown = secs.reduce((n, s) => n + s.items.length, 0);
 
     panel.innerHTML = filtersHtml(f)
@@ -387,17 +527,25 @@
       console.error(e);
       return;
     }
-    const c = DATA.counts;
-    $('statEdu').textContent = c.education;
-    $('statOrg').textContent = c.orgs;
-    // 집계도 시각 기준으로 — 마감이 지난 회차를 '접수 마감 명시'로 세지 않는다
-    $('statDeadline').textContent = L.listed(DATA.items)
-      .filter((i) => L.sectionOf(i, Date.now()) === 'deadline').length;
+    updateStats();
     $('eduSub').textContent = '내게 맞는 기술 교육을 조건별로 찾아보세요.';
 
-    render();                       // 데이터만으로 먼저 그린다 (비회원도 즉시 열람)
+    render();                       // 원장만으로 먼저 그린다 (비회원도 즉시 열람)
+    AUTO = await loadAuto();        // 자동 수집분이 오면 합쳐서 다시 그린다
+    updateStats();
+    render();
     await refreshMember(await ainAuth.getSession());
   });
+
+  // 집계는 화면에 실제로 실린 것만 센다 (원장 + 자동 수집).
+  function updateStats() {
+    const listed = L.listed(allItems());
+    $('statEdu').textContent = listed.length;
+    $('statOrg').textContent = new Set(listed.map((i) => i.org)).size;
+    // 시각 기준으로 — 마감이 지난 회차를 '접수 마감 명시'로 세지 않는다
+    $('statDeadline').textContent = listed
+      .filter((i) => L.sectionOf(i, Date.now()) === 'deadline').length;
+  }
 
   async function refreshMember(session) {
     const my = ++gen;

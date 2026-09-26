@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>교육 찾기 | 에어컨 인테리어 연구소</title>
+  <title>교육·일자리 | 에어컨 인테리어 연구소</title>
   <meta name="description" content="주거 현장 직군의 교육 과정을 공식 원문 기준으로 정리합니다. 지역·업무·비용 조건으로 찾고, 접수 마감과 정원 표기를 원문 그대로 확인하세요.">
   <link rel="canonical" href="https://ainyeon.com/edu/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="교육 찾기 | 에어컨 인테리어 연구소">
+  <meta property="og:title" content="교육·일자리 | 에어컨 인테리어 연구소">
   <meta property="og:description" content="공식 원문에서 확인한 교육 과정 — 조건·비용·일정을 한 화면에서. 순위나 별점은 매기지 않습니다.">
   <meta property="og:url" content="https://ainyeon.com/edu/">
   <meta property="og:image" content="https://ainyeon.com/assets/og-card-v2.png">
@@ -19,14 +19,14 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=26">
-  <link rel="stylesheet" href="/edu/edu.css?v=26">
+  <link rel="stylesheet" href="/assets/css/components.css?v=27">
+  <link rel="stylesheet" href="/edu/edu.css?v=27">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=26"></script>
-  <script defer src="/assets/js/ain-common.js?v=26"></script>
-  <script defer src="/assets/js/ain-community.js?v=26"></script>
-  <script defer src="/edu/edu-logic.js?v=26"></script>
-  <script defer src="/edu/edu.js?v=26"></script>
+  <script defer src="/auth.js?v=27"></script>
+  <script defer src="/assets/js/ain-common.js?v=27"></script>
+  <script defer src="/assets/js/ain-community.js?v=27"></script>
+  <script defer src="/edu/edu-logic.js?v=27"></script>
+  <script defer src="/edu/edu.js?v=27"></script>
 </head>
 <body class="has-tabbar">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -42,8 +42,8 @@
       <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
       <div class="tnav-links">
         <a href="/">홈</a>
-        <a class="on" href="/edu/">교육</a>
-        <a href="/area/">내 지역</a>
+        <a class="on" href="/edu/">교육·일자리</a>
+        <a href="/area/">입주정보</a>
         <a href="/maker/">도구</a>
         <a href="/board/free/">게시판</a>
       </div>
@@ -55,9 +55,14 @@
     <header class="phero">
       <div class="phero-bar">
         <div>
-          <div class="crumb">EDUCATION</div>
-          <h1 id="eduTitle">교육 찾기</h1>
+          <div class="crumb">교육·일자리</div>
+          <h1 id="eduTitle">교육</h1>
           <p class="sub" id="eduSub">내게 맞는 기술 교육을 조건별로 찾아보세요.</p>
+          <div class="board-tabs">
+            <a class="on" href="/edu/">교육</a>
+            <a href="/edu/jobs/?kind=offer">구인</a>
+            <a href="/edu/jobs/?kind=seek">구직</a>
+          </div>
         </div>
         <div class="phero-stat">
           <div class="st"><div class="n num" id="statEdu">—</div><div class="l">교육 기록</div></div>

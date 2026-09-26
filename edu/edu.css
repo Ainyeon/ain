@@ -96,3 +96,9 @@
 .edu-review:first-of-type { border-top: 0; }
 .edu-since { min-height: 36px; padding: 0 var(--sp-2); border: 1px solid var(--c-line-strong);
   border-radius: var(--r-1); background: var(--c-surface-sub); font: inherit; font-size: var(--fs-4); }
+
+/* ── 원문 사진 ── 원본 비율·전체를 유지한다 (크롭 금지: 이용 조건에 포함) */
+.edu-photo{margin:var(--sp-2) 0 0}
+.edu-photo img{display:block;width:100%;height:auto;border-radius:var(--r-1);
+  border:1px solid var(--c-line);background:var(--c-surface)}
+.edu-photo figcaption{margin-top:var(--sp-1);font-size:var(--fs-5);color:var(--c-ink-faint)}

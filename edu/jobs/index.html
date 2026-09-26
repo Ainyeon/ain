@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>제안·건의 | 에어컨 인테리어 연구소</title>
-  <meta name="description" content="기능 제안과 개선 의견. 검토·진행 상황 안내.">
-  <link rel="canonical" href="https://ainyeon.com/board/proposal/">
+  <title>구인·구직 | 에어컨 인테리어 연구소</title>
+  <meta name="description" content="주거 현장 구인·구직. 회원이 직접 등록하고 마감까지 관리합니다. 회원 전용.">
+  <link rel="canonical" href="https://ainyeon.com/edu/jobs/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="제안·건의 | 에어컨 인테리어 연구소">
-  <meta property="og:description" content="기능 제안과 개선 의견. 검토·진행 상황 안내.">
-  <meta property="og:url" content="https://ainyeon.com/board/proposal/">
+  <meta property="og:title" content="구인·구직 | 에어컨 인테리어 연구소">
+  <meta property="og:description" content="회원이 직접 등록하는 구인·구직. 지역·공종·조건을 본문에 적습니다.">
+  <meta property="og:url" content="https://ainyeon.com/edu/jobs/">
   <meta property="og:image" content="https://ainyeon.com/assets/og-card-v2.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -33,10 +33,10 @@
       <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
       <div class="tnav-links">
         <a href="/">홈</a>
-        <a href="/edu/">교육·일자리</a>
+        <a class="on" href="/edu/">교육·일자리</a>
         <a href="/area/">입주정보</a>
         <a href="/maker/">도구</a>
-        <a class="on" href="/board/free/">게시판</a>
+        <a href="/board/free/">게시판</a>
       </div>
       <div class="tnav-auth" id="authSlot"></div>
     </div>
@@ -45,13 +45,13 @@
     <header class="phero">
       <div class="phero-bar">
         <div>
-          <div class="crumb">게시판</div>
-          <h1>제안·건의</h1>
-          <p class="sub">필요한 기능과 개선 의견을 남겨 주세요.</p>
-          <div class="board-tabs">
-            <a href="/board/free/">자유게시판</a>
-            <a class="on" href="/board/proposal/">제안·건의</a>
-            <a href="/me/">내 활동</a>
+          <div class="crumb">교육·일자리</div>
+          <h1 id="jobTitle">구인</h1>
+          <p class="sub" id="jobSub">사람을 구하는 글입니다. 회원이 직접 등록합니다.</p>
+          <div class="board-tabs" id="jobTabs">
+            <a href="/edu/">교육</a>
+            <a class="on" href="/edu/jobs/?kind=offer">구인</a>
+            <a href="/edu/jobs/?kind=seek">구직</a>
           </div>
         </div>
       </div>
@@ -61,7 +61,24 @@
     </section>
     <script src="/board/gate.js?v=27"></script>
   </main>
-  <script>addEventListener("DOMContentLoaded",()=>{if(window.ainAuth)ainAuth.init("authSlot")});</script>
-  <script src="/board/board-proposal.js?v=27" defer></script>
+  <script>
+    // 구인/구직은 같은 게시판 코드에 board_type 만 다르다. gate.js·board-free.js 보다 먼저 정한다.
+    (function () {
+      var seek = new URLSearchParams(location.search).get("kind") === "seek";
+      window.AIN_BOARD = { type: seek ? "job_seek" : "job_offer" };
+      var t = document.getElementById("jobTitle");
+      var s = document.getElementById("jobSub");
+      if (seek && t) t.textContent = "구직";
+      if (seek && s) s.textContent = "일할 곳을 찾는 글입니다. 회원이 직접 등록합니다.";
+      var tabs = document.getElementById("jobTabs");
+      if (seek && tabs) {
+        tabs.children[1].classList.remove("on");
+        tabs.children[2].classList.add("on");
+      }
+      document.title = (seek ? "구직" : "구인") + " | 에어컨 인테리어 연구소";
+    })();
+    addEventListener("DOMContentLoaded", function () { if (window.ainAuth) ainAuth.init("authSlot"); });
+  </script>
+  <script src="/board/board-free.js?v=27" defer></script>
 </body>
 </html>
