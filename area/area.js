@@ -209,13 +209,9 @@
     || e.code === 'PGRST200' || /does not exist|schema cache/i.test(String(e.message || '')));
 
   async function fetchAutoRecruits(session) {
-    if (!session) {
-      // 뷰가 실제로 있을 때만 '회원만 볼 수 있습니다' 안내를 띄운다(없는 기능으로 로그인 유도 금지)
-      try {
-        const probe = await db().from('v_recruit_list').select('notice_id', { head: true, count: 'exact' }).limit(1);
-        return probe.error && relationMissing(probe.error) ? 'unavailable' : 'anon';
-      } catch (e) { return 'unavailable'; }
-    }
+    // 비회원은 조회하지 않고 로그인 안내만 (v_recruit_list 는 운영에 있다: pipe_18_program_notices, 2026-09-26).
+    // 비회원으로 조회하면 권한 오류(401)가 콘솔에 남는다.
+    if (!session) return 'anon';
     let res;
     try {
       res = await db().from('v_recruit_list')
