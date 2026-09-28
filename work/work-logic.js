@@ -362,7 +362,7 @@
       링크: (extra && extra.link) || ''
     };
     return base.replace(/\{(고객|상호|일시|주소|금액|미수금|계좌|링크)\}/g, (_, k) => vars[k])
-      .replace(/^\[\] /, '').replace(/[ \t]+$/gm, '').replace(/\s+$/, '');
+      .replace(/\[\]\s?/g, '').replace(/[ \t]+$/gm, '').replace(/\s+$/, '');
   }
 
   // 폰 캘린더에 넣기 (.ics, 1시간 전 알림). 시각은 UTC로 적는다.

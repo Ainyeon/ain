@@ -5,11 +5,9 @@
   const L = window.ainWorkLogic;
   const W = 1080, M = 72;
 
-  const tok = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  function colors() {
-    return { ink: tok('--c-ink'), sub: tok('--c-ink-sub'), faint: tok('--c-ink-faint'), line: tok('--c-line'),
-      lineStrong: tok('--c-line-strong'), accent: tok('--c-accent'), accentBg: tok('--c-accent-bg'), paper: tok('--c-surface'), soft: tok('--c-surface-sub') };
-  }
+  // 고객에게 가는 문서 색은 고정 — 화면 테마·유리 토큰이 바뀌어도 흰 종이·검은 글자 (값은 design-tokens.css 09-28 기준)
+  const C0 = { ink: '#1E1D1A', sub: '#5C5850', faint: '#6E6A61', line: '#E7E4DD', lineStrong: '#D8D4CA',
+    accent: '#2D4A9E', accentBg: '#EEF1F8', paper: '#FFFFFF', soft: '#F9F8F6' };
 
   // 사진 → ImageBitmap. 서명 URL은 fetch→blob으로 받아 캔버스를 오염시키지 않는다.
   // data:·blob: 주소는 <img>로 읽는다(CSP img-src 허용, connect-src 밖). 서명 URL(https)만 fetch.
@@ -35,7 +33,7 @@
     const MC = window.makerCore;
     await MC.ensureFonts();
     const F = MC.FONT;
-    const C = colors();
+    const C = C0;
     const bitmaps = kind === 'report' ? (await Promise.all((d.photos || []).slice(0, 12).map((p) => toBitmap(p).catch(() => null)))).filter(Boolean) : [];
     const logo = d.pro ? await loadImage(d.biz.logo_data) : null;
     const job = d.job, biz = d.biz || {}, cust = d.customer || {};
@@ -55,7 +53,7 @@
       ctx.fillStyle = C.accent; ctx.fillRect(0, 0, W, 12);
       y = 110;
       if (logo) { const s = Math.min(150 / logo.width, 90 / logo.height); ctx.drawImage(logo, W - M - logo.width * s, 44, logo.width * s, logo.height * s); }
-      text(biz.biz_name || '업체명', M, y, `800 44px ${F}`, C.ink);
+      text(biz.biz_name || (biz.phone ? L.fmtPhone(biz.phone) : ''), M, y, `800 44px ${F}`, C.ink);
       y += 44;
       const bizLine = [biz.owner_name && '대표 ' + biz.owner_name, biz.phone && L.fmtPhone(biz.phone), biz.biz_no && '사업자 ' + biz.biz_no].filter(Boolean).join('  ·  ');
       if (bizLine) text(bizLine, M, y, `500 26px ${F}`, C.sub);
@@ -202,6 +200,7 @@
     const img = document.createElement('img');
     img.alt = '';
     img.src = url;
+    if (cv.height / cv.width <= 1.6) img.className = 'fit';   // 한 장에 들어가는 문서만 A4 한 쪽에 맞춘다(긴 보고서는 여러 쪽)
     area.appendChild(img);
     await img.decode().catch(() => {});
     window.print();

@@ -3,7 +3,7 @@
 
 .w-wrap{display:grid;gap:var(--sp-4);padding-bottom:calc(var(--sp-9) + var(--sp-8));max-width:880px;margin:0 auto}
 /* 업무 화면이 열리면 페이지 머리말은 접는다(폰 첫 화면에 일정이 보이게) */
-body.w-app .phero{display:none}
+body.w-app .phero{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}   /* 앱 화면에서도 h1은 보조기기에 남긴다 */
 body.w-app .w-wrap{padding-top:var(--sp-2)}
 .w-demo{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;padding:var(--sp-3) var(--sp-4);
   border:1px solid var(--c-accent-line);background:var(--c-accent-bg);border-radius:var(--r-2);
@@ -31,7 +31,7 @@ body.w-app .w-wrap{padding-top:var(--sp-2)}
 .w-btn.primary{background:var(--c-accent);border-color:var(--c-accent);color:var(--c-surface)}
 .w-btn.primary:hover{opacity:.92}
 .w-btn.danger{color:var(--c-up)}
-.w-btn.sm{min-height:36px;padding:0 var(--sp-3);font-size:var(--fs-4)}
+.w-btn.sm{min-height:44px;padding:0 var(--sp-3);font-size:var(--fs-4)}
 .w-btn[disabled]{opacity:.5;cursor:default}
 .w-btn .icon{width:16px;height:16px}
 .w-actions{display:flex;flex-wrap:wrap;gap:var(--sp-2)}
@@ -86,7 +86,7 @@ a.w-row:hover,.w-row.link:hover{background:var(--c-surface-sub);cursor:pointer}
 .w-tools{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--c-line)}
 .w-chips{display:flex;gap:var(--sp-2);overflow-x:auto;scrollbar-width:none}
 .w-chips::-webkit-scrollbar{display:none}
-.w-chip{flex:none;min-height:36px;padding:0 var(--sp-3);border-radius:18px;border:1px solid var(--c-line-strong);
+.w-chip{flex:none;min-height:44px;padding:0 var(--sp-3);border-radius:18px;border:1px solid var(--c-line-strong);
   background:var(--c-surface);font:inherit;font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-sub);cursor:pointer}
 .w-chip.on{border-color:var(--c-accent);background:var(--c-accent-bg);color:var(--c-accent)}
 .w-chip.add::before{content:"+ "}
@@ -116,6 +116,8 @@ a.w-row:hover,.w-row.link:hover{background:var(--c-surface-sub);cursor:pointer}
 .w-warn{padding:var(--sp-3);border-radius:var(--r-1);background:var(--c-up-bg);color:var(--c-up);font-size:var(--fs-4);font-weight:var(--fw-semi)}
 .w-note{padding:var(--sp-3);border-radius:var(--r-1);background:var(--c-surface-sub);border:1px solid var(--c-line);
   color:var(--c-ink-sub);font-size:var(--fs-4);line-height:1.6}
+/* .panel의 overflow:hidden은 스크롤 컨테이너라 sticky가 안 붙는다 — clip은 모서리만 자른다 */
+.w-wrap .panel{overflow:clip}
 .w-sticky{position:sticky;bottom:0;z-index:5;display:flex;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4);
   background:var(--c-surface);border-top:1px solid var(--c-line)}
 .w-sticky .w-btn{flex:1}
@@ -128,6 +130,7 @@ a.w-row:hover,.w-row.link:hover{background:var(--c-surface-sub);cursor:pointer}
   border-top:1px solid var(--c-line);font-size:var(--fs-3);background:var(--c-surface)}
 .w-suggest button:first-child{border-top:0}
 .w-suggest button:hover,.w-suggest button:focus-visible{background:var(--c-accent-bg)}
+.w-suggest button:focus-visible,.w-cal .d:focus-visible{outline:2px solid var(--c-accent);outline-offset:-2px}   /* all:unset이 지운 초점 링 */
 .w-picked{display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-3);border-radius:var(--r-1);
   background:var(--c-accent-bg);border:1px solid var(--c-accent-line);font-size:var(--fs-3);font-weight:var(--fw-semi)}
 .w-picked button{margin-left:auto}
@@ -138,6 +141,7 @@ a.w-row:hover,.w-row.link:hover{background:var(--c-surface-sub);cursor:pointer}
 .w-item input,.w-item select{min-height:44px;padding:0 var(--sp-2);border:1px solid var(--c-control);border-radius:var(--r-1);
   background:var(--c-surface);font:inherit;font-size:16px /* iOS 확대 방지 예외 */;width:100%;min-width:0}
 .w-item .x{min-height:44px;border:0;background:none;color:var(--c-ink-faint);font-size:var(--fs-2)}
+.w-item-head span{font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-sub)}
 @media (max-width:480px){
   .w-item{grid-template-columns:1fr 1fr 1fr 44px}
   .w-item .nm{grid-column:1/-1}
@@ -181,7 +185,7 @@ a.w-row:hover,.w-row.link:hover{background:var(--c-surface-sub);cursor:pointer}
 .w-photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:var(--sp-2);padding:var(--sp-4)}
 .w-photo{position:relative;aspect-ratio:1;border-radius:var(--r-1);overflow:hidden;background:var(--c-surface-sub)}
 .w-photo img{width:100%;height:100%;object-fit:cover;display:block}
-.w-photo button{position:absolute;top:var(--sp-1);right:var(--sp-1);min-width:32px;min-height:32px;border-radius:16px;border:0;
+.w-photo button{position:absolute;top:var(--sp-1);right:var(--sp-1);min-width:44px;min-height:44px;border-radius:22px;border:0;
   background:var(--c-ink);color:var(--c-surface);opacity:.85}
 .w-photo em{position:absolute;left:var(--sp-1);bottom:var(--sp-1);padding:0 var(--sp-1);border-radius:var(--r-1);
   background:var(--c-ink);color:var(--c-surface);font-style:normal;font-size:var(--fs-4);opacity:.85}
@@ -224,5 +228,6 @@ html:has(.w-sticky){scroll-padding-bottom:68px}
   body>*:not(#printArea){display:none!important}
   #printArea{display:block}
   #printArea img{width:100%;height:auto}
+  #printArea img.fit{max-height:277mm;width:auto;max-width:100%}
   @page{margin:10mm}
 }

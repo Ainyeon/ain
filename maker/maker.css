@@ -242,7 +242,7 @@
 .photo-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .photo-drop img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .photo-drop .tag { position: absolute; top: 7px; left: 7px; z-index: 1; padding: 3px 9px; border-radius: 100px; background: rgba(15,16,19,.72); color: #fff; font-size: 10.5px; font-weight: 800; }
-.photo-clear { position: absolute; top: 5px; right: 5px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; border: none; background: rgba(15,16,19,.6); color: #fff; font-size: 12px; cursor: pointer; }
+.photo-clear { position: absolute; top: -4px; right: -4px; z-index: 2; width: 44px; height: 44px; border-radius: 50%; border: 9px solid transparent; background: rgba(15,16,19,.6); background-clip: padding-box; color: #fff; font-size: 12px; cursor: pointer; }
 
 /* 미리보기 */
 .preview-card {
@@ -289,7 +289,8 @@ html:has(.action-bar) { scroll-padding-bottom: calc(140px + env(safe-area-inset-
   transition: transform .2s;
 }
 .hub-card:hover { transform: translateY(-2px); }
-.hub-card .tag { font-family: var(--font-mono); font-size: 11px; color: var(--txt3); }
+@media (prefers-reduced-motion: reduce) { .hub-card { transition: none; } .hub-card:hover { transform: none; } }
+.hub-card .tag { font-size: var(--fs-4); font-weight: 700; color: var(--txt3); }
 .hub-card h2 { margin-top: 12px; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; }
 .hub-card p { margin-top: 7px; font-size: 13.5px; color: var(--txt2); line-height: 1.65; }
 .hub-card .go { display: inline-flex; align-items: center; min-height: 44px; margin-top: 12px; font-size: 13.5px; font-weight: 800; color: var(--c-accent); }
