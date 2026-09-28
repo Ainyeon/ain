@@ -158,7 +158,9 @@ const settle = async () => { for (let i = 0; i < 12; i++) await new Promise((r) 
     await f.boot(); await settle();
     const html = f.panel.innerHTML;
     assert.ok(html.includes('자동 수집 냉매회수 신규교육 추가 4차'), '자동 수집 항목의 상세가 열리지 않았다');
-    assert.ok(html.includes('날짜·일시 충돌'), '원문 표기 충돌이 상세에 없다');
+    assert.ok(html.includes('날짜·일시 표기가 서로 다릅니다') && html.includes('접수 기간: 2026.08.20 09:00 / 2026.08.24 10:00'),
+      '원문 표기 충돌이 상세에 없다');
+    assert.ok(!html.includes('[날짜·일시 충돌]'), '원장 분류 접두어가 화면에 나왔다');
     assert.ok(html.includes('사람이 원문을 검수하지 않았습니다'), '검수 전 안내가 상세에 없다');
     assert.ok(html.includes('https://cdn.test/allowed.jpg'), '이용 근거가 있는 사진이 표시되지 않았다');
     assert.ok(!html.includes('https://cdn.test/pending.jpg'), '조건 미확인 후보 이미지가 표시됐다');
@@ -216,7 +218,7 @@ const settle = async () => { for (let i = 0; i < 12; i++) await new Promise((r) 
     await m.boot(); await settle();
     const html = m.panel.innerHTML;
     assert.ok(html.includes('상세 미확인'), '안 읽은 상세를 모른다고 적지 않았다');
-    assert.ok(!html.includes('원문에 금액 표기 없음'), '안 읽은 상세를 원문에 금액이 없다고 적었다');
+    assert.ok(!html.includes('금액 안내 없음'), '안 읽은 상세를 원문에 금액이 없다고 적었다');
     assert.ok(!html.includes('취업·수익 관련 주장이 없습니다'), '확인하지 않은 홍보 문구를 없다고 단정했다');
     assert.ok(html.includes('홍보 문구를 확인하지 않았습니다'));
   }
