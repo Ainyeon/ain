@@ -401,7 +401,7 @@
 
   // ── 데이터 로더
   // 자산 버전을 붙여 구 서비스워커 캐시의 옛 JSON이 새 코드와 섞이지 않게 한다.
-  const ASSET_V = '29';
+  const ASSET_V = '30';
   async function loadJson(path) {
     const res = await fetch(path + (path.includes('?') ? '&' : '?') + 'v=' + ASSET_V);
     return res.json();

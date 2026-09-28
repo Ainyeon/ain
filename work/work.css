@@ -145,6 +145,7 @@ a.w-row:hover,.w-row.link:hover{background:var(--c-surface-sub);cursor:pointer}
 @media (max-width:480px){
   .w-item{grid-template-columns:1fr 1fr 1fr 44px}
   .w-item .nm{grid-column:1/-1}
+  .w-item-head{display:flex;flex-wrap:wrap;gap:0 var(--sp-3)}   /* 두 줄 배치라 머리글은 한 줄 범례로: 품목 수량 단위 단가 */
 }
 .w-total{display:flex;justify-content:space-between;align-items:baseline;padding:var(--sp-3) 0;border-top:2px solid var(--c-ink);
   font-weight:var(--fw-bold)}
