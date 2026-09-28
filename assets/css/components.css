@@ -7,6 +7,7 @@
 
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
+[hidden]{display:none!important}   /* 페이지 CSS의 display가 hidden 속성을 이기지 못하게 */
 body{
   background:var(--c-bg);
   color:var(--c-ink);
@@ -428,6 +429,7 @@ html:has(.tnav){scroll-padding-top:var(--nav-h)}
 @media (prefers-reduced-transparency:reduce){
   .tnav,.tabbar,.action-bar{background:var(--c-surface);-webkit-backdrop-filter:none;backdrop-filter:none}
   .phero-stat::after,.page-head>.summary::after{background:var(--c-surface)}
+  .phero-stat::before,.page-head>.summary::before{display:none}   /* 반투명 조명도 끈다 */
 }
 @media (forced-colors:active){
   .tnav,.tabbar,.action-bar,.phero-stat::after,.page-head>.summary::after{background:Canvas;

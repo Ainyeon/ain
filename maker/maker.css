@@ -1,7 +1,7 @@
 /* 메이커 v2 공용 UI (허브·notice·compare) — design-tokens.css 토큰 소비 (레거시 별칭 브릿지).
    그라데이션 썸네일(.t-banner)은 사용자 콘텐츠 옵션 표현이라 유지. */
 :root {
-  color-scheme: light;
+  color-scheme: only light;
   --surface: var(--c-surface);
   --border: var(--c-line);
   --txt: var(--c-ink);

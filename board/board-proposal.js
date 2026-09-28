@@ -177,8 +177,8 @@
       location.reload();
     });
     // 정렬을 바꾸면 목록을 다시 그린다 — 누른 버튼에 포커스를 돌려준다
-    document.getElementById('sortVotes').addEventListener('click', async () => { sortMode = 'votes'; await renderList(me); document.getElementById('sortVotes').focus(); });
-    document.getElementById('sortRecent').addEventListener('click', async () => { sortMode = 'recent'; await renderList(me); document.getElementById('sortRecent').focus(); });
+    document.getElementById('sortVotes').addEventListener('click', async () => { sortMode = 'votes'; await renderList(me); document.getElementById('sortVotes')?.focus(); });
+    document.getElementById('sortRecent').addEventListener('click', async () => { sortMode = 'recent'; await renderList(me); document.getElementById('sortRecent')?.focus(); });
   }
 
   async function renderDetail(me, id) {

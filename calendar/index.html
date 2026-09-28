@@ -23,7 +23,7 @@
 <link rel="stylesheet" href="/assets/css/components.css?v=30">
   <style>
     :root {
-      color-scheme: light;
+      color-scheme: only light;
       /* 레거시 별칭 → design-tokens 브릿지 (마크업·JS 무변경용) */
       --surface: var(--c-surface);
       --surface2: var(--c-surface-sub);
@@ -82,7 +82,8 @@
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-auto-flow: column;              /* 보이는 칸 수만큼 등분 — 비회원은 1칸 */
+      grid-auto-columns: minmax(0, 1fr);
       gap: 8px;
       margin-top: 18px;
     }
@@ -613,6 +614,7 @@
       if (item.isNew) {
         const badgeNew = document.createElement("span");
         badgeNew.className = "new-badge";
+        badgeNew.style.marginLeft = "var(--sp-1)";   // 이름 뒤에 붙는다
         badgeNew.textContent = "신규";
         name.append(badgeNew);
       }

@@ -278,7 +278,7 @@
       try {
         Object.assign(j, await S.store.save('work_jobs', { id: j.id, status: 'done', completed_at: j.completed_at || doneAt(j.scheduled_at), payments: pays }));
         await autoRevisit(j);
-      } catch (err) { fail(err); dlg.close(); return; }
+      } catch (err) { dlg.close(); fail(err); return; }   // 먼저 닫아야 토스트가 창과 함께 지워지지 않는다
       // 다음 할 일
       dlg.querySelector('.db').replaceChildren(h('div', { class: 'w-note', text: '완료했어요' + (L.unpaid(j) ? ' · 남은 금액 ' + L.won(L.unpaid(j)) : ' · 수금 완료') + '. 고객에게 시공 카드 링크를 보내 두면 다음 AS·재방문 문의가 나에게 옵니다.' }),
         h('div', { class: 'w-actions grid' },
