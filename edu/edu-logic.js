@@ -33,8 +33,8 @@
     {
       key: 'expired',
       title: '접수 마감 경과',
-      note: '원문에 적힌 접수 마감이 지난 회차입니다. 기록으로 남겨 두며, 추가 접수 여부는 '
-        + '기관에 확인해야 합니다.'
+      note: '원문에 적힌 접수 마감이 지났거나, 마감 표기 없이 원문이 적은 개강일이 지난 회차입니다. '
+        + '기록으로 남겨 두며, 추가 접수 여부는 기관에 확인해야 합니다.'
     }
   ];
 
@@ -53,7 +53,7 @@
   }
 
   const TARGET_LABELS = { beginner: '초보 가능', experience: '경력 필요', condition: '조건 있음', unknown: '원문 미확인' };
-  const COST_LABELS = { subsidy: '국비 표기 있음', self: '자비', unknown: '미확인' };
+  const COST_LABELS = { subsidy: '국비 표기 있음', self: '자비', free: '무료', unknown: '미확인' };
 
   // 최종 확인일이 오래된 항목 (SPEC §3.4 — 제안값 60일)
   const STALE_DAYS = 60;

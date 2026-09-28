@@ -1,8 +1,9 @@
 // 에인연 서비스워커 — 오프라인 내성: 마지막 브리핑·시세 1회분 열람 가능
 // 전략: 내비게이션·데이터 = 네트워크 우선(성공 시 캐시 갱신, 실패 시 캐시 폴백)
 //       정적 자산 = 캐시 우선(백그라운드 갱신)
-const VERSION = 'ain-v28'; // v22: 홈 커뮤니티 스트립 / v23: OG 카드 v2 / v24: 첫 출시(교육·내 지역·저장·익명)
+const VERSION = 'ain-v29'; // v22: 홈 커뮤니티 스트립 / v23: OG 카드 v2 / v24: 첫 출시(교육·내 지역·저장·익명)
 // v26: 화면 문구 정리 / v27: 업무(/work/)·시공 카드(/c/) / v28: 교육·일자리 묶기 + 입주정보 개명 + 교육 자동 수집 병합 + 구인·구직
+// v29: 교육 자동 수집 표시 보정(개강 경과·상세 미확인·중복 제거) + 원장 KRRC 재확인 + 운영자 전용 요금제(/pricing/)
 // 업무 자산(/work/*)은 SHELL에 넣지 않는다(업무를 안 쓰는 방문자가 설치 때 받지 않게) — 방문 시 런타임 캐시.
 // 업무 테이블·RPC는 DATA_ALLOW에 넣지 않는다(회원 전용 응답이 기기에 남는다).
 // SHELL의 ?v= 는 페이지가 실제로 요청하는 URL과 글자 그대로 같아야 한다.
@@ -26,25 +27,25 @@ const SHELL = [
   '/board/proposal/',
   '/edu/jobs/',
   '/assets/css/design-tokens.css?v=11',
-  '/assets/css/components.css?v=28',
-  '/assets/js/ain-common.js?v=28',
-  '/assets/js/ain-community.js?v=28',
-  '/auth.js?v=28',
-  '/edu/edu.css?v=28',
-  '/edu/edu-logic.js?v=28',
-  '/edu/edu.js?v=28',
-  '/area/area.js?v=28',
-  '/board/board.css?v=28',
-  '/board/gate.js?v=28',
-  '/board/board-free.js?v=28',
-  '/board/board-proposal.js?v=28',
-  '/maker/maker.css?v=28',
-  '/maker/maker-core.js?v=28',
-  '/maker/notice/notice.js?v=28',
-  '/maker/compare/compare.js?v=28',
-  '/maker/fields.json?v=28',
-  '/maker/formats.json?v=28',
-  '/maker/copy.json?v=28',
+  '/assets/css/components.css?v=29',
+  '/assets/js/ain-common.js?v=29',
+  '/assets/js/ain-community.js?v=29',
+  '/auth.js?v=29',
+  '/edu/edu.css?v=29',
+  '/edu/edu-logic.js?v=29',
+  '/edu/edu.js?v=29',
+  '/area/area.js?v=29',
+  '/board/board.css?v=29',
+  '/board/gate.js?v=29',
+  '/board/board-free.js?v=29',
+  '/board/board-proposal.js?v=29',
+  '/maker/maker.css?v=29',
+  '/maker/maker-core.js?v=29',
+  '/maker/notice/notice.js?v=29',
+  '/maker/compare/compare.js?v=29',
+  '/maker/fields.json?v=29',
+  '/maker/formats.json?v=29',
+  '/maker/copy.json?v=29',
   '/assets/data/education.json',
   '/assets/data/notices.json',
   '/assets/fonts/PretendardVariable.subset.woff2',

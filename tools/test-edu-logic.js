@@ -18,23 +18,23 @@ assert.ok(!L.listed(items).some((i) => i.record_type.startsWith('채용접점'))
 const BEFORE = Date.parse('2026-09-09T00:00:00+09:00');
 const secs = L.groupSections(items, {}, BEFORE);
 assert.deepStrictEqual(secs.map((s) => [s.key, s.items.length]),
-  [['deadline', 6], ['posted_no_deadline', 2], ['unconfirmed', 6]]);
+  [['deadline', 5], ['posted_no_deadline', 3], ['unconfirmed', 6]]);   // 09-26: C112 접수 마감 표기 충돌 → 마감 미확인
 // 섹션 제목이 "지금 신청 가능"을 만들지 않는다
 assert.ok(!secs.some((s) => /신청 가능|모집 중|모집중/.test(s.title)));
 
 // 3) 원문 내부 표기 충돌은 목록에 남아 있다 (날짜 3 + 비용 1)
 const conflicts = L.listed(items).filter((i) => i.conflict);
-assert.strictEqual(conflicts.filter((c) => c.conflict.kind === 'date').length, 3);
+assert.strictEqual(conflicts.filter((c) => c.conflict.kind === 'date').length, 2);   // C112 마감 충돌 · C116 (C110은 원문이 해소)
 assert.strictEqual(conflicts.filter((c) => c.conflict.kind === 'cost').length, 1);
 // 충돌 3건은 모두 '접수 마감일시 명시' 섹션 안에 있고, 충돌 사실을 달고 있다
-assert.strictEqual(conflicts.filter((c) => c.conflict.kind === 'date' && c.group === 'deadline').length, 3);
+assert.strictEqual(conflicts.filter((c) => c.conflict.kind === 'date' && c.group === 'deadline').length, 1);
 
 // 4) 필터
 const only = (f) => L.groupSections(items, f, BEFORE).reduce((n, s) => n + s.items.length, 0);
 assert.strictEqual(only({ work: 'hvac' }), 7);
 assert.strictEqual(only({ region: '서울' }), 5);
 assert.strictEqual(only({ cost: 'subsidy' }), 7);
-assert.strictEqual(only({ status: 'deadline' }), 6);
+assert.strictEqual(only({ status: 'deadline' }), 5);
 assert.strictEqual(only({ work: 'hvac', region: '서울' }), 1);      // 폴리텍
 assert.strictEqual(only({ work: 'hvac', cost: 'self' }), 5);        // KRRC 유료 5회차
 assert.strictEqual(only({ region: '없는지역' }), 0);
@@ -56,24 +56,24 @@ for (let i = 1; i < sorted.length; i++) {
 }
 
 // 8) 마감 경과 — 시각이 지나면 '현재 모집' 섹션에서 빠지되 목록에서 사라지지 않는다
-const AFTER_OCT = Date.parse('2026-10-20T00:00:00+09:00');   // C112(10-09)·C113(10-16) 경과
+const AFTER_OCT = Date.parse('2026-10-20T00:00:00+09:00');   // C113(10-16) 경과 (C112는 마감 충돌이라 확정 마감 없음)
 const s2 = L.groupSections(items, {}, AFTER_OCT);
 const total2 = s2.reduce((n, s) => n + s.items.length, 0);
 assert.strictEqual(total2, 14);                               // 조용히 지우지 않는다
-assert.strictEqual(s2.find((s) => s.key === 'expired').items.length, 2);
+assert.strictEqual(s2.find((s) => s.key === 'expired').items.length, 1);
 assert.strictEqual(s2.find((s) => s.key === 'deadline').items.length, 4);
 
-const AFTER_ALL = Date.parse('2027-01-01T00:00:00+09:00');    // 6회차 전부 경과
+const AFTER_ALL = Date.parse('2027-01-01T00:00:00+09:00');    // 마감 확정 5회차 전부 경과
 const s3 = L.groupSections(items, {}, AFTER_ALL);
-assert.strictEqual(s3.find((s) => s.key === 'expired').items.length, 6);
+assert.strictEqual(s3.find((s) => s.key === 'expired').items.length, 5);
 assert.ok(!s3.some((s) => s.key === 'deadline'));
 // 마감을 모르는 항목은 지났다고 단정하지 않는다
 assert.ok(!L.listed(items).filter((i) => !i.apply_end_at).some((i) => L.isExpired(i, AFTER_ALL)));
 // 마감 경과로 옮겨가도 원문 내부 표기 충돌은 그대로 남는다
-assert.strictEqual(s3.find((s) => s.key === 'expired').items.filter((i) => i.conflict).length, 3);
+assert.strictEqual(s3.find((s) => s.key === 'expired').items.filter((i) => i.conflict).length, 1);
 // 필터도 시각 기준 섹션을 따른다
 assert.strictEqual(L.groupSections(items, { status: 'expired' }, AFTER_OCT)
-  .reduce((n, s) => n + s.items.length, 0), 2);
+  .reduce((n, s) => n + s.items.length, 0), 1);
 assert.strictEqual(L.groupSections(items, { status: 'expired' }, BEFORE).length, 0);
 
 // 9) href에 들어가는 URL은 공백·설명 없는 단일 http(s)
@@ -138,4 +138,4 @@ assert.strictEqual(sinceMonth('0', LEAP), null);
   assert.strictEqual(shown.length, 2, '미기재 1건 + 경계 이후 1건이 남아야 함');
 }
 
-console.log('edu-logic OK — 15행 / 교육 14 / 섹션 6·2·6 / 충돌 3+1 / 마감경과 분리 / 수료시점 필터');
+console.log('edu-logic OK — 15행 / 교육 14 / 섹션 5·3·6 / 충돌 2+1 / 마감경과 분리 / 수료시점 필터');

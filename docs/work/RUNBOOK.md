@@ -15,7 +15,7 @@
 
 ## 2. 유료 부여·회수 (계좌이체 확인 후)
 ```sql
-select public.admin_set_plan('<회원 uuid>', '2027-06-01 00:00+09', '계좌이체 9/30 19,900원');  -- 부여
+select public.admin_set_plan('<회원 uuid>', '2027-06-01 00:00+09', '계좌이체 <날짜> <금액>');  -- 부여
 select public.admin_set_plan('<회원 uuid>', null, '환불');                                  -- 회수
 select * from public.billing_events order by id desc limit 20;                               -- 원장 (FK 없음, 5년 보존)
 ```
@@ -41,7 +41,7 @@ select o.name from storage.objects o where o.bucket_id = 'work'
 세 곳을 같이 바꾼다.
 - `supabase/17_work.sql`의 `work_user_is_pro()` 날짜(SQL 재실행)
 - `work/work-logic.js`의 `PLAN.betaEnd`(`?v=`와 sw VERSION도 올린다)
-- `_dev/pricing/`·약관 문구
+- 요금제 초안(`_private/pricing.html` → `admin_drafts` slug=pricing)·약관 문구
 `tools/test-work-sql.mjs`가 SQL과 JS 날짜가 같은지 검사한다.
 
 ## 5. 용량
