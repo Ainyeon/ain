@@ -19,13 +19,13 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=29">
-  <link rel="stylesheet" href="/board/board.css?v=29">
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
+  <link rel="stylesheet" href="/assets/css/components.css?v=30">
+  <link rel="stylesheet" href="/board/board.css?v=30">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=29"></script>
-  <script defer src="/assets/js/ain-common.js?v=29"></script>
-  <script defer src="/assets/js/ain-community.js?v=29"></script>
+  <script defer src="/auth.js?v=30"></script>
+  <script defer src="/assets/js/ain-common.js?v=30"></script>
+  <script defer src="/assets/js/ain-community.js?v=30"></script>
 </head>
 <body class="has-tabbar">
   <nav class="tnav">
@@ -56,10 +56,10 @@
         </div>
       </div>
     </header>
-    <section class="board-wrap" id="panel" aria-live="polite">
+    <section class="board-wrap" id="panel">
       <div class="gate-msg">불러오는 중…</div>
     </section>
-    <script src="/board/gate.js?v=29"></script>
+    <script src="/board/gate.js?v=30"></script>
   </main>
   <script>
     // 구인/구직은 같은 게시판 코드에 board_type 만 다르다. gate.js·board-free.js 보다 먼저 정한다.
@@ -79,6 +79,6 @@
     })();
     addEventListener("DOMContentLoaded", function () { if (window.ainAuth) ainAuth.init("authSlot"); });
   </script>
-  <script src="/board/board-free.js?v=29" defer></script>
+  <script src="/board/board-free.js?v=30" defer></script>
 </body>
 </html>

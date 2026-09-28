@@ -52,7 +52,7 @@
     return isExpired(item, nowMs) ? 'expired' : item.group;
   }
 
-  const TARGET_LABELS = { beginner: '초보 가능', experience: '경력 필요', condition: '조건 있음', unknown: '원문 미확인' };
+  const TARGET_LABELS = { beginner: '초보 가능', experience: '경력 필요', condition: '조건 있음', unknown: '경력 조건 미확인' };
   const COST_LABELS = { subsidy: '국비 표기 있음', self: '자비', free: '무료', unknown: '미확인' };
 
   // 최종 확인일이 오래된 항목 (SPEC §3.4 — 제안값 60일)

@@ -82,10 +82,10 @@
       apply_end_at: row.apply_end_at || null,
       apply_notice: row.apply_end_at ? '접수 마감일시 명시' : '',
       capacity_raw: f.capacity_raw || '',
-      seats_level: f.capacity_raw ? '정원 표기만 있음. 정원은 잔여석이 아니며 잔여석은 미확인' : '',
+      seats_level: f.capacity_raw ? '남은 자리 안내 없음' : '',
       // 원문 안에서 표기가 엇갈린 항목은 전부 이어 붙여 그대로 보여 준다 (어느 쪽도 고르지 않는다)
       conflict: conflicts.length
-        ? { kind: conflicts[0].kind, text: conflicts.map((c) => c.text).join(' / ') } : null,
+        ? { kind: conflicts[0].kind, text: conflicts.map((c) => String(c.text || '').replace(/^\[[^\]]*\]\s*/, '')).join(' / ') } : null,
       status_label: row.status === 'closed' ? (row.apply_end_at ? '원문에 적힌 접수 마감이 지남' : '원문 개강일이 지남')
         : row.apply_end_at ? '접수 마감일시 명시' : '접수 마감 미확인',
       cost_raw: f.cost_raw || (unread ? '상세 미확인' : ''),
@@ -195,7 +195,7 @@
       ? '날짜를 확정하지 마시고, 현재 접수 여부는 기관에 확인하세요.'
       : '실제 부담액은 기관에 확인하세요.';
     return '<div class="edu-warn"><span>⚠ ' + esc(head) + '</span>'
-      + '<span class="sub">' + esc(item.conflict.text) + '</span>'
+      + '<span class="sub">' + esc(item.conflict.text.replace(/^\[[^\]]*\]\s*/, '')) + '</span>'   // [분류] 접두어는 원장 키 — 제목과 겹쳐 두 번 보이지 않게
       + '<span class="sub">' + esc(tail) + '</span></div>';
   }
 
@@ -230,7 +230,7 @@
 
     // 비용과 적용 조건은 같은 줄에 (SPEC §3.1)
     const costLine = isBlank(item.cost_raw) && isBlank(item.cost_condition) ? '' :
-      '<div class="edu-line"><span class="edu-k">비용</span><b>' + esc(isBlank(item.cost_raw) ? '원문에 금액 표기 없음' : item.cost_raw) + '</b>'
+      '<div class="edu-line"><span class="edu-k">비용</span><b>' + esc(isBlank(item.cost_raw) ? '금액 안내 없음' : item.cost_raw) + '</b>'
       + (isBlank(item.cost_condition) ? '' : ' — 조건: ' + esc(item.cost_condition)) + '</div>';
 
     // 정원은 잔여석이 아니다 (SPEC §3.3)
@@ -252,7 +252,7 @@
       + conflictHtml(item)
       + '<div class="edu-line" style="color:var(--c-ink-faint)">최종 확인 ' + esc(item.checked_at) + '</div>'
       + '<div class="edu-actions">'
-      + '<a class="btn-src" href="' + esc(item.url) + '" target="_blank" rel="noopener">공식 원문<svg class="icon sm"><use href="#i-ext"/></svg></a>'
+      + '<a class="btn-src" href="' + esc(item.url) + '" target="_blank" rel="noopener">공식 페이지<svg class="icon sm"><use href="#i-ext"/></svg></a>'
       + '<a class="btn-line" href="?id=' + encodeURIComponent(item.id) + '">자세히</a>'
       + saveBtn('edu', item.id, item.course, item.org)
       + '</div></article>';
@@ -412,10 +412,9 @@
       + (isBlank(item.schedule_meaning) ? '' : '<div class="edu-line"><span class="edu-k"></span><span style="color:var(--c-ink-faint)">ⓘ ' + esc(item.schedule_meaning) + '</span></div>')
       + kv('접수 시작', item.apply_start_raw)
       + kv('접수 마감', item.apply_end_raw)
-      + kv('접수 문구', item.apply_notice)
       + (isBlank(item.capacity_raw) ? '' : '<div class="edu-line"><span class="edu-k">정원</span>' + esc(item.capacity_raw) + '</div>')
       + kv('여석', item.seats_level)
-      + '<div class="edu-line"><span class="edu-k">비용</span><b>' + esc(isBlank(item.cost_raw) ? '원문에 금액 표기 없음' : item.cost_raw) + '</b>'
+      + '<div class="edu-line"><span class="edu-k">비용</span><b>' + esc(isBlank(item.cost_raw) ? '금액 안내 없음' : item.cost_raw) + '</b>'
       + (isBlank(item.cost_condition) ? '' : '</div><div class="edu-line"><span class="edu-k"></span>└ 조건: ' + esc(item.cost_condition)) + '</div>'
       + kv('국비 표기', item.subsidy_raw)
       + kv('실습·시간', item.practice_raw)
@@ -464,6 +463,8 @@
     const now = Date.now();
     const secs = L.groupSections(allItems(), f, now);
     const shown = secs.reduce((n, s) => n + s.items.length, 0);
+    // 필터를 바꾼 사람의 포커스가 <body>로 날아가지 않게 같은 id 로 되돌린다
+    const focusedId = document.activeElement && panel.contains(document.activeElement) ? document.activeElement.id : '';
 
     panel.innerHTML = filtersHtml(f)
       + (shown ? '' : '<div class="edu-note"><b>조건에 맞는 과정이 없습니다</b>필터를 넓혀 보세요.</div>')
@@ -477,6 +478,7 @@
       + '주거 현장의 모든 공종이 대상입니다.'
       + '<div class="edu-actions"><a class="btn-line" href="/board/free/?form=edu_tip">제보하기</a></div></div>';
     bind();
+    if (focusedId && $(focusedId)) $(focusedId).focus();
   }
 
   function bind() {

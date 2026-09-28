@@ -47,9 +47,16 @@
   function toast(msg) {
     document.querySelectorAll('.w-toast').forEach((t) => t.remove());
     const t = h('div', { class: 'w-toast', role: 'status', text: msg });
-    document.body.appendChild(t);
+    (document.querySelector('dialog[open]') || document.body).appendChild(t);   // 모달 밖에 두면 backdrop 아래로 깔린다
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.remove(), 2600);
+    toastTimer = setTimeout(() => t.remove(), 5000);
+  }
+  // 입력 오류: 칸으로 초점을 옮기고 표시한 뒤 알린다 (고치기 시작하면 표시를 푼다)
+  function invalid(el, msg) {
+    el.setAttribute('aria-invalid', 'true');
+    el.addEventListener('input', () => el.removeAttribute('aria-invalid'), { once: true });
+    el.focus();
+    toast(msg);
   }
   function fail(e, fallback) {
     console.error(e);
@@ -77,7 +84,7 @@
     return bar;
   }
   function openDialog(title, body, foot) {
-    const dlg = h('dialog', { class: 'w-dialog' },
+    const dlg = h('dialog', { class: 'w-dialog', 'aria-label': title },
       h('div', { class: 'dh' }, title, h('button', { type: 'button', class: 'w-btn sm', onclick: () => dlg.close() }, '닫기')),
       h('div', { class: 'db' }, body), foot ? h('div', { class: 'df' }, foot) : null);
     dlg.addEventListener('close', () => dlg.remove());
@@ -97,7 +104,7 @@
         let text = body;
         if (k.id === 'done' && cust && !cust.card_token) {                    // 완료 문자에는 시공 카드 링크를 붙인다
           try { const t = await S.store.issueCard(cust.id); cust.card_token = t; text = L.smsText('done', job, cust, S.d.profile, { link: cardLink(t) }); }
-          catch (e) { fail(e, '시공 카드 링크를 만들지 못했어요'); }
+          catch (e) { fail(e, '시공 카드 링크를 만들지 못했어요'); return; }   // 링크 없이 '아래 링크에서' 문자를 보내지 않는다
         }
         location.href = L.smsHref(phone, text);
         dlg.close();
@@ -139,10 +146,8 @@
       console.error(e);
       const snap = S.store && S.store.offline && S.store.offline();
       if (snap && snap.jobs) { renderOffline(snap); return; }
-      const missing = e && (e.code === '42P01' || e.code === 'PGRST205' || e.code === 'PGRST202');
-      app.replaceChildren(empty(missing ? '업무 기능 준비 중입니다' : '불러오지 못했어요',
-        missing ? '운영 DB 적용 전이에요. 체험 모드로 먼저 둘러보세요.' : '네트워크를 확인하고 새로고침 해 주세요.'),
-      h('div', { class: 'w-actions' }, linkBtn('체험 모드로 보기', '/work/?demo=1', 'primary'), btn('다시 시도', boot)));
+      app.replaceChildren(empty('지금 업무 정보를 불러오지 못했어요', '저장된 기록은 그대로 있어요. 잠시 뒤 다시 시도해 주세요.'),
+      h('div', { class: 'w-actions' }, btn('다시 시도', boot, 'primary'), linkBtn('체험 모드로 보기', '/work/?demo=1')));
     }
   }
   // 전파가 없을 때: 마지막으로 불러온 오늘·내일 일정만 읽기 전용으로
@@ -199,7 +204,7 @@
     const out = view(a, q);
     app.replaceChildren(...[demoBar(), navBar(name || 'today'), out].flat().filter(Boolean));
     fab();
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'instant' });
   }
   function demoBar() {
     if (!S.store.isDemo) return null;
@@ -265,7 +270,7 @@
     const meth = sel(L.PAY_METHODS.map((m) => [m.id, m.label]), 'transfer', { class: 'w-in', 'aria-label': '결제 수단' });
     const body = h('div', { class: 'w-form', style: { padding: 0 } },
       h('div', { class: 'w-title', text: (c ? c.name : '고객') + ' · 합계 ' + L.won(j.total_amount) }),
-      field('지금 받은 금액 (없으면 비워 두세요)', amt), field('결제 수단', meth));
+      field('받은 금액 (못 받았으면 지우세요)', amt), field('결제 수단', meth));
     const dlg = openDialog('작업 완료', body, [btn('완료 처리', async (e) => {
       e.currentTarget.disabled = true;
       const a = L.toInt(amt.value);
@@ -273,7 +278,7 @@
       try {
         Object.assign(j, await S.store.save('work_jobs', { id: j.id, status: 'done', completed_at: j.completed_at || doneAt(j.scheduled_at), payments: pays }));
         await autoRevisit(j);
-      } catch (err) { fail(err); dlg.close(); return; }
+      } catch (err) { dlg.close(); fail(err); return; }   // 먼저 닫아야 토스트가 창과 함께 지워지지 않는다
       // 다음 할 일
       dlg.querySelector('.db').replaceChildren(h('div', { class: 'w-note', text: '완료했어요' + (L.unpaid(j) ? ' · 남은 금액 ' + L.won(L.unpaid(j)) : ' · 수금 완료') + '. 고객에게 시공 카드 링크를 보내 두면 다음 AS·재방문 문의가 나에게 옵니다.' }),
         h('div', { class: 'w-actions grid' },
@@ -339,9 +344,9 @@
     const ac = h('input', { type: 'text', class: 'w-in', placeholder: '입금 계좌 (은행 번호 예금주)', maxlength: 60, 'aria-label': '입금 계좌' });
     return panel('업체 정보부터 넣어 주세요', 'home', h('div', { class: 'w-form' },
       h('div', { class: 'w-note', text: '견적서·보고서·문자·시공 카드에 찍힙니다. 나머지는 설정에서 언제든 고칠 수 있어요.' }),
-      nm, ph, ac, btn('저장', async () => {
-        if (!nm.value.trim()) { toast('상호를 적어 주세요'); return; }
-        if (ph.value.trim() && !L.normPhone(ph.value)) { toast('연락처 형식을 확인해 주세요'); return; }
+      field('상호', nm), field('연락처', ph), field('입금 계좌', ac), btn('저장', async () => {
+        if (!nm.value.trim()) { invalid(nm, '상호를 적어 주세요'); return; }
+        if (ph.value.trim() && !L.normPhone(ph.value)) { invalid(ph, '연락처 형식을 확인해 주세요'); return; }
         try { S.d.profile = await S.store.save('work_profiles', { biz_name: nm.value.trim(), phone: L.normPhone(ph.value), account: ac.value.trim() || null }); toast('저장했어요'); route(); } catch (e) { fail(e); }
       }, 'primary')));
   }
@@ -352,7 +357,7 @@
     return h('div', { class: 'w-row' },
       h('div', { class: 'w-time num' }, h('b', { text: kind }), L.fmtDay(r.created_at).replace(/ \(.\)$/, '')),
       h('div', { class: 'w-main' }, h('a', { class: 'w-title', href: c ? '#customer/' + c.id : '#customers', text: c ? c.name : '고객' }),
-        h('div', { class: 'w-meta', text: phone ? '연락처 ' + L.fmtPhone(phone) : '연락처 없음 — 고객 정보의 번호로 연락' })),
+        h('div', { class: 'w-meta', text: phone ? '연락처 ' + L.fmtPhone(phone) : '연락처 없음 — 고객 정보에도 번호가 없어요' })),
       h('div', { class: 'w-side' }),
       h('div', { class: 'w-msg', text: r.message }),                          // 외부 입력: 텍스트로만
       h('div', { class: 'w-quick' },
@@ -385,7 +390,7 @@
       h('div', { class: 'w-side' }),
       h('div', { class: 'w-quick' },
         c.phone ? btn('재방문 문자', () => { location.href = L.smsHref(c.phone, L.smsText('revisit', null, c, S.d.profile)); }, 'sm', 'msg') : null,
-        btn('연락함', () => snooze('done'), 'sm'), btn('한 달 뒤', () => snooze('month'), 'sm'), btn('그만', () => snooze('stop'), 'sm')));
+        btn('연락함', () => snooze('done'), 'sm'), btn('한 달 뒤', () => snooze('month'), 'sm'), btn('알림 끄기', () => snooze('stop'), 'sm')));
   }
   async function loadNearby(box) {
     const put = (...n) => box.replaceChildren(...n);
@@ -546,10 +551,10 @@
         h('div', { class: 'w-total' }, h('span', { text: '합계' }), h('span', { class: 'n num', text: L.won(j.total_amount) })),
         h('div', { class: 'w-meta', text: '받은 금액 ' + L.won(L.paid(j)) + (L.unpaid(j) ? ' · 남은 금액 ' + L.won(L.unpaid(j)) : '') })),
       pays.length ? payList : null,
-      h('div', { class: 'w-form' }, h('div', { class: 'w-3' }, amt, meth, on),
+      h('div', { class: 'w-form' }, h('div', { class: 'w-3' }, field('받은 금액', amt), field('결제 수단', meth), field('받은 날', on)),
         btn('수금 기록', async () => {
           const a = L.toInt(amt.value);
-          if (a <= 0) { toast('금액을 적어 주세요'); return; }
+          if (a <= 0) { invalid(amt, '금액을 적어 주세요'); return; }
           try { Object.assign(j, await S.store.save('work_jobs', { id: j.id, payments: pays.concat([{ amount: a, method: meth.value, at: on.value }]) })); toast('수금을 기록했어요'); route(); } catch (e) { fail(e); }
         }, 'primary'))
     ]));
@@ -558,8 +563,8 @@
     const photos = S.d.photos.filter((p) => p.job_id === j.id);
     const pick = h('input', { type: 'file', accept: 'image/*', multiple: true, class: 'sr', id: 'docPick',
       onchange: (e) => { S.docPhotos = [...e.target.files].slice(0, 12); pickNote.textContent = S.docPhotos.length ? '기기 사진 ' + S.docPhotos.length + '장을 보고서에 넣어요 (업로드 안 함)' : ''; } });
-    const pickNote = h('span', { class: 'w-meta' });
-    S.docPhotos = [];
+    if (S.docPhotosJob !== j.id) { S.docPhotos = []; S.docPhotosJob = j.id; }   // 수금·사진 등으로 다시 그려도 고른 사진 유지
+    const pickNote = h('span', { class: 'w-meta', text: S.docPhotos.length ? '기기 사진 ' + S.docPhotos.length + '장을 보고서에 넣어요 (업로드 안 함)' : '' });
     out.push(panel('견적서 · 작업 보고서', 'doc', h('div', { class: 'w-pad w-actions' },
       btn('견적서 이미지', () => showDoc('quote', j), 'primary'),
       btn('작업 보고서 이미지', () => showDoc('report', j)),
@@ -595,7 +600,7 @@
       plan().isPro ? h('div', { class: 'w-pad w-actions' }, kindSel, h('label', { class: 'w-btn', for: 'photoUp' }, icon('camera'), '사진 올리기'), up)
         : h('div', { class: 'w-pad' }, h('div', { class: 'w-note', text: '사진 서버 보관은 프로 기능이에요. 무료에서도 위 "보고서에 넣을 사진 고르기"로 기기 사진을 넣은 보고서를 바로 만들 수 있어요.' })),
       photoBox,
-      h('div', { class: 'w-pad w-meta', text: '작업당 ' + L.PLAN.pro.photosPerJob + '장까지. 올릴 때 긴 변 1600px로 줄여 보관합니다. 요금제가 바뀌어도 올린 사진은 계속 보고 지울 수 있어요.' })
+      h('div', { class: 'w-pad w-meta', text: '작업당 ' + L.PLAN.pro.photosPerJob + '장까지. 올릴 때 용량을 줄여 보관합니다. 요금제가 바뀌어도 올린 사진은 계속 보고 지울 수 있어요.' })
     ], h('span', { class: 'cnt num', text: photos.length + '/' + L.PLAN.pro.photosPerJob })));
 
     // 시공 카드
@@ -622,8 +627,8 @@
       const name = (kind === 'quote' ? '견적서_' : '작업보고서_') + ((c && c.name) || '고객') + '_' + L.dayKey(today()) + '.png';
       const url = URL.createObjectURL(await DOC.toBlob(cv));
       openDialog(kind === 'quote' ? '견적서' : '작업 보고서', [
-        h('img', { class: 'doc', src: url, alt: (kind === 'quote' ? '견적서' : '작업 보고서') + ' 미리보기' }),
-        !S.d.profile.biz_name ? h('div', { class: 'w-note' }, '업체 정보(상호·연락처·계좌)를 ', h('a', { href: '#settings', text: '설정' }), '에서 넣으면 문서에 찍힙니다.') : null
+        !S.d.profile.biz_name ? h('div', { class: 'w-warn' }, '상호가 비어 있어 문서 머리에 업체 이름이 없어요. ', h('a', { href: '#settings', text: '업체 정보 넣기' })) : null,
+        h('img', { class: 'doc', src: url, alt: (kind === 'quote' ? '견적서' : '작업 보고서') + ' 미리보기' })
       ], [
         btn('카톡·문자로 공유', () => DOC.share(cv, name, toast), 'primary'),
         btn('저장', async () => DOC.download(await DOC.toBlob(cv), name)),
@@ -634,7 +639,7 @@
   function cardPanel(c, j) {
     const link = c.card_token ? cardLink(c.card_token) : null;
     const body = h('div', { class: 'w-pad' },
-      h('div', { class: 'w-note', text: '고객이 앱 없이 시공 이력·보증 기간을 보고, AS·재설치 문의를 남기는 링크입니다. 고객 이름은 가리고 금액·연락처·상세 주소는 보이지 않아요. 고객마다 하나라 실내기에 QR 스티커로 붙여도 해마다 같은 링크입니다.' }),
+      h('div', { class: 'w-note', text: '고객이 앱 없이 시공 이력·보증 기간을 보고, AS·재설치 문의를 남기는 링크입니다. 고객 이름은 가리고 금액·연락처·상세 주소는 보이지 않아요. 고객마다 하나라 해마다 같은 링크입니다.' }),
       h('div', { class: 'w-actions', style: { marginTop: 'var(--sp-3)' } },
         c.phone ? btn(link ? '링크 문자로 보내기' : '링크 만들어 문자로 보내기', async () => {
           try {
@@ -742,7 +747,9 @@
 
     // 품목
     function paintItems() {
-      itemsBox.replaceChildren(...st.items.map((it, idx) => {
+      const head = st.items.length ? h('div', { class: 'w-item w-item-head', 'aria-hidden': 'true' },
+        h('span', { class: 'nm', text: '품목' }), h('span', { text: '수량' }), h('span', { text: '단위' }), h('span', { text: '단가(할인은 −)' }), h('span')) : null;
+      itemsBox.replaceChildren(...[head].filter(Boolean), ...st.items.map((it, idx) => {
         const upd = (k) => (e) => { it[k] = k === 'name' || k === 'unit' || k === 'model' ? e.target.value : L.toInt(e.target.value); paintTotal(); saveDraft(); };
         return h('div', { class: 'w-item' },
           h('input', { class: 'nm', type: 'text', value: it.name, placeholder: '품목', 'aria-label': '품목', oninput: upd('name') }),
@@ -950,7 +957,7 @@
         h('div', { class: 'w-pad w-actions' }, linkBtn('이 고객 작업 등록', '#job/new?customer=' + c.id, 'primary', 'plus'), linkBtn('수정', '#customer/' + c.id + '/edit'),
           h('label', { class: 'w-field', style: { minWidth: '160px' } }, h('span', { text: '재방문 알림' }), revisit))),
       panel('상담 기록', 'msg', [
-        h('div', { class: 'w-form' }, h('div', { class: 'w-2' }, memoLine, btn('기록 추가', async () => {
+        h('div', { class: 'w-form' }, h('div', { class: 'w-2' }, field('상담 내용', memoLine), btn('기록 추가', async () => {
           const v = memoLine.value.trim();
           if (!v) return;
           const next = (L.dayKey(today()) + ' ' + v + (c.memo ? '\n' + c.memo : '')).slice(0, 4000);
@@ -987,8 +994,8 @@
       warn.replaceChildren(same.length ? h('div', { class: 'w-warn' }, '같은 번호의 고객이 있어요: ', h('a', { href: '#customer/' + same[0].id, text: same[0].name })) : '');
     });
     const save = async () => {
-      if (!name.value.trim()) { toast('이름을 적어 주세요'); return; }
-      if (phone.value.trim() && !L.normPhone(phone.value)) { toast('전화번호 형식을 확인해 주세요'); return; }
+      if (!name.value.trim()) { invalid(name, '이름을 적어 주세요'); return; }
+      if (phone.value.trim() && !L.normPhone(phone.value)) { invalid(phone, '전화번호 형식을 확인해 주세요'); return; }
       try {
         const saved = await S.store.save('work_customers', { id: c ? c.id : undefined, name: name.value.trim().slice(0, 40), phone: L.normPhone(phone.value),
           address: address.value.trim() || null, tag: tag.value || null, revisit_months: revisit.value ? +revisit.value : null, memo: memo.value.trim() || null });
@@ -1072,7 +1079,7 @@
         h('div', { class: 'w-stats' },
           h('div', { class: 'w-stat' }, h('div', { class: 'n num', text: L.won(sum.doneAmount) }), h('div', { class: 'l', text: '이번 달' })),
           h('div', { class: 'w-stat' }, h('div', { class: 'n num', text: L.won(total12) }), h('div', { class: 'l', text: '최근 12개월' })),
-          h('div', { class: 'w-stat' }, h('div', { class: 'n num', text: L.won(half.amount) }), h('div', { class: 'l', text: half.label + ' (부가세 신고 기간)' })),
+          h('div', { class: 'w-stat' }, h('div', { class: 'n num', text: L.won(half.amount) }), h('div', { class: 'l', text: half.label + ' (일반과세 반기)' })),
           h('div', { class: 'w-stat ' + (sum.unpaidAmount ? 'warn' : '') }, h('div', { class: 'n num', text: L.won(sum.unpaidAmount) }), h('div', { class: 'l', text: '미수금 ' + sum.unpaidCount + '건' })))
       ]),
       panel('유입 경로별 매출 (최근 12개월)', 'user', src.length ? h('table', { class: 'w-table' }, h('tbody', {}, src.map((r) => h('tr', {},
@@ -1090,9 +1097,9 @@
     const inp = (k, props) => (f[k] = h(props && props.rows ? 'textarea' : 'input', Object.assign({ type: 'text', value: k === 'phone' ? L.fmtPhone(p[k]) : (p[k] || '') }, props || {})));
     const saveProfile = async () => {
       const phone = f.phone.value.trim();
-      if (phone && !L.normPhone(phone)) { toast('연락처 형식을 확인해 주세요'); return; }
+      if (phone && !L.normPhone(phone)) { invalid(f.phone, '연락처 형식을 확인해 주세요'); return; }
       const bn = f.biz_no.value.trim();
-      if (bn && !/^[0-9]{3}-?[0-9]{2}-?[0-9]{5}$/.test(bn)) { toast('사업자번호는 숫자 10자리예요'); return; }
+      if (bn && !/^[0-9]{3}-?[0-9]{2}-?[0-9]{5}$/.test(bn)) { invalid(f.biz_no, '사업자번호는 숫자 10자리예요'); return; }
       try {
         S.d.profile = await S.store.save('work_profiles', { biz_name: f.biz_name.value.trim() || null, owner_name: f.owner_name.value.trim() || null, phone: L.normPhone(phone),
           account: f.account.value.trim() || null, biz_no: bn || null, intro: f.intro.value.trim() || null, quote_note: f.quote_note.value.trim() || null });

@@ -90,7 +90,7 @@ def cost_level(subsidy_raw, cost_raw):
     if '해당 없음' in (subsidy_raw or ''):
         return 'unknown'
     positive = ['내일배움카드 사용 가능', '국비', '국가 지원', '국기훈련', '국민내일배움카드']
-    negative = ['사용불가', '사용 불가']
+    negative = ['사용불가', '사용 불가', '원문에 없음']   # '국비 표현은 원문에 없음' 같은 메모를 국비로 읽지 않는다
     if any(k in subsidy_raw for k in positive) and not any(n in subsidy_raw for n in negative):
         return 'subsidy'
     # 원문에 실제 청구 금액(0보다 큰)이 있으면 자비. '무료'·0원은 자비도 국비도 아닌 '무료'다(수집기와 같은 규칙).
@@ -173,6 +173,7 @@ def self_test():
     assert cost_level('원문에 없음', '23만원') == 'self'
     assert cost_level('원문에 없음', '교육비 무료. 중식 제공') == 'free'      # 무료 != 자비 != 국비
     assert cost_level('원문에 없음', '0 원') == 'free'
+    assert cost_level('국비 표현은 원문에 없음(서울시 사업)', '전액 무료') == 'free'
     assert cost_level('원문에 없음', '원문에 없음') == 'unknown'
     assert cost_level('내일배움카드 사용불가', '원문에 없음') == 'unknown'
     assert cost_level('국민내일배움카드 사용 가능', '원문에 없음') == 'subsidy'
@@ -232,8 +233,6 @@ def main():
             'source_limit': r['출처한계'],
             'checked_at': r['최종확인일'],
             'unknowns': r['모르는항목'],
-            'exposure': r['출시노출'],
-            'verified_by': r['조사자_검증'],
             'group': group_of(r),
         })
 

@@ -96,14 +96,17 @@
   async function report(targetType, targetId) {
     const user = await getSessionUser();
     if (!user) { alert('로그인 후 신고할 수 있습니다.'); return false; }
-    const idx = prompt('신고 사유를 선택하세요:\n' + REPORT_REASONS.map((r, i) => (i + 1) + '. ' + r).join('\n'), '1');
+    const idx = prompt('신고 사유 번호를 입력하세요:\n' + REPORT_REASONS.map((r, i) => (i + 1) + '. ' + r).join('\n'), '');
     if (idx == null) return false;
-    const reason = REPORT_REASONS[parseInt(idx, 10) - 1] || REPORT_REASONS[3];
+    // 번호가 아니면 엉뚱한 사유로 접수하지 않고 다시 묻는다 (전각 숫자도 받는다)
+    const n = parseInt(String(idx).normalize('NFKC').trim(), 10);
+    if (!(n >= 1 && n <= REPORT_REASONS.length)) { alert('1~' + REPORT_REASONS.length + ' 중 번호를 입력해 주세요.'); return false; }
+    const reason = REPORT_REASONS[n - 1];
     const { error } = await db().from('reports')
       .insert({ target_type: targetType, target_id: targetId, reporter_id: user.id, reason });
     if (error) {
       alert(String(error.message || '').includes('duplicate') || error.code === '23505'
-        ? '이미 신고한 게시물입니다.' : '신고 처리에 실패했습니다.');
+        ? '이미 신고했습니다.' : '신고 처리에 실패했습니다.');
       return false;
     }
     alert('신고가 접수되었습니다.');
@@ -118,8 +121,8 @@
     if (p.board_type === 'job_seek') return '/edu/jobs/?kind=seek&id=' + id;
     return '/board/free/?id=' + id;
   }
-  const BOARD_NAMES = { proposal: '제안', job_offer: '구인', job_seek: '구직', free: '질문·경험' };
-  const boardName = (p) => BOARD_NAMES[p.board_type] || '질문·경험';
+  const BOARD_NAMES = { proposal: '제안·건의', job_offer: '구인', job_seek: '구직', free: '자유게시판' };   // 메뉴·탭 이름과 같게
+  const boardName = (p) => BOARD_NAMES[p.board_type] || '자유게시판';
 
   // 비회원 티저 데이터
   async function fetchTeaser() {

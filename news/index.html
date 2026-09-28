@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>업계뉴스 | 에어컨 인테리어 연구소</title>
-  <meta name="description" content="에인연이 수집한 HVAC, 공조, 냉매, 인테리어 업계뉴스 후보입니다.">
+  <meta name="description" content="HVAC·공조·냉매·인테리어 업계뉴스를 매일 모아 요약합니다. 정확한 내용은 원문 링크에서 확인하세요.">
   <link rel="canonical" href="https://ainyeon.com/news/">
   <meta property="og:title" content="업계뉴스 | 에어컨 인테리어 연구소">
   <meta property="og:description" content="한국 에어컨·인테리어 업계 관점으로 정리한 최신 업계뉴스입니다.">
@@ -18,18 +18,18 @@
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=29">
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
+  <link rel="stylesheet" href="/assets/css/components.css?v=30">
   <style>
     /* 페이지 로컬: 토큰만 소비 — 뉴스 요약 4줄 클램프 */
     .news-summary{margin-top:2px;color:var(--c-ink-sub);font-size:var(--fs-4);line-height:1.55;
       display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
-    .news-note{padding:var(--sp-5) 0 var(--sp-8);color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
+    .news-note{padding:var(--sp-5) 0 var(--sp-8);color:var(--c-ink-sub);font-size:var(--fs-4);line-height:1.6}
     .row-title{white-space:normal}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=29"></script>
-  <script defer src="/assets/js/ain-common.js?v=29"></script>
+  <script defer src="/auth.js?v=30"></script>
+  <script defer src="/assets/js/ain-common.js?v=30"></script>
 </head>
 <body class="has-tabbar">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -58,7 +58,7 @@
     <header class="phero">
       <div class="phero-bar">
         <div>
-          <div class="crumb">INDUSTRY NEWS</div>
+          <div class="crumb">업계뉴스</div>
           <h1>업계뉴스</h1>
           <p class="sub">HVAC·공조·냉매·인테리어 이슈를 한국 업계 관점으로 정리합니다.</p>
         </div>
@@ -92,7 +92,7 @@
         <div class="rows" id="ovsRows"><div class="empty">뉴스를 불러오는 중</div></div>
       </section>
     </div>
-    <div class="news-note">출처: 각 언론·기관 원문 링크 · 에인연 자체 요약 후보이며, 자동발행 없이 검수 후 활용합니다.</div>
+    <div class="news-note">뉴스 요약은 자동으로 정리한 것입니다. 전망·평가 문장은 기사 원문의 주장이 아닐 수 있으니, 정확한 내용은 원문에서 확인하세요.</div>
   </main>
 
   <footer class="tfoot">
@@ -107,7 +107,6 @@
   </footer>
 
   <script>
-    const OVERSEAS_NEWS_SOURCES = new Set(["Cooling Post", "Contractor Magazine"]);
     const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
     const kstToday = () => {
@@ -169,8 +168,8 @@
           domEl.innerHTML = ovsEl.innerHTML = `<div class="empty"><b>표시할 업계뉴스가 아직 없습니다</b>다음 수집에서 갱신됩니다</div>`;
           return;
         }
-        const domestic = rows.filter((r) => !OVERSEAS_NEWS_SOURCES.has(r.source));
-        const overseas = rows.filter((r) => OVERSEAS_NEWS_SOURCES.has(r.source));
+        const domestic = rows.filter((r) => !window.isOverseasNews(r));
+        const overseas = rows.filter((r) => window.isOverseasNews(r));
         domEl.innerHTML = domestic.length ? domestic.map(newsRow).join("") : `<div class="empty">국내 뉴스가 없습니다</div>`;
         ovsEl.innerHTML = overseas.length ? overseas.map(newsRow).join("") : `<div class="empty">해외 뉴스가 없습니다</div>`;
         document.getElementById("domCnt").textContent = `${domestic.length}건`;

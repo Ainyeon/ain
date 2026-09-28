@@ -275,7 +275,7 @@
     $('layoutPick').innerHTML = LAYOUTS.map((l) => {
       const bars = l.thumb === 't-tri' ? '<i></i><i></i><i></i>'
         : (l.thumb === 't-single' || l.thumb === 't-banner') ? '<i></i>' : '<i></i><i></i>';
-      return '<button type="button" class="lp-item ' + (layout === l.id ? 'on' : '') + '" data-l="' + l.id + '">'
+      return '<button type="button" class="lp-item ' + (layout === l.id ? 'on' : '') + '" aria-pressed="' + (layout === l.id) + '" data-l="' + l.id + '">'
         + '<span class="lp-thumb ' + l.thumb + '">' + (l.thumb === 't-banner' ? '' : bars) + '</span>'
         + '<span>' + l.name + '</span></button>';
     }).join('');
@@ -288,7 +288,14 @@
 
   async function loadPhoto(file, key) {
     if (!file) return;
-    const { bitmap, thumb } = await M().resizePhoto(file);
+    let bitmap, thumb;
+    try { ({ bitmap, thumb } = await M().resizePhoto(file)); }
+    catch (e) {                                            // HEIC 등 이 브라우저가 못 여는 사진
+      console.error(e);
+      toast('이 사진은 열 수 없어요. JPG로 저장한 뒤 다시 골라 주세요');
+      $('file' + key[0].toUpperCase() + key.slice(1)).value = '';
+      return;
+    }
     photos[key] = bitmap;
     const drop = $('drop' + key[0].toUpperCase() + key.slice(1));
     let img = drop.querySelector('img');
@@ -363,11 +370,11 @@
     $('barToggle').querySelectorAll('[data-bar]').forEach((b) =>
       b.addEventListener('click', () => {
         barStyle = b.dataset.bar;
-        $('barToggle').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+        $('barToggle').querySelectorAll('button').forEach((x) => M().setOn(x, x === b));
         render();
       }));
     if (barStyle === 'white') {
-      $('barToggle').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.bar === 'white'));
+      $('barToggle').querySelectorAll('button').forEach((x) => M().setOn(x, x.dataset.bar === 'white'));
     }
 
     // 글씨 크기 (기본 px = 1080 기준, 본문 = 한 줄 문구)

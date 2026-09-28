@@ -11,12 +11,12 @@
     job_offer: {
       type: 'job_offer', closable: true,
       empty: '등록된 구인 글이 없습니다.',
-      hint: '사람을 구하는 글입니다. 지역·공종·기간·조건을 본문에 적어 주세요.'
+      hint: '사람을 구하는 글입니다. 지역·공종·기간·조건을 본문에 적어 주세요. 연락처(전화·이메일·카카오 아이디)는 저장할 때 가려집니다. 연락은 오픈채팅 링크(https://open.kakao.com/…)나 댓글로 받으세요.'
     },
     job_seek: {
       type: 'job_seek', closable: true,
       empty: '등록된 구직 글이 없습니다.',
-      hint: '일할 곳을 찾는 글입니다. 지역·공종·경력·가능한 기간을 본문에 적어 주세요.'
+      hint: '일할 곳을 찾는 글입니다. 지역·공종·경력·가능한 기간을 본문에 적어 주세요. 연락처(전화·이메일·카카오 아이디)는 저장할 때 가려집니다. 연락은 오픈채팅 링크(https://open.kakao.com/…)나 댓글로 받으세요.'
     }
   };
   const CFG = BOARDS[(window.AIN_BOARD || {}).type] || BOARDS.free;
@@ -28,6 +28,14 @@
   const C = () => window.ainCommunity;
   const P = () => new URLSearchParams(location.search);
   const qsId = () => P().get('id');
+  // 느린 폰에서 두 번 눌러 같은 글·댓글이 두 번 올라가지 않게 — 처리 중에는 제출 버튼을 잠근다
+  function lockSubmit(form, e) {
+    const b = (e && e.submitter) || (form && form.querySelector ? form.querySelector('[type=submit]') : null);
+    if (!b) return () => {};          // 버튼을 못 찾으면 잠그지 않고 그대로 진행
+    if (b.disabled) return null;
+    b.disabled = true;
+    return () => { b.disabled = false; };
+  }
 
   // 교육 카드에서 넘어온 경우 — 글을 그 과정에 연결한다 (SPEC §3.8)
   const refParam = () => {
@@ -97,13 +105,14 @@
   function gate(html) { panel.innerHTML = '<div class="gate-msg">' + html + '</div>'; }
 
   function teaserRender(rows) {
-    const items = (rows || []).map((r) =>
-      '<div class="board-card board-teaser-blur"><h2>' + escT(r.title) + '</h2>'
+    // 티저 뷰는 자유게시판·제안 글을 섞어 준다 — 이 게시판 글만 보여 주고, 섞인 합계는 적지 않는다
+    const items = (rows || []).filter((r) => r.board_type === CFG.type).map((r) =>
+      '<div class="board-card board-teaser-blur" aria-hidden="true"><h2>' + escT(r.title) + '</h2>'
       + '<div class="card-meta-line"><time>' + C().timeAgo(r.created_at) + '</time></div></div>').join('');
-    const total = rows && rows.length ? rows[0].total_count : 0;
     panel.innerHTML =
-      '<div class="gate-msg"><b>회원 전용입니다</b>' + (total ? ' — 글 ' + total + '개' : '') + '<br>'
-      + '카카오 계정으로 로그인하면 읽고 쓸 수 있습니다.<br>'
+      '<div class="gate-msg"><b>회원 전용입니다</b><br>'
+      + (qsId() ? '이 글은 회원만 볼 수 있습니다. 로그인하면 바로 열립니다.<br>' : '')
+      + '카카오 계정으로 로그인하면 읽고 쓸 수 있습니다. 처음이면 닉네임과 주력분야만 정하면 됩니다.<br>'
       + '<button type="button" class="gate-cta" id="gateLogin">카카오 로그인</button></div>'
       + items;
     document.getElementById('gateLogin').addEventListener('click', () => C().loginWithKakao());
@@ -115,7 +124,9 @@
     const preset = FORM_PRESETS[formKey()] || null;
     const openNow = !!(ref || P().get('form'));
     const isReview = !!preset && preset.kind === 'review';
-    return '<button type="button" class="write-btn" id="writeOpen"' + (openNow ? ' hidden' : '') + '>글쓰기</button>'
+    const label = CFG.type === 'job_offer' ? '구인 글 쓰기' : CFG.type === 'job_seek' ? '구직 글 쓰기' : '글쓰기';
+    return '<button type="button" class="write-btn" id="writeOpen" aria-controls="writeForm" aria-expanded="' + openNow + '"'
+      + (openNow ? ' hidden' : '') + '>' + label + '</button>'
       + '<form class="write-form" id="writeForm"' + (openNow ? '' : ' hidden') + '>'
       + (isReview ? '<p class="write-hint">아래 항목은 모두 선택 입력입니다.</p>' : '')
       + (ref ? '<p class="write-hint">교육 과정 <b>' + escT(ref.id) + '</b>에 연결됩니다.</p>' : '')
@@ -204,21 +215,25 @@
     const form = document.getElementById('writeForm');
     if (!form) return;
     const openBtn = document.getElementById('writeOpen');
-    if (openBtn) openBtn.addEventListener('click', (e) => {
-      form.hidden = false; e.target.hidden = true; document.getElementById('wTitle').focus();
+    if (openBtn) openBtn.addEventListener('click', () => {
+      form.hidden = false; openBtn.hidden = true; openBtn.setAttribute('aria-expanded', 'true');
+      document.getElementById('wTitle').focus();
     });
     document.getElementById('writeCancel').addEventListener('click', () => {
-      form.hidden = true; if (openBtn) openBtn.hidden = false;
+      form.hidden = true;
+      if (openBtn) { openBtn.hidden = false; openBtn.setAttribute('aria-expanded', 'false'); openBtn.focus(); }
     });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const unlock = lockSubmit(form, e);
+      if (!unlock) return;
       const ref = refParam();
       const anon = document.getElementById('wAnon');
       const preset = FORM_PRESETS[formKey()] || null;
       const title = document.getElementById('wTitle').value.trim();
       const body = document.getElementById('wBody').value.trim();
       // 최소 글자 수로 막지 않는다 (짧은 질문 환영). 공백만 있는 글만 거른다.
-      if (!title || !body) { alert('제목과 내용을 적어 주세요.'); return; }
+      if (!title || !body) { unlock(); alert('제목과 내용을 적어 주세요.'); return; }
       const row = { board_type: boardType, author_id: me.user.id, title: title, body: body };
       if (C().anonymousReady()) {
         row.is_anonymous = !!(anon && anon.checked);
@@ -236,7 +251,7 @@
         }
       }
       const { error: err } = await db().from('posts').insert(row);
-      if (err) { alert('등록하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(err); return; }
+      if (err) { unlock(); alert('등록하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(err); return; }
       location.href = listUrl();
     });
   }
@@ -259,13 +274,15 @@
     document.getElementById('editCancel').addEventListener('click', () => { form.hidden = true; });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      const unlock = lockSubmit(form, e);
+      if (!unlock) return;
       const t = document.getElementById('eTitle').value.trim();
       const b = document.getElementById('eBody').value.trim();
-      if (!t || !b) { alert('제목과 내용을 적어 주세요.'); return; }
+      if (!t || !b) { unlock(); alert('제목과 내용을 적어 주세요.'); return; }
       const { error } = await db().from('posts').update({
         title: t, body: b, updated_at: new Date().toISOString()
       }).eq('id', id);
-      if (error) { alert('수정하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(error); return; }
+      if (error) { unlock(); alert('수정하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(error); return; }
       location.reload();
     });
   }
@@ -316,7 +333,7 @@
       + (post.closed_at ? '<div class="card-meta-line"><span class="field-badge">마감된 글</span></div>' : '')
       + reviewFacts + refLink
       + '<div class="post-body">' + escT(C().maskContacts(post.body)) + '</div>'
-      + '<div class="vote-row"><button type="button" class="like-btn' + (iLiked ? ' on' : '') + '" id="likeBtn"><svg width=\'13\' height=\'13\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' style=\'vertical-align:-2px\' aria-hidden=\'true\'><path d=\'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\'/></svg> 공감 ' + likeCount + '</button></div>'
+      + '<div class="vote-row"><button type="button" class="like-btn' + (iLiked ? ' on' : '') + '" id="likeBtn" aria-pressed="' + iLiked + '"><svg width=\'13\' height=\'13\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\' style=\'vertical-align:-2px\' aria-hidden=\'true\'><path d=\'M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z\'/></svg> 공감 ' + likeCount + '</button></div>'
       + '<div class="post-tools">'
       + (mine
         ? '<button type="button" class="tool-link" id="editPost">수정</button>'
@@ -370,12 +387,15 @@
       }));
     document.getElementById('cmtForm').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const form = e.currentTarget;
+      const unlock = lockSubmit(form, e);
+      if (!unlock) return;
       const cb = document.getElementById('cmtBody').value.trim();
-      if (!cb) { alert('댓글 내용을 적어 주세요.'); return; }
+      if (!cb) { unlock(); alert('댓글 내용을 적어 주세요.'); return; }
       const { error: err } = await db().from('comments').insert({
         post_id: Number(id), author_id: me.user.id, body: cb
       });
-      if (err) { alert('등록하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(err); return; }
+      if (err) { unlock(); alert('등록하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(err); return; }
       location.reload();
     });
   }

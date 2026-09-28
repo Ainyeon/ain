@@ -10,15 +10,15 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
-  <link rel="stylesheet" href="/assets/css/components.css?v=29">
-  <link rel="stylesheet" href="/board/board.css?v=29">
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
+  <link rel="stylesheet" href="/assets/css/components.css?v=30">
+  <link rel="stylesheet" href="/board/board.css?v=30">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script defer src="/auth.js?v=29"></script>
-  <script defer src="/assets/js/ain-common.js?v=29"></script>
-  <script defer src="/assets/js/ain-community.js?v=29"></script>
+  <script defer src="/auth.js?v=30"></script>
+  <script defer src="/assets/js/ain-common.js?v=30"></script>
+  <script defer src="/assets/js/ain-community.js?v=30"></script>
 </head>
-<body>
+<body class="has-tabbar">
   <nav class="tnav">
     <div class="tnav-in">
       <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
@@ -33,13 +33,13 @@
     <header class="phero">
       <div class="phero-bar">
         <div>
-          <div class="crumb">ADMIN · BOARD</div>
+          <div class="crumb">관리 · 게시판</div>
           <h1>게시판 관리</h1>
           <p class="sub">신고 처리와 제안 상태 변경. 관리자 전용입니다.</p>
         </div>
       </div>
     </header>
-    <section class="board-wrap" id="panel" aria-live="polite">
+    <section class="board-wrap" id="panel">
       <div class="gate-msg">권한 확인 중…</div>
     </section>
   </main>
@@ -228,7 +228,8 @@
           b.addEventListener('click', async () => {
             const purpose = prompt('작성자 확인 목적을 고르세요:\n1. 중복 확인\n2. 악용 확인', '1');
             if (purpose == null) return;
-            const p_purpose = purpose.trim() === '2' ? 'abuse' : 'duplicate';
+            const p_purpose = { '1': 'duplicate', '2': 'abuse' }[purpose.normalize('NFKC').trim()];
+            if (!p_purpose) { alert('1 또는 2로 입력해 주세요.'); return; }
             const { data, error } = await db().rpc('admin_post_author', {
               p_post_id: Number(b.dataset.who), p_purpose
             });
@@ -247,6 +248,7 @@
       }
 
       addEventListener('DOMContentLoaded', async () => {
+        ainAuth.init('authSlot');
         const me = await ainCommunity.getMyProfile();
         if (me.infraError) { gate('게시판을 준비하는 중입니다.'); return; }
         if (!me.user) { gate('로그인이 필요합니다.'); return; }

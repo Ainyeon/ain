@@ -10,28 +10,28 @@
 .ain-auth{display:flex;align-items:center;gap:8px;flex-shrink:0}
 .ain-auth-login{
   display:inline-flex;align-items:center;gap:5px;
-  height:30px;padding:0 12px;border-radius:7px;border:none;cursor:pointer;
+  min-height:36px;padding:0 12px;border-radius:7px;border:none;cursor:pointer;
   background:#FEE500;color:#191919;
   font-family:inherit;font-size:12px;font-weight:800;letter-spacing:-.01em;
-  transition:opacity .12s ease;white-space:nowrap;
+  white-space:nowrap;
 }
-.ain-auth-login:hover{opacity:.88}
+.ain-auth-login:hover{background:#F5DC00}
 .ain-auth-name{
-  display:inline-block;
-  color:#5C5850;font-size:11px;font-weight:700;letter-spacing:.02em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;
+  display:inline-flex;align-items:center;min-height:36px;
+  color:var(--c-ink-sub,#5C5850);font-size:12px;font-weight:700;letter-spacing:.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;
 }
-a.ain-auth-name:hover{color:#1E1D1A;text-decoration:underline}
+a.ain-auth-name:hover{color:var(--c-ink,#1E1D1A);text-decoration:underline}
 .ain-auth-logout{
   display:inline-flex;align-items:center;
-  height:28px;padding:0 10px;border-radius:7px;cursor:pointer;
-  background:transparent;color:#6B7280;border:1px solid #2A313D;
-  font-family:inherit;font-size:11px;font-weight:700;
-  transition:opacity .12s ease;
+  min-height:36px;padding:0 10px;border-radius:7px;cursor:pointer;
+  background:var(--c-surface,#FFFFFF);color:var(--c-ink-sub,#5C5850);border:1px solid var(--c-control,#8A857B);
+  font-family:inherit;font-size:12px;font-weight:700;
 }
-.ain-auth-logout:hover{opacity:.75}
-`;
-  const styleEl = document.createElement('style');
+.ain-auth-logout:hover{color:var(--c-ink,#1E1D1A)}
+/* 폰에서는 손가락 크기(44px) — 40~50대 현장 사용자, 장갑·야외 */
+@media (max-width:768px){.ain-auth-login,.ain-auth-name,.ain-auth-logout{min-height:44px}}
+`;  const styleEl = document.createElement('style');
   styleEl.textContent = css;
   document.head.appendChild(styleEl);
 
@@ -79,19 +79,22 @@ a.ain-auth-name:hover{color:#1E1D1A;text-decoration:underline}
         + '</div>';
       document.getElementById('_ain_in')
         .addEventListener('click', function () {
-          getClient().auth.signInWithOAuth({
-            provider: 'kakao',
-            options: {
-              // 쿼리까지 보존한다 — /edu/?id=… , /board/free/?ref=edu:… 처럼
-              // 검색 부분이 지금 보고 있는 화면을 결정하는 경로가 있다.
-              redirectTo: window.location.origin + window.location.pathname + window.location.search
-            }
-          });
+          login();
         });
     }
   }
 
+  // 카카오 로그인 — 헤더 버튼과 페이지 안의 '카카오 로그인' 버튼이 같이 쓴다.
+  // 쿼리까지 보존한다 — /edu/?id=… , /board/free/?ref=edu:… 처럼 검색 부분이 지금 화면을 결정하는 경로가 있다.
+  function login() {
+    return getClient().auth.signInWithOAuth({
+      provider: 'kakao',
+      options: { redirectTo: window.location.origin + window.location.pathname + window.location.search }
+    });
+  }
+
   window.ainAuth = {
+    login: login,
     init: function (containerId) {
       var container = document.getElementById(containerId);
       if (!container) return null;

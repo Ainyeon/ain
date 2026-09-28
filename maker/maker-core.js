@@ -149,7 +149,7 @@
       if (!key) return;
       const a = opts.read(key) || defAdj();
       rootEl.querySelectorAll('[data-align]').forEach((b) =>
-        b.classList.toggle('on', b.dataset.align === (a.align || 'left')));
+        setOn(b, b.dataset.align === (a.align || 'left')));
     }
     rootEl.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => {
       if (!key) return;
@@ -211,14 +211,14 @@
       + '</div></div>';
 
     function paint() {
-      rootEl.querySelectorAll('[data-mode]').forEach((b) => b.classList.toggle('on', b.dataset.mode === val.mode));
+      rootEl.querySelectorAll('[data-mode]').forEach((b) => setOn(b, b.dataset.mode === val.mode));
       rootEl.querySelector('.cc-solid').style.display = val.mode === 'solid' ? '' : 'none';
       rootEl.querySelector('.cc-grad').style.display = val.mode === 'grad' ? '' : 'none';
       rootEl.querySelector('[data-c="c1s"]').value = val.c1;
       rootEl.querySelector('[data-hex]').value = val.c1.toUpperCase();
       rootEl.querySelector('[data-c="c1"]').value = val.c1;
       rootEl.querySelector('[data-c="c2"]').value = val.c2;
-      rootEl.querySelectorAll('[data-dir]').forEach((b) => b.classList.toggle('on', b.dataset.dir === val.dir));
+      rootEl.querySelectorAll('[data-dir]').forEach((b) => setOn(b, b.dataset.dir === val.dir));
     }
     function emit() { paint(); onChange(Object.assign({}, val)); }
 
@@ -285,7 +285,7 @@
 
     function paint() {
       range.value = val;
-      rootEl.querySelectorAll('[data-g]').forEach((b) => b.classList.toggle('on', Number(b.dataset.g) === val));
+      rootEl.querySelectorAll('[data-g]').forEach((b) => setOn(b, Number(b.dataset.g) === val));
     }
     function emit() { paint(); onChange(val); }
     range.addEventListener('input', () => { val = Number(range.value); emit(); });
@@ -356,21 +356,34 @@
     return { get: () => Object.assign({}, val) };
   }
 
+  // 선택 상태: 색만이 아니라 aria-pressed로도 (스크린리더·고대비 모드)
+  function setOn(b, on) { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); }
+
   // ── 첫 방문 3단계 안내 (1회)
   function showGuideOnce(storeKey, steps) {
     try { if (localStorage.getItem(storeKey)) return; } catch (e) { return; }
     const ov = document.createElement('div');
     ov.className = 'guide-ov';
-    ov.innerHTML = '<div class="guide-card" role="dialog" aria-label="사용 안내">'
+    ov.innerHTML = '<div class="guide-card" role="dialog" aria-modal="true" aria-label="사용 안내">'
       + '<h2>이렇게 만들어요</h2>'
       + '<ol>' + steps.map((s) => '<li>' + esc(s) + '</li>').join('') + '</ol>'
       + '<div class="guide-actions">'
       + '<button type="button" class="g-skip">다시 보지 않기</button>'
       + '<button type="button" class="g-go">시작하기</button></div></div>';
     document.body.appendChild(ov);
-    const done = () => { try { localStorage.setItem(storeKey, '1'); } catch (e) {} ov.remove(); };
+    const back = document.activeElement;
+    const done = () => { try { localStorage.setItem(storeKey, '1'); } catch (e) {} ov.remove(); if (back && back.focus) back.focus(); };
     ov.querySelector('.g-skip').addEventListener('click', done);
     ov.querySelector('.g-go').addEventListener('click', done);
+    ov.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') done();
+      else if (e.key === 'Tab') {                          // 안내 두 버튼 안에서만 돈다
+        const bs = ov.querySelectorAll('button'), first = bs[0], last = bs[bs.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+    ov.querySelector('.g-go').focus();
   }
 
   // ── 폰트 준비
@@ -388,7 +401,7 @@
 
   // ── 데이터 로더
   // 자산 버전을 붙여 구 서비스워커 캐시의 옛 JSON이 새 코드와 섞이지 않게 한다.
-  const ASSET_V = '29';
+  const ASSET_V = '30';
   async function loadJson(path) {
     const res = await fetch(path + (path.includes('?') ? '&' : '?') + 'v=' + ASSET_V);
     return res.json();
@@ -445,6 +458,10 @@
 
     input.addEventListener('input', () => renderList(input.value));
     input.addEventListener('focus', () => renderList(input.value));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !list.hidden) { e.preventDefault(); close(); }
+      else if (e.key === 'ArrowDown' && !list.hidden) { const b = list.querySelector('.fs-item'); if (b) { e.preventDefault(); b.focus(); } }
+    });
     document.addEventListener('click', (e) => { if (!rootEl.contains(e.target)) close(); });
 
     return {
@@ -501,6 +518,7 @@
   }
 
   window.makerCore = {
+    setOn,
     FONT, TOKENS, GRAD_PRESETS, DEFAULT_COLOR, ADJ,
     makeCtxUtils, darken, idealTextOn, colorAvgHex, accentPaint, grayStyle,
     adjSize, adjGap, defAdj, fsz, defFontScale,

@@ -23,7 +23,7 @@
     return el;
   }
   const DEMO = {
-    biz_name: '시원설비', biz_phone: '01099990000', biz_intro: '에어컨 설치·세척 12년. 청라·검단·루원', pro: false, logo: null,
+    biz_name: '시원설비', biz_phone: '01000000000', biz_intro: '에어컨 설치·세척 12년. 청라·검단·루원', pro: false, logo: null,
     customer: '김*지', region: '인천 서구',
     jobs: [
       { done_on: L.dayKey(L.addDays(new Date(), -2)), field: 'ac-clean', work_type: 'clean', items: [{ name: '벽걸이', unit: '대', qty: 2 }],
@@ -41,6 +41,7 @@
     return data;
   }
 
+  const day = (k) => { const [y, m, d] = k.split('-'); return y + '년 ' + (+m) + '월 ' + (+d) + '일'; };   // 'YYYY-MM-DD' → 2026년 9월 26일
   function render(c) {
     const todayKey = L.dayKey(new Date());
     const latest = c.jobs[0];
@@ -56,15 +57,15 @@
       c.biz_phone ? h('div', { class: 'card-call' },
         h('a', { class: 'w-btn primary', href: L.telHref(c.biz_phone) }, '전화하기'),
         h('a', { class: 'w-btn', href: L.smsHref(c.biz_phone, '[시공 카드] 안녕하세요, 문의드립니다.\n' + link) }, '문자 보내기')) : null,
-      w ? h('div', { class: 'card-warranty' + (w < todayKey ? ' over' : ''), text: w >= todayKey ? '무상 AS 기간 중 · ' + w + '까지' : '무상 AS 기간 종료 (' + w + ')' }) : null));
+      w ? h('div', { class: 'card-warranty' + (w < todayKey ? ' over' : ''), text: w >= todayKey ? '무상 AS 기간 중 · ' + day(w) + '까지' : '무상 AS 기간 종료 (' + day(w) + ')' }) : null));
 
     out.push(h('section', { class: 'panel' },
       h('div', { class: 'phead' }, h('h2', { text: '시공 이력' }), h('span', { class: 'cnt num', text: String(c.jobs.length) })),
       c.jobs.length ? c.jobs.map((j) => h('article', { class: 'card-job' },
-        h('h3', { text: [j.done_on, FIELD_LABELS[j.field], L.WORK_TYPE_LABEL[j.work_type]].filter(Boolean).join(' · ') }),
+        h('h3', { text: [j.done_on && day(j.done_on), FIELD_LABELS[j.field], L.WORK_TYPE_LABEL[j.work_type]].filter(Boolean).join(' · ') }),
         j.items.length ? h('ul', {}, j.items.map((i) => h('li', { text: [i.name, i.model].filter(Boolean).join(' ') + (i.qty ? ' ' + i.qty + (i.unit || '') : '') }))) : null,
         j.checklist.length ? h('ul', {}, j.checklist.map((x) => h('li', { text: x.label + ': ' + x.value }))) : null,
-        j.warranty_until ? h('div', { class: 'w-meta', text: '무상 AS ' + j.warranty_until + '까지' }) : null))
+        j.warranty_until ? h('div', { class: 'w-meta', text: '무상 AS ' + day(j.warranty_until) + '까지' }) : null))
         : h('div', { class: 'empty', text: '완료된 시공 기록이 아직 없어요.' })));
 
     out.push(asForm(c));
@@ -78,8 +79,8 @@
     const box = h('div', { class: 'w-form' });
     const kinds = [['as', 'AS·고장'], ['reinstall', '재설치·이전'], ['etc', '기타']];
     const radios = kinds.map(([v, t], i) => h('label', {}, h('input', { type: 'radio', name: 'kind', value: v, checked: i === 0 }), t));
-    const msg = h('textarea', { rows: 4, maxlength: 1000, placeholder: '예) 벽걸이 실내기에서 물이 떨어져요. 평일 저녁 방문 원해요.', 'aria-label': '문의 내용' });
-    const contact = h('input', { type: 'tel', inputmode: 'tel', placeholder: '010-0000-0000 (선택)', 'aria-label': '연락받을 번호' });
+    const msg = h('textarea', { rows: 4, maxlength: 1000, placeholder: '예) 벽걸이 실내기에서 물이 떨어져요. 평일 저녁 방문 원해요.' });
+    const contact = h('input', { type: 'tel', inputmode: 'tel', placeholder: '010-0000-0000 (선택)', autocomplete: 'tel', name: 'tel' });
     const status = h('div', { role: 'status' });
     const send = h('button', { type: 'button', class: 'w-btn primary', onclick: submit }, '문의 남기기');
     async function submit() {
@@ -96,7 +97,7 @@
         const label = kinds.find((k) => k[0] === kind)[1];
         const smsBody = '[시공 카드 문의] ' + label + '\n' + text + (contact.value.trim() ? '\n연락처 ' + L.fmtPhone(contact.value) : '') + '\n' + location.href;
         box.replaceChildren(h('div', { class: 'w-note', text: isDemo ? '체험용 카드라 실제로 접수되지는 않았어요. 실제 카드에서는 업체 업무 화면의 "오늘"에 바로 뜹니다.'
-          : '접수됐어요. 업체가 앱을 열면 바로 보입니다. 더 빨리 연락받으려면 아래 문자도 보내 주세요.' }),
+          : '접수됐어요. 업체에 바로 알리도록 문자 창을 열었어요. 보내기만 누르세요. 안 열렸으면 아래 버튼을 누르세요.' }),
           c.biz_phone ? h('a', { class: 'w-btn primary', href: L.smsHref(c.biz_phone, smsBody) }, '업체에 문자 보내기') : null);
         // 업체 폰으로 바로 알림이 가도록 문자 앱을 연다 (발송은 고객이 누른다. 막히면 위 버튼)
         if (c.biz_phone && !isDemo) location.href = L.smsHref(c.biz_phone, smsBody);
@@ -106,8 +107,8 @@
         status.replaceChildren(h('div', { class: 'w-warn', text: L.limitMessage(e) || '접수하지 못했어요. 업체에 전화로 연락해 주세요.' }));
       }
     }
-    const notice = h('p', { class: 'w-meta', text: '남기신 내용과 연락처(선택)는 이 업체에만 전달되며, 업체가 처리한 뒤 지울 수 있습니다.' });
-    box.append(h('div', { class: 'card-kinds', role: 'radiogroup', 'aria-label': '문의 종류' }, radios), msg, contact, notice, status, send);
+    const notice = h('p', { class: 'w-note', text: '남기신 내용과 연락처(선택)는 이 업체에만 전달되며, 업체가 처리한 뒤 지울 수 있습니다.' });
+    box.append(h('div', { class: 'card-kinds', role: 'radiogroup', 'aria-label': '문의 종류' }, radios), h('label', { class: 'w-field' }, h('span', { text: '문의 내용' }), msg), h('label', { class: 'w-field' }, h('span', { text: '연락받을 번호 (선택)' }), contact), notice, status, send);
     return h('section', { class: 'panel' }, h('div', { class: 'phead' }, h('h2', { text: 'AS·재설치 문의' })), box);
   }
 
