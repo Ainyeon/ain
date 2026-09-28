@@ -166,7 +166,7 @@ a.row:hover{background:var(--c-surface-sub)}
 /* ── NEW 배지 — 전역 기준: KST 당일 수집분 (결정론, LLM 무관) ── */
 .new-badge{display:inline-flex;align-items:center;
   padding:1px 5px;margin-right:var(--sp-1);border-radius:var(--r-1);
-  font-size:10px;font-weight:var(--fw-bold);letter-spacing:.03em;
+  font-size:var(--fs-4);font-weight:var(--fw-bold);letter-spacing:.03em;
   background:var(--c-accent);color:var(--c-surface);vertical-align:2px}
 
 /* ── D-day 배지 ─────────────────────────────── */
@@ -390,7 +390,7 @@ a.row:hover{background:var(--c-surface-sub)}
     padding:0 var(--sp-4) var(--sp-3);gap:var(--sp-2);
     overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .tnav-links::-webkit-scrollbar{display:none}
-  .tnav-links a{flex:none;min-height:34px;padding:0 var(--sp-3);margin:0;
+  .tnav-links a{flex:none;min-height:44px;padding:0 var(--sp-3);margin:0;
     border:1px solid var(--c-line-strong);border-radius:var(--r-1);
     font-size:var(--fs-4);white-space:nowrap}
   .tnav-links a.on{border-image:none;border-color:var(--c-accent-line);
@@ -443,4 +443,27 @@ html:has(.tnav){scroll-padding-top:var(--nav-h)}
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{transition:none!important;animation:none!important}
+}
+
+/* ═══ 09-28 전면 검토 반영 — 터치·줄바꿈·포커스·선택 상태 ═══════════════ */
+:root{color-scheme:only light}   /* 다크 테마가 없다 — 브라우저 자동 다크가 유리·표면 색을 멋대로 바꾸지 않게 */
+/* 필수 안내(분모·보관 정책 등)는 말줄임으로 자르지 않는다 */
+.row-meta.wrap,.w-meta.wrap{white-space:normal;overflow:visible}
+@media (max-width:768px){
+  /* 손가락 크기 44px — 40~50대 현장 사용자(장갑·야외) */
+  .btn-src,.btn-line{min-height:44px}
+  .phead .more{min-height:44px;padding:0 var(--sp-1)}
+}
+@media (max-width:640px){
+  /* 폰에서 공고·뉴스 제목이 첫 줄에서 잘리지 않게 두 줄까지 */
+  .row-title{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .row-meta{white-space:normal}
+}
+/* 패널·가로 스크롤 안에서 포커스 테두리가 잘리지 않게 안쪽으로 */
+.panel a.row:focus-visible,.board-tabs a:focus-visible,.tnav-links a:focus-visible{outline-offset:-2px}
+.install-bar button:focus-visible{outline:2px solid var(--c-surface);outline-offset:2px}
+/* 강제 색상 모드: 색으로만 표시하던 '선택됨'을 테두리로 남긴다 */
+@media (forced-colors:active){
+  .board-tabs a.on,.chip.on,.region-tab.on,.w-nav a.on,.w-chip.on,.toggle-group button.on,.gc-presets button.on,
+  .lp-item.on,.ap-row button.on,.vote-btn.on,.like-btn.on,.sort-toggle button.on,.edu-save.on{outline:3px solid Highlight;outline-offset:-3px}
 }

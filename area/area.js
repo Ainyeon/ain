@@ -14,8 +14,7 @@
   // 분모 정의 (SPEC ⑧) — 2026-09-09 읽기 전용 실측으로 확인한 집계 조건 그대로 적는다.
   // move_in_teaser / v_stat_movein = is_public = true AND expected_move_in >= CURRENT_DATE,
   // complex_name_ad 기준 중복 제거. 전체 수집 이력 건수가 아니다.
-  const DENOM_NOTE = '분모: 공개 대상이면서 입주예정일이 오늘 이후인 단지를 단지명 기준으로 중복 제거한 수입니다. '
-    + '전체 수집 이력 건수가 아닙니다. 출처: 청약홈 자동 수집.';
+  const DENOM_NOTE = '오늘 이후 입주 예정인 단지 수입니다(같은 단지는 한 번만 셈). 출처: 청약홈 자동 수집.';
 
   let saves = null;
   let notices = null;
@@ -146,14 +145,13 @@
       const rows = (data || []).filter((r) => region !== 'METRO' || /^(서울|경기|인천)/.test(r.sido || ''));
       const total = data && data.length ? Number(data[0].total_count) || 0 : 0;
       return tabs
-        + '<div class="edu-note"><b>추적 중인 입주 예정 단지 ' + total.toLocaleString('ko-KR') + '건</b>' + esc(DENOM_NOTE) + '</div>'
+        + '<div class="edu-note"><b>전국 추적 중인 입주 예정 단지 ' + total.toLocaleString('ko-KR') + '곳</b>' + esc(DENOM_NOTE) + '</div>'
         + (rows.length ? rows.map((r) =>
           '<article class="edu-card">'
           + '<h3><svg class="icon sm"><use href="#i-lock"/></svg> 단지명 — 로그인 후 확인</h3>'
           + '<div class="edu-org">' + esc([r.sido, r.sigungu].filter(Boolean).join(' ') || (region === 'METRO' ? '수도권' : '전국')) + '</div>'
           + '<div class="edu-line">' + esc(r.move_in_month || '입주월 확인 중') + ' 입주예정 (월 단위)</div>'
           + (r.stage ? '<div class="edu-line"><span class="edu-k">단계</span>' + esc(r.stage) + '</div>' : '')
-          + '<div class="edu-line" style="color:var(--c-ink-faint)">사검일정 미정 · 행사일정 미정</div>'
           + '</article>').join('')
           : '<div class="edu-note">이 지역에서 공개할 단지가 없습니다.</div>')
         + '<div class="edu-note"><b>단지명은 회원에게 공개됩니다</b>'
@@ -165,6 +163,9 @@
       .eq('region', region).eq('is_public', true).gte('expected_move_in', kstToday())
       .order('expected_move_in', { ascending: true }).limit(60);
     if (error) return tabs + '<div class="edu-note"><b>입주 정보를 불러오지 못했습니다</b>잠시 후 새로고침 해주세요.</div>';
+    // 화면 목록은 임박순 최대 60곳이다 — 전체 수는 집계 뷰(비회원과 같은 기준)에서 따로 읽는다
+    const stat = await db().from('v_stat_movein').select('tracking_count').limit(1);
+    const total = stat && stat.data && stat.data[0] ? Number(stat.data[0].tracking_count) : null;
 
     // 집계 분모와 같은 기준으로 화면에서도 단지명 중복을 제거한다
     const seen = new Set();
@@ -174,7 +175,8 @@
     });
 
     return tabs
-      + '<div class="edu-note"><b>' + rows.length + '건</b>' + esc(DENOM_NOTE) + '</div>'
+      + '<div class="edu-note"><b>입주 임박순 ' + rows.length + '곳 표시 (최대 60곳)</b>'
+      + (total != null ? '전국 전체 ' + total.toLocaleString('ko-KR') + '곳 — ' + esc(DENOM_NOTE) + ' 나머지는 단계별 캘린더에서 볼 수 있습니다.' : '') + '</div>'
       + (rows.length ? rows.map((r) => {
         const name = r.complex_name_ad || r.complex_name_raw;
         const loc = [r.sido, r.sigungu].filter(Boolean).join(' ');
@@ -257,7 +259,7 @@
           + line('접수 마감', f.apply_end_raw || f.apply_period_raw)
           + line('대상', f.target_raw)
           + (Array.isArray(f.conflicts) && f.conflicts.length
-            ? '<div class="edu-warn"><span>⚠ 공고 안에서 표기가 서로 다릅니다</span>'
+            ? '<div class="edu-warn"><span>주의: 공고 안에서 표기가 서로 다릅니다</span>'
               + f.conflicts.map((c) => '<span class="sub">' + esc(c.text) + '</span>').join('') + '</div>'
             : '')
           + '<div class="edu-line" style="color:var(--c-ink-faint)">최종 확인 ' + esc(n.checked_at)
@@ -287,7 +289,10 @@
       return '<div class="edu-note"><b>확인된 모집 공고가 없습니다</b>'
         + '운영자가 원문을 확인한 공고만 싣습니다.</div>';
     }
-    return '<div class="edu-note"><b>확인된 모집 공고 ' + notices.items.length + '건</b>'
+    const openCount = notices.items.filter((n) => !n.deadline_passed).length;
+    return (openCount
+      ? '<div class="edu-note"><b>확인된 모집 공고 ' + openCount + '건</b>'
+      : '<div class="edu-note"><b>지금 접수 중인 확인 공고가 없습니다</b>아래는 마감이 지난 공고입니다. ')
       + '필요한 사실 요약과 원문 링크를 싣습니다. '
       + '담당자 이메일·전화·QR는 원문에서 확인하세요.</div>'
       + notices.items.map((n) =>
@@ -302,7 +307,7 @@
         + '<div class="edu-line"><span class="edu-k">접수기간</span>' + esc(n.apply_end_raw) + '</div>'
         + '<div class="edu-line"><span class="edu-k">입주예정</span>' + esc(n.move_in_raw) + '</div>'
         + '<div class="edu-line"><span class="edu-k">행사</span>' + esc(n.event_raw) + '</div>'
-        + '<div class="edu-warn"><span>⚠ ' + esc(n.status_label) + '</span>'
+        + '<div class="edu-warn"><span>주의: ' + esc(n.status_label) + '</span>'
         + '<span class="sub">' + esc(n.after_deadline_raw) + ' — 원문 표기 그대로입니다.</span></div>'
         + '<div class="edu-line">요구 항목: '
         + esc(n.requirements.map((r) => r.label + ' ' + r.count).join(' · ')) + '</div>'
@@ -312,7 +317,7 @@
           + r.lines.map((l) => '<div class="edu-line">· ' + esc(l) + '</div>').join('') + '</div>').join('')
         + '<div class="edu-block"><h4>미확인 정보</h4><div class="edu-line">' + esc(n.unknowns) + '</div></div>'
         + '</details>'
-        + '<div class="edu-line" style="color:var(--c-ink-faint)">ⓘ ' + esc(n.scope_note) + '</div>'
+        + '<div class="edu-line" style="color:var(--c-ink-faint)">참고: ' + esc(n.scope_note) + '</div>'
         + '<div class="edu-line" style="color:var(--c-ink-faint)">최종 확인 ' + esc(notices.checked_at) + '</div>'
         + '<div class="edu-actions">'
         + (n.url ? '<a class="btn-src" href="' + esc(n.url) + '" target="_blank" rel="noopener">공고 원문<svg class="icon sm"><use href="#i-ext"/></svg></a>' : '')
@@ -331,8 +336,11 @@
     const tab = p.get('tab') === 'notice' ? 'notice' : 'complex';
     const region = p.get('region') === 'NATION' ? 'NATION' : 'METRO';
     const focusId = p.get('complex');
-    document.querySelectorAll('#areaTabs a').forEach((a) =>
-      a.classList.toggle('on', a.getAttribute('href').indexOf(tab) > -1));
+    document.querySelectorAll('#areaTabs a').forEach((a) => {
+      const on = a.getAttribute('href').indexOf(tab) > -1;
+      a.classList.toggle('on', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
     panel.innerHTML = '<div class="empty">불러오는 중</div>';
     // complexHtml은 회원/비회원에 따라 다른 테이블을 읽는다. await 하는 동안
     // 로그아웃하거나 지역을 다시 바꾸면 이 결과는 버려야 한다 —
@@ -341,7 +349,10 @@
       : focusId ? await focusComplexHtml(mySession, focusId)
       : await complexHtml(mySession, region);
     if (my !== renderGen || mySession !== session) return;
+    // 필터를 바꾼 사람의 포커스가 <body>로 날아가지 않게 같은 id 로 되돌린다
+    const focusedId = document.activeElement && panel.contains(document.activeElement) ? document.activeElement.id : '';
     panel.innerHTML = html;
+    if (focusedId && document.getElementById(focusedId)) document.getElementById(focusedId).focus();
 
     const sel = document.getElementById('fRegion');
     if (sel) sel.addEventListener('change', () => {

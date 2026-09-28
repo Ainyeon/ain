@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>자재 시세 | 에어컨 인테리어 연구소</title>
-  <meta name="description" content="동관(전기동)·알루미늄 자재 시세를 매일 업데이트합니다. 발주 판단에 필요한 원자재 가격 흐름.">
+  <meta name="description" content="국제 전기동(구리)·알루미늄·니켈·아연 시세(USD/톤)와 환율을 매일 아침 업데이트합니다. 발주 판단에 필요한 원자재 가격 흐름.">
   <link rel="canonical" href="https://ainyeon.com/prices/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="자재 시세 | 에어컨 인테리어 연구소">
-  <meta property="og:description" content="동관·알루미늄 자재 시세, 매일 아침 업데이트.">
+  <meta property="og:description" content="국제 전기동·알루미늄·니켈·아연 시세(USD/톤)와 환율, 매일 아침 업데이트.">
   <meta property="og:url" content="https://ainyeon.com/prices/">
   <meta property="og:image" content="https://ainyeon.com/assets/og-card-v2.png">
   <meta property="og:image:width" content="1200">
@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="/assets/css/components.css?v=29">
   <style>
     /* 페이지 로컬: 토큰만 소비 */
-    .price-note{padding:var(--sp-5) 0 var(--sp-8);color:var(--c-ink-faint);font-size:var(--fs-4);line-height:1.6}
+    .price-note{padding:var(--sp-5) 0 var(--sp-8);color:var(--c-ink-sub);font-size:var(--fs-4);line-height:1.6}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js?v=29"></script>
@@ -54,7 +54,7 @@
     <header class="phero">
       <div class="phero-bar">
         <div>
-          <div class="crumb">MATERIAL PRICES</div>
+          <div class="crumb">자재 시세</div>
           <h1>자재 시세</h1>
           <p class="sub">발주 판단에 필요한 원자재 시세를 매일 기록합니다.</p>
         </div>
@@ -102,15 +102,6 @@
       return `${o.year}-${o.month}-${o.day}`;
     };
     // NEW 배지 — 전역 기준: KST 당일 수집 (결정론)
-    const isNewToday = (v) => {
-      if (!v) return false;
-      const d = new Date(v);
-      if (Number.isNaN(d.getTime())) return false;
-      const p3 = new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: "Asia/Seoul" }).formatToParts(d);
-      const o3 = Object.fromEntries(p3.map((x) => [x.type, x.value]));
-      return `${o3.year}-${o3.month}-${o3.day}` === kstToday();  // timestamptz(UTC)도 KST 당일로 정확 판정
-    };
-    const newBadge = (v) => isNewToday(v) ? '<span class="new-badge">NEW</span>' : "";
     const tri = (dir) => dir === 0 ? "" :
       `<svg class="tri" viewBox="0 0 8 8" fill="currentColor" stroke="none" width="8" height="8"><path d="${dir > 0 ? "M4 1 7.5 7h-7Z" : "M4 7 .5 1h7Z"}"/></svg>`;
 
@@ -127,7 +118,7 @@
       const weekPct = sp.change_week_percent;
       const weekTxt = Number.isFinite(Number(weekPct)) ? `${Number(weekPct) > 0 ? "+" : ""}${Number(weekPct).toFixed(2)}%` : "";
       return `<tr>
-        <td data-th="품목" class="no-th"><div class="cell-title">${newBadge(row.collected_at)}${esc(row.name || row.item_id)}</div><div class="cell-sub">${esc(row.unit || "USD/mt")}</div></td>
+        <td data-th="품목" class="no-th"><div class="cell-title">${esc(row.name || row.item_id)}</div><div class="cell-sub">${esc(row.unit || "USD/mt")}</div></td>
         <td data-th="가격" class="ta-r nowrap num" style="font-weight:var(--fw-bold)">${esc(row.display_price || row.price)}</td>
         <td data-th="전일비" class="ta-r nowrap">${deltaCell(row.change_day_percent, row.display_change_day_percent)}</td>
         <td data-th="주간" class="ta-r nowrap">${deltaCell(weekPct, weekTxt)}</td>

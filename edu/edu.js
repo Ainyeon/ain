@@ -463,6 +463,8 @@
     const now = Date.now();
     const secs = L.groupSections(allItems(), f, now);
     const shown = secs.reduce((n, s) => n + s.items.length, 0);
+    // 필터를 바꾼 사람의 포커스가 <body>로 날아가지 않게 같은 id 로 되돌린다
+    const focusedId = document.activeElement && panel.contains(document.activeElement) ? document.activeElement.id : '';
 
     panel.innerHTML = filtersHtml(f)
       + (shown ? '' : '<div class="edu-note"><b>조건에 맞는 과정이 없습니다</b>필터를 넓혀 보세요.</div>')
@@ -476,6 +478,7 @@
       + '주거 현장의 모든 공종이 대상입니다.'
       + '<div class="edu-actions"><a class="btn-line" href="/board/free/?form=edu_tip">제보하기</a></div></div>';
     bind();
+    if (focusedId && $(focusedId)) $(focusedId).focus();
   }
 
   function bind() {
