@@ -79,7 +79,7 @@ const ctx = {
   console, Promise, Object, Number, Boolean, String, Array, JSON, Math, Date, RegExp, Set, Map,
   escT: (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])),
   alert: () => {}, confirm: () => true, prompt: () => '1',
-  ainAuth: { getClient: () => client },
+  ainAuth: { getClient: () => client, init: () => {} },
   ainCommunity: {
     getMyProfile: async () => ({ user: { id: 'admin-user' }, profile: { role: 'admin', nickname: '운영자' } }),
     readPosts: async () => ({ rows, mode: 'view' }),

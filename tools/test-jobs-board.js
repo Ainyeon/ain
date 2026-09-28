@@ -187,9 +187,13 @@ const settle = async () => { for (let i = 0; i < 10; i++) await new Promise((r) 
     await t.boot(); await settle();
     assert.ok(!t.panel.innerHTML.includes('자유게시판 비밀 제목') && !t.panel.innerHTML.includes('글 7개'), '구인 페이지에 게시판 티저가 나왔다');
     assert.ok(t.panel.innerHTML.includes('회원 전용'));
-    const tf = run({ member: false, teaser: [{ title: '자유 제목', created_at: '2026-09-10T00:00:00Z', total_count: 1 }] });
+    const tf = run({ member: false, teaser: [
+      { board_type: 'free', title: '자유 제목', created_at: '2026-09-10T00:00:00Z', total_count: 2 },
+      { board_type: 'proposal', title: '제안 제목', created_at: '2026-09-10T00:00:00Z', total_count: 2 }] });
     await tf.boot(); await settle();
     assert.ok(tf.panel.innerHTML.includes('자유 제목'), '자유게시판 티저는 그대로');
+    assert.ok(!tf.panel.innerHTML.includes('제안 제목'), '자유게시판 티저에 제안 글이 섞였다');
+    assert.ok(!tf.panel.innerHTML.includes('글 2개'), '두 게시판을 합친 수를 이 게시판 수처럼 적었다');
   }
   // 8. 구인 글에 후기 양식(?form=review)·교육 연결(?ref=)이 붙지 않는다 (교육 후기 집계에 섞임 방지)
   {

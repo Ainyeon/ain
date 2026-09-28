@@ -8,7 +8,7 @@
   const escT=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
   // 모바일 상단 칩: 현재 페이지 칩이 스크롤 밖이면 보이게
-  document.querySelectorAll('.tnav-links a.on').forEach(a=>a.setAttribute('aria-current','page'));
+  document.querySelectorAll('.tnav-links a.on,.board-tabs a.on').forEach(a=>a.setAttribute('aria-current','page'));
   const onChip=document.querySelector('.tnav-links a.on');
   if(onChip&&onChip.scrollIntoView)onChip.scrollIntoView({inline:'center',block:'nearest'});
 

@@ -7,7 +7,7 @@
   <meta name="description" content="에인연 계정 정보와 회원 전용 기능을 확인합니다.">
   <link rel="canonical" href="https://ainyeon.com/me/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="내정보 | 에어컨 인테리어 연구소">
+  <meta property="og:title" content="내 정보 · 내 활동 | 에어컨 인테리어 연구소">
   <meta property="og:description" content="에인연 계정 정보와 회원 전용 기능.">
   <meta property="og:url" content="https://ainyeon.com/me/">
   <meta property="og:image" content="https://ainyeon.com/assets/og-card-v2.png">
@@ -21,12 +21,16 @@
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=11">
   <link rel="stylesheet" href="/assets/css/components.css?v=29">
   <style>
-    /* 페이지 로컬: 토큰만 소비. 예외 2건 주석 — 오브(브랜드 마크)·카카오 옐로(외부 브랜드) */
+    /* 페이지 로컬: 토큰만 소비. 예외 1건 주석 — 카카오 옐로(외부 브랜드) */
+    /* 운영자 답변·보류 이유는 말줄임 줄(.row-meta) 안에 있어도 전부 보이게 */
+    .row-meta .status-reason,.row-meta .admin-answer{white-space:normal}
+    /* 저장 행: 긴 과정명이 '저장 해제' 버튼 위로 넘치지 않게 블록으로, 누르는 영역도 넓게 */
+    .row-main > a.row-title{display:block;padding:var(--sp-2) 0}
+    @media (max-width:640px){.row-side .btn-line{min-height:44px}}
     .me-wrap{display:grid;gap:var(--sp-4);padding-bottom:var(--sp-8)}
     .me-body{padding:var(--sp-5) var(--sp-4)}
     .me-avatar{width:52px;height:52px;border-radius:50%;
-      background:conic-gradient(from 210deg,#4F8CFF,#35C5B8,#A78BFA,#FF8A65,#4F8CFF); /* 브랜드 오브 예외 */
-      color:var(--c-surface);display:grid;place-items:center;
+      background:var(--c-accent);color:var(--c-surface);display:grid;place-items:center;   /* 흰 글자 8.1:1 */
       font-size:var(--fs-1);font-weight:var(--fw-bold)}
     .me-name{margin-top:var(--sp-3);font-size:var(--fs-2);font-weight:var(--fw-bold);color:var(--c-ink)}
     .me-email{margin-top:var(--sp-1);color:var(--c-ink-sub);font-size:var(--fs-3)}
@@ -76,7 +80,7 @@
     <header class="phero">
       <div class="phero-bar">
         <div>
-          <div class="crumb">MY PAGE</div>
+          <div class="crumb">내 정보</div>
           <h1>내 정보 · 내 활동</h1>
           <p class="sub">계정 정보와 내 활동 — 저장한 항목, 내가 쓴 글과 제안, 운영자 답변이 여기에 모입니다.</p>
         </div>
@@ -112,7 +116,7 @@
           <a class="row" href="/"><div class="row-main"><div class="row-title">오늘의 브리핑</div><div class="row-meta">홈 대시보드</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/board/free/"><div class="row-main"><div class="row-title">자유게시판</div><div class="row-meta">업계 사람들끼리</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/board/proposal/"><div class="row-main"><div class="row-title">제안·건의</div><div class="row-meta">필요한 기능·개선 의견</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
-          <a class="row" href="/prices/"><div class="row-main"><div class="row-title">자재 시세</div><div class="row-meta">동관·알루미늄</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
+          <a class="row" href="/prices/"><div class="row-main"><div class="row-title">자재 시세</div><div class="row-meta">전기동·알루미늄·니켈·아연·환율</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
           <a class="row" href="/news/"><div class="row-main"><div class="row-title">업계뉴스</div><div class="row-meta">국내·해외 이슈</div></div><div class="row-side"><svg class="icon sm"><use href="#i-chev"/></svg></div></a>
         </div>
       </section>
@@ -184,10 +188,7 @@
           + '<div class="me-email">단지명 열람 등 회원 전용 기능은 로그인 후 이용할 수 있습니다.</div>'
           + '<div class="me-actions"><button type="button" class="me-btn kakao" id="meLogin">카카오 로그인</button></div>';
         document.getElementById("meLogin").addEventListener("click", () => {
-          ainAuth.getClient().auth.signInWithOAuth({
-            provider: "kakao",
-            options: { redirectTo: location.origin + location.pathname + location.search }
-          });
+          ainAuth.login();
         });
       }
     }

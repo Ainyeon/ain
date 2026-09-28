@@ -33,7 +33,7 @@
     <header class="phero">
       <div class="phero-bar">
         <div>
-          <div class="crumb">ADMIN · BOARD</div>
+          <div class="crumb">관리 · 게시판</div>
           <h1>게시판 관리</h1>
           <p class="sub">신고 처리와 제안 상태 변경. 관리자 전용입니다.</p>
         </div>
@@ -228,7 +228,8 @@
           b.addEventListener('click', async () => {
             const purpose = prompt('작성자 확인 목적을 고르세요:\n1. 중복 확인\n2. 악용 확인', '1');
             if (purpose == null) return;
-            const p_purpose = purpose.trim() === '2' ? 'abuse' : 'duplicate';
+            const p_purpose = { '1': 'duplicate', '2': 'abuse' }[purpose.normalize('NFKC').trim()];
+            if (!p_purpose) { alert('1 또는 2로 입력해 주세요.'); return; }
             const { data, error } = await db().rpc('admin_post_author', {
               p_post_id: Number(b.dataset.who), p_purpose
             });
@@ -247,6 +248,7 @@
       }
 
       addEventListener('DOMContentLoaded', async () => {
+        ainAuth.init('authSlot');
         const me = await ainCommunity.getMyProfile();
         if (me.infraError) { gate('게시판을 준비하는 중입니다.'); return; }
         if (!me.user) { gate('로그인이 필요합니다.'); return; }

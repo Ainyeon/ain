@@ -29,23 +29,23 @@
       display: grid; gap: 15px;
     }
     .field { display: grid; gap: 6px; }
-    .field label { font-size: 12.5px; font-weight: 800; color: var(--txt2); }
+    .field label { font-size: var(--fs-3); font-weight: 800; color: var(--txt2); }
     .field input, .field select {
       min-height: 48px; padding: 10px 13px; border: 1px solid var(--c-control); border-radius: 11px;
       background: var(--c-surface-sub); font: inherit; font-size: 16px; color: var(--txt); width: 100%;
     }
     .field input:focus, .field select:focus { outline: 2px solid var(--g1); outline-offset: 1px; }
-    .nick-status { font-size: 12px; font-weight: 700; min-height: 16px; }
+    .nick-status { font-size: var(--fs-4); font-weight: 700; min-height: 16px; }
     .nick-status.ok { color: var(--c-down); } .nick-status.bad { color: var(--up); }
     .ob-submit {
       min-height: 50px; border: none; border-radius: 12px; background: var(--ink); color: #fff;
       font: inherit; font-size: 15px; font-weight: 800; cursor: pointer;
     }
-    .ob-submit[disabled] { opacity: .45; cursor: default; }
+    .ob-submit[disabled] { background: var(--c-line-strong); color: var(--c-ink-sub); cursor: default; }   /* 흐리게 하지 않고 읽히게 */
     .sec-label { font-size: var(--fs-4); font-weight: var(--fw-semi); color: var(--c-ink-faint); letter-spacing: .04em; text-transform: uppercase; }
     .page-title { font-size: var(--fs-1); font-weight: var(--fw-bold); letter-spacing: -0.025em; color: var(--c-ink); }
     .page-sub { margin-top: var(--sp-2); font-size: var(--fs-3); color: var(--c-ink-sub); line-height: 1.6; }
-    .hint { font-size: 12px; color: var(--txt3); line-height: 1.6; }
+    .hint { font-size: var(--fs-4); color: var(--c-ink-sub); line-height: 1.6; }
     .gate-msg { padding: 28px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); text-align: center; font-size: 14px; color: var(--txt2); }
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -62,7 +62,7 @@
   </nav>
   <main class="wrap">
     <header class="page-head">
-      <div class="sec-label">Welcome</div>
+      <div class="sec-label">프로필</div>
       <h1 class="page-title">프로필 설정</h1>
       <p class="page-sub">게시판에서 쓸 닉네임과 주력분야를 정합니다. 활동지역은 선택입니다.</p>
     </header>
@@ -100,8 +100,8 @@
         <form class="ob-card" id="obForm">
           <div class="field">
             <label for="obNick">닉네임 (2~12자, 한글·영문·숫자)</label>
-            <input type="text" id="obNick" maxlength="12" autocomplete="off" required>
-            <span class="nick-status" id="nickStatus"></span>
+            <input type="text" id="obNick" maxlength="12" autocomplete="off" spellcheck="false" required aria-describedby="nickStatus">
+            <span class="nick-status" id="nickStatus" role="status"></span>
           </div>
           <div class="field">
             <label for="obField">주력분야 (필수)</label>
@@ -113,8 +113,9 @@
             <label for="obRegion">활동지역 (선택)</label>
             <input type="text" id="obRegion" maxlength="20" placeholder="예: 인천·부천">
           </div>
-          <button type="submit" class="ob-submit" id="obSubmit" disabled>시작하기</button>
-          <p class="hint">표시는 "닉네임 · 분야뱃지"로 통일됩니다. 나중에 내정보에서 수정할 수 있습니다.</p>
+          <button type="submit" class="ob-submit" id="obSubmit" disabled>${profile && profile.nickname ? '저장' : '시작하기'}</button>
+          <p class="hint" id="obNeed">닉네임과 주력분야를 정하면 저장할 수 있습니다.</p>
+          <p class="hint">표시는 "닉네임 · 분야뱃지"로 통일됩니다. 나중에 '내 정보 · 내 활동'에서 수정할 수 있습니다.</p>
         </form>`;
 
       const nickEl = document.getElementById('obNick');
@@ -147,7 +148,12 @@
         else { nickOk = true; statusEl.textContent = '사용 가능합니다'; statusEl.className = 'nick-status ok'; }
         sync();
       }
-      function sync() { submitEl.disabled = !(nickOk && fieldEl.value); }
+      function sync() {
+        submitEl.disabled = !(nickOk && fieldEl.value);
+        document.getElementById('obNeed').hidden = !submitEl.disabled;   // 버튼이 왜 잠겼는지 알린다
+      }
+      // 기존 회원은 닉네임을 다시 치지 않아도 분야·지역만 바꿔 저장할 수 있어야 한다 (09-28: 저장 버튼이 잠겨 있던 문제)
+      if (profile && profile.nickname) checkNick();
       nickEl.addEventListener('input', () => { clearTimeout(checkTimer); checkTimer = setTimeout(checkNick, 350); });
       fieldEl.addEventListener('change', sync);
 
@@ -168,7 +174,7 @@
           error = r2.error;
         }
         if (error) {
-          submitEl.disabled = false; submitEl.textContent = '시작하기';
+          submitEl.disabled = false; submitEl.textContent = profile && profile.nickname ? '저장' : '시작하기';
           statusEl.className = 'nick-status bad';
           statusEl.textContent = error.code === '23505' ? '이미 사용 중인 닉네임입니다' : '저장 실패 — 다시 시도해 주세요';
           return;

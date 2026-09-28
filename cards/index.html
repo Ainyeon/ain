@@ -65,6 +65,8 @@
 
     .card-actions{display:flex;gap:var(--sp-2)}
     .card-actions .btn-line{cursor:pointer}
+    .card-actions .btn-line,.toolbar .btn-line{min-height:44px}
+    @media (max-width:640px){.set-grid{grid-template-columns:repeat(2,1fr)}.card-actions{flex-wrap:wrap}}
     .card-meta-line2{font-size:var(--fs-4);color:var(--c-ink-faint)}
     .hidden-done{display:none}
     .toolbar{display:flex;align-items:center;gap:var(--sp-3);margin-bottom:var(--sp-4)}
@@ -121,7 +123,7 @@
       background:#FFFFFF;color:#9E2D3D;font-size:38px;font-weight:850}
     /* 작업대 배치 — 한 세트(4장) 가로 나열 */
     .set-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-2)}
-    .set-cap{font-size:var(--fs-5,12px);font-weight:700;color:var(--c-ink-faint);margin-bottom:4px}
+    .set-cap{font-size:var(--fs-4);font-weight:700;color:var(--c-ink-faint);margin-bottom:4px}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -147,9 +149,9 @@
     <header class="phero">
       <div class="phero-bar">
         <div>
-          <div class="crumb">ADMIN · CARD NEWS</div>
+          <div class="crumb">관리 · 카드뉴스</div>
           <h1>카드뉴스 작업대</h1>
-          <p class="sub">A(정부·강훅) / B(제조사 뉴스·정보) 카드 1080×1350 — 저장해서 인스타·카페에 올리세요. 관리자 전용입니다.</p>
+          <p class="sub">A(정부·강훅) / B(제조사 뉴스·정보) 카드 1080×1350 — 저장해서 인스타·카페에 올리세요. 관리자 전용입니다. 「게시 완료」 숨김은 이 기기 브라우저에만 저장됩니다.</p>
         </div>
       </div>
     </header>
@@ -262,7 +264,7 @@
             <div class="cc-lm">
               <div class="l1">우리 지역 지원사업 궁금하면<br>댓글에 지역 남겨주세요</div>
               <div class="l2">매일 업데이트되는 지원사업 페이지 보내드립니다</div>
-              <div class="l2">에어컨·인테리어 업계 정부지원·시세·구인구직, 에인연이 매일 정리합니다</div>
+              <div class="l2">정부지원·시세는 매일 정리하고, 구인·구직은 회원 게시판에서</div>
               <div class="cta">놓치기 싫으면 → 에인연 가입</div>
             </div>
             ${CC_FOOT}
