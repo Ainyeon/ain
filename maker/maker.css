@@ -36,7 +36,7 @@
 .field { display: grid; gap: 6px; }
 .field > label { font-size: 12.5px; font-weight: 800; color: var(--txt2); }
 .field input[type=text], .field input[type=tel], .field textarea {
-  min-height: 46px; padding: 10px 13px; border: 1px solid var(--border); border-radius: 11px;
+  min-height: 46px; padding: 10px 13px; border: 1px solid var(--c-control); border-radius: 11px;
   background: var(--c-surface-sub); font: inherit; font-size: 16px; color: var(--txt); width: 100%;
 }
 .field textarea { min-height: 84px; resize: vertical; line-height: 1.55; }
@@ -46,7 +46,7 @@
 
 /* 업종 검색 */
 .field-search { position: relative; }
-.fs-input { min-height: 48px; padding: 10px 13px; border: 1px solid var(--border); border-radius: 11px; background: var(--c-surface-sub); font: inherit; font-size: 16px; width: 100%; }
+.fs-input { min-height: 48px; padding: 10px 13px; border: 1px solid var(--c-control); border-radius: 11px; background: var(--c-surface-sub); font: inherit; font-size: 16px; width: 100%; }
 .fs-input:focus { outline: 2px solid var(--g1); outline-offset: 1px; }
 .fs-list {
   position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 40;
@@ -70,7 +70,7 @@
   width: 56px; height: 46px; padding: 3px; border: 1px solid var(--border); border-radius: 11px;
   background: var(--c-surface-sub); cursor: pointer;
 }
-.cc-solid input[type=text] { width: 116px; min-height: 46px; padding: 10px 13px; border: 1px solid var(--border); border-radius: 11px; background: var(--c-surface-sub); font: inherit; font-size: 16px; }
+.cc-solid input[type=text] { width: 116px; min-height: 46px; padding: 10px 13px; border: 1px solid var(--c-control); border-radius: 11px; background: var(--c-surface-sub); font: inherit; font-size: 16px; }
 .cc-grad { display: grid; gap: 10px; }
 .cc-pair { display: flex; gap: 14px; }
 .cc-pair label { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; color: var(--txt2); }
@@ -101,12 +101,12 @@
 /* 크기 선택 (드롭다운 + 직접 입력) */
 .fmt-ctl { display: grid; gap: 8px; }
 .fmt-ctl select {
-  min-height: 48px; padding: 10px 13px; border: 1px solid var(--border); border-radius: 11px;
+  min-height: 48px; padding: 10px 13px; border: 1px solid var(--c-control); border-radius: 11px;
   background: var(--c-surface-sub); font: inherit; font-size: 15px; color: var(--txt); width: 100%;
 }
 .fmt-custom { display: flex; align-items: center; gap: 8px; }
 .fmt-custom input {
-  width: 0; flex: 1; min-height: 46px; padding: 10px 13px; border: 1px solid var(--border);
+  width: 0; flex: 1; min-height: 46px; padding: 10px 13px; border: 1px solid var(--c-control);
   border-radius: 11px; background: var(--c-surface-sub); font: inherit; font-size: 16px;
 }
 .fmt-custom button {
@@ -175,7 +175,7 @@
 .guide-ov {
   position: fixed; inset: 0; z-index: 200; background: rgba(15,16,19,.5);
   display: grid; place-items: center; padding: 24px;
-  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  /* 전면 blur 제거 — 딤만. 안내 중 배경 유리는 components.css :has 규칙이 불투명화 */
 }
 .guide-card {
   width: min(100%, 420px); background: #fff; border-radius: 20px; padding: 26px 22px 18px;
@@ -257,17 +257,20 @@
   position: fixed; left: 12px; right: 12px; z-index: 85;
   bottom: calc(70px + env(safe-area-inset-bottom));
   display: flex; gap: 9px;
-  background: rgba(255,255,255,.92); backdrop-filter: blur(14px);
   border: 1px solid var(--line); border-radius: 16px; padding: 10px;
-  box-shadow: 0 16px 40px -18px rgba(15,16,19,.35);
+  /* 배경·blur·그림자·fallback = components.css 글래스 블록 */
 }
+html:has(.action-bar) { scroll-padding-bottom: calc(140px + env(safe-area-inset-bottom)); }
 .action-bar button {
   flex: 1; min-height: 48px; border-radius: 12px; border: none; cursor: pointer;
   font: inherit; font-size: 14.5px; font-weight: 800; -webkit-tap-highlight-color: transparent;
 }
 #btnShare { background: var(--ink); color: #fff; }
 #btnSave { background: var(--c-surface-sub); border: 1px solid var(--border); color: var(--txt); }
-@media (min-width: 901px) { .action-bar { left: auto; right: 26px; bottom: 26px; width: 420px; } }
+@media (min-width: 901px) {
+  .action-bar { left: auto; right: 26px; bottom: 26px; width: 420px; }
+  html:has(.action-bar) { scroll-padding-bottom: 96px; }
+}
 
 .toast {
   position: fixed; left: 50%; transform: translateX(-50%);

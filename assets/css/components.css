@@ -214,9 +214,23 @@ a.row:hover{background:var(--c-surface-sub)}
   letter-spacing:-0.025em;line-height:var(--lh-1)}
 .phero .sub{margin-top:var(--sp-2);font-size:var(--fs-3);color:var(--c-ink-sub)}
 .phero-bar{display:flex;align-items:flex-end;gap:var(--sp-4)}
-.phero-stat{margin-left:auto;display:flex;gap:var(--sp-5);text-align:right}
+/* 핵심 수치 프레임 (홈·뉴스·정부사업·교육 .phero-stat · 캘린더 .page-head>.summary)
+   = 빛 프레임(::after 반투명·빛 테두리·그림자) + 뒤 조명(::before) + 불투명 수치 타일.
+   blur 없음: 뒤가 정적 조명뿐이라 blur는 보이지 않는 비용이다 — blur 예산은 바에 쓴다. */
+.phero-stat{margin-left:auto;display:flex;gap:var(--sp-2)}
+.phero-stat,.page-head>.summary{position:relative;isolation:isolate;padding:var(--sp-2)}
+.phero-stat::before,.page-head>.summary::before,
+.phero-stat::after,.page-head>.summary::after{content:"";position:absolute;pointer-events:none}
+/* 조명 상자 = 프레임 + 사방 16px (= .phero-bar gap · 캘린더 여백 18/22/24px 안). 상자 가장자리 알파 0 →
+   제목·설명 아래로 번지지 않는다. gap이나 여백을 16px 밑으로 줄이면 이 값도 줄인다 */
+.phero-stat::before,.page-head>.summary::before{inset:calc(-1*var(--sp-4));z-index:-2;
+  background:radial-gradient(closest-side,var(--light) 40%,transparent)}
+.phero-stat::after,.page-head>.summary::after{inset:0;z-index:-1;border-radius:var(--r-3);
+  background:var(--glass-frame);border:1px solid var(--glass-line);box-shadow:var(--sh-glass)}
+.phero-stat .st{min-width:0;padding:var(--sp-3) var(--sp-4);background:var(--c-surface);
+  border:1px solid var(--c-line);border-radius:var(--r-1)}   /* r-1 6 + 여백 8 = 프레임 r-3 14 */
 .phero-stat .st .n{font-size:var(--fs-1);font-weight:var(--fw-bold);letter-spacing:-0.02em}
-.phero-stat .st .l{margin-top:2px;font-size:var(--fs-4);color:var(--c-ink-faint)}
+.phero-stat .st .l{margin-top:2px;font-size:var(--fs-4);color:var(--c-ink-sub);word-break:keep-all}
 
 /* ── 홈 메뉴 카드 — 이름 · 무엇이 있는지 · 어디로 가는지 ── */
 .ways{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
@@ -299,7 +313,7 @@ a.row:hover{background:var(--c-surface-sub)}
   padding-bottom:env(safe-area-inset-bottom)}
 .tabbar a{flex:1;min-height:56px;min-width:44px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint);
+  font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-sub);
   -webkit-tap-highlight-color:transparent}
 .tabbar a{position:relative}
 .tabbar a.on{color:var(--c-accent)}
@@ -321,7 +335,6 @@ a.row:hover{background:var(--c-surface-sub)}
   min-height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center}
 .install-bar .install-go{background:var(--c-surface);color:var(--c-ink);
   border-radius:var(--r-1);padding:0 var(--sp-4);font-weight:var(--fw-bold)}
-.install-bar .install-x{color:var(--c-ink-faint)}
 @media (min-width:641px){.install-bar{max-width:420px;left:auto;right:var(--sp-6);bottom:var(--sp-6)}}
 
 /* ── 모바일 (≤640px, 390 기준) ──────────────── */
@@ -341,7 +354,8 @@ a.row:hover{background:var(--c-surface-sub)}
   .way-t{font-size:var(--fs-3)}
   .phero{padding:var(--sp-6) 0 var(--sp-4)}
   .phero-bar{flex-direction:column;align-items:flex-start}
-  .phero-stat{margin-left:0;text-align:left}
+  .phero-stat{margin-left:0;align-self:stretch}
+  .phero-stat .st{flex:1 1 0;padding:var(--sp-3)}
   .row{min-height:44px}
   .btn-src{min-height:36px}
   .tfoot-in{flex-direction:column;align-items:flex-start;gap:var(--sp-3)}
@@ -383,3 +397,50 @@ a.row:hover{background:var(--c-surface-sub)}
     background:var(--c-accent-bg);color:var(--c-accent)}
 }
 @media (max-width:400px){.tnav .brand-name{display:none}}
+
+/* ═══ 글래스 (Clear Depth v2) ═══════════════════════════════
+   적용처는 이 블록의 셀렉터가 전부다 — 마크업 변경 없음.
+     유리 바(blur 16px): .tabbar(≤768 고정) · .tnav(≥769 sticky) · .action-bar(메이커)
+     빛 프레임(blur 없음): .phero-stat · .page-head>.summary — 위 「페이지 헤드」
+   동시 blur ≤2/화면. 새 적용처는 페이지별 예산부터 다시 센다.
+   기본 불투명 → blur 지원 시 유리 → 모달 중·투명도 감소·강제 색상·인쇄는 다시 불투명.
+   유리 위 글자는 ink · ink-sub · accent만 (ink-faint 금지: 검정 위 3.32). ═══ */
+.tabbar{box-shadow:inset 0 1px 0 var(--glass-line),var(--sh-glass-up)}
+.action-bar{background:var(--c-surface);box-shadow:inset 0 1px 0 var(--glass-line),var(--sh-glass)}
+@media (min-width:769px){
+  /* 모바일 2줄 네비(~95px)는 정적·불투명 유지 — 모바일 유리는 탭바 */
+  .tnav{position:sticky;top:0;z-index:60;box-shadow:var(--sh-glass)}
+}
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  .tabbar,.action-bar{background:var(--glass-bar);
+    -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+  @media (min-width:769px){
+    .tnav{background:var(--glass-bar);
+      -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+  }
+}
+/* 가려짐 방지 (WCAG 2.4.11): sticky 네비 · 고정 탭바 */
+html:has(.tnav){scroll-padding-top:var(--nav-h)}
+@media (max-width:768px){html:has(.tabbar){scroll-padding-bottom:calc(64px + env(safe-area-inset-bottom))}}
+/* 모달(업무 <dialog> · 메이커 첫 안내)이 열리면 배경 유리는 불투명 — 중첩 합성 회피. :has 미지원이면 이 규칙만 빠진다 */
+:root:has(dialog[open],.guide-ov) :is(.tnav,.tabbar,.action-bar){background:var(--c-surface);
+  -webkit-backdrop-filter:none;backdrop-filter:none}
+@media (prefers-reduced-transparency:reduce){
+  .tnav,.tabbar,.action-bar{background:var(--c-surface);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .phero-stat::after,.page-head>.summary::after{background:var(--c-surface)}
+}
+@media (forced-colors:active){
+  .tnav,.tabbar,.action-bar,.phero-stat::after,.page-head>.summary::after{background:Canvas;
+    border-color:CanvasText;-webkit-backdrop-filter:none;backdrop-filter:none}
+  .phero-stat::before,.page-head>.summary::before{display:none}
+  .tnav-links a.on,.tabbar a.on{text-decoration:underline;text-underline-offset:4px}
+  .tabbar a.on::before{forced-color-adjust:none;background:Highlight}
+}
+@media print{
+  .tabbar,.install-bar,.action-bar,.phero-stat::before,.page-head>.summary::before{display:none}
+  .tnav{position:static;background:var(--c-surface);-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:none}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition:none!important;animation:none!important}
+}

@@ -22,7 +22,7 @@ a.board-card:hover { background: var(--c-surface-sub); }
 .anon-row { display: flex; align-items: flex-start; gap: var(--sp-2); font-size: var(--fs-4); color: var(--c-ink-sub); line-height: 1.6; cursor: pointer; }
 .anon-row input { width: 18px; height: 18px; margin-top: 2px; flex: none; accent-color: var(--c-accent); }
 .write-form input, .write-form textarea {
-  min-height: 46px; padding: var(--sp-3); border: 1px solid var(--c-line-strong); border-radius: var(--r-1);
+  min-height: 46px; padding: var(--sp-3); border: 1px solid var(--c-control); border-radius: var(--r-1);
   background: var(--c-surface-sub); font: inherit; font-size: var(--fs-3); width: 100%;
 }
 .write-form textarea { min-height: 130px; resize: vertical; line-height: 1.6; }
@@ -39,7 +39,7 @@ a.board-card:hover { background: var(--c-surface-sub); }
 .cmt { border-top: 1px solid var(--c-line); padding: var(--sp-3) 0 var(--sp-1); }
 .cmt-body { margin-top: var(--sp-1); font-size: var(--fs-3); line-height: 1.6; color: var(--c-ink); white-space: pre-wrap; }
 .cmt-form { display: flex; gap: var(--sp-2); margin-top: var(--sp-4); }
-.cmt-form input { flex: 1; min-height: 48px; padding: var(--sp-3); border: 1px solid var(--c-line-strong); border-radius: var(--r-1); background: var(--c-surface-sub); font: inherit; font-size: var(--fs-3); }
+.cmt-form input { flex: 1; min-height: 48px; padding: var(--sp-3); border: 1px solid var(--c-control); border-radius: var(--r-1); background: var(--c-surface-sub); font: inherit; font-size: var(--fs-3); }
 .cmt-form button { min-width: 74px; min-height: 48px; border: none; border-radius: var(--r-1); background: var(--c-accent); color: var(--c-surface); font: inherit; font-size: var(--fs-3); font-weight: var(--fw-bold); cursor: pointer; }
 .back-link { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--fs-4); font-weight: var(--fw-bold); color: var(--c-ink-sub); }
 .gate-msg { padding: var(--sp-7) var(--sp-4); border: 1px solid var(--c-line); border-radius: var(--r-2); background: var(--c-surface); text-align: center; font-size: var(--fs-3); color: var(--c-ink-sub); line-height: 1.7; }
@@ -75,7 +75,7 @@ a.board-card:hover { background: var(--c-surface-sub); }
 .sort-toggle button.on { border-color: var(--c-accent); background: var(--c-accent); color: var(--c-surface); }
 /* ── 관리자 ── */
 .admin-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; }
-.admin-row select { min-height: 42px; border: 1px solid var(--c-line-strong); border-radius: var(--r-1); background: var(--c-surface-sub); font: inherit; font-size: var(--fs-4); padding: 0 var(--sp-3); }
+.admin-row select { min-height: 42px; border: 1px solid var(--c-control); border-radius: var(--r-1); background: var(--c-surface-sub); font: inherit; font-size: var(--fs-4); padding: 0 var(--sp-3); }
 .report-count { font-size: var(--fs-4); font-weight: var(--fw-bold); color: var(--c-up); }
 
 /* v3: 참여 지표 */
@@ -105,6 +105,6 @@ a.board-card:hover { background: var(--c-surface-sub); }
   padding: var(--sp-2) var(--sp-3); border: 1px solid var(--c-line);
   border-radius: var(--r-1); background: var(--c-surface); }
 .review-filter label { font-size: var(--fs-4); font-weight: var(--fw-semi); color: var(--c-ink-faint); }
-.review-filter select { min-height: 40px; padding: 0 var(--sp-2); border: 1px solid var(--c-line-strong);
+.review-filter select { min-height: 40px; padding: 0 var(--sp-2); border: 1px solid var(--c-control);
   border-radius: var(--r-1); background: var(--c-surface-sub); font: inherit; font-size: var(--fs-4); }
 .review-filter .write-hint { flex: 1; min-width: 0; }

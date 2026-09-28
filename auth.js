@@ -25,11 +25,11 @@ a.ain-auth-name:hover{color:#1E1D1A;text-decoration:underline}
 .ain-auth-logout{
   display:inline-flex;align-items:center;
   height:28px;padding:0 10px;border-radius:7px;cursor:pointer;
-  background:transparent;color:#6B7280;border:1px solid #2A313D;
+  background:transparent;color:var(--c-ink-sub,#5C5850);border:1px solid #2A313D;
   font-family:inherit;font-size:11px;font-weight:700;
   transition:opacity .12s ease;
 }
-.ain-auth-logout:hover{opacity:.75}
+.ain-auth-logout:hover{color:var(--c-ink,#1E1D1A)}
 `;
   const styleEl = document.createElement('style');
   styleEl.textContent = css;

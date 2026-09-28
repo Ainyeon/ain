@@ -12,7 +12,7 @@ body.w-app .w-wrap{padding-top:var(--sp-2)}
 .w-demo .w-btn{margin-left:auto}
 
 /* 상단 업무 메뉴 (전역 하단 탭바와 겹치지 않게 위쪽 칩) */
-.w-nav{position:sticky;top:0;z-index:20;display:flex;gap:var(--sp-2);padding:var(--sp-3) 0;
+.w-nav{position:sticky;top:var(--nav-h);z-index:20;display:flex;gap:var(--sp-2);padding:var(--sp-3) 0;
   background:var(--c-bg);overflow-x:auto;scrollbar-width:none}
 .w-nav::-webkit-scrollbar{display:none}
 .w-nav a{flex:none;display:inline-flex;align-items:center;gap:var(--sp-1);min-height:44px;padding:0 var(--sp-4);
@@ -98,7 +98,7 @@ a.w-row:hover,.w-row.link:hover{background:var(--c-surface-sub);cursor:pointer}
 .w-field small{font-size:var(--fs-4);color:var(--c-ink-faint)}
 .w-in,.w-form input[type=text],.w-form input[type=tel],.w-form input[type=date],.w-form input[type=time],
 .w-form input[type=number],.w-form select,.w-form textarea,.w-in-sm{
-  width:100%;min-height:44px;padding:var(--sp-2) var(--sp-3);border:1px solid var(--c-line-strong);border-radius:var(--r-1);
+  width:100%;min-height:44px;padding:var(--sp-2) var(--sp-3);border:1px solid var(--c-control);border-radius:var(--r-1);
   background:var(--c-surface);color:var(--c-ink);font:inherit;font-size:16px /* iOS 확대 방지 예외 */}
 .w-form textarea{min-height:88px;resize:vertical;line-height:var(--lh-3)}
 .w-in:focus,.w-form input:focus,.w-form select:focus,.w-form textarea:focus{outline:2px solid var(--c-accent);outline-offset:0;border-color:var(--c-accent)}
@@ -135,7 +135,7 @@ a.w-row:hover,.w-row.link:hover{background:var(--c-surface-sub);cursor:pointer}
 /* 품목 */
 .w-items{display:grid;gap:var(--sp-2)}
 .w-item{display:grid;grid-template-columns:minmax(0,1fr) 64px 64px minmax(0,110px) 44px;gap:var(--sp-2);align-items:center}
-.w-item input,.w-item select{min-height:44px;padding:0 var(--sp-2);border:1px solid var(--c-line-strong);border-radius:var(--r-1);
+.w-item input,.w-item select{min-height:44px;padding:0 var(--sp-2);border:1px solid var(--c-control);border-radius:var(--r-1);
   background:var(--c-surface);font:inherit;font-size:16px /* iOS 확대 방지 예외 */;width:100%;min-width:0}
 .w-item .x{min-height:44px;border:0;background:none;color:var(--c-ink-faint);font-size:var(--fs-2)}
 @media (max-width:480px){
@@ -213,6 +213,11 @@ a.w-row:hover,.w-row.link:hover{background:var(--c-surface-sub);cursor:pointer}
   padding:var(--sp-3) var(--sp-4);border-radius:var(--r-2);background:var(--c-ink);color:var(--c-surface);
   font-size:var(--fs-3);font-weight:var(--fw-semi);box-shadow:var(--sh-2);max-width:calc(100vw - 2*var(--sp-4))}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* 가려짐 방지: sticky 네비(≥769 53px) + .w-nav(12+44+12) · 저장 바 .w-sticky(68, 모바일은 탭바 위) */
+html:has(.w-nav){scroll-padding-top:calc(var(--nav-h) + 68px)}
+html:has(.w-sticky){scroll-padding-bottom:68px}
+@media (max-width:768px){html:has(.w-sticky){scroll-padding-bottom:calc(132px + env(safe-area-inset-bottom))}}
 
 #printArea{display:none}
 @media print{

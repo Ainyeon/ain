@@ -10,7 +10,7 @@
 @media (min-width:641px){.edu-frow{grid-template-columns:repeat(auto-fit,minmax(150px,220px))}}
 .edu-f{display:flex;flex-direction:column;gap:2px;min-width:0}
 .edu-f label{font-size:var(--fs-4);font-weight:var(--fw-semi);color:var(--c-ink-faint)}
-.edu-f select{min-height:44px;padding:0 var(--sp-2);border:1px solid var(--c-line-strong);
+.edu-f select{min-height:44px;padding:0 var(--sp-2);border:1px solid var(--c-control);
   border-radius:var(--r-1);background:var(--c-surface-sub);
   font:inherit;font-size:var(--fs-3);color:var(--c-ink);width:100%}
 .edu-f select:focus{outline:2px solid var(--c-accent);outline-offset:1px}
@@ -88,7 +88,7 @@
   .edu-more .edu-frow{grid-template-columns:1fr 1fr}
   .edu-more .edu-frow .edu-f:last-child:nth-child(odd){grid-column:1/-1}
   .phero{padding:var(--sp-5) 0 var(--sp-3)}
-  .phero-stat{gap:var(--sp-4);margin-top:var(--sp-2)}
+  .phero-stat{margin-top:var(--sp-2)}
 }
 
 /* 회원 후기 (A6) — 사실 항목을 배지로, 오래된 후기는 하단으로 밀지 않고 필터로 거른다 */
