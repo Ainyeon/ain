@@ -182,7 +182,7 @@
       try { watchJob(await submitJob(t.id, {}, files), msg, out); }
       catch (e) { msg.className = 'st-msg err'; msg.textContent = errText(e); go.disabled = false; }
     });
-    const ex = t.kind === 'erase' ? [['erase_before.webp', '원본'], ['erase_after.webp', '지운 뒤 — 탁자 위 화병·책']] : [['cutout_before.webp', '원본'], ['cutout_after.webp', '배경 뗀 뒤(투명 PNG)']];
+    const ex = t.kind === 'erase' ? [['view_reverse.webp', '원본'], ['erase_after.webp', '지운 뒤 — 탁자 위 화병·책']] : [['cutout_before.webp', '원본'], ['cutout_after.webp', '배경 뗀 뒤(투명 PNG)']];
     panel(t.name, t.m, [h('div', { class: 'st-form' }, [h('label', { class: 'full' }, ['사진', file])]), stage,
       h('div', { class: 'st-go' }, [go, msg]), out,
       h('div', { class: 'st-out' }, [h('span', { class: 'st-tag', text: '예시 결과 — 합성 렌더' }), gallery(ex)])]);
