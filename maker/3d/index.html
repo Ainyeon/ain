@@ -4,11 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>3D 스튜디오 | 에어컨 인테리어 연구소</title>
-  <meta name="description" content="평면도·도면으로 방과 에어컨·배관을 3D로 짓는 도구의 예시입니다.">
+  <meta name="description" content="도면·평면도 한 장으로 실내 렌더·조감·컬러 평면도·단면도·전개도까지. 지우개·배경 떼기·색 보정 같은 사진 손질 도구도 함께.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://oqgoibbhnidsveueifet.supabase.co; connect-src 'self' https://oqgoibbhnidsveueifet.supabase.co wss://oqgoibbhnidsveueifet.supabase.co; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
   <link rel="canonical" href="https://ainyeon.com/maker/3d/">
   <meta property="og:type" content="website">
   <meta property="og:title" content="3D 스튜디오 | 에어컨 인테리어 연구소">
-  <meta property="og:description" content="평면도·도면으로 방과 에어컨·배관을 3D로. 예시 공개 중.">
+  <meta property="og:description" content="도면 한 장으로 렌더·조감·도면 컷까지. 사진 손질 도구도 함께.">
   <meta property="og:url" content="https://ainyeon.com/maker/3d/">
   <meta property="og:image" content="https://ainyeon.com/assets/og-card-v2.png">
   <meta property="og:image:width" content="1200">
@@ -16,26 +17,15 @@
   <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
   <link rel="stylesheet" href="/assets/css/components.css?v=30">
   <link rel="stylesheet" href="/maker/maker.css?v=30">
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <link rel="stylesheet" href="/maker/3d/studio.css?v=2">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
   <script defer src="/auth.js?v=30"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
-  <style>
-    /* 3D 스튜디오 예시 — 토큰만 쓴다(design-tokens.css). 사진 카드 두 열(901px+), 모바일 한 열 */
-    .studio-grid { display: grid; gap: 14px; padding: 14px 24px 0; }
-    @media (min-width: 901px) { .studio-grid { grid-template-columns: 1fr 1fr; } .studio-grid .wide { grid-column: 1 / -1; } }
-    .studio-card { margin: 0; background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-3); box-shadow: var(--sh-2); overflow: hidden; }
-    .studio-card img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: var(--c-surface-sub); }
-    .studio-card.wide img { aspect-ratio: 16 / 10; }
-    .studio-card figcaption { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
-    .studio-card .tag { font-size: var(--fs-4); font-weight: var(--fw-bold); color: var(--c-ink-faint); }
-    .studio-card h2 { margin-top: 6px; font-size: 17px; font-weight: 800; letter-spacing: -0.02em; color: var(--c-ink); }
-    .studio-card p { margin-top: 4px; font-size: 13.5px; line-height: 1.6; color: var(--c-ink-sub); }
-  </style>
+  <script defer src="/maker/3d/studio.js?v=3"></script>
 </head>
 <body class="has-tabbar">
   <nav class="tnav">
@@ -55,29 +45,19 @@
     <header class="page-head">
       <div class="sec-label">도구</div>
       <h1 class="page-title">3D 스튜디오</h1>
-      <p class="page-sub">평면도·도면으로 방과 에어컨·배관을 3D로 짓습니다. 지금은 예시만 공개합니다.</p>
+      <p class="page-sub">도면 한 장으로 렌더·조감·도면 컷까지. 사진 손질 도구도 함께.</p>
     </header>
 
-    <div class="studio-grid">
-      <figure class="studio-card">
-        <img src="/maker/3d/photo.webp" width="1280" height="720" alt="예시 평면의 거실 3D 렌더를 사진처럼 다듬은 컷. 발코니 창 위 천장에 1Way 실내기, 흰 TV 벽." loading="lazy" decoding="async">
-        <figcaption><span class="tag">에어컨 제안</span><h2>도면 그대로</h2><p>모양·마감은 도면대로, 사진 느낌만 AI로 다듬습니다.</p></figcaption>
-      </figure>
-      <figure class="studio-card">
-        <img src="/maker/3d/design.webp" width="1280" height="720" alt="같은 시점을 디자인 제안으로 꾸민 컷. TV 벽이 판넬 마감으로 바뀌고 천장·창·실내기는 그대로." loading="lazy" decoding="async">
-        <figcaption><span class="tag">인테리어 제안</span><h2>디자인 제안</h2><p>천장·창·에어컨은 도면대로 두고, 마감·가구·소품은 AI가 꾸밉니다.</p></figcaption>
-      </figure>
-      <figure class="studio-card wide">
-        <img src="/maker/3d/aerial.webp" width="1280" height="800" alt="천장을 걷어 낸 세대 조감. 방마다 실내기와 천장 속 냉매 배관 경로." loading="lazy" decoding="async">
-        <figcaption><span class="tag">설비</span><h2>천장 속 배관</h2><p>천장을 걷어 실내기 자리와 냉매 배관 경로를 한눈에 봅니다.</p></figcaption>
-      </figure>
+    <div class="st-actions">
+      <button type="button" class="primary" id="stNew">도면 올리기</button>
+      <button type="button" id="stEdit">사진 손질</button>
+      <button type="button" id="stMine">내 작업</button>
     </div>
+    <div class="board-tabs st-tabs" id="stTabs" role="group" aria-label="도구 종류"></div>
+    <div class="st-grid" id="stGrid"></div>
+    <section class="st-panel" id="stPanel" hidden aria-label="도구"></section>
 
-    <p class="fineprint">예시 평면으로 만든 결과입니다(실제 세대 아님). 디자인 제안의 마감·가구·소품은 도면이나 구매 목록이 아닙니다. 회원용 도구는 준비 중입니다.</p>
+    <p class="fineprint">예시는 합성 평면으로 만든 결과입니다(실제 세대 아님). 도면·사진은 운영자 장비에서 처리하고 14일 뒤 지웁니다. 색 보정·자르기·글자 넣기는 기기 안에서만 처리합니다. 'AI'가 붙은 결과는 생성형 모델이 만든 이미지입니다.</p>
   </main>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function () { try { ainAuth.init('authSlot'); } catch (e) {} });   // defer 스크립트(auth.js)가 다 뜬 뒤 — 정부사업 페이지와 같은 방식
-  </script>
 </body>
 </html>
