@@ -1,46 +1,41 @@
-// 3D 스튜디오 — 도구 격자 · 도구 화면 · 예시(로그인 전) · 실제 작업(로그인 후, supabase/20_studio.sql 의 studio_* 함수와 비공개 'studio' 저장소).
-// 보안: 파일 이름·작업 결과 문구는 전부 textContent로만 그린다(innerHTML 금지). 색 보정·자르기·글자 넣기는 기기 안에서만(서버로 안 보냄).
-// 계산(렌더·지우개·배경 떼기)은 운영자 장비가 차례로 처리한다 — 대기 순번과 작업 기계 상태를 보여 준다.
+// 3D 스튜디오 — 넣기 → 받을 것 → 받기 (처음 온 사람 기준, 2026-10-02 대표 '사용자 친화적으로' — 시안 3개를 사용자 4명 관점으로 비교해 단계형으로).
+// 실제 작업은 로그인 후 supabase/20_studio.sql 의 studio_* 함수와 비공개 'studio' 저장소로, 계산은 운영자 장비가 차례로.
+// 보안: 파일 이름·작업 결과 문구는 전부 textContent로만(innerHTML 금지). 색·자르기·글자는 기기 안에서만(서버로 안 보냄).
 (function () {
   'use strict';
   const D = '/maker/3d/demo/';
-  const CATS = ['전체', '렌더', '변환', '분석', '편집'];
-  // kind: engine = 도면 한 장으로 렌더·조감·도면 컷을 한 번에(preset·focus 만 다름) · erase/cutout = 사진 손질(운영자 장비) · color/crop/text = 기기 안
-  const TOOLS = [
-    { id: 'plan3d', cat: '렌더', name: '평면도로 3D', m: '도면·평면도 한 장 → 방·에어컨·배관', img: D + 'view_hero.webp', kind: 'engine', focus: 'views' },
-    { id: 'interior', cat: '렌더', name: '실내 렌더', m: '사진처럼 다듬기까지', img: '/maker/3d/photo.webp', kind: 'engine', preset: { photo: true }, focus: 'photo' },
-    { id: 'design', cat: '렌더', name: '디자인 제안', m: '마감·가구만 AI가 꾸밈', img: '/maker/3d/design.webp', kind: 'engine', preset: { photo: true, photo_mode: 'design' }, focus: 'photo' },
-    { id: 'aerial', cat: '렌더', name: '조감도', m: '천장 걷고 위에서', img: D + 'aerial.webp', kind: 'engine', focus: 'aerial' },
-    { id: 'views', cat: '변환', name: '시점 여러 컷', m: '와이드·역방향·미디엄', img: D + 'view_reverse.webp', kind: 'engine', focus: 'views', pick: 'view_reverse.webp' },
-    { id: 'mood', cat: '변환', name: '낮·저녁', m: '해 질 녘, 실내등 켜고', img: D + 'view_wide.webp', kind: 'engine', preset: { mood: 'evening' }, focus: 'views' },
-    { id: 'tone', cat: '변환', name: '마감 톤', m: '화이트·우드·그레이', img: D + 'view_medium.webp', kind: 'engine', preset: { style: 'wood' }, focus: 'views' },
-    { id: 'plan', cat: '분석', name: '컬러 평면도', m: '실 이름·면적·실내기', img: D + 'plan.webp', kind: 'engine', focus: 'drawings', pick: 'plan.webp' },
-    { id: 'iso', cat: '분석', name: '등각도', m: '세대 전체를 비스듬히', img: D + 'iso.webp', kind: 'engine', focus: 'drawings', pick: 'iso.webp' },
-    { id: 'section', cat: '분석', name: '단면도', m: '반자 속 실내기·배관', img: D + 'section.webp', kind: 'engine', focus: 'drawings', pick: 'section.webp' },
-    { id: 'elev', cat: '분석', name: '전개도', m: '벽마다 실내기 높이', img: D + 'elev_south.webp', kind: 'engine', focus: 'drawings', pick: 'elev_south.webp' },
-    { id: 'report', cat: '분석', name: '물량·검사', m: '장비·배관 물량표', img: D + 'iso.webp', kind: 'engine', focus: 'report' },
-    { id: 'erase', cat: '편집', name: '지우개', m: '작은 물건 지우기', img: D + 'erase_after.webp', kind: 'erase' },
-    { id: 'cutout', cat: '편집', name: '배경 떼기', m: '가구 하나만 남기기', img: D + 'cutout_after.webp', kind: 'cutout' },
-    { id: 'color', cat: '편집', name: '색 보정', m: '밝기·대비·채도 — 기기 안에서', img: D + 'view_wide.webp', kind: 'color' },
-    { id: 'crop', cat: '편집', name: '자르기', m: '16:9·4:3·1:1 — 기기 안에서', img: D + 'view_hero.webp', kind: 'crop' },
-    { id: 'text', cat: '편집', name: '글자 넣기', m: '제목·문구 얹기 — 기기 안에서', img: D + 'view_medium.webp', kind: 'text' },
-  ];
-  const DEMO = {
-    views: [['view_hero.webp', '설득용 와이드'], ['view_wide.webp', '전체 와이드'], ['view_reverse.webp', '역방향 와이드'], ['view_medium.webp', '미디엄 — 실내기']],
-    photo: [['/maker/3d/photo.webp', '사진처럼 다듬기(AI) — 모양은 도면대로'], ['/maker/3d/design.webp', '디자인 제안(AI) — 마감·가구는 AI']],
-    aerial: [['aerial.webp', '조감 — 천장 속 냉매 배관(청록)']],
-    drawings: [['plan.webp', '컬러 평면도'], ['iso.webp', '등각도'], ['section.webp', '단면 — 천장고·반자 속(가정)'], ['elev_south.webp', '전개도 — 창 쪽 벽'], ['elev_east.webp', '전개도 — 옆 벽']],
+  const MB = 1024 * 1024;
+  const OUT = {                                          // 받을 것 — 셋 다 같은 엔진, 조감·평면·단면·전개·물량은 늘 함께
+    cg: { tool: 'plan3d', name: '도면대로', m: '보통 5분', img: D + 'view_hero.webp', eta: '보통 5분' },
+    photo: { tool: 'interior', name: '사진처럼', m: 'AI · 보통 15~25분 · 질감은 AI', img: '/maker/3d/photo.webp', eta: '보통 15~25분' },
+    design: { tool: 'design', name: '디자인 제안', m: 'AI · 보통 15~25분 · 마감·가구는 AI', img: '/maker/3d/design.webp', eta: '보통 15~25분' },
   };
-  const GROUP_TITLE = { photo: 'AI 사진 다듬기', views: '실내 렌더', aerial: '조감', drawings: '도면 컷', report: '물량·검사', edit: '결과' };
+  const ALSO = [['aerial.webp', '조감'], ['plan.webp', '평면'], ['section.webp', '단면'], ['elev_south.webp', '전개'], ['iso.webp', '등각']];
+  const TOOLS = [                                        // 사진 손질 — 지우개·배경 떼기는 운영자 장비, 나머지는 기기 안
+    { id: 'erase', name: '지우개', kind: 'erase', m: '작은 물건 지우기' },
+    { id: 'cutout', name: '배경 떼기', kind: 'cutout', m: '가구 하나만 남기기' },
+    { id: 'color', name: '색', kind: 'color' },
+    { id: 'crop', name: '자르기', kind: 'crop' },
+    { id: 'text', name: '글자', kind: 'text' },
+  ];
+  const NAME = { plan3d: '도면대로', interior: '사진처럼', design: '디자인 제안', erase: '지우개', cutout: '배경 떼기' };
+  const DEMO = {
+    photo: [['/maker/3d/photo.webp', '사진처럼(AI)'], ['/maker/3d/design.webp', '디자인 제안(AI) — 마감·가구는 AI']],
+    views: [['view_hero.webp', '거실 와이드'], ['view_wide.webp', '전체 와이드'], ['view_reverse.webp', '역방향'], ['view_medium.webp', '실내기 가까이']],
+    aerial: [['aerial.webp', '조감 — 천장 속 냉매 배관(청록)']],
+    drawings: [['plan.webp', '컬러 평면도'], ['section.webp', '단면 — 천장고·반자 속(가정)'], ['elev_south.webp', '전개도'], ['iso.webp', '등각도'], ['elev_east.webp', '전개도']],
+  };
+  const GROUP = { photo: 'AI 사진', views: '실내', aerial: '조감', drawings: '도면', edit: '결과' };
   const ERR = {
     login_required: '로그인이 필요합니다.', tool_not_allowed: '지금은 쓸 수 없는 도구입니다.', limit_month: '이번 달 작업 한도를 다 썼습니다.',
     limit_active: '진행 중인 작업이 끝나면 다시 올려 주세요.', bad_file: '올릴 수 없는 파일입니다.', not_found: '작업을 찾지 못했습니다.',
-    PGRST202: '작업 대기열이 아직 열리지 않았습니다. 지금은 예시만 볼 수 있습니다.',
+    PGRST202: '지금은 예시만 됩니다.',
   };
-  const ENGINE_ACCEPT = '.dwg,.dxf,.pdf,.png,.jpg,.jpeg,.webp';
-  const S = { cat: '전체', session: null, timer: null };
+  const OK_EXT = ['dwg', 'dxf', 'pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];
+  const S = { session: null, file: null, out: 'cg', opt: { brand: 'lg', style: 'white', mood: 'day', area: '' }, timer: null, busy: false, view: 'in' };
   const $ = (id) => document.getElementById(id);
-  const motion = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');   // 움직임 줄이기 설정을 따른다
+  const motion = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
+  const wide = () => matchMedia('(min-width: 901px)').matches;
 
   function h(tag, attrs, kids) {                         // 작은 DOM 도우미 — 글자는 textContent 로만
     const el = document.createElement(tag);
@@ -56,105 +51,272 @@
   }
   const errText = (e) => ERR[(e && (e.code === 'PGRST202' ? 'PGRST202' : e.message)) || ''] || ('처리하지 못했습니다' + (e && e.message ? ' — ' + e.message : ''));
   const client = () => window.ainAuth && window.ainAuth.getClient();
+  const fmtMB = (n) => (n / MB < 1 ? Math.max(1, Math.round(n / 1024)) + 'KB' : (n / MB).toFixed(1) + 'MB');
+  const clean = (cap) => (cap || '').replace(/\s*·\s*형태 일치 \d+%/, '');   // 수치는 AI 사진이 도면만큼 정확하다는 뜻으로 읽혀 화면에선 뺀다
 
-  // ── 격자 ───────────────────────────────────────────
-  function renderTabs() {
-    const box = $('stTabs');
-    box.replaceChildren(...CATS.map((c) => h('button', { type: 'button', class: c === S.cat ? 'on' : null, 'aria-pressed': String(c === S.cat), text: c,
-      onclick: () => { S.cat = c; renderTabs(); renderGrid(); } })));
+  // ── 화면 상태: in(넣기) · pick(받을 것) · out(받기) — 뒤로가기로 앞 단계 ──────────
+  function setView(v, push = true) {
+    S.view = v;
+    $('stPickSec').hidden = !(v === 'pick' || (v === 'out' && S.file));
+    $('stOut').hidden = !(v === 'out' || wide());
+    $('stBar').hidden = v !== 'pick';
+    if (v !== 'out') demo();
+    bar();
+    if (push) history.pushState({ v }, '', location.pathname + location.search + (location.hash.startsWith('#job-') && v === 'out' ? location.hash : ''));
+    const head = { in: 'stInH', pick: 'stPickH', out: 'stOutH' }[v];
+    if (head && v !== 'in') { $(head).focus({ preventScroll: true }); $(head).scrollIntoView({ behavior: motion(), block: 'start' }); }
   }
-  function renderGrid() {
-    $('stGrid').replaceChildren(...TOOLS.filter((t) => S.cat === '전체' || t.cat === S.cat).map((t) =>
-      h('button', { type: 'button', class: 'st-card', onclick: () => openTool(t.id) }, [
-        h('img', { src: t.img, alt: '', loading: 'lazy', decoding: 'async', width: 640, height: 400 }),
-        h('span', { class: 't', text: t.name }), h('span', { class: 'm', text: t.m }), h('span', { class: 'k', text: t.cat }),
+
+  // ── 넣기 ──────────────────────────────────────────
+  async function take(f) {
+    const msg = $('stInMsg');
+    msg.className = 'st-msg err';
+    if (!f) return;
+    const ext = (f.name.split('.').pop() || '').toLowerCase();
+    if (!OK_EXT.includes(ext)) { msg.textContent = 'DWG·DXF·PDF·사진만 됩니다'; return; }
+    if (f.size > 20 * MB) { msg.textContent = '20MB까지 됩니다'; return; }
+    let blob = f, up = ext, isImg = /^(png|jpe?g|webp|heic|heif)$/.test(ext), thumb = null;
+    if (isImg) {
+      const im = await loadImage(f);
+      if (!im) { msg.textContent = '열지 못했습니다 · 사진첩에서 다시'; return; }
+      if (ext !== 'png') {                                // PNG 는 원본(가는 선이 흐려지지 않게), 나머지는 JPEG 로 — HEIC 변환·위치 정보 제거도 이 한 번으로
+        blob = await toBlob(fitCanvas(im, 4096), 'image/jpeg', .95);
+        up = 'jpg';
+      }
+      thumb = URL.createObjectURL(blob);
+    }
+    if (S.file && S.file.thumb) URL.revokeObjectURL(S.file.thumb);
+    S.file = { blob, name: f.name, up, size: blob.size, isImg, thumb, type: up === 'jpg' ? 'image/jpeg' : f.type || 'application/octet-stream' };
+    msg.textContent = '';
+    fileRow();
+    pick();
+    setView('pick');
+  }
+  function fileRow() {
+    const r = $('stFileRow');
+    $('stSample').hidden = !!S.file;                    // 파일을 넣은 뒤엔 예시 링크 대신 받을 것
+    if (!S.file) { r.hidden = true; $('stDrop').hidden = false; return; }
+    $('stDrop').hidden = true;
+    r.hidden = false;
+    r.replaceChildren(S.file.thumb ? h('img', { src: S.file.thumb, alt: '', width: 56, height: 56 }) : h('span', { class: 'ext', text: S.file.up.toUpperCase() }),
+      h('span', { class: 'nm' }, [S.file.name, h('small', { text: fmtMB(S.file.size) })]),
+      h('button', { type: 'button', class: 'btn-line', text: '바꾸기', onclick: () => { S.file = null; fileRow(); setView('in'); $('stPick').focus(); } }));
+  }
+
+  // ── 받을 것 ────────────────────────────────────────
+  function pick() {
+    $('stPickSet').replaceChildren(h('legend', { class: 'st-vh', text: '받을 것' }), ...Object.entries(OUT).map(([k, o]) =>
+      h('label', { class: 'st-opt' }, [
+        h('input', { type: 'radio', name: 'out', value: k, checked: S.out === k, onchange: () => { S.out = k; bar(); demo(); } }),
+        h('span', { class: 'st-opt-b' }, [h('img', { src: o.img, alt: '', width: 96, height: 60, loading: 'lazy' }),
+          h('span', {}, [h('span', { class: 't', text: o.name }), h('span', { class: 'm', text: o.m })])]),
       ])));
+    $('stAlso').replaceChildren(h('span', { text: '함께 받음' }), ...ALSO.map(([f, n]) => h('figure', {}, [h('img', { src: D + f, alt: '', width: 48, height: 36, loading: 'lazy' }), h('figcaption', { text: n })])),
+      h('figure', {}, [h('span', { class: 'st-tag', text: '표' }), h('figcaption', { text: '물량' })]));
+    more();
+  }
+  function more() {
+    const o = S.opt;
+    const label = { lg: 'LG', samsung: '삼성', white: '화이트', wood: '우드', gray: '그레이', day: '낮', evening: '저녁' };
+    $('stMoreSum').textContent = `더 고르기 · ${label[o.brand]} · ${label[o.style]} · ${label[o.mood]}`;
+    const row = (key, vals) => h('div', { class: 'st-row' }, vals.map((v) => h('button', { type: 'button', text: label[v], class: o[key] === v ? 'on' : null,
+      'aria-pressed': String(o[key] === v), onclick: () => { o[key] = v; keep(); more(); } })));
+    const area = h('input', { type: 'number', id: 'stArea', name: 'area', autocomplete: 'off', min: 10, max: 400, step: '0.01', inputmode: 'decimal', placeholder: '예) 84.97', value: o.area,
+      oninput: (e) => { o.area = e.target.value; } });
+    $('stMoreBody').replaceChildren(h('p', { class: 'lbl', text: '제조사' }), row('brand', ['lg', 'samsung']), h('p', { class: 'lbl', text: '마감 톤' }), row('style', ['white', 'wood', 'gray']),
+      h('p', { class: 'lbl', text: '시간' }), row('mood', ['day', 'evening']),
+      S.file && S.file.isImg ? h('label', { class: 'lbl', for: 'stArea' }, ['전용면적(㎡) · 비우면 자동']) : null, S.file && S.file.isImg ? area : null);
+  }
+  function keep() { try { localStorage.setItem('ain-studio-opt', JSON.stringify({ brand: S.opt.brand, style: S.opt.style, mood: S.opt.mood })); } catch (e) {} }
+  function bar() {
+    const go = $('stGo'), eta = $('stEta');
+    if (S.busy) { go.disabled = true; go.textContent = '올리는 중…'; return; }
+    go.disabled = false;
+    go.textContent = S.session ? '만들기' : '카카오 로그인 후 만들기';
+    eta.textContent = S.session ? OUT[S.out].eta : '파일은 그대로';
   }
 
-  // ── 도구 화면 ──────────────────────────────────────
+  async function submit() {
+    if (!S.file) return setView('in');
+    if (!S.session) return login(true);
+    const params = { brand: S.opt.brand, style: S.opt.style, mood: S.opt.mood, photo: S.out !== 'cg', photo_mode: S.out === 'design' ? 'design' : 'photo', staging: true };
+    const a = Number(S.opt.area);
+    if (S.file.isImg && a >= 10 && a <= 400) params.area = a;
+    S.busy = true; bar();
+    try {
+      const id = await submitJob(OUT[S.out].tool, params, [{ name: 'in.' + S.file.up, blob: S.file.blob, type: S.file.type }]);
+      S.busy = false;
+      runView(id);
+    } catch (e) {
+      S.busy = false; bar();
+      $('stInMsg').className = 'st-msg err';
+      $('stInMsg').textContent = errText(e);
+    }
+  }
+
+  // ── 받기: 진행 · 결과 ─────────────────────────────────
+  function demo() {
+    if (S.view === 'out' && !$('stOutBody').dataset.demo) return;   // 작업을 보는 중이면 예시로 덮지 않는다
+    $('stOutH').textContent = '예시';
+    const hero = S.out === 'cg' ? D + 'view_hero.webp' : OUT[S.out].img;
+    const items = [{ url: hero, cap: S.out === 'cg' ? '거실 와이드' : DEMO.photo[S.out === 'design' ? 1 : 0][1], group: 'hero', ai: S.out !== 'cg' }]
+      .concat(...Object.entries(DEMO).map(([g, xs]) => xs.map(([f, c]) => ({ url: f.startsWith('/') ? f : D + f, cap: c, group: g, ai: g === 'photo' }))));
+    const body = $('stOutBody');
+    body.dataset.demo = '1';
+    body.replaceChildren(h('p', { class: 'st-msg' }, [h('span', { class: 'st-tag', text: '예시' }), '합성 평면']), render(items, null),
+      h('p', { class: 'note', text: '가구·소품은 연출 · (가정)은 도면에 없는 값' }));
+  }
+
+  function render(items, sum) {                          // items: {url, cap, group, ai} — 맨 앞 group 'hero' 는 크게
+    const box = h('div', { class: 'st-out' });
+    const hero = items.find((x) => x.group === 'hero');
+    if (hero) box.append(fig(hero, 'st-hero'));
+    const groups = ['photo', 'views', 'aerial', 'drawings', 'edit'].filter((g) => items.some((x) => x.group === g));
+    const chips = groups.map((g) => h('a', { href: '#stG-' + g, text: GROUP[g] }));
+    if (sum && (sum.bom || []).length) chips.push(h('a', { href: '#stG-bom', text: '물량' }));
+    if (sum && (sum.pending || []).length) chips.push(h('a', { href: '#stG-pend', text: '확인 필요' }));
+    if (chips.length > 1) box.append(h('nav', { class: 'st-chips', 'aria-label': '묶음' }, chips));
+    for (const g of groups) {
+      box.append(h('h3', { id: 'stG-' + g, text: GROUP[g] }), h('div', { class: 'st-gal' }, items.filter((x) => x.group === g).map((x) => fig(x))));
+      if (g === 'photo') box.append(h('p', { class: 'note', text: 'AI · 도면과 다를 수 있음' }));
+    }
+    if (sum) {
+      if ((sum.bom || []).length) box.append(h('h3', { id: 'stG-bom', text: '물량' }), h('div', { class: 'st-wrap' }, h('table', { class: 'st-table' }, [
+        h('tr', {}, ['구분', '품목', '규격', '수량', '단위', '근거'].map((x) => h('th', { text: x }))),
+        ...sum.bom.map((r) => h('tr', {}, r.map((x) => h('td', { text: String(x ?? '') }))))])));
+      if ((sum.pending || []).length) box.append(h('h3', { id: 'stG-pend', text: '확인 필요' }), h('ul', {}, sum.pending.map((x) => h('li', { class: 'st-msg', text: x }))));
+      if (sum.note) box.append(h('p', { class: 'note', text: sum.note }));
+    }
+    return box;
+  }
+  function fig(x, cls) {
+    return h('figure', { class: cls || null }, [h('img', { src: x.url, alt: x.cap, loading: cls ? 'eager' : 'lazy', decoding: 'async' }),
+      h('figcaption', {}, [h('span', {}, [x.ai ? h('span', { class: 'st-tag', text: 'AI' }) : null, x.cap]),
+        h('a', { href: x.url, target: '_blank', rel: 'noopener', text: '크게' })])]);
+  }
+
+  function runView(id) {
+    clearTimeout(S.timer);
+    const body = $('stOutBody');
+    delete body.dataset.demo;
+    $('stOutH').textContent = '받기';
+    const steps = h('ol', { class: 'st-steps' });
+    const msg = h('p', { class: 'st-msg', role: 'status' });
+    const res = h('div');
+    body.replaceChildren(steps, msg, h('p', { class: 'note', text: '닫아도 됩니다 · 내 작업에 남습니다' }), res);
+    setView('out', S.view !== 'out');
+    const t0 = Date.now();
+    let last = '', fails = 0;
+    const paint = (now) => steps.replaceChildren(...['접수', '만드는 중', '완료'].map((n, i) => h('li', { 'data-s': i < now ? 'done' : i === now ? 'now' : 'next', 'aria-current': i === now ? 'step' : null, text: n })));
+    const say = (t, err) => { if (t !== last) { last = t; msg.textContent = t; msg.className = err ? 'st-msg err' : 'st-msg'; } };
+    paint(0);
+    const tick = async () => {
+      let r;
+      try { r = await client().rpc('studio_status', { p_id: id }); } catch (e) { r = { error: { message: 'network' } }; }
+      if (r.error) {
+        if (/not_found|login_required/.test(r.error.message || '')) { say(errText(r.error), true); return; }
+        if (++fails > 1) say('연결 끊김 · 다시 확인 중');
+      } else {
+        fails = 0;
+        const s = r.data;
+        if (s.status === 'uploading' || s.status === 'queued') {
+          paint(0);
+          say(s.ahead ? `접수됨 · 앞에 ${s.ahead}건` : s.worker_alive ? '접수됨 · 곧 시작' : '접수됨 · 늦어질 수 있음');
+        } else if (s.status === 'running') {
+          paint(1);
+          say(`만드는 중 · ${Math.max(1, Math.round((Date.now() - t0) / 60000))}분째`);
+        } else if (s.status === 'failed') { paint(1); say(s.error_ko || '만들지 못했습니다.', true); return; }
+        else if (s.status === 'expired') { say('14일 지나 지웠습니다', true); return; }
+        else if (s.status === 'done') { paint(3); say('완료'); res.replaceChildren(await results(s.outputs || [])); if (document.hidden) document.title = '(완료) 3D 스튜디오'; return; }
+      }
+      S.timer = setTimeout(tick, Date.now() - t0 < 120000 ? 5000 : 15000);   // 처음 2분은 5초, 그 뒤 15초
+    };
+    tick();
+  }
+
+  async function results(outputs) {
+    const c = client();
+    const imgs = outputs.filter((o) => o.kind === 'image');
+    const signed = imgs.length ? (await c.storage.from('studio').createSignedUrls(imgs.map((o) => o.path), 3600)).data || [] : [];
+    const url = Object.fromEntries(signed.map((s) => [s.path, s.signedUrl]));
+    const items = imgs.filter((o) => url[o.path]).map((o) => ({ url: url[o.path], cap: clean(o.caption), group: o.group || 'edit', ai: o.group === 'photo' }));
+    const first = items.find((x) => x.group === 'photo') || items.find((x) => x.group === 'views') || items[0];
+    if (first) items.unshift({ ...first, group: 'hero' });
+    let sum = null;
+    const so = outputs.find((o) => o.kind === 'summary');
+    if (so) { const d = await c.storage.from('studio').download(so.path); if (!d.error) try { sum = JSON.parse(await d.data.text()); } catch (e) {} }
+    return items.length || sum ? render(items, sum) : h('p', { class: 'st-msg', text: '결과가 비었습니다 · 다시 넣어 주세요' });
+  }
+
+  async function myJobs() {
+    if (!S.session) return login(false);
+    const body = $('stOutBody');
+    delete body.dataset.demo;
+    $('stOutH').textContent = '내 작업';
+    body.replaceChildren(h('p', { class: 'st-msg', text: '불러오는 중…' }));
+    setView('out');
+    const r = await client().from('studio_jobs').select('id,tool,status,created_at').order('id', { ascending: false }).limit(20);
+    const st = { uploading: '올리는 중', queued: '대기', running: '만드는 중', done: '완료', failed: '실패', expired: '보관 끝' };
+    body.replaceChildren(r.error ? h('p', { class: 'st-msg err', text: errText(r.error) })
+      : !r.data.length ? h('p', { class: 'empty', text: '아직 작업이 없습니다.' })
+        : h('div', { class: 'st-jobs' }, r.data.map((j) => h('button', { type: 'button', onclick: () => { history.replaceState(null, '', '#job-' + j.id); runView(j.id); } }, [
+          h('span', { text: `${NAME[j.tool] || '도면'} · ${new Date(j.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` }),
+          h('span', { class: 's', text: st[j.status] || j.status })]))));
+  }
+
+  // ── 로그인 왕복에 파일 보관(IndexedDB, 30분 · 꺼내면 바로 지움) ─────────────
+  function idb(mode, fn) {
+    return new Promise((res) => {
+      try {
+        const rq = indexedDB.open('ain-studio', 1);
+        rq.onupgradeneeded = () => rq.result.createObjectStore('k');
+        rq.onerror = () => res(null);
+        rq.onsuccess = () => { try { const tx = rq.result.transaction('k', mode); const r = fn(tx.objectStore('k')); tx.oncomplete = () => res(r && 'result' in r ? r.result : true); tx.onerror = () => res(null); } catch (e) { res(null); } };
+      } catch (e) { res(null); }
+    });
+  }
+  async function login(withFile) {
+    if (withFile && S.file) await idb('readwrite', (s) => s.put({ f: S.file, out: S.out, opt: S.opt, at: Date.now() }, 'p'));
+    client().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/maker/3d/' + (withFile ? '#resume' : '') } });
+  }
+  async function resume() {
+    const p = await idb('readonly', (s) => s.get('p'));
+    await idb('readwrite', (s) => s.delete('p'));
+    history.replaceState(null, '', location.pathname);
+    if (!p || Date.now() - p.at > 30 * 60000) { $('stInMsg').className = 'st-msg err'; $('stInMsg').textContent = '파일을 다시 넣어 주세요'; return; }
+    S.file = { ...p.f, thumb: p.f.isImg ? URL.createObjectURL(p.f.blob) : null };
+    S.out = p.out; S.opt = p.opt;
+    fileRow(); pick(); setView('pick', false);
+    submit();
+  }
+
+  // ── 사진 손질(기존 도구 화면) ─────────────────────────
   function panel(title, sub, kids) {
-    clearInterval(S.timer);
     const p = $('stPanel');
     p.hidden = false;
-    p.replaceChildren(h('button', { type: 'button', class: 'btn-line back', text: '← 도구 목록', onclick: closePanel }),
-      h('h2', { text: title }), sub ? h('p', { class: 'sub', text: sub }) : null, ...kids);
+    p.replaceChildren(h('button', { type: 'button', class: 'btn-line back', text: '← 돌아가기', onclick: closePanel }),
+      h('h3', { text: title }), sub ? h('p', { class: 'sub', text: sub }) : null, ...kids);
     p.scrollIntoView({ behavior: motion(), block: 'start' });
     return p;
   }
-  function closePanel() { clearInterval(S.timer); $('stPanel').hidden = true; history.replaceState(null, '', location.pathname); $('stTabs').scrollIntoView({ behavior: motion(), block: 'start' }); }   // 폰에선 도구 목록이 위에 있다
-
+  function closePanel() { $('stPanel').hidden = true; if (location.hash) history.replaceState(null, '', location.pathname); $('stTools').scrollIntoView({ behavior: motion(), block: 'center' }); }
   function openTool(id) {
     const t = TOOLS.find((x) => x.id === id);
     if (!t) return;
     history.replaceState(null, '', '#' + id);
-    if (t.kind === 'engine') return engineTool(t);
-    if (t.kind === 'erase' || t.kind === 'cutout') return photoJobTool(t);
-    return localTool(t);
+    return t.kind === 'erase' || t.kind === 'cutout' ? photoJobTool(t) : localTool(t);
   }
-
-  function gallery(items, base) {
-    return h('div', { class: 'st-gal' }, items.map(([f, cap]) => h('figure', {}, [
-      h('img', { src: f.startsWith('/') || f.startsWith('http') || f.startsWith('blob:') ? f : (base || D) + f, alt: cap, loading: 'lazy', decoding: 'async' }),
-      h('figcaption', { text: cap })])));
-  }
-
-  function demoOut(t) {
-    const order = t.focus === 'drawings' ? ['drawings', 'views', 'aerial'] : t.focus === 'aerial' ? ['aerial', 'views', 'drawings']
-      : t.focus === 'photo' ? ['photo', 'views', 'drawings'] : t.focus === 'report' ? ['drawings', 'views'] : ['views', 'photo', 'aerial', 'drawings'];
-    return h('div', { class: 'st-out' }, [h('span', { class: 'st-tag', text: '예시 결과 — 합성 평면' }),
-      ...order.flatMap((g) => [h('h3', { text: GROUP_TITLE[g] }), gallery([...DEMO[g]].sort((a, b) => (b[0] === t.pick) - (a[0] === t.pick)))]),   // 고른 도구의 컷이 맨 앞
-      h('p', { class: 'note', text: '예시 평면으로 만든 결과입니다(실제 세대 아님). 천장고·반자 속처럼 도면에 없는 값은 (가정)으로 표시합니다. 가구·소품은 연출입니다.' })]);
-  }
-
-  function engineTool(t) {
-    const pre = t.preset || {};
-    const f = {
-      file: h('input', { type: 'file', id: 'stFile', accept: ENGINE_ACCEPT }),
-      brand: h('select', { id: 'stBrand' }, [h('option', { value: 'lg', text: 'LG' }), h('option', { value: 'samsung', text: '삼성' })]),
-      area: h('input', { type: 'number', id: 'stArea', name: 'area', autocomplete: 'off', min: 10, max: 400, step: '0.01', inputmode: 'decimal', placeholder: '예) 84.97' }),
-      style: h('select', { id: 'stStyle' }, [['white', '화이트'], ['wood', '우드'], ['gray', '그레이']].map(([v, n]) => h('option', { value: v, text: n, selected: (pre.style || 'white') === v }))),
-      mood: h('select', { id: 'stMood' }, [['day', '낮'], ['evening', '저녁']].map(([v, n]) => h('option', { value: v, text: n, selected: (pre.mood || 'day') === v }))),
-      photo: h('input', { type: 'checkbox', id: 'stOptPhoto', checked: !!pre.photo }),
-      design: h('input', { type: 'checkbox', id: 'stOptDesign', checked: pre.photo_mode === 'design' }),
-    };
-    const msg = h('p', { class: 'st-msg', role: 'status' });
-    const out = h('div');
-    const go = h('button', { type: 'button', text: S.session ? '올리고 만들기' : '로그인하고 올리기' });
-    go.addEventListener('click', async () => {
-      if (!S.session) return login();
-      const file = f.file.files[0];
-      if (!file) { msg.className = 'st-msg err'; msg.textContent = '도면이나 평면도 파일을 고르세요.'; return; }
-      const ext = (file.name.split('.').pop() || '').toLowerCase();
-      if (!ENGINE_ACCEPT.split(',').includes('.' + ext) || file.size > 20 * 1024 * 1024) { msg.className = 'st-msg err'; msg.textContent = 'DWG·DXF·PDF·PNG·JPG, 20MB까지 올릴 수 있습니다.'; return; }
-      const params = { brand: f.brand.value, style: f.style.value, mood: f.mood.value, photo: f.photo.checked || f.design.checked,
-        photo_mode: f.design.checked ? 'design' : 'photo', staging: true, focus: t.focus };
-      if (f.area.value) params.area = Number(f.area.value);
-      go.disabled = true; msg.className = 'st-msg'; msg.textContent = '올리는 중…';
-      try {
-        const id = await submitJob(t.id, params, [{ name: 'in.' + ext, blob: file, type: file.type }]);
-        watchJob(id, msg, out, t.focus);
-      } catch (e) { msg.className = 'st-msg err'; msg.textContent = errText(e); go.disabled = false; }
-    });
-    panel(t.name, t.m, [
-      h('div', { class: 'st-form' }, [
-        h('label', { class: 'full' }, ['도면·평면도(DWG·DXF·PDF·이미지)', f.file]),
-        h('label', {}, ['제조사', f.brand]), h('label', {}, ['평면도 이미지면 전용면적(㎡)', f.area]),
-        h('label', {}, ['마감 톤', f.style]), h('label', {}, ['시간', f.mood]),
-        h('label', { class: 'st-check' }, [f.photo, '사진처럼 다듬기(AI, 장당 약 2분)']),
-        h('label', { class: 'st-check' }, [f.design, '디자인 제안(AI가 마감·가구를 꾸밈)']),
-      ]),
-      h('div', { class: 'st-go' }, [go, msg]), out, demoOut(t)]);
-  }
+  const gallery = (pairs) => h('div', { class: 'st-gal' }, pairs.map(([f, cap]) => fig({ url: f.startsWith('/') ? f : D + f, cap })));
 
   function photoJobTool(t) {
-    const file = h('input', { type: 'file', accept: '.png,.jpg,.jpeg,.webp' });
+    const file = h('input', { type: 'file', accept: 'image/*' });
     const msg = h('p', { class: 'st-msg', role: 'status' });
     const out = h('div');
     const stage = h('div');
     const ed = { img: null, mask: null, size: 36 };
     file.addEventListener('change', async () => {
       const im = await loadImage(file.files[0]);
-      if (!im) return;
+      if (!im) { msg.className = 'st-msg err'; msg.textContent = '열지 못했습니다'; return; }
       ed.img = fitCanvas(im, 1600);
       if (t.kind === 'erase') {
         ed.mask = document.createElement('canvas');
@@ -163,34 +325,32 @@
         stage.replaceChildren(h('div', { class: 'st-canvas' }, [ed.img, ed.mask]),
           h('div', { class: 'st-sliders' }, [h('label', {}, ['붓 크기', h('input', { type: 'range', min: 8, max: 120, value: ed.size, oninput: (e) => { ed.size = +e.target.value; } })])]),
           h('div', { class: 'st-row' }, [h('button', { type: 'button', text: '칠한 곳 비우기', onclick: () => ed.mask.getContext('2d').clearRect(0, 0, ed.mask.width, ed.mask.height) })]),
-          h('p', { class: 'st-msg', text: '지울 물건 위를 칠하세요. 작은 물건에 잘 맞고, 큰 가구는 자국이 남을 수 있습니다.' }));
+          h('p', { class: 'st-msg', text: '지울 물건 위를 칠하세요 · 큰 가구는 자국이 남을 수 있음' }));
       } else {
         stage.replaceChildren(h('div', { class: 'st-canvas' }, [ed.img]));
       }
     });
-    const go = h('button', { type: 'button', text: S.session ? '올리고 처리하기' : '로그인하고 올리기' });
+    const go = h('button', { type: 'button', text: S.session ? '만들기' : '카카오 로그인 후 만들기' });
     go.addEventListener('click', async () => {
-      if (!S.session) return login();
-      if (!ed.img) { msg.className = 'st-msg err'; msg.textContent = '사진을 고르세요.'; return; }
+      if (!S.session) return login(false);
+      if (!ed.img) { msg.className = 'st-msg err'; msg.textContent = '사진을 고르세요'; return; }
       const files = [{ name: 'in.jpg', blob: await toBlob(ed.img, 'image/jpeg', .92), type: 'image/jpeg' }];
       if (t.kind === 'erase') {
         const m = maskPng(ed.mask);
-        if (!m.painted) { msg.className = 'st-msg err'; msg.textContent = '지울 곳을 먼저 칠하세요.'; return; }
+        if (!m.painted) { msg.className = 'st-msg err'; msg.textContent = '지울 곳을 먼저 칠하세요'; return; }
         files.push({ name: 'mask.png', blob: await toBlob(m.canvas, 'image/png'), type: 'image/png' });
       }
       go.disabled = true; msg.className = 'st-msg'; msg.textContent = '올리는 중…';
-      try { watchJob(await submitJob(t.id, {}, files), msg, out); }
+      try { await submitJob(t.id, {}, files); go.disabled = false; msg.textContent = ''; runView(+location.hash.slice(5)); }
       catch (e) { msg.className = 'st-msg err'; msg.textContent = errText(e); go.disabled = false; }
     });
     const ex = t.kind === 'erase' ? [['view_reverse.webp', '원본'], ['erase_after.webp', '지운 뒤 — 탁자 위 화병·책']] : [['cutout_before.webp', '원본'], ['cutout_after.webp', '배경 뗀 뒤(투명 PNG)']];
-    panel(t.name, t.m, [h('div', { class: 'st-form' }, [h('label', { class: 'full' }, ['사진', file])]), stage,
-      h('div', { class: 'st-go' }, [go, msg]), out,
-      h('div', { class: 'st-out' }, [h('span', { class: 'st-tag', text: '예시 결과 — 합성 렌더' }), gallery(ex)])]);
+    panel(t.name, t.m, [h('div', { class: 'st-form' }, [h('label', {}, ['사진', file])]), stage, h('div', { class: 'st-go' }, [go, msg]), out,
+      h('div', { class: 'st-out' }, [h('p', { class: 'st-msg' }, [h('span', { class: 'st-tag', text: '예시' }), '합성 렌더']), gallery(ex)])]);
   }
 
-  // ── 기기 안 도구: 색 보정 · 자르기 · 글자 넣기 ─────────────
   function localTool(t) {
-    const file = h('input', { type: 'file', accept: '.png,.jpg,.jpeg,.webp' });
+    const file = h('input', { type: 'file', accept: 'image/*' });
     const stage = h('div');
     const st = { src: null, out: document.createElement('canvas'), b: 100, c: 100, s: 100, w: 0, ratio: 0, zoom: 1, px: 50, py: 50, text: '', size: 6, color: '#ffffff', pos: 'bottom' };
     const draw = () => {
@@ -222,17 +382,17 @@
       }
     };
     const slider = (label, key, min, max, val) => h('label', {}, [label, h('input', { type: 'range', min, max, value: val, oninput: (e) => { st[key] = +e.target.value; draw(); } })]);
-    const pick = (opts, key) => {
+    const pickRow = (opts, key) => {
       const row = h('div', { class: 'st-row' });
       const paint = () => row.replaceChildren(...opts.map(([v, n]) => h('button', { type: 'button', text: n, class: st[key] === v ? 'on' : null, 'aria-pressed': String(st[key] === v), onclick: () => { st[key] = v; paint(); draw(); } })));
       paint();
       return row;
     };
     const ctrl = t.kind === 'color' ? [h('div', { class: 'st-sliders' }, [slider('밝기', 'b', 50, 150, 100), slider('대비', 'c', 50, 150, 100), slider('채도', 's', 0, 200, 100), slider('따뜻함', 'w', -40, 40, 0)])]
-      : t.kind === 'crop' ? [pick([[0, '원본 비율'], [16 / 9, '16:9'], [4 / 3, '4:3'], [1, '1:1'], [4 / 5, '4:5']], 'ratio'),
+      : t.kind === 'crop' ? [pickRow([[0, '원본 비율'], [16 / 9, '16:9'], [4 / 3, '4:3'], [1, '1:1'], [4 / 5, '4:5']], 'ratio'),
         h('div', { class: 'st-sliders' }, [h('label', {}, ['확대', h('input', { type: 'range', min: 100, max: 300, value: 100, oninput: (e) => { st.zoom = e.target.value / 100; draw(); } })]), slider('가로 위치', 'px', 0, 100, 50), slider('세로 위치', 'py', 0, 100, 50)])]
-      : [h('div', { class: 'st-form' }, [h('label', { class: 'full' }, ['문구', h('input', { type: 'text', name: 'caption', autocomplete: 'off', maxlength: 40, placeholder: '예) 거실 시스템에어컨 제안', oninput: (e) => { st.text = e.target.value; draw(); } })])]),
-        h('div', { class: 'st-sliders' }, [slider('글자 크기', 'size', 3, 12, 6)]), pick([['#ffffff', '흰 글자'], ['#1e1d1a', '검은 글자']], 'color'), pick([['top', '위'], ['middle', '가운데'], ['bottom', '아래']], 'pos')];
+      : [h('div', { class: 'st-form' }, [h('label', {}, ['문구', h('input', { type: 'text', name: 'caption', autocomplete: 'off', maxlength: 40, placeholder: '예) 거실 시스템에어컨 제안', oninput: (e) => { st.text = e.target.value; draw(); } })])]),
+        h('div', { class: 'st-sliders' }, [slider('글자 크기', 'size', 3, 12, 6)]), pickRow([['#ffffff', '흰 글자'], ['#1e1d1a', '검은 글자']], 'color'), pickRow([['top', '위'], ['middle', '가운데'], ['bottom', '아래']], 'pos')];
     file.addEventListener('change', async () => {
       const im = await loadImage(file.files[0]);
       if (!im) return;
@@ -241,15 +401,15 @@
       stage.replaceChildren(h('div', { class: 'st-canvas' }, [st.out]), ...ctrl,
         h('div', { class: 'st-go' }, [h('button', { type: 'button', text: '저장', onclick: async () => save(await toBlob(st.out, 'image/jpeg', .92), 'ain-studio.jpg') })]));
     });
-    panel(t.name, '사진은 이 기기 안에서만 처리하고 서버로 보내지 않습니다.', [h('div', { class: 'st-form' }, [h('label', { class: 'full' }, ['사진', file])]), stage]);
+    panel(t.name, '기기 안에서만 처리', [h('div', { class: 'st-form' }, [h('label', {}, ['사진', file])]), stage]);
   }
 
   // ── 사진·캔버스 도우미 ──────────────────────────────
   function loadImage(f) {
     return new Promise((res) => {
-      if (!f || !/^image\//.test(f.type)) return res(null);
+      if (!f || !/^image\//.test(f.type || 'image/')) return res(null);
       const u = URL.createObjectURL(f), im = new Image();
-      im.onload = () => { res(im); URL.revokeObjectURL(u); }; im.onerror = () => res(null); im.src = u;
+      im.onload = () => { res(im); URL.revokeObjectURL(u); }; im.onerror = () => { res(null); URL.revokeObjectURL(u); }; im.src = u;
     });
   }
   function fitCanvas(im, max) {
@@ -280,7 +440,6 @@
   const toBlob = (c, type, q) => new Promise((res) => c.toBlob(res, type, q));
   function save(blob, name) { const a = h('a', { href: URL.createObjectURL(blob), download: name }); document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
 
-  // ── 작업 대기열(로그인 후) ───────────────────────────
   async function submitJob(tool, params, files) {
     const c = client();
     const r = await c.rpc('studio_submit', { p_tool: tool, p_params: params, p_files: files.map((f) => f.name) });
@@ -296,77 +455,46 @@
     return id;
   }
 
-  function watchJob(id, msg, out, focus) {
-    clearInterval(S.timer);
-    const tick = async () => {
-      const r = await client().rpc('studio_status', { p_id: id });
-      if (r.error) { msg.className = 'st-msg err'; msg.textContent = errText(r.error); clearInterval(S.timer); return; }
-      const s = r.data;
-      msg.className = 'st-msg';
-      if (s.status === 'queued') msg.textContent = (s.worker_alive ? '대기 중' : '작업 기계가 쉬는 중 — 접수만 됐습니다') + (s.ahead ? ` · 앞에 ${s.ahead}건` : '');
-      else if (s.status === 'running') msg.textContent = '만드는 중… 도면 한 장에 5~25분 걸립니다(사진 다듬기 포함 시 더).';
-      else if (s.status === 'failed') { msg.className = 'st-msg err'; msg.textContent = s.error_ko || '만들지 못했습니다.'; clearInterval(S.timer); }
-      else if (s.status === 'done') { msg.textContent = '완료'; clearInterval(S.timer); out.replaceChildren(await results(s.outputs || [], focus)); }
-    };
-    tick();
-    S.timer = setInterval(tick, 5000);
-  }
-
-  async function results(outputs, focus) {
-    const c = client();
-    const imgs = outputs.filter((o) => o.kind === 'image');
-    const signed = imgs.length ? (await c.storage.from('studio').createSignedUrls(imgs.map((o) => o.path), 600)).data || [] : [];
-    const url = Object.fromEntries(signed.map((s) => [s.path, s.signedUrl]));
-    const box = h('div', { class: 'st-out' });
-    for (const g of [focus, 'photo', 'views', 'aerial', 'drawings', 'edit'].filter((x, i, a) => x && a.indexOf(x) === i)) {   // 고른 도구의 묶음을 맨 위로
-      const it = imgs.filter((o) => o.group === g && url[o.path]);
-      if (it.length) box.append(h('h3', { text: GROUP_TITLE[g] }), gallery(it.map((o) => [url[o.path], o.caption || ''])));
-    }
-    const sum = outputs.find((o) => o.kind === 'summary');
-    if (sum) {
-      const d = await c.storage.from('studio').download(sum.path);
-      if (!d.error) {
-        const j = JSON.parse(await d.data.text());
-        if ((j.bom || []).length) box.append(h('h3', { text: '물량표' }), h('div', { class: 'st-wrap' }, h('table', { class: 'st-table' }, [
-          h('tr', {}, ['구분', '품목', '규격', '수량', '단위', '근거'].map((x) => h('th', { text: x }))),
-          ...j.bom.map((r) => h('tr', {}, r.map((x) => h('td', { text: String(x ?? '') }))))])));
-        if ((j.pending || []).length) box.append(h('h3', { text: '확인 필요' }), h('ul', {}, j.pending.map((x) => h('li', { class: 'st-msg', text: x }))));
-        if (j.note) box.append(h('p', { class: 'note', text: j.note }));
-      }
-    }
-    return box;
-  }
-
-  async function myJobs() {
-    if (!S.session) return login();
-    const p = panel('내 작업', '최근 20건 · 결과는 14일 동안 보관합니다.', [h('p', { class: 'st-msg', text: '불러오는 중…' })]);
-    const r = await client().from('studio_jobs').select('id,tool,status,created_at').order('id', { ascending: false }).limit(20);
-    const msg = h('p', { class: 'st-msg', role: 'status' }), out = h('div');
-    const name = (id) => (TOOLS.find((t) => t.id === id) || { name: id }).name;
-    const st = { uploading: '올리는 중', queued: '대기', running: '만드는 중', done: '완료', failed: '실패', expired: '보관 끝' };
-    p.lastElementChild.replaceWith(r.error ? h('p', { class: 'st-msg err', text: errText(r.error) })
-      : !r.data.length ? h('p', { class: 'empty', text: '아직 작업이 없습니다.' })
-        : h('div', { class: 'st-jobs' }, r.data.map((j) => h('button', { type: 'button', onclick: () => watchJob(j.id, msg, out, (TOOLS.find((t) => t.id === j.tool) || {}).focus) }, [
-          h('span', { text: `${name(j.tool)} · ${new Date(j.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` }),
-          h('span', { class: 's', text: st[j.status] || j.status })]))));
-    p.append(msg, out);
-  }
-
-  function login() {
-    client().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/maker/3d/' + location.hash } });
-  }
-
+  // ── 시작 ───────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
     try { window.ainAuth.init('authSlot'); } catch (e) {}
-    renderTabs();
-    renderGrid();
-    $('stNew').addEventListener('click', () => openTool('plan3d'));
-    $('stEdit').addEventListener('click', () => { S.cat = '편집'; renderTabs(); renderGrid(); $('stGrid').scrollIntoView({ behavior: motion() }); });
+    try { Object.assign(S.opt, JSON.parse(localStorage.getItem('ain-studio-opt') || '{}')); } catch (e) {}
+    const pickFrom = (inp) => { inp.value = ''; inp.click(); };
+    $('stPick').addEventListener('click', () => pickFrom($('stFile')));
+    $('stAlbum').addEventListener('click', () => pickFrom($('stAlbumIn')));
+    $('stShoot').addEventListener('click', () => pickFrom($('stCamIn')));
+    for (const id of ['stFile', 'stAlbumIn', 'stCamIn']) $(id).addEventListener('change', (e) => take(e.target.files[0]));
+    $('stSample').addEventListener('click', () => { S.view = 'in'; demo(); $('stOut').hidden = false; $('stOutH').focus({ preventScroll: true }); $('stOut').scrollIntoView({ behavior: motion(), block: 'start' }); });
+    $('stGo').addEventListener('click', submit);
     $('stMine').addEventListener('click', myJobs);
+    $('stTools').replaceChildren(...TOOLS.map((t) => h('button', { type: 'button', text: t.name, onclick: () => openTool(t.id) })));
+    const drop = $('stDrop');
+    document.addEventListener('dragover', (e) => { e.preventDefault(); if ($('stPanel').hidden) drop.classList.add('over'); });
+    document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) drop.classList.remove('over'); });
+    document.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); if ($('stPanel').hidden && e.dataTransfer.files[0]) take(e.dataTransfer.files[0]); });
+    document.addEventListener('paste', (e) => {
+      const f = e.clipboardData && e.clipboardData.files[0];
+      if (f && $('stPanel').hidden && !/^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) { e.preventDefault(); take(f); }
+    });
+    window.addEventListener('popstate', (e) => {                // 폰 뒤로가기 = 앞 단계. 넣기로 돌아가면 파일을 비운다(넣기 칸이 다시 보이게)
+      const v = (e.state && e.state.v) || 'in';
+      if (v === 'in' && S.file) { S.file = null; fileRow(); }
+      setView(v === 'pick' && !S.file ? 'in' : v, false);
+    });
+    window.addEventListener('beforeunload', (e) => { if (S.busy) e.preventDefault(); });   // 올리는 중에 닫으면 작업이 '올리는 중'에 멈춘다
+    window.addEventListener('resize', () => { if (S.view !== 'out') $('stOut').hidden = !wide(); });
     try { S.session = await window.ainAuth.getSession(); } catch (e) { S.session = null; }
-    window.addEventListener('ain:auth', (e) => { S.session = e.detail && e.detail.session; });
-    const m = location.hash.match(/^#job-(\d+)$/);
-    if (m && S.session) { const msg = h('p', { class: 'st-msg', role: 'status' }), out = h('div'); panel('작업 결과', null, [msg, out]); watchJob(+m[1], msg, out); }
-    else if (location.hash.length > 1) openTool(location.hash.slice(1));
+    $('stMine').hidden = !S.session;
+    window.addEventListener('ain:auth', (e) => { S.session = e.detail && e.detail.session; $('stMine').hidden = !S.session; bar(); });
+    const hash = location.hash;
+    const job = hash.match(/^#job-(\d+)$/);
+    if (hash === '#interior') S.out = 'photo';
+    if (hash === '#design') S.out = 'design';
+    setView('in', false);
+    history.replaceState({ v: 'in' }, '', location.pathname + (job ? hash : ''));
+    if (job && S.session) runView(+job[1]);
+    else if (hash === '#resume' && S.session) resume();
+    else if (hash === '#sample') $('stSample').click();
+    else if (TOOLS.some((t) => '#' + t.id === hash)) openTool(hash.slice(1));
   });
 }());
