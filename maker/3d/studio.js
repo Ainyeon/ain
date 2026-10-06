@@ -87,9 +87,10 @@
     const frame = S.frame = h('iframe', { src: '/maker/3d/view/?embed&scene=' + (mine ? '@host' : 'apartment&v=2'), title: mine ? '내 공간 모형' : '예시 평면 모형', loading: mine ? null : 'lazy' });
     const send = (m) => frame.contentWindow.postMessage(Object.assign({ ns: 'bd3d' }, m), location.origin);
     const mark = (id) => { for (const b of nav.children) { const on = b.dataset.id === (id || '') || (!!id && b.dataset.zone === id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); } };   // 바닥을 눌러 들어가면 id 가 구역이다
-    window.addEventListener('message', (e) => {
+    window.removeEventListener('message', S.heard);
+    window.addEventListener('message', S.heard = (e) => {
       const m = e.data;
-      if (S.frame !== frame || e.origin !== location.origin || e.source !== frame.contentWindow || !m || m.ns !== 'bd3d') return;
+      if (e.origin !== location.origin || e.source !== frame.contentWindow || !m || m.ns !== 'bd3d') return;
       if (m.type === 'need') { if (mine) send({ type: 'load', bundle: mine }); }
       else if (m.type === 'ready') {
         box.classList.add('on');
@@ -232,6 +233,7 @@
         h('a', { href: x.url, target: '_blank', rel: 'noopener', text: '크게' })])]);
   }
 
+  const watching = (id) => S.job === id && S.view === 'out' && !$('stOutBody').dataset.demo;   // 그 작업 화면을 지금 보고 있나(떠난 뒤에도 도는 확인이 모형을 끼워 넣지 않게)
   async function scene(id) {                             // 작업기가 모형이 서자마자 올려 둔 장면 — 있으면 그림을 기다리지 않고 내 모형부터
     const st = client().storage.from('studio'), dir = S.session.user.id + '/' + id + '/out';
     const ls = await st.list(dir, { search: 'scene.json' });   // 아직 없을 때 404 를 내지 않으려고 목록부터
@@ -239,7 +241,7 @@
     const d = await st.download(dir + '/scene.json');
     if (d.error) return;
     const b = JSON.parse(await d.data.text());
-    if (!b || !b.data || !b.checks || S.job !== id || S.view !== 'out') return;
+    if (!b || !b.data || !b.checks || !watching(id)) return;
     S.scene = b;
     $('stLive').hidden = false;
     live();
@@ -272,7 +274,7 @@
       } else {
         fails = 0;
         const s = r.data;
-        if ((s.status === 'running' || s.status === 'done') && !S.scene && S.job === id) try { await scene(id); } catch (e) {}
+        if ((s.status === 'running' || s.status === 'done') && !S.scene && watching(id)) try { await scene(id); } catch (e) {}
         if (s.status === 'uploading' || s.status === 'queued') {
           paint(0);
           say(s.ahead ? `접수됨 · 앞에 ${s.ahead}건` : s.worker_alive ? '접수됨 · 곧 시작' : '접수됨 · 늦어질 수 있음');
@@ -307,6 +309,7 @@
     const body = $('stOutBody');
     delete body.dataset.demo;
     $('stOutH').textContent = '내 작업';
+    S.job = S.scene = null;                              // 목록 위에 앞 작업의 모형을 남기지 않는다
     body.replaceChildren(h('p', { class: 'st-msg', text: '불러오는 중…' }));
     setView('out');
     const r = await client().from('studio_jobs').select('id,tool,status,created_at').order('id', { ascending: false }).limit(20);
