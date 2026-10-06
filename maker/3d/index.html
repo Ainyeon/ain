@@ -21,11 +21,11 @@
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
   <link rel="stylesheet" href="/assets/css/components.css?v=30">
   <link rel="stylesheet" href="/maker/maker.css?v=30">
-  <link rel="stylesheet" href="/maker/3d/studio.css?v=5">
+  <link rel="stylesheet" href="/maker/3d/studio.css?v=7">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
   <script defer src="/auth.js?v=30"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
-  <script defer src="/maker/3d/studio.js?v=7"></script>
+  <script defer src="/maker/3d/studio.js?v=8"></script>
 </head>
 <body class="has-tabbar">
   <nav class="tnav">
@@ -84,10 +84,17 @@
       </section>
       </div>
 
+      <div class="st-right">
+      <section id="stLive" class="st-live" aria-label="예시 모형">
+        <div class="st-live-box" id="stLiveBox"><img src="/maker/3d/demo/aerial.webp" alt="예시 평면 조감" width="1600" height="900" decoding="async"><span class="st-tag">예시</span></div>
+        <p class="st-msg" id="stLiveMsg" role="status"></p>
+        <div class="st-row" id="stLiveNav"></div>
+      </section>
       <section id="stOut" class="st-outsec" aria-labelledby="stOutH">
         <h2 class="st-sh" id="stOutH" tabindex="-1">예시</h2>
         <div id="stOutBody"></div>
       </section>
+      </div>
     </div>
 
     <section class="st-tools" aria-labelledby="stToolsH">

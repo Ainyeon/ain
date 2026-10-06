@@ -1,0 +1,86 @@
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'">
+<meta name="robots" content="noindex">
+<script src="mode.js?v=0474945d"></script>
+<link rel="icon" href="data:,">
+<title>시스템에어컨 공간 구성도</title>
+<meta name="description" content="상업 공간에 천장형 시스템에어컨을 평수대로 배치한 인터랙티브 3D 구성도">
+<link rel="stylesheet" href="viewer.css?v=0474945d">
+
+<main>
+  <section class="stage" id="stage" role="tabpanel" aria-labelledby="tab-office">
+    <canvas id="c" role="img" aria-label=""></canvas>
+    <div class="labels" id="labels" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <div class="lead">
+        <div class="brand">
+          <p class="eyebrow" id="eyebrow">참고 평면 · 시스템에어컨 배치</p>
+          <h1 id="title">시스템에어컨 공간 구성도</h1>
+        </div>
+        <div class="tabs" role="tablist" aria-label="공간 선택" id="tabs"></div>
+      </div>
+      <div class="tools" role="toolbar" aria-label="표시 설정">
+        <button type="button" id="btnHome" class="btn primary" hidden>전체 보기</button>
+        <button type="button" id="btnGrid" class="btn" aria-pressed="true"><span><span class="long">천장 격자·</span>조명</span></button>
+        <button type="button" id="btnPipes" class="btn" aria-pressed="true"><span><span class="long">천장 속 </span>배관</span></button>
+        <button type="button" id="btnAir" class="btn" aria-pressed="false" title="실내기 바람이 닿는 범위 — 도달 반경(규칙표 조사값), 1Way 는 토출 방향 ±60°, 그 실 안만(ㄷ자처럼 오목한 실은 꺾인 너머까지 칠해질 수 있음). 기류 계산이 아닌 설명용"><span><span class="long">바람 </span>범위</span></button>
+      </div>
+    </header>
+
+    <aside class="sheet list" id="listSheet" aria-label="공간 정보">
+      <button type="button" class="grab" id="listGrab" aria-expanded="true" aria-controls="listBody">
+        <span class="t" id="listGrabT">공간 정보</span><span class="chev" aria-hidden="true"></span>
+      </button>
+      <div class="sheet-body" id="listBody">
+        <dl class="facts" id="facts"></dl>
+        <nav aria-label="구역">
+          <h2 class="group">구역 · 누르면 전체 공간 시점</h2>
+          <ul class="rooms" id="zoneList"></ul>
+        </nav>
+        <div>
+          <h2 class="group">규칙 검사 결과</h2>
+          <p class="tally" id="tally"></p>
+          <ul class="checks" id="warnList" style="margin-top:8px"></ul>
+        </div>
+        <div>
+          <h2 class="group">표시</h2>
+          <div class="legend">
+            <div><i style="height:12px;background:#BFE9F2;border:1px solid #004E64"></i>4Way 판넬 · 화살표는 토출 방향</div>
+            <div><i style="height:4px;background:#E8DDBF;outline:1px solid #B39B5C"></i>라인 조명 · 펜던트</div>
+            <div><i style="height:1px;background:#7E8B91"></i>텍스 천장 격자</div>
+            <div><i style="height:6px;background:#1F6F82"></i>냉매배관 (천장 속)</div>
+          </div>
+          <p class="basis" id="ouLine" style="margin-top:8px"></p>
+        </div>
+      </div>
+    </aside>
+
+    <aside class="sheet detail" id="detailSheet" hidden aria-label="선택한 구역">
+      <button type="button" class="grab" id="detailGrab" aria-expanded="true" aria-controls="detailBody">
+        <span class="t" id="detailGrabT">구역 정보</span><span class="chev" aria-hidden="true"></span>
+      </button>
+      <div class="sheet-body" id="detailBody" aria-live="polite"></div>
+    </aside>
+
+    <p class="hint" id="hint"></p>
+    <div class="north" aria-hidden="true">
+      <svg viewBox="-15 -15 30 30"><g id="northG"><path d="M0 -12 L5 4 L0 1 L-5 4 Z" fill="currentColor" style="color:var(--accent)"></path><text x="0" y="14" text-anchor="middle" font-size="9" font-weight="600" font-family="IBM Plex Mono, monospace" fill="currentColor" style="color:var(--ink-soft)">N</text></g></svg>
+    </div>
+  </section>
+
+  <section class="notes" aria-label="출처">
+    <details id="notes">
+      <summary><span class="t" id="notesT">일반형 참고 평면·수치 출처</span><span class="m" id="notesMeta"></span></summary>
+      <div class="notes-grid">
+        <div id="notesLeft"></div>
+        <div>
+          <h3>출처</h3>
+          <ol class="src" id="srcList"></ol>
+        </div>
+      </div>
+    </details>
+  </section>
+</main>
+
+<script type="module" src="viewer.js?v=0474945d"></script>
