@@ -7,6 +7,7 @@ exclude:
   - sql
   - tools
   - CLAUDE.md
+  - AGENTS.md
   - HANDOFF.md
   - HANDOFF-v2.md
   - HANDOFF-maker.md

@@ -60,11 +60,38 @@
     $('stPickSec').hidden = !(v === 'pick' || (v === 'out' && S.file));
     $('stOut').hidden = !(v === 'out' || wide());
     $('stBar').hidden = v !== 'pick';
+    $('stLive').hidden = v === 'out';                    // 내 작업을 보는 동안 예시 모형은 접는다(다시 보이면 보던 자리 그대로)
+    if (v !== 'out') requestAnimationFrame(() => { if (!$('stLive').hidden) live(); });   // 한 박자 뒤, 그때도 보일 때만(작업 주소로 바로 들어오면 곧 접히므로 뷰어를 받지 않는다)
     if (v !== 'out') demo();
     bar();
     if (push) history.pushState({ v }, '', location.pathname + location.search + (location.hash.startsWith('#job-') && v === 'out' ? location.hash : ''));
     const head = { in: 'stInH', pick: 'stPickH', out: 'stOutH' }[v];
     if (head && v !== 'in') { $(head).focus({ preventScroll: true }); $(head).scrollIntoView({ behavior: motion(), block: 'start' }); }
+  }
+
+  // ── 예시 모형: 로그인·올리기 없이 바로 돌려 보는 합성 평면(2026-10-06 대표 '이렇게 매끄럽게') ──────────
+  // 뷰어는 같은 출처 /maker/3d/view/ (엔진 commercial3d 뷰어 내보내기), 장면은 자료(apartment.json). 뷰어가 못 뜨면 조감 그림이 그대로 남는다.
+  function live() {
+    if (S.live) return;                                  // 처음 한 번만
+    S.live = true;
+    const box = $('stLiveBox'), msg = $('stLiveMsg'), nav = $('stLiveNav');
+    const frame = h('iframe', { src: '/maker/3d/view/?embed&scene=apartment&v=2', title: '예시 평면 모형', loading: 'lazy' });
+    const send = (m) => frame.contentWindow.postMessage(Object.assign({ ns: 'bd3d' }, m), location.origin);
+    const mark = (id) => { for (const b of nav.children) { const on = b.dataset.id === (id || '') || (!!id && b.dataset.zone === id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); } };   // 바닥을 눌러 들어가면 id 가 구역이다
+    window.addEventListener('message', (e) => {
+      const m = e.data;
+      if (e.origin !== location.origin || e.source !== frame.contentWindow || !m || m.ns !== 'bd3d') return;
+      if (m.type === 'ready') {
+        box.classList.add('on');
+        msg.textContent = '실내기를 눌러 보세요';
+        nav.replaceChildren(h('button', { type: 'button', 'data-id': '', text: '전체', onclick: () => send({ type: 'home' }) }),
+          ...(m.entries || []).slice(0, 12).map((en) => h('button', { type: 'button', 'data-id': String(en.id), 'data-zone': String(en.zone || ''), text: String(en.name), onclick: () => send({ type: 'goUnit', id: en.id }) })));
+        mark(null);
+      } else if (m.type === 'enter') { msg.textContent = `${m.title} · ${m.sub}`; mark(m.id); }
+      else if (m.type === 'home') { msg.textContent = '실내기를 눌러 보세요'; mark(null); }
+      else if (m.type === 'drop' && m.file instanceof File) { $('stDrop').classList.remove('over'); if ($('stPanel').hidden) take(m.file); }   // 모형 위에 떨어뜨리거나 붙여넣은 파일도 넣기로
+    });
+    box.append(frame);                                   // 듣기를 먼저 걸고 만든다 — ready 를 놓치지 않는다
   }
 
   // ── 넣기 ──────────────────────────────────────────
@@ -464,7 +491,7 @@
     $('stAlbum').addEventListener('click', () => pickFrom($('stAlbumIn')));
     $('stShoot').addEventListener('click', () => pickFrom($('stCamIn')));
     for (const id of ['stFile', 'stAlbumIn', 'stCamIn']) $(id).addEventListener('change', (e) => take(e.target.files[0]));
-    $('stSample').addEventListener('click', () => { S.view = 'in'; demo(); $('stOut').hidden = false; $('stOutH').focus({ preventScroll: true }); $('stOut').scrollIntoView({ behavior: motion(), block: 'start' }); });
+    $('stSample').addEventListener('click', () => { S.view = 'in'; demo(); $('stLive').hidden = false; live(); $('stOut').hidden = false; $('stOutH').focus({ preventScroll: true }); $('stOut').scrollIntoView({ behavior: motion(), block: 'start' }); });
     $('stGo').addEventListener('click', submit);
     $('stMine').addEventListener('click', myJobs);
     $('stTools').replaceChildren(...TOOLS.map((t) => h('button', { type: 'button', text: t.name, onclick: () => openTool(t.id) })));

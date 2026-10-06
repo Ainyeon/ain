@@ -9,6 +9,19 @@
   .st-wiz { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; }
   .st-left { position: sticky; top: calc(var(--nav-h) + var(--sp-4)); max-height: calc(100dvh - var(--nav-h) - 2 * var(--sp-4)); overflow: auto; overscroll-behavior: contain; }   /* 오른쪽 예시·결과를 내려 봐도 넣기·고르기가 보이게(옛 2행 걸침은 왼쪽 2행을 밀어냈다) */
 }
+/* 예시 모형: 조감 그림이 먼저, 뷰어가 준비되면 그 위에 */
+.st-right { display: grid; gap: var(--sp-5); min-width: 0; }
+.st-live-box { position: relative; aspect-ratio: 4 / 3; border: 1px solid var(--c-line); border-radius: var(--r-3); overflow: hidden; background: var(--c-surface-sub); }
+.st-live-box > img, .st-live-box > iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; object-fit: cover; }
+.st-live-box > iframe { opacity: 0; pointer-events: none; }
+.st-live-box.on > iframe { opacity: 1; pointer-events: auto; }
+.st-live-box.on > img { opacity: 0; }                   /* 모형 바탕이 투명이라 그림은 사라져야 한다 — 띡 바뀌지 않게 겹쳐 넘긴다 */
+.st-live-box > img, .st-live-box > iframe { transition: opacity .35s ease; }
+@media (prefers-reduced-motion: reduce) { .st-live-box > img, .st-live-box > iframe { transition: none; } }
+.st-live-box .st-tag { position: absolute; top: var(--sp-2); left: var(--sp-2); z-index: 1; margin: 0; }
+#stLiveMsg { min-height: 1.6em; margin-top: var(--sp-2); }
+#stLiveNav { flex-wrap: nowrap; overflow-x: auto; min-height: 52px; margin: var(--sp-1) -4px 0; padding: 4px; }   /* 버튼이 생겨도 아래가 안 밀리게 높이를 잡아 두고, 초점 테두리가 잘리지 않게 안쪽 여백 */
+#stLiveNav button { flex: none; }
 /* 넣기 칸 */
 .st-drop { display: grid; justify-items: center; align-content: center; gap: var(--sp-2); min-height: 200px; padding: var(--sp-5) var(--sp-4);
   border: 2px dashed var(--c-control); border-radius: var(--r-3); background: var(--c-surface); text-align: center; }
