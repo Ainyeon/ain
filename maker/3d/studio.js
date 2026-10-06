@@ -1,4 +1,5 @@
 // 3D 스튜디오 — 넣기 → 받을 것 → 받기 (처음 온 사람 기준, 2026-10-02 대표 '사용자 친화적으로' — 시안 3개를 사용자 4명 관점으로 비교해 단계형으로).
+// 2026-10-06 대표 'suapp 처럼': 큰 판 하나 + 번호 줄(누르면 큰 판이 바뀐다) + 그림으로 고르기. 큰 판은 접지 않는다(예시 모형 → 내 도면 → 내 모형 → 결과).
 // 실제 작업은 로그인 후 supabase/20_studio.sql 의 studio_* 함수와 비공개 'studio' 저장소로, 계산은 운영자 장비가 차례로.
 // 보안: 파일 이름·작업 결과 문구는 전부 textContent로만(innerHTML 금지). 색·자르기·글자는 기기 안에서만(서버로 안 보냄).
 (function () {
@@ -6,11 +7,11 @@
   const D = '/maker/3d/demo/';
   const MB = 1024 * 1024;
   const OUT = {                                          // 받을 것 — 셋 다 같은 엔진, 조감·평면·단면·전개·물량은 늘 함께
-    cg: { tool: 'plan3d', name: '도면대로', m: '보통 5분', img: D + 'view_hero.webp', eta: '보통 5분' },
-    photo: { tool: 'interior', name: '사진처럼', m: 'AI · 보통 15~25분 · 질감은 AI', img: '/maker/3d/photo.webp', eta: '보통 15~25분' },
-    design: { tool: 'design', name: '디자인 제안', m: 'AI · 보통 15~25분 · 마감·가구는 AI', img: '/maker/3d/design.webp', eta: '보통 15~25분' },
+    cg: { tool: 'plan3d', name: '도면대로', m: '보통 5분', img: D + 'view_hero.webp' },
+    photo: { tool: 'interior', name: '사진처럼', m: '보통 15~25분 · 질감은 AI', img: '/maker/3d/photo.webp' },
+    design: { tool: 'design', name: '디자인 제안', m: '보통 15~25분 · 마감·가구는 AI', img: '/maker/3d/design.webp' },
   };
-  const ALSO = [['aerial.webp', '조감'], ['plan.webp', '평면'], ['section.webp', '단면'], ['elev_south.webp', '전개'], ['iso.webp', '등각']];
+  const ALSO = ['조감', '평면', '단면', '전개', '등각'];
   const TOOLS = [                                        // 사진 손질 — 지우개·배경 떼기는 운영자 장비, 나머지는 기기 안
     { id: 'erase', name: '지우개', kind: 'erase', m: '작은 물건 지우기' },
     { id: 'cutout', name: '배경 떼기', kind: 'cutout', m: '가구 하나만 남기기' },
@@ -19,23 +20,27 @@
     { id: 'text', name: '글자', kind: 'text' },
   ];
   const NAME = { plan3d: '도면대로', interior: '사진처럼', design: '디자인 제안', erase: '지우개', cutout: '배경 떼기' };
-  const DEMO = {
-    photo: [['/maker/3d/photo.webp', '사진처럼(AI)'], ['/maker/3d/design.webp', '디자인 제안(AI) — 마감·가구는 AI']],
-    views: [['view_hero.webp', '거실 와이드'], ['view_wide.webp', '전체 와이드'], ['view_reverse.webp', '역방향'], ['view_medium.webp', '실내기 가까이']],
-    aerial: [['aerial.webp', '조감 — 천장 속 냉매 배관(청록)']],
-    drawings: [['plan.webp', '컬러 평면도'], ['section.webp', '단면 — 천장고·반자 속(가정)'], ['elev_south.webp', '전개도'], ['iso.webp', '등각도'], ['elev_east.webp', '전개도']],
+  const DEMO = {                                         // 파일 · 큰 판 아래 이름 · 번호 줄 이름
+    photo: [['/maker/3d/photo.webp', '사진처럼', '사진처럼'], ['/maker/3d/design.webp', '디자인 제안', '디자인']],
+    views: [['view_hero.webp', '거실 와이드', '거실'], ['view_wide.webp', '전체 와이드', '전체'], ['view_reverse.webp', '역방향', '역방향'], ['view_medium.webp', '실내기 가까이', '가까이']],
+    aerial: [['aerial.webp', '조감 — 천장 속 냉매 배관(청록)', '조감']],
+    drawings: [['plan.webp', '컬러 평면도', '평면'], ['section.webp', '단면 — 천장고·반자 속(가정)', '단면'], ['elev_south.webp', '전개도', '전개'], ['iso.webp', '등각도', '등각'], ['elev_east.webp', '전개도', '전개 2']],
   };
-  const GROUP = { photo: 'AI 사진', views: '실내', aerial: '조감', drawings: '도면', edit: '결과' };
+  const GROUPS = ['photo', 'views', 'aerial', 'drawings', 'edit'];   // 결과 번호 줄의 순서: AI 사진 → 실내 → 조감 → 도면 → 손질 결과
+  const EX = [].concat(...Object.entries(DEMO).map(([g, xs]) => xs.map(([f, cap, short]) => ({ url: f.startsWith('/') ? f : D + f, cap, short, group: g, ai: g === 'photo' }))));
+  const BLANK = {};                                      // 큰 판에 올릴 것이 아직 없을 때(주소로 연 작업) — 글 없는 빈 판
+  const LBL = { lg: 'LG', samsung: '삼성', white: '화이트', wood: '우드', gray: '그레이', day: '낮', evening: '저녁' };
   const ERR = {
     login_required: '로그인이 필요합니다.', tool_not_allowed: '지금은 쓸 수 없는 도구입니다.', limit_month: '이번 달 작업 한도를 다 썼습니다.',
     limit_active: '진행 중인 작업이 끝나면 다시 올려 주세요.', bad_file: '올릴 수 없는 파일입니다.', not_found: '작업을 찾지 못했습니다.',
     PGRST202: '지금은 예시만 됩니다.',
   };
   const OK_EXT = ['dwg', 'dxf', 'pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];
-  const S = { session: null, file: null, out: 'cg', opt: { brand: 'lg', style: 'white', mood: 'day', area: '' }, timer: null, busy: false, view: 'in' };
+  const S = { session: null, file: null, out: 'cg', opt: { brand: 'lg', style: 'white', mood: 'day', area: '' }, timer: null, busy: false, view: 'in',
+    items: [], pic: null, tok: 0, fin: false, sent: null, sheet: false };   // items 번호 줄 · pic 큰 판에 올린 것(null = 모형) · sent 이 방문에서 올린 작업
   const $ = (id) => document.getElementById(id);
-  const motion = () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth');
-  const wide = () => matchMedia('(min-width: 901px)').matches;
+  const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motion = () => (still() ? 'auto' : 'smooth');
 
   function h(tag, attrs, kids) {                         // 작은 DOM 도우미 — 글자는 textContent 로만
     const el = document.createElement(tag);
@@ -52,22 +57,51 @@
   const errText = (e) => ERR[(e && (e.code === 'PGRST202' ? 'PGRST202' : e.message)) || ''] || ('처리하지 못했습니다' + (e && e.message ? ' — ' + e.message : ''));
   const client = () => window.ainAuth && window.ainAuth.getClient();
   const fmtMB = (n) => (n / MB < 1 ? Math.max(1, Math.round(n / 1024)) + 'KB' : (n / MB).toFixed(1) + 'MB');
-  const clean = (cap) => (cap || '').replace(/\s*·\s*형태 일치 \d+%/, '');   // 수치는 AI 사진이 도면만큼 정확하다는 뜻으로 읽혀 화면에선 뺀다
+  const clean = (cap) => (cap || '').replace(/\s*·\s*형태 일치 \d+%/, '').replace('(AI)', '').replace(' — 마감·가구는 AI', '').replace(' 다듬기', '');   // 수치는 AI 사진이 도면만큼 정확하다는 뜻으로 읽혀 화면에선 뺀다 · 'AI' 는 표시가, 나머지는 받을 것 줄이 이미 말한다
+  const isDemo = () => !!$('stOutBody').dataset.demo;
+  const heroOf = () => EX.find((x) => x.url === OUT[S.out].img);
+  const area = () => { const a = Number(S.opt.area); return S.file && S.file.isImg && a >= 10 && a <= 400 ? a : ''; };   // 실제로 보낼 전용면적(범위 밖·사진 아님 = 자동)
+  const key = () => JSON.stringify([S.out, S.opt.brand, S.opt.style, S.opt.mood, area()]);   // 방금 만든 것과 같은 주문인가
+  function mine() {                                      // 넣은 도면을 큰 판·번호 줄에 올릴 항목 — S.file 안에 두지 않는다(로그인 왕복 때 IndexedDB 로 들어간다)
+    if (!S.file) return null;
+    if (!S.mine || S.mine.f !== S.file) S.mine = Object.assign({ f: S.file, mine: true, cap: S.file.name }, S.file.thumb ? { url: S.file.thumb } : { ext: S.file.up.toUpperCase() });
+    return S.mine;
+  }
+  function gone(el, off) {                               // 사라질 때도 띡 사라지지 않게 — 흐려진 뒤 숨긴다
+    clearTimeout(el._t);
+    if (!off) { el.classList.remove('bye'); el.hidden = false; return; }
+    if (el.hidden) return;
+    el.classList.add('bye');
+    el._t = setTimeout(() => { el.hidden = true; el.classList.remove('bye'); }, still() ? 0 : 200);
+  }
+  function see() {                                       // 큰 판과 그 아래 줄이 다 보이면 그대로, 가려져 있으면 큰 판 위로(붙은 메뉴 아래)
+    const el = $('stLive'), top = el.getBoundingClientRect().top, low = $('stOut').getBoundingClientRect().bottom;
+    if (top < (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0) || low > innerHeight) el.scrollIntoView({ behavior: motion(), block: 'start' });
+  }
+  function clearFile() {                                 // 넣은 도면을 비운다 — 썸네일 주소도 놓는다
+    if (S.file && S.file.thumb) URL.revokeObjectURL(S.file.thumb);
+    S.file = S.mine = null;
+    fileRow();
+  }
+  function seg(opts, cur, on, label) {                   // 하나 고르기 줄 — 다시 그리지 않고 표시만 바꾼다(색 전환이 돌고 초점이 남는다)
+    const row = h('div', { class: 'st-row', role: label ? 'group' : null, 'aria-label': label }, opts.map(([v, n]) => h('button', { type: 'button', text: n, class: v === cur ? 'on' : null, 'aria-pressed': String(v === cur),
+      onclick: (e) => { for (const b of row.children) { const hit = b === e.currentTarget; b.classList.toggle('on', hit); b.setAttribute('aria-pressed', String(hit)); } on(v); } })));
+    return row;
+  }
 
-  // ── 화면 상태: in(넣기) · pick(받을 것) · out(받기) — 뒤로가기로 앞 단계 ──────────
+  // ── 화면 상태: in(넣기) · pick(받을 것) · out(받기) — 뒤로가기로 앞 단계. 칸을 접지 않는다(큰 판·번호 줄이 상태를 보여 준다) ──────────
   function setView(v, push = true) {
     S.view = v;
-    $('stPickSec').hidden = !(v === 'pick' || (v === 'out' && S.file));
-    $('stOut').hidden = !(v === 'out' || wide());
-    $('stBar').hidden = v !== 'pick';
-    if (v !== 'out') S.scene = null;                     // 작업 화면을 떠나면 모형은 예시로
-    $('stLive').hidden = v === 'out' && !S.scene;        // 내 작업을 보는 동안 예시 모형은 접는다 — 내 모형이 와 있으면 그것을 보인다
-    if (v !== 'out') requestAnimationFrame(() => { if (!$('stLive').hidden) live(); });   // 한 박자 뒤, 그때도 보일 때만(작업 주소로 바로 들어오면 곧 접히므로 뷰어를 받지 않는다)
-    if (v !== 'out') demo();
+    if (v !== 'out') {                                   // 작업 화면을 떠나면 확인을 멈추고 큰 판은 예시로
+      clearTimeout(S.timer);
+      S.job = S.scene = null; S.fin = false;
+      requestAnimationFrame(() => { if (S.view !== 'out') live(); });   // 한 박자 뒤, 그때도 예시일 때만(작업 주소로 바로 들어오면 예시 뷰어를 받지 않는다)
+      demo();
+    }
     bar();
-    if (push) history.pushState({ v }, '', location.pathname + location.search + (location.hash.startsWith('#job-') && v === 'out' ? location.hash : ''));
-    const head = { in: 'stInH', pick: 'stPickH', out: 'stOutH' }[v];
-    if (head && v !== 'in') { $(head).focus({ preventScroll: true }); $(head).scrollIntoView({ behavior: motion(), block: 'start' }); }
+    if (push) history.pushState({ v }, '', location.pathname + location.search);
+    if (v === 'pick') { $('stPickH').focus({ preventScroll: true }); $('stPickH').scrollIntoView({ behavior: motion(), block: 'nearest' }); }   // 보이면 그대로 — 큰 판에 올린 내 도면을 밀어내지 않는다
+    if (v === 'out') { $('stOutH').focus({ preventScroll: true }); see(); }
   }
 
   // ── 예시 모형: 로그인·올리기 없이 바로 돌려 보는 합성 평면(2026-10-06 대표 '이렇게 매끄럽게') ──────────
@@ -82,8 +116,7 @@
     box.classList.remove('on');
     msg.textContent = '';
     nav.replaceChildren();
-    box.querySelector('img').hidden = box.querySelector('.st-tag').hidden = !!mine;   // 예시 그림·'예시' 표시는 내 모형에 안 붙인다
-    $('stLive').setAttribute('aria-label', mine ? '내 모형' : '예시 모형');
+    box.querySelector('img').hidden = !!mine;            // 예시 그림은 내 모형 밑에 깔지 않는다('예시' 표시는 show() 가 맞춘다)
     const frame = S.frame = h('iframe', { src: '/maker/3d/view/?embed&scene=' + (mine ? '@host' : 'apartment&v=2'), title: mine ? '내 공간 모형' : '예시 평면 모형', loading: mine ? null : 'lazy' });
     const send = (m) => frame.contentWindow.postMessage(Object.assign({ ns: 'bd3d' }, m), location.origin);
     const mark = (id) => { for (const b of nav.children) { const on = b.dataset.id === (id || '') || (!!id && b.dataset.zone === id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); } };   // 바닥을 눌러 들어가면 id 가 구역이다
@@ -94,6 +127,9 @@
       if (m.type === 'need') { if (mine) send({ type: 'load', bundle: mine }); }
       else if (m.type === 'ready') {
         box.classList.add('on');
+        S.up = frame;
+        frame.inert = !!S.pic;
+        if (mine && S.pic && (S.pic.mine || S.pic === BLANK)) show(null);   // 기다리던 판(내 도면·빈 판)이면 이제 모형으로 겹쳐 넘긴다 — 그 사이 고른 그림·결과는 덮지 않는다
         msg.textContent = '실내기를 눌러 보세요';
         nav.replaceChildren(h('button', { type: 'button', 'data-id': '', text: '전체', onclick: () => send({ type: 'home' }) }),
           ...(m.entries || []).slice(0, 12).map((en) => h('button', { type: 'button', 'data-id': String(en.id), 'data-zone': String(en.zone || ''), text: String(en.name), onclick: () => send({ type: 'goUnit', id: en.id }) })));
@@ -102,7 +138,84 @@
       else if (m.type === 'home') { msg.textContent = '실내기를 눌러 보세요'; mark(null); }
       else if (m.type === 'drop' && m.file instanceof File) { $('stDrop').classList.remove('over'); if ($('stPanel').hidden) take(m.file); }   // 모형 위에 떨어뜨리거나 붙여넣은 파일도 넣기로
     });
+    frame.inert = true;                                  // 뜨기 전(안 보임)에는 초점·읽기에서 뺀다 — ready 에서 푼다
     box.append(frame);                                   // 듣기를 먼저 걸고 만든다 — ready 를 놓치지 않는다
+  }
+
+  // ── 큰 판 · 번호 줄 ─────────────────────────────────
+  // 항목: {url, cap, short?, group, ai, path?} · 내 도면 {mine, url | ext, cap} · BLANK. 모형 칸은 예시이거나 내 모형이 왔을 때만.
+  function rail(items) {
+    S.items = items;
+    const had = $('stRail').contains(document.activeElement);   // 방향키로 넘기던 중이면 다시 그린 뒤 초점을 돌려준다
+    let n = 0, i = 0;
+    const tile = (x, body, name, label) => {
+      const inp = h('input', { type: 'radio', name: 'view', 'aria-label': label, onchange: () => show(x) });
+      inp._x = x;
+      const el = h('label', { class: 'st-th' + (x && x.mine ? ' mine' : '') }, [inp, h('span', { class: 'b' }, body), h('span', { class: 't', text: name })]);
+      el.style.setProperty('--i', Math.min(i++, 12));
+      return el;
+    };
+    const pic = (x) => h('img', { src: x.url, alt: '', loading: 'lazy', decoding: 'async' });
+    $('stRail').replaceChildren(
+      ...items.filter((x) => x.mine).map((x) => tile(x, x.url ? pic(x) : x.ext, '내 도면', '내 도면')),
+      ...(isDemo() || S.scene ? [tile(null, '모형', '', '모형')] : []),   // 글자 칸 — 이름을 한 번 더 적지 않는다
+      ...items.filter((x) => !x.mine).map((x) => tile(x, [pic(x), h('span', { class: 'n', text: String(++n) }), x.ai ? h('span', { class: 'ai', text: 'AI' }) : null], x.short || x.cap.split(/ [—·] /)[0], n + ' ' + x.cap)));
+    mark();
+    const to = had && ($('stRail').querySelector('input:checked') || $('stRail').querySelector('input'));
+    if (to) to.focus({ preventScroll: true });
+  }
+  function mark() {                                      // 고른 칸 표시 + 줄 안에서만 그 칸으로(scrollIntoView 는 페이지까지 끌고 간다)
+    const r = $('stRail');
+    for (const inp of r.querySelectorAll('input')) {
+      inp.checked = inp._x === S.pic;
+      const t = inp.parentNode;
+      if (inp.checked) r.scrollTo({ left: t.offsetLeft - (r.clientWidth - t.offsetWidth) / 2, top: t.offsetTop - (r.clientHeight - t.offsetHeight) / 2, behavior: motion() });
+    }
+  }
+  function show(x) {                                     // 큰 판에 올린다 — null 이면 모형. 새 그림이 다 열린 뒤 겹쳐 넘기고(빈 순간 없음) 마지막에 고른 것이 이긴다
+    x = x || null;
+    const box = $('stLiveBox'), prev = S.pic;
+    S.pic = x;
+    mark();
+    const sync = () => {                                 // 큰 판 아래 줄·표시를 지금 올라온 것에 맞춘다(그림은 다 열린 뒤에 부른다 — 이름이 그림보다 먼저 바뀌지 않게)
+      $('stLive').classList.toggle('pic', !!x);
+      if (S.frame) S.frame.inert = !!x || S.up !== S.frame;   // 그림이 덮고 있거나 아직 안 뜬 모형은 초점·읽기에서 뺀다
+      box.querySelector('.st-tag').classList.toggle('off', !isDemo() || !!(x && x.mine));   // '예시' 는 예시 모형·예시 그림에만
+      if (!x) return;
+      $('stCapT').replaceChildren(...[x.ai ? h('span', { class: 'st-tag', text: 'AI' }) : null, h('span', { class: 'c', text: x.mine ? '' : x.cap || '' }), x.ai ? h('span', { class: 'w', text: '도면과 다를 수 있음' }) : null].filter(Boolean));   // 내 도면 이름은 파일 줄이 이미 말한다
+      $('stCapA').replaceChildren(...[x.url && !x.mine ? h('a', { class: 'btn-line', href: x.url, target: '_blank', rel: 'noopener', text: '크게' }) : null,
+        x.path ? h('button', { type: 'button', class: 'st-save', text: '저장', onclick: (e) => keepPic(x, e.currentTarget) }) : null].filter(Boolean));
+      if (x.path && matchMedia('(pointer: coarse)').matches) ready(x);   // 폰은 누른 그 자리에서 공유 창을 띄워야 한다 — 미리 받아 둔다
+    };
+    if (x === prev) return sync();                       // 같은 것을 다시 올림 — 열리는 중인 층이 그대로 이긴다(토큰을 올리면 그 층이 스스로 지워진다)
+    const tok = ++S.tok;
+    const old = [...box.querySelectorAll('.st-pic')], drop = () => setTimeout(() => old.forEach((o) => o.remove()), 400);
+    if (!x) { sync(); old.forEach((o) => o.classList.remove('in')); return drop(); }
+    const layer = h('div', { class: 'st-pic', 'data-d': prev && S.items.indexOf(prev) > S.items.indexOf(x) ? 'p' : 'n' });
+    const on = () => { if (tok !== S.tok) return layer.remove(); sync(); void layer.offsetWidth; layer.classList.add('in'); drop(); };
+    const fail = () => {                                 // 못 열었다(서명 주소 만료·망 끊김) — 앞 상태로 되돌린다(모형이면 다시 눌린다)
+      layer.remove();
+      if (tok !== S.tok) return;
+      S.pic = prev; mark();
+      if (prev) capErr(); else $('stLiveMsg').textContent = '열지 못했습니다';
+    };
+    if (x.url) layer.append(h('img', { src: x.url, alt: x.cap || '', decoding: 'async', onload: on, onerror: fail }));
+    else if (x.ext) layer.append(h('div', { class: 'st-doc' }, [h('strong', { text: x.ext }), h('span', { text: x.cap })]));
+    box.append(layer);
+    if (!x.url) on();
+  }
+  const capErr = () => $('stCapT').replaceChildren(h('span', { class: 'c', text: '열지 못했습니다' }));
+  const ready = (x) => (x.ready = x.ready || client().storage.from('studio').download(x.path).then((d) => { if (d.error) x.ready = null; else x.blob = d.data; }, () => { x.ready = null; }));
+  function keepPic(x, btn) {                             // 저장 — 폰은 공유 창(사진첩에 닿는다), 그 밖은 내려받기
+    if (!x.blob) {                                       // 아직 못 받았다 — 받는 동안 단추를 잠그고(여러 번 눌러도 한 번) 다 받으면 이어서
+      btn.disabled = true;
+      return ready(x).then(() => { btn.disabled = false; if (x.blob) keepPic(x, btn); else if (S.pic === x) capErr(); });
+    }
+    const ext = (/\.(webp|png|jpe?g)$/i.exec(x.path) || [0, 'webp'])[1].toLowerCase();   // 아는 확장자만 — 경로를 이름에 싣지 않는다
+    const name = ((x.cap || '').replace(/[\\/:*?"<>|\u0000-\u001f‪-‮]/g, ' ').trim().slice(0, 40) || 'ain-studio') + '.' + ext;
+    const file = new File([x.blob], name, { type: x.blob.type || (ext === 'jpg' ? 'image/jpeg' : 'image/' + ext) });
+    if (matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) return navigator.share({ files: [file] }).catch((e) => { if (!e || e.name !== 'AbortError') save(x.blob, name); });
+    save(x.blob, name);
   }
 
   // ── 넣기 ──────────────────────────────────────────
@@ -129,111 +242,109 @@
     fileRow();
     pick();
     setView('pick');
+    show(mine());                                        // 넣은 도면이 큰 판에 — 들어갔다는 것이 보인다
   }
   function fileRow() {
     const r = $('stFileRow');
-    $('stSample').hidden = !!S.file;                    // 파일을 넣은 뒤엔 예시 링크 대신 받을 것
+    $('stWiz').dataset.file = S.file ? '1' : '';        // 폰은 도면을 넣은 뒤에 받을 것(studio.css)
     if (!S.file) { r.hidden = true; $('stDrop').hidden = false; return; }
     $('stDrop').hidden = true;
     r.hidden = false;
     r.replaceChildren(S.file.thumb ? h('img', { src: S.file.thumb, alt: '', width: 56, height: 56 }) : h('span', { class: 'ext', text: S.file.up.toUpperCase() }),
       h('span', { class: 'nm' }, [S.file.name, h('small', { text: fmtMB(S.file.size) })]),
-      h('button', { type: 'button', class: 'btn-line', text: '바꾸기', onclick: () => { S.file = null; fileRow(); setView('in'); $('stPick').focus(); } }));
+      h('button', { type: 'button', class: 'btn-line', text: '바꾸기', onclick: () => { clearFile(); setView('in'); $('stPick').focus(); } }));
   }
 
   // ── 받을 것 ────────────────────────────────────────
   function pick() {
+    const say = () => $('stPickM').replaceChildren(h('span', { text: OUT[S.out].m }));
+    const hero = () => { if (isDemo() && !(S.pic && S.pic.mine)) show(heroOf()); };   // 고르면 그 예시가 큰 판에(내 도면을 보는 중이면 그대로)
     $('stPickSet').replaceChildren(h('legend', { class: 'st-vh', text: '받을 것' }), ...Object.entries(OUT).map(([k, o]) =>
       h('label', { class: 'st-opt' }, [
-        h('input', { type: 'radio', name: 'out', value: k, checked: S.out === k, onchange: () => { S.out = k; bar(); demo(); } }),
-        h('span', { class: 'st-opt-b' }, [h('img', { src: o.img, alt: '', width: 96, height: 60, loading: 'lazy' }),
-          h('span', {}, [h('span', { class: 't', text: o.name }), h('span', { class: 'm', text: o.m })])]),
+        h('input', { type: 'radio', name: 'out', value: k, checked: S.out === k, onchange: () => { S.out = k; say(); bar(); hero(); }, onclick: () => { if (S.out === k) hero(); } }),   // 이미 고른 것을 다시 눌러도 반응한다
+        h('span', { class: 'st-opt-b' }, [h('span', { class: 'p' }, [h('img', { src: o.img, alt: '', width: 160, height: 100, loading: 'lazy' }), k !== 'cg' ? h('span', { class: 'st-tag', text: 'AI' }) : null]),
+          h('span', { class: 't', text: o.name })]),
       ])));
-    $('stAlso').replaceChildren(h('span', { text: '함께 받음' }), ...ALSO.map(([f, n]) => h('figure', {}, [h('img', { src: D + f, alt: '', width: 48, height: 36, loading: 'lazy' }), h('figcaption', { text: n })])),
-      h('figure', {}, [h('span', { class: 'st-tag', text: '표' }), h('figcaption', { text: '물량' })]));
+    say();
+    $('stAlso').textContent = '함께 받음 · ' + ALSO.concat('물량').join(' · ');
     more();
   }
   function more() {
     const o = S.opt;
-    const label = { lg: 'LG', samsung: '삼성', white: '화이트', wood: '우드', gray: '그레이', day: '낮', evening: '저녁' };
-    $('stMoreSum').textContent = `더 고르기 · ${label[o.brand]} · ${label[o.style]} · ${label[o.mood]}`;
-    const row = (key, vals) => h('div', { class: 'st-row' }, vals.map((v) => h('button', { type: 'button', text: label[v], class: o[key] === v ? 'on' : null,
-      'aria-pressed': String(o[key] === v), onclick: () => { o[key] = v; keep(); more(); } })));
-    const area = h('input', { type: 'number', id: 'stArea', name: 'area', autocomplete: 'off', min: 10, max: 400, step: '0.01', inputmode: 'decimal', placeholder: '예) 84.97', value: o.area,
-      oninput: (e) => { o.area = e.target.value; } });
-    $('stMoreBody').replaceChildren(h('p', { class: 'lbl', text: '제조사' }), row('brand', ['lg', 'samsung']), h('p', { class: 'lbl', text: '마감 톤' }), row('style', ['white', 'wood', 'gray']),
-      h('p', { class: 'lbl', text: '시간' }), row('mood', ['day', 'evening']),
-      S.file && S.file.isImg ? h('label', { class: 'lbl', for: 'stArea' }, ['전용면적(㎡) · 비우면 자동']) : null, S.file && S.file.isImg ? area : null);
+    const row = (k, name, vals) => seg(vals.map((v) => [v, LBL[v]]), o[k], (v) => { o[k] = v; keep(); bar(); }, name);
+    const img = S.file && S.file.isImg;
+    $('stMoreBody').replaceChildren(...[h('p', { class: 'lbl', text: '제조사' }), row('brand', '제조사', ['lg', 'samsung']), h('p', { class: 'lbl', text: '마감 톤' }), row('style', '마감 톤', ['white', 'wood', 'gray']),
+      h('p', { class: 'lbl', text: '시간' }), row('mood', '시간', ['day', 'evening']),
+      img ? h('label', { class: 'lbl wide', for: 'stArea', text: '전용면적(㎡) · 비우면 자동' }) : null,
+      img ? h('input', { class: 'wide', type: 'number', id: 'stArea', name: 'area', autocomplete: 'off', min: 10, max: 400, step: '0.01', inputmode: 'decimal', placeholder: '예) 84.97', value: o.area,
+        oninput: (e) => { o.area = e.target.value; bar(); } }) : null].filter(Boolean));
   }
   function keep() { try { localStorage.setItem('ain-studio-opt', JSON.stringify({ brand: S.opt.brand, style: S.opt.style, mood: S.opt.mood })); } catch (e) {} }
-  function bar() {
-    const go = $('stGo'), eta = $('stEta');
-    if (S.busy) { go.disabled = true; go.textContent = '올리는 중…'; return; }
-    go.disabled = false;
-    go.textContent = S.session ? '만들기' : '카카오 로그인 후 만들기';
-    eta.textContent = S.session ? OUT[S.out].eta : '파일은 그대로';
+  function bar() {                                       // 바: 받을 것 단계의 [만들기] · 이 방문에서 그 도면으로 올린 작업이 끝난 뒤 [다시 만들기](선 모양) — 실패했거나, 받을 것·설정을 바꿨을 때만(같은 주문을 잘못 눌러 한 건을 쓰지 않게)
+    const go = $('stGo'), re = $('stRe'), eta = $('stEta');
+    const again = S.view === 'out' && !!S.fin && !!S.sent && S.sent.id === S.job && S.sent.f === S.file && (S.fin === 'fail' || key() !== S.sent.key);
+    const on = S.view === 'pick' || again;
+    gone($('stBar'), !on);
+    $('stPick').classList.toggle('primary', S.view !== 'out');   // 작업을 보는 동안 채운 단추는 [저장] 하나
+    if (!on) return;                                     // 사라지는 동안에는 안을 바꾸지 않는다(단추가 먼저 빠지지 않게)
+    go.hidden = S.view !== 'pick';
+    re.hidden = !again;
+    go.disabled = re.disabled = S.busy;
+    const t = S.session ? [LBL[S.opt.brand], LBL[S.opt.style], LBL[S.opt.mood]].join(' · ') : '파일은 그대로';   // 고른 설정이 다음 만들기에 들어간다
+    if (eta.textContent !== t) eta.replaceChildren(h('span', { text: t }));
+    go.textContent = S.busy ? '올리는 중…' : S.session ? '만들기' : '카카오 로그인 후 만들기';
+    re.textContent = S.busy ? '올리는 중…' : '다시 만들기';
   }
 
   async function submit() {
     if (!S.file) return setView('in');
+    const ar = $('stMoreBody').querySelector('input');
+    if (ar && !ar.checkValidity()) return ar.reportValidity();   // 전용면적이 범위 밖이면 말없이 버리지 않고 그 칸에서 알린다
     if (!S.session) return login(true);
     const params = { brand: S.opt.brand, style: S.opt.style, mood: S.opt.mood, photo: S.out !== 'cg', photo_mode: S.out === 'design' ? 'design' : 'photo', staging: true };
-    const a = Number(S.opt.area);
-    if (S.file.isImg && a >= 10 && a <= 400) params.area = a;
+    if (area()) params.area = area();
+    const k = key(), f = S.file;                         // 올리는 중에 도면을 바꿔도 이 작업의 도면은 이것
+    $('stInMsg').textContent = '';
     S.busy = true; bar();
     try {
       const id = await submitJob(OUT[S.out].tool, params, [{ name: 'in.' + S.file.up, blob: S.file.blob, type: S.file.type }]);
       S.busy = false;
-      runView(id);
+      S.sent = { id, key: k, f };
+      runView(id, true);
     } catch (e) {
       S.busy = false; bar();
       $('stInMsg').className = 'st-msg err';
       $('stInMsg').textContent = errText(e);
+      $('stInMsg').scrollIntoView({ behavior: motion(), block: 'center' });   // 누른 자리(아래 바)에서 안 보이는 줄이다
     }
   }
 
   // ── 받기: 진행 · 결과 ─────────────────────────────────
-  function demo() {
-    if (S.view === 'out' && !$('stOutBody').dataset.demo) return;   // 작업을 보는 중이면 예시로 덮지 않는다
-    $('stOutH').textContent = '예시';
-    const hero = S.out === 'cg' ? D + 'view_hero.webp' : OUT[S.out].img;
-    const items = [{ url: hero, cap: S.out === 'cg' ? '거실 와이드' : DEMO.photo[S.out === 'design' ? 1 : 0][1], group: 'hero', ai: S.out !== 'cg' }]
-      .concat(...Object.entries(DEMO).map(([g, xs]) => xs.map(([f, c]) => ({ url: f.startsWith('/') ? f : D + f, cap: c, group: g, ai: g === 'photo' }))));
-    const body = $('stOutBody');
+  function demo() {                                      // 작업을 보지 않을 때 — 번호 줄은 예시(넣은 도면이 있으면 맨 앞에)
+    const body = $('stOutBody'), m = mine();
     body.dataset.demo = '1';
-    body.replaceChildren(h('p', { class: 'st-msg' }, [h('span', { class: 'st-tag', text: '예시' }), '합성 평면']), render(items, null),
-      h('p', { class: 'note', text: '가구·소품은 연출 · (가정)은 도면에 없는 값' }));
+    $('stOutH').textContent = '예시';
+    body.replaceChildren(h('p', { class: 'note', text: '가구·소품은 연출' }));
+    $('stSum').replaceChildren();
+    rail((m ? [m] : []).concat(EX));
+    show(S.items.includes(S.pic) ? S.pic : m || null);   // 보던 예시는 그대로, 작업에서 돌아왔으면 넣은 도면(없으면 모형)
   }
 
-  function render(items, sum) {                          // items: {url, cap, group, ai} — 맨 앞 group 'hero' 는 크게
+  function render(sum) {                                 // 물량 · 확인 필요 — 두 칼럼 아래 폭 전체
     const box = h('div', { class: 'st-out' });
-    const hero = items.find((x) => x.group === 'hero');
-    if (hero) box.append(fig(hero, 'st-hero'));
-    const groups = ['photo', 'views', 'aerial', 'drawings', 'edit'].filter((g) => items.some((x) => x.group === g));
-    const chips = groups.map((g) => h('a', { href: '#stG-' + g, text: GROUP[g] }));
-    if (sum && (sum.bom || []).length) chips.push(h('a', { href: '#stG-bom', text: '물량' }));
-    if (sum && (sum.pending || []).length) chips.push(h('a', { href: '#stG-pend', text: '확인 필요' }));
-    if (chips.length > 1) box.append(h('nav', { class: 'st-chips', 'aria-label': '묶음' }, chips));
-    for (const g of groups) {
-      box.append(h('h3', { id: 'stG-' + g, text: GROUP[g] }), h('div', { class: 'st-gal' }, items.filter((x) => x.group === g).map((x) => fig(x))));
-      if (g === 'photo') box.append(h('p', { class: 'note', text: 'AI · 도면과 다를 수 있음' }));
-    }
-    if (sum) {
-      if ((sum.bom || []).length) box.append(h('h3', { id: 'stG-bom', text: '물량' }), h('div', { class: 'st-wrap' }, h('table', { class: 'st-table' }, [
-        h('tr', {}, ['구분', '품목', '규격', '수량', '단위', '근거'].map((x) => h('th', { text: x }))),
-        ...sum.bom.map((r) => h('tr', {}, r.map((x) => h('td', { text: String(x ?? '') }))))])));
-      if ((sum.pending || []).length) box.append(h('h3', { id: 'stG-pend', text: '확인 필요' }), h('ul', {}, sum.pending.map((x) => h('li', { class: 'st-msg', text: x }))));
-      if (sum.note) box.append(h('p', { class: 'note', text: sum.note }));
-    }
+    if ((sum.bom || []).length) box.append(h('h3', { text: '물량' }), h('div', { class: 'st-wrap' }, h('table', { class: 'st-table' }, [
+      h('tr', {}, ['구분', '품목', '규격', '수량', '단위', '근거'].map((x) => h('th', { text: x }))),
+      ...sum.bom.map((r) => h('tr', {}, r.map((x) => h('td', { text: String(x ?? '') }))))])));
+    if ((sum.pending || []).length) box.append(h('h3', { text: '확인 필요' }), h('ul', {}, sum.pending.map((x) => h('li', { class: 'st-msg', text: x }))));
+    if (sum.note) box.append(h('p', { class: 'note', text: sum.note }));
     return box;
   }
-  function fig(x, cls) {
-    return h('figure', { class: cls || null }, [h('img', { src: x.url, alt: x.cap, loading: cls ? 'eager' : 'lazy', decoding: 'async' }),
-      h('figcaption', {}, [h('span', {}, [x.ai ? h('span', { class: 'st-tag', text: 'AI' }) : null, x.cap]),
-        h('a', { href: x.url, target: '_blank', rel: 'noopener', text: '크게' })])]);
+  function fig(x) {
+    return h('figure', {}, [h('img', { src: x.url, alt: x.cap, loading: 'lazy', decoding: 'async' }),
+      h('figcaption', {}, [h('span', { text: x.cap }), h('a', { href: x.url, target: '_blank', rel: 'noopener', text: '크게' })])]);
   }
 
-  const watching = (id) => S.job === id && S.view === 'out' && !$('stOutBody').dataset.demo;   // 그 작업 화면을 지금 보고 있나(떠난 뒤에도 도는 확인이 모형을 끼워 넣지 않게)
+  const watching = (id) => S.job === id && S.view === 'out' && !isDemo();   // 그 작업 화면을 지금 보고 있나(떠난 뒤에도 도는 확인이 화면에 끼어들지 않게)
   async function scene(id) {                             // 작업기가 모형이 서자마자 올려 둔 장면 — 있으면 그림을 기다리지 않고 내 모형부터
     const st = client().storage.from('studio'), dir = S.session.user.id + '/' + id + '/out';
     const ls = await st.list(dir, { search: 'scene.json' });   // 아직 없을 때 404 를 내지 않으려고 목록부터
@@ -243,80 +354,96 @@
     const b = JSON.parse(await d.data.text());
     if (!b || !b.data || !b.checks || !watching(id)) return;
     S.scene = b;
-    $('stLive').hidden = false;
     live();
-    $('stLive').scrollIntoView({ behavior: motion(), block: 'nearest' });   // 받기 칸 위에 생긴다 — 화면 밖이면 보이는 데까지만
+    rail(S.items);                                       // 모형 칸이 생긴다 — 큰 판은 모형이 뜬 뒤(ready)에 넘긴다(그 사이 빈 판이 되지 않게)
   }
 
-  function runView(id) {
+  function runView(id, push) {
     clearTimeout(S.timer);
+    const run = S.run = (S.run || 0) + 1, stale = () => S.run !== run || S.job !== id;   // 이 화면의 확인 고리 — 떠났거나 다시 열었으면 앞 고리는 화면에 쓰지 않는다
     S.job = id;
-    S.scene = null;
+    S.scene = null; S.fin = false;
     const body = $('stOutBody');
     delete body.dataset.demo;
     $('stOutH').textContent = '받기';
-    const steps = h('ol', { class: 'st-steps' });
+    const steps = h('ol', { class: 'st-steps', 'aria-hidden': 'true' }, [h('li'), h('li'), h('li')]);   // 접수 · 만드는 중 · 완료 — 뜻은 옆의 상태 글이 말한다
     const msg = h('p', { class: 'st-msg', role: 'status' });
-    const res = h('div');
-    body.replaceChildren(steps, msg, h('p', { class: 'note', text: '닫아도 됩니다 · 내 작업에 남습니다' }), res);
-    setView('out', S.view !== 'out');
+    const tail = h('div', { class: 'st-tail' }, [h('p', { class: 'note', text: '닫아도 됩니다 · 내 작업에 남습니다' })]);
+    body.replaceChildren(h('div', { class: 'st-run' }, [steps, msg, tail]));
+    $('stSum').replaceChildren();
+    const m = S.sent && S.sent.id === id && S.sent.f === S.file ? [mine()] : [];   // 기다리는 동안 큰 판에는 그 작업에 넣은 도면(주소·내 작업으로 연 것, 도면을 바꾼 뒤는 빈 판)
+    rail(m);
+    show(m[0] || BLANK);
+    setView('out', push ?? S.view !== 'out');
+    history.replaceState({ v: 'out' }, '', '#job-' + id);
     const t0 = Date.now();
-    let last = '', fails = 0;
-    const paint = (now) => steps.replaceChildren(...['접수', '만드는 중', '완료'].map((n, i) => h('li', { 'data-s': i < now ? 'done' : i === now ? 'now' : 'next', 'aria-current': i === now ? 'step' : null, text: n })));
+    let last = '', fails = 0, now = -1;
+    const paint = (n) => { if (n !== now) { now = n; [...steps.children].forEach((li, i) => { li.dataset.s = i < n ? 'done' : i === n ? 'now' : 'next'; }); } };   // 단계가 바뀔 때만(5초마다 다시 그리면 움직임이 끊긴다)
     const say = (t, err) => { if (t !== last) { last = t; msg.textContent = t; msg.className = err ? 'st-msg err' : 'st-msg'; } };
+    const end = (t, err) => { say(t, err); steps.classList.add('stop'); S.fin = err ? 'fail' : 'ok'; bar(); tail.replaceChildren(); };
     paint(0);
     const tick = async () => {
       let r;
       try { r = await client().rpc('studio_status', { p_id: id }); } catch (e) { r = { error: { message: 'network' } }; }
+      if (stale()) return;                               // 그 사이 다른 작업·예시로 넘어갔다 — 낡은 확인은 화면에 쓰지 않는다
       if (r.error) {
-        if (/not_found|login_required/.test(r.error.message || '')) { say(errText(r.error), true); return; }
+        if (/not_found|login_required/.test(r.error.message || '')) return end(errText(r.error), true);
         if (++fails > 1) say('연결 끊김 · 다시 확인 중');
       } else {
         fails = 0;
         const s = r.data;
-        if ((s.status === 'running' || s.status === 'done') && !S.scene && watching(id)) try { await scene(id); } catch (e) {}
+        if ((s.status === 'running' || s.status === 'done') && !S.scene) { try { await scene(id); } catch (e) {} if (stale()) return; }
         if (s.status === 'uploading' || s.status === 'queued') {
           paint(0);
           say(s.ahead ? `접수됨 · 앞에 ${s.ahead}건` : s.worker_alive ? '접수됨 · 곧 시작' : '접수됨 · 늦어질 수 있음');
         } else if (s.status === 'running') {
           paint(1);
-          say(`${S.scene && S.job === id ? '그림 만드는 중' : '만드는 중'} · ${Math.max(1, Math.round((Date.now() - t0) / 60000))}분째`);
-        } else if (s.status === 'failed') { paint(1); say(s.error_ko || '만들지 못했습니다.', true); return; }
-        else if (s.status === 'expired') { say('14일 지나 지웠습니다', true); return; }
-        else if (s.status === 'done') { paint(3); say('완료'); res.replaceChildren(await results(s.outputs || [])); if (document.hidden) document.title = '(완료) 3D 스튜디오'; return; }
+          say(`${S.scene ? '그림 만드는 중' : '만드는 중'} · ${Math.max(1, Math.round((Date.now() - t0) / 60000))}분째`);
+        } else if (s.status === 'failed') { paint(1); return end(s.error_ko || '만들지 못했습니다.', true); }
+        else if (s.status === 'expired') return end('14일 지나 지웠습니다', true);
+        else if (s.status === 'done') {
+          const got = await results(s.outputs || [], stale);
+          if (stale()) return;
+          paint(3);
+          end(got.empty ? '결과가 비었습니다 · 다시 넣어 주세요' : '완료' + (got.bom && got.pend ? ' · 확인 필요 ' + got.pend : ''), got.empty);
+          if (got.bom || got.pend) tail.replaceChildren(h('button', { type: 'button', class: 'btn-line', text: got.bom ? '물량' : '확인 필요 ' + got.pend,
+            onclick: () => { $('stSum').focus({ preventScroll: true }); $('stSum').scrollIntoView({ behavior: motion(), block: 'start' }); } }));
+          if (document.hidden) document.title = '(완료) 3D 스튜디오';
+          return;
+        }
       }
       S.timer = setTimeout(tick, Date.now() - t0 < 120000 ? 5000 : 15000);   // 처음 2분은 5초, 그 뒤 15초
     };
     tick();
   }
 
-  async function results(outputs) {
+  async function results(outputs, stale) {               // 결과를 번호 줄에 붙인다 — 모형을 보고 있으면 큰 판은 그대로(손으로 돌리는 중에 덮지 않는다)
     const c = client();
     const imgs = outputs.filter((o) => o.kind === 'image');
     const signed = imgs.length ? (await c.storage.from('studio').createSignedUrls(imgs.map((o) => o.path), 3600)).data || [] : [];
     const url = Object.fromEntries(signed.map((s) => [s.path, s.signedUrl]));
-    const items = imgs.filter((o) => url[o.path]).map((o) => ({ url: url[o.path], cap: clean(o.caption), group: o.group || 'edit', ai: o.group === 'photo' }));
-    const first = items.find((x) => x.group === 'photo') || items.find((x) => x.group === 'views') || items[0];
-    if (first) items.unshift({ ...first, group: 'hero' });
+    const items = imgs.filter((o) => url[o.path]).map((o) => ({ url: url[o.path], path: o.path, cap: clean(o.caption), group: GROUPS.includes(o.group) ? o.group : 'edit', ai: o.group === 'photo' }))
+      .sort((a, b) => GROUPS.indexOf(a.group) - GROUPS.indexOf(b.group));
     let sum = null;
     const so = outputs.find((o) => o.kind === 'summary');
     if (so) { const d = await c.storage.from('studio').download(so.path); if (!d.error) try { sum = JSON.parse(await d.data.text()); } catch (e) {} }
-    return items.length || sum ? render(items, sum) : h('p', { class: 'st-msg', text: '결과가 비었습니다 · 다시 넣어 주세요' });
+    if (stale()) return {};
+    rail(S.items.filter((x) => x.mine).concat(items));
+    if (items[0] && (!S.scene || S.pic || document.hidden)) show(items[0]);
+    $('stSum').replaceChildren(...(sum ? [render(sum)] : []));
+    return { bom: sum ? (sum.bom || []).length : 0, pend: sum ? (sum.pending || []).length : 0, empty: !items.length && !sum };
   }
 
-  async function myJobs() {
+  async function myJobs() {                              // 창으로 — 큰 판은 뒤에 그대로. 뒤로가기 = 닫기
     if (!S.session) return login(false);
-    const body = $('stOutBody');
-    delete body.dataset.demo;
-    $('stOutH').textContent = '내 작업';
-    S.job = S.scene = null;                              // 목록 위에 앞 작업의 모형을 남기지 않는다
+    const dlg = $('stJobs'), body = $('stJobsBody');
     body.replaceChildren(h('p', { class: 'st-msg', text: '불러오는 중…' }));
-    setView('out');
+    if (!dlg.open) { S.sheet = true; history.pushState({ v: S.view, sheet: 1 }, ''); dlg.showModal(); }
     const r = await client().from('studio_jobs').select('id,tool,status,created_at').order('id', { ascending: false }).limit(20);
     const st = { uploading: '올리는 중', queued: '대기', running: '만드는 중', done: '완료', failed: '실패', expired: '보관 끝' };
     body.replaceChildren(r.error ? h('p', { class: 'st-msg err', text: errText(r.error) })
       : !r.data.length ? h('p', { class: 'empty', text: '아직 작업이 없습니다.' })
-        : h('div', { class: 'st-jobs' }, r.data.map((j) => h('button', { type: 'button', onclick: () => { history.replaceState(null, '', '#job-' + j.id); runView(j.id); } }, [
+        : h('div', { class: 'st-jobs' }, r.data.map((j) => h('button', { type: 'button', onclick: () => { S.sheet = false; dlg.close(); runView(j.id, false); } }, [   // 창을 연 기록 자리가 그 작업이 된다
           h('span', { text: `${NAME[j.tool] || '도면'} · ${new Date(j.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` }),
           h('span', { class: 's', text: st[j.status] || j.status })]))));
   }
@@ -334,33 +461,40 @@
   }
   async function login(withFile) {
     if (withFile && S.file) await idb('readwrite', (s) => s.put({ f: S.file, out: S.out, opt: S.opt, at: Date.now() }, 'p'));
-    client().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/maker/3d/' + (withFile ? '#resume' : '') } });
+    client().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/maker/3d/' + (withFile ? '?resume=1' : '') } });   // 돌아오는 주소의 조각에는 로그인 토큰이 실려 온다 — 표시는 쿼리에
   }
   async function resume() {
     const p = await idb('readonly', (s) => s.get('p'));
     await idb('readwrite', (s) => s.delete('p'));
-    history.replaceState(null, '', location.pathname);
     if (!p || Date.now() - p.at > 30 * 60000) { $('stInMsg').className = 'st-msg err'; $('stInMsg').textContent = '파일을 다시 넣어 주세요'; return; }
     S.file = { ...p.f, thumb: p.f.isImg ? URL.createObjectURL(p.f.blob) : null };
     S.out = p.out; S.opt = p.opt;
     fileRow(); pick(); setView('pick', false);
+    history.replaceState({ v: 'pick' }, '', location.pathname);   // 결과에서 뒤로 = 받을 것(파일 그대로)
     submit();
   }
 
   // ── 사진 손질(기존 도구 화면) ─────────────────────────
   function panel(title, sub, kids) {
     const p = $('stPanel');
-    p.hidden = false;
+    gone(p, false);
     p.replaceChildren(h('button', { type: 'button', class: 'btn-line back', text: '← 돌아가기', onclick: closePanel }),
       h('h3', { text: title }), sub ? h('p', { class: 'sub', text: sub }) : null, ...kids);
     p.scrollIntoView({ behavior: motion(), block: 'start' });
     return p;
   }
-  function closePanel() { $('stPanel').hidden = true; if (location.hash) history.replaceState(null, '', location.pathname); $('stTools').scrollIntoView({ behavior: motion(), block: 'center' }); }
+  function closePanel() {                                // 도구 주소만 걷는다(기록 상태·작업 주소는 그대로 — 뒤로가기가 넣기 + 파일 비움이 되지 않게), 초점은 누른 단추로
+    gone($('stPanel'), true);
+    if (TOOLS.some((t) => '#' + t.id === location.hash)) history.replaceState(history.state, '', location.pathname);
+    $('stTools').scrollIntoView({ behavior: motion(), block: 'center' });
+    const b = $('stTools').children[TOOLS.findIndex((t) => t.id === S.tool)];
+    if (b) b.focus({ preventScroll: true });
+  }
   function openTool(id) {
     const t = TOOLS.find((x) => x.id === id);
     if (!t) return;
-    history.replaceState(null, '', '#' + id);
+    S.tool = id;
+    if (!/^#job-/.test(location.hash)) history.replaceState(history.state, '', '#' + id);
     return t.kind === 'erase' || t.kind === 'cutout' ? photoJobTool(t) : localTool(t);
   }
   const gallery = (pairs) => h('div', { class: 'st-gal' }, pairs.map(([f, cap]) => fig({ url: f.startsWith('/') ? f : D + f, cap })));
@@ -379,7 +513,9 @@
         ed.mask = document.createElement('canvas');
         ed.mask.width = ed.img.width; ed.mask.height = ed.img.height;
         brush(ed);
-        stage.replaceChildren(h('div', { class: 'st-canvas' }, [ed.img, ed.mask]),
+        const cv = h('div', { class: 'st-canvas' }, [ed.img, ed.mask]);
+        cv.style.setProperty('--ar', (ed.img.width / ed.img.height).toFixed(3));   // 폰에서 세로 사진이 화면을 다 덮지 않게(studio.css)
+        stage.replaceChildren(cv,
           h('div', { class: 'st-sliders' }, [h('label', {}, ['붓 크기', h('input', { type: 'range', min: 8, max: 120, value: ed.size, oninput: (e) => { ed.size = +e.target.value; } })])]),
           h('div', { class: 'st-row' }, [h('button', { type: 'button', text: '칠한 곳 비우기', onclick: () => ed.mask.getContext('2d').clearRect(0, 0, ed.mask.width, ed.mask.height) })]),
           h('p', { class: 'st-msg', text: '지울 물건 위를 칠하세요 · 큰 가구는 자국이 남을 수 있음' }));
@@ -398,7 +534,7 @@
         files.push({ name: 'mask.png', blob: await toBlob(m.canvas, 'image/png'), type: 'image/png' });
       }
       go.disabled = true; msg.className = 'st-msg'; msg.textContent = '올리는 중…';
-      try { await submitJob(t.id, {}, files); go.disabled = false; msg.textContent = ''; runView(+location.hash.slice(5)); }
+      try { const id = await submitJob(t.id, {}, files); go.disabled = false; msg.textContent = ''; runView(id); }
       catch (e) { msg.className = 'st-msg err'; msg.textContent = errText(e); go.disabled = false; }
     });
     const ex = t.kind === 'erase' ? [['view_reverse.webp', '원본'], ['erase_after.webp', '지운 뒤 — 탁자 위 화병·책']] : [['cutout_before.webp', '원본'], ['cutout_after.webp', '배경 뗀 뒤(투명 PNG)']];
@@ -439,12 +575,7 @@
       }
     };
     const slider = (label, key, min, max, val) => h('label', {}, [label, h('input', { type: 'range', min, max, value: val, oninput: (e) => { st[key] = +e.target.value; draw(); } })]);
-    const pickRow = (opts, key) => {
-      const row = h('div', { class: 'st-row' });
-      const paint = () => row.replaceChildren(...opts.map(([v, n]) => h('button', { type: 'button', text: n, class: st[key] === v ? 'on' : null, 'aria-pressed': String(st[key] === v), onclick: () => { st[key] = v; paint(); draw(); } })));
-      paint();
-      return row;
-    };
+    const pickRow = (opts, key) => seg(opts, st[key], (v) => { st[key] = v; draw(); });
     const ctrl = t.kind === 'color' ? [h('div', { class: 'st-sliders' }, [slider('밝기', 'b', 50, 150, 100), slider('대비', 'c', 50, 150, 100), slider('채도', 's', 0, 200, 100), slider('따뜻함', 'w', -40, 40, 0)])]
       : t.kind === 'crop' ? [pickRow([[0, '원본 비율'], [16 / 9, '16:9'], [4 / 3, '4:3'], [1, '1:1'], [4 / 5, '4:5']], 'ratio'),
         h('div', { class: 'st-sliders' }, [h('label', {}, ['확대', h('input', { type: 'range', min: 100, max: 300, value: 100, oninput: (e) => { st.zoom = e.target.value / 100; draw(); } })]), slider('가로 위치', 'px', 0, 100, 50), slider('세로 위치', 'py', 0, 100, 50)])]
@@ -452,7 +583,7 @@
         h('div', { class: 'st-sliders' }, [slider('글자 크기', 'size', 3, 12, 6)]), pickRow([['#ffffff', '흰 글자'], ['#1e1d1a', '검은 글자']], 'color'), pickRow([['top', '위'], ['middle', '가운데'], ['bottom', '아래']], 'pos')];
     file.addEventListener('change', async () => {
       const im = await loadImage(file.files[0]);
-      if (!im) return;
+      if (!im) { stage.replaceChildren(h('p', { class: 'st-msg err', role: 'alert', text: '열지 못했습니다' })); return; }
       st.src = fitCanvas(im, 2400);
       draw();
       stage.replaceChildren(h('div', { class: 'st-canvas' }, [st.out]), ...ctrl,
@@ -483,7 +614,7 @@
     const dot = (e) => { const [px, py] = at(e); x.fillStyle = 'rgba(193,52,56,.55)'; x.beginPath(); x.arc(px, py, ed.size * ed.mask.width / ed.mask.getBoundingClientRect().width / 2, 0, Math.PI * 2); x.fill(); };
     ed.mask.addEventListener('pointerdown', (e) => { down = true; ed.mask.setPointerCapture(e.pointerId); dot(e); });
     ed.mask.addEventListener('pointermove', (e) => { if (down) dot(e); });
-    ed.mask.addEventListener('pointerup', () => { down = false; });
+    for (const ev of ['pointerup', 'pointercancel']) ed.mask.addEventListener(ev, () => { down = false; });
   }
   function maskPng(paint) {                              // 칠한 곳 = 흰(지울 곳), 나머지 = 검정
     const c = document.createElement('canvas');
@@ -508,8 +639,7 @@
     }
     const ok = await c.rpc('studio_ready', { p_id: id });
     if (ok.error) throw ok.error;
-    history.replaceState(null, '', '#job-' + id);
-    return id;
+    return id;                                           // 주소(#job-N)는 runView 가 — 여기서 바꾸면 받을 것 기록이 지워져 뒤로가기가 넣기로 간다
   }
 
   // ── 시작 ───────────────────────────────────────────
@@ -521,9 +651,13 @@
     $('stAlbum').addEventListener('click', () => pickFrom($('stAlbumIn')));
     $('stShoot').addEventListener('click', () => pickFrom($('stCamIn')));
     for (const id of ['stFile', 'stAlbumIn', 'stCamIn']) $(id).addEventListener('change', (e) => take(e.target.files[0]));
-    $('stSample').addEventListener('click', () => { S.view = 'in'; S.scene = null; demo(); $('stLive').hidden = false; live(); $('stOut').hidden = false; $('stOutH').focus({ preventScroll: true }); $('stOut').scrollIntoView({ behavior: motion(), block: 'start' }); });
     $('stGo').addEventListener('click', submit);
+    $('stRe').addEventListener('click', submit);
     $('stMine').addEventListener('click', myJobs);
+    const dlg = $('stJobs');
+    $('stJobsX').addEventListener('click', () => dlg.close());
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });   // 창 밖을 누르면 닫는다
+    dlg.addEventListener('close', () => { if (S.sheet) { S.sheet = false; S.skip = true; history.back(); } });   // 닫기·Esc — 창을 열 때 쌓은 기록을 걷는다
     $('stTools').replaceChildren(...TOOLS.map((t) => h('button', { type: 'button', text: t.name, onclick: () => openTool(t.id) })));
     const drop = $('stDrop');
     document.addEventListener('dragover', (e) => { e.preventDefault(); if ($('stPanel').hidden) drop.classList.add('over'); });
@@ -531,27 +665,42 @@
     document.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); if ($('stPanel').hidden && e.dataTransfer.files[0]) take(e.dataTransfer.files[0]); });
     document.addEventListener('paste', (e) => {
       const f = e.clipboardData && e.clipboardData.files[0];
-      if (f && $('stPanel').hidden && !/^(INPUT|TEXTAREA)$/.test((e.target && e.target.tagName) || '')) { e.preventDefault(); take(f); }
+      if (f && $('stPanel').hidden && !(e.target && e.target.matches && e.target.matches('textarea, input:not([type=radio]):not([type=file]):not([type=range])'))) { e.preventDefault(); take(f); }   // 글자를 받는 칸만 거른다(번호 줄·받을 것을 누른 뒤에도 붙여넣기가 된다)
     });
     window.addEventListener('popstate', (e) => {                // 폰 뒤로가기 = 앞 단계. 넣기로 돌아가면 파일을 비운다(넣기 칸이 다시 보이게)
-      const v = (e.state && e.state.v) || 'in';
-      if (v === 'in' && S.file) { S.file = null; fileRow(); }
-      setView(v === 'pick' && !S.file ? 'in' : v, false);
+      if (S.skip) { S.skip = false; return; }                   // 창을 닫으며 걷은 기록
+      if (S.sheet) { S.sheet = false; dlg.close(); return; }    // 창이 떠 있으면 닫기만
+      let v = (e.state && e.state.v) || 'in';
+      const j = location.hash.match(/^#job-(\d+)$/);
+      if (v === 'out' && j && S.session) return runView(+j[1], false);   // 작업 기록으로 돌아오면 그 작업을 다시 연다(다시 만든 뒤 뒤로 = 앞 작업)
+      if (v === 'out') v = 'pick';
+      if (v === 'pick' && !S.file) v = 'in';
+      if (v === 'in' && S.file) clearFile();
+      setView(v, false);
     });
     window.addEventListener('beforeunload', (e) => { if (S.busy) e.preventDefault(); });   // 올리는 중에 닫으면 작업이 '올리는 중'에 멈춘다
-    window.addEventListener('resize', () => { if (S.view !== 'out') $('stOut').hidden = !wide(); });
-    try { S.session = await window.ainAuth.getSession(); } catch (e) { S.session = null; }
-    $('stMine').hidden = !S.session;
-    window.addEventListener('ain:auth', (e) => { S.session = e.detail && e.detail.session; $('stMine').hidden = !S.session; bar(); });
     const hash = location.hash;
     const job = hash.match(/^#job-(\d+)$/);
     if (hash === '#interior') S.out = 'photo';
     if (hash === '#design') S.out = 'design';
-    setView('in', false);
-    history.replaceState({ v: 'in' }, '', location.pathname + (job ? hash : ''));
+    const back = new URLSearchParams(location.search).has('resume');   // 로그인 왕복에서 돌아옴(파일을 맡겨 두고 갔다)
+    const first = () => {
+      pick();
+      setView('in', false);
+      if (S.out !== 'cg' || hash === '#sample') show(heroOf());   // 주소로 고른 종류의 예시를 큰 판에
+    };
+    if (!job) first();                                   // 첫 화면은 로그인 확인을 기다리지 않는다(작업 주소로 온 때만 기다려 예시 뷰어를 받지 않는다)
+    try { S.session = await window.ainAuth.getSession(); } catch (e) { S.session = null; }
+    $('stMine').hidden = !S.session;
+    window.addEventListener('ain:auth', (e) => { S.session = e.detail && e.detail.session; $('stMine').hidden = !S.session; bar(); });
+    if (job) first(); else bar();
+    if (S.view === 'in') history.replaceState({ v: 'in' }, '', location.pathname + (job ? hash : ''));   // 주소는 로그인 확인 뒤에 걷는다 — 돌아온 주소의 조각에 로그인 토큰이 실려 있다(그 사이 도면을 넣었으면 그 기록은 그대로)
+    const title = document.title;
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = title; });   // '(완료)' 표시는 돌아와 보면 걷는다
+    if (!(back && S.session)) idb('readwrite', (s) => s.delete('p'));   // 이어 올리지 않는 방문 — 맡겨 둔 도면을 기기에 남기지 않는다
     if (job && S.session) runView(+job[1]);
-    else if (hash === '#resume' && S.session) resume();
-    else if (hash === '#sample') $('stSample').click();
+    else if (back && S.session) resume();
+    else if (hash === '#sample') see();
     else if (TOOLS.some((t) => '#' + t.id === hash)) openTool(hash.slice(1));
   });
 }());

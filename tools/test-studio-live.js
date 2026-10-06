@@ -33,4 +33,20 @@ assert.ok(/^document\.documentElement\.classList\.add\('embed'\)/.test(read('mak
 const vjs = read('maker/3d/view/viewer.js');
 assert.ok(vjs.includes("e.origin === location.origin && e.source === parent") && vjs.includes("e.origin !== location.origin || e.source !== parent"), '뷰어 메시지 수신에 출처 확인');
 
+// 큰 판 + 번호 줄(2026-10-06) — 끊긴 id · 없는 그림 · 토큰 밖 색 · 스크롤 갇힘이 돌아오지 않게
+const js = read('maker/3d/studio.js'), css = read('maker/3d/studio.css').replace(/\/\*[\s\S]*?\*\//g, '');
+for (const m of js.matchAll(/\$\('(st\w+)'\)/g)) assert.ok(page.includes('id="' + m[1] + '"'), 'index.html 에 #' + m[1]);
+for (const m of js.matchAll(/'((?:\/maker\/3d\/)?\w+\.webp)'/g)) assert.ok(fs.existsSync(path.join(__dirname, '..', m[1].startsWith('/') ? m[1] : 'maker/3d/demo/' + m[1])), '그림 ' + m[1]);
+assert.ok(!/#[0-9a-f]{3,8}\b/i.test(css.replace(/#st\w+/g, '')) && !/gradient/.test(css), 'studio.css 는 토큰만(날 색·그라디언트 없음)');
+const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => [m[1].trim(), m[2]]);
+const sel = (re) => rules.filter(([, body]) => re.test(body)).map(([s]) => s);
+assert.deepStrictEqual(sel(/touch-action:\s*(?!auto|manipulation|pan-y\b)/), ['.st-canvas canvas + canvas'], '손가락을 잡는 곳(touch-action)은 칠 캔버스 한 장만');
+assert.deepStrictEqual(sel(/overscroll-behavior(?:-y|-block)?:\s*[^;}]*\b(?:contain|none)/), ['.st-dlg-in'], '세로 스크롤을 가두는 곳은 창 안뿐');
+assert.ok(rules.length > 80 && [...js.matchAll(/\$\('(st\w+)'\)/g)].length > 40, '위 단언들이 빈 채로 통과하지 않는다');
+assert.ok(!/replaceState\(null/.test(js), '기록 상태를 null 로 덮지 않는다(뒤로가기가 넣기 + 파일 비움이 된다)');
+assert.ok(js.indexOf('if (x === prev) return') > 0 && js.indexOf('if (x === prev) return') < js.indexOf('++S.tok'), '같은 것을 다시 올릴 때 토큰을 올리지 않는다(열리던 내 도면 층이 지워진다)');
+assert.ok(!/redirectTo:[^\n]*#/.test(js), '로그인 뒤 돌아올 주소에 조각(#)을 싣지 않는다(토큰 자리)');
+assert.ok(vjs.includes("touchAction = 'pan-y'") && vjs.includes('enableZoom: false, enablePan: false'), '뷰어: 세로 밀기·휠은 페이지로');
+assert.strictEqual((page.replace(/#[0-9A-F]{6}/gi, '').match(/3D/g) || []).length, 3, "화면 글의 '3D' 는 title·og:title·h1 뿐");
+
 console.log('test-studio-live: OK');
