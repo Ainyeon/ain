@@ -60,7 +60,8 @@
     $('stPickSec').hidden = !(v === 'pick' || (v === 'out' && S.file));
     $('stOut').hidden = !(v === 'out' || wide());
     $('stBar').hidden = v !== 'pick';
-    $('stLive').hidden = v === 'out';                    // 내 작업을 보는 동안 예시 모형은 접는다(다시 보이면 보던 자리 그대로)
+    if (v !== 'out') S.scene = null;                     // 작업 화면을 떠나면 모형은 예시로
+    $('stLive').hidden = v === 'out' && !S.scene;        // 내 작업을 보는 동안 예시 모형은 접는다 — 내 모형이 와 있으면 그것을 보인다
     if (v !== 'out') requestAnimationFrame(() => { if (!$('stLive').hidden) live(); });   // 한 박자 뒤, 그때도 보일 때만(작업 주소로 바로 들어오면 곧 접히므로 뷰어를 받지 않는다)
     if (v !== 'out') demo();
     bar();
@@ -71,17 +72,26 @@
 
   // ── 예시 모형: 로그인·올리기 없이 바로 돌려 보는 합성 평면(2026-10-06 대표 '이렇게 매끄럽게') ──────────
   // 뷰어는 같은 출처 /maker/3d/view/ (엔진 commercial3d 뷰어 내보내기), 장면은 자료(apartment.json). 뷰어가 못 뜨면 조감 그림이 그대로 남는다.
+  // 내 작업 장면(S.scene)은 주소가 아니라 말로 넘긴다(scene=@host → 뷰어 need → load). 뷰어 문서는 저장소와 말하지 않는다.
   function live() {
-    if (S.live) return;                                  // 처음 한 번만
-    S.live = true;
+    const mine = S.scene || null;
+    if (S.live === mine) return;                         // 같은 장면이면 그대로(보던 자리 유지) — S.live: 아직 없음 undefined · 예시 null · 내 장면
+    S.live = mine;
     const box = $('stLiveBox'), msg = $('stLiveMsg'), nav = $('stLiveNav');
-    const frame = h('iframe', { src: '/maker/3d/view/?embed&scene=apartment&v=2', title: '예시 평면 모형', loading: 'lazy' });
+    if (S.frame) S.frame.remove();
+    box.classList.remove('on');
+    msg.textContent = '';
+    nav.replaceChildren();
+    box.querySelector('img').hidden = box.querySelector('.st-tag').hidden = !!mine;   // 예시 그림·'예시' 표시는 내 모형에 안 붙인다
+    $('stLive').setAttribute('aria-label', mine ? '내 모형' : '예시 모형');
+    const frame = S.frame = h('iframe', { src: '/maker/3d/view/?embed&scene=' + (mine ? '@host' : 'apartment&v=2'), title: mine ? '내 공간 모형' : '예시 평면 모형', loading: mine ? null : 'lazy' });
     const send = (m) => frame.contentWindow.postMessage(Object.assign({ ns: 'bd3d' }, m), location.origin);
     const mark = (id) => { for (const b of nav.children) { const on = b.dataset.id === (id || '') || (!!id && b.dataset.zone === id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); } };   // 바닥을 눌러 들어가면 id 가 구역이다
     window.addEventListener('message', (e) => {
       const m = e.data;
-      if (e.origin !== location.origin || e.source !== frame.contentWindow || !m || m.ns !== 'bd3d') return;
-      if (m.type === 'ready') {
+      if (S.frame !== frame || e.origin !== location.origin || e.source !== frame.contentWindow || !m || m.ns !== 'bd3d') return;
+      if (m.type === 'need') { if (mine) send({ type: 'load', bundle: mine }); }
+      else if (m.type === 'ready') {
         box.classList.add('on');
         msg.textContent = '실내기를 눌러 보세요';
         nav.replaceChildren(h('button', { type: 'button', 'data-id': '', text: '전체', onclick: () => send({ type: 'home' }) }),
@@ -222,8 +232,24 @@
         h('a', { href: x.url, target: '_blank', rel: 'noopener', text: '크게' })])]);
   }
 
+  async function scene(id) {                             // 작업기가 모형이 서자마자 올려 둔 장면 — 있으면 그림을 기다리지 않고 내 모형부터
+    const st = client().storage.from('studio'), dir = S.session.user.id + '/' + id + '/out';
+    const ls = await st.list(dir, { search: 'scene.json' });   // 아직 없을 때 404 를 내지 않으려고 목록부터
+    if (ls.error || !(ls.data || []).some((o) => o.name === 'scene.json')) return;
+    const d = await st.download(dir + '/scene.json');
+    if (d.error) return;
+    const b = JSON.parse(await d.data.text());
+    if (!b || !b.data || !b.checks || S.job !== id || S.view !== 'out') return;
+    S.scene = b;
+    $('stLive').hidden = false;
+    live();
+    $('stLive').scrollIntoView({ behavior: motion(), block: 'nearest' });   // 받기 칸 위에 생긴다 — 화면 밖이면 보이는 데까지만
+  }
+
   function runView(id) {
     clearTimeout(S.timer);
+    S.job = id;
+    S.scene = null;
     const body = $('stOutBody');
     delete body.dataset.demo;
     $('stOutH').textContent = '받기';
@@ -246,12 +272,13 @@
       } else {
         fails = 0;
         const s = r.data;
+        if ((s.status === 'running' || s.status === 'done') && !S.scene && S.job === id) try { await scene(id); } catch (e) {}
         if (s.status === 'uploading' || s.status === 'queued') {
           paint(0);
           say(s.ahead ? `접수됨 · 앞에 ${s.ahead}건` : s.worker_alive ? '접수됨 · 곧 시작' : '접수됨 · 늦어질 수 있음');
         } else if (s.status === 'running') {
           paint(1);
-          say(`만드는 중 · ${Math.max(1, Math.round((Date.now() - t0) / 60000))}분째`);
+          say(`${S.scene && S.job === id ? '그림 만드는 중' : '만드는 중'} · ${Math.max(1, Math.round((Date.now() - t0) / 60000))}분째`);
         } else if (s.status === 'failed') { paint(1); say(s.error_ko || '만들지 못했습니다.', true); return; }
         else if (s.status === 'expired') { say('14일 지나 지웠습니다', true); return; }
         else if (s.status === 'done') { paint(3); say('완료'); res.replaceChildren(await results(s.outputs || [])); if (document.hidden) document.title = '(완료) 3D 스튜디오'; return; }
@@ -491,7 +518,7 @@
     $('stAlbum').addEventListener('click', () => pickFrom($('stAlbumIn')));
     $('stShoot').addEventListener('click', () => pickFrom($('stCamIn')));
     for (const id of ['stFile', 'stAlbumIn', 'stCamIn']) $(id).addEventListener('change', (e) => take(e.target.files[0]));
-    $('stSample').addEventListener('click', () => { S.view = 'in'; demo(); $('stLive').hidden = false; live(); $('stOut').hidden = false; $('stOutH').focus({ preventScroll: true }); $('stOut').scrollIntoView({ behavior: motion(), block: 'start' }); });
+    $('stSample').addEventListener('click', () => { S.view = 'in'; S.scene = null; demo(); $('stLive').hidden = false; live(); $('stOut').hidden = false; $('stOutH').focus({ preventScroll: true }); $('stOut').scrollIntoView({ behavior: motion(), block: 'start' }); });
     $('stGo').addEventListener('click', submit);
     $('stMine').addEventListener('click', myJobs);
     $('stTools').replaceChildren(...TOOLS.map((t) => h('button', { type: 'button', text: t.name, onclick: () => openTool(t.id) })));

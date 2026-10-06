@@ -8,6 +8,10 @@ const INLINE = /*@DATA@*/null;
 const BUNDLE = INLINE ? { data: INLINE, checks: /*@CHECKS@*/null } : await loadBundle(Q.get('scene') || '');
 const DATA = BUNDLE.data, CHECKS = BUNDLE.checks;
 async function loadBundle(name) {
+  if (name === '@host') return new Promise(done => {  // 같은 출처 부모가 장면을 넘긴다(로그인한 회원의 작업 — 이 문서는 저장소와 말하지 않는다)
+    addEventListener('message', e => { const m = e.data; if (e.origin === location.origin && e.source === parent && m?.ns === 'bd3d' && m.type === 'load' && m.bundle?.data && m.bundle.checks) done(m.bundle); });
+    parent.postMessage({ ns: 'bd3d', viewer: 'commercial', type: 'need' }, location.origin);
+  });
   if (!/^[a-z0-9_-]{1,40}$/.test(name)) throw new Error('scene name'); // 이름만 — 주소·경로를 받지 않는다
   const r = await fetch(`${name}.json?v=${encodeURIComponent(Q.get('v') || '')}`);
   if (!r.ok) throw new Error(`scene ${r.status}`);
@@ -1414,7 +1418,7 @@ if (EMBED) {
   addEventListener('paste', e => hand(e.clipboardData?.files?.[0])); // 모형을 누른 뒤에는 초점이 이 문서에 있어 부모가 붙여넣기를 못 받는다
   addEventListener('message', e => {
     const m = e.data;
-    if (e.source !== parent || !m || m.ns !== 'bd3d') return;
+    if (e.origin !== location.origin || e.source !== parent || !m || m.ns !== 'bd3d') return;
     if (m.type === 'space' && KEYS.includes(m.key)) setSpace(m.key);
     else if (m.type === 'home') goHome();
     else if (m.type === 'goZone') goZone(m.id);

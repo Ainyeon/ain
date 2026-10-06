@@ -85,13 +85,19 @@ assert.equal(c.id, s1.id); assert.equal(c.tool, 'plan3d'); assert.equal(c.params
 assert.equal((await one(W, `select public.studio_claim() r`)).r, null, '대기 작업 없음(올리는 중인 지우개는 안 맡음)');
 assert.equal((await as(W, `select name from storage.objects where bucket_id = 'studio' and name = '${A}/${s1.id}/in.dwg'`)).length, 1, '맡은 입력 읽기');
 await upload(W, `${A}/${s1.id}/out/plan.webp`);
+// 모형 장면은 그림보다 먼저: 작업기가 도는 중에 out/scene.json 을 올리고, 주인은 끝나기 전에 읽는다(남은 못 읽음)
+await upload(W, `${A}/${s1.id}/out/scene.json`);
+assert.equal((await one(A, `select public.studio_status(${s1.id}) r`)).r.status, 'running');
+assert.equal((await as(A, `select name from storage.objects where bucket_id = 'studio' and name = '${A}/${s1.id}/out/scene.json'`)).length, 1, '도는 중에 내 장면 읽기');
+assert.equal((await as(B, `select name from storage.objects where bucket_id = 'studio' and name = '${A}/${s1.id}/out/scene.json'`)).length, 0, '남의 장면 못 읽음');
+await fails(upload(W, `${A}/${s1.id}/out/scene.json`), /duplicate|unique/, '장면은 한 번만(덮어쓰기 없음)');
 await fails(upload(W, `${A}/${s2.id}/out/x.webp`), /row-level security/, '안 맡은 작업 out/');
 await fails(upload(W, `${A}/${s1.id}/in2.dwg`), /row-level security/, 'out/ 밖');
 await fails(as(W, `select public.studio_complete(${s1.id}, true, '[{"path":"${B}/1/out/x.webp","kind":"image"}]', null)`), /bad_outputs/, '남의 경로를 결과로');
 await as(W, `select public.studio_complete(${s1.id}, true, '[{"path":"${A}/${s1.id}/out/plan.webp","kind":"image","group":"drawings","caption":"컬러 평면도"}]', null)`);
 const done = (await one(A, `select public.studio_status(${s1.id}) r`)).r;
 assert.equal(done.status, 'done'); assert.equal(done.outputs[0].caption, '컬러 평면도');
-assert.equal((await as(A, `select name from storage.objects where bucket_id = 'studio' and name like '${A}/%'`)).length, 2, '내 입력·결과 읽기');
+assert.equal((await as(A, `select name from storage.objects where bucket_id = 'studio' and name like '${A}/%'`)).length, 3, '내 입력·결과·장면 읽기');
 assert.equal((await as(B, `select name from storage.objects where bucket_id = 'studio'`)).length, 0, '남은 못 읽음');
 ok();
 
@@ -112,7 +118,7 @@ ok();
 // ── 14일 보관 끝 → 작업 기계가 지울 폴더, 지우기 정책
 await db.exec(`update public.studio_jobs set finished_at = now() - interval '15 days' where id = ${s1.id}`);
 assert.deepEqual((await as(W, `select public.studio_expire() p`)).map((r) => r.p).sort(), [`${A}/${s1.id}/`, `${A}/${s2.id}/`].filter((p) => p.endsWith(`/${s1.id}/`)));
-assert.equal((await as(W, `delete from storage.objects where bucket_id = 'studio' and name like '${A}/${s1.id}/%' returning name`)).length, 2, '보관 끝난 파일 지움');
+assert.equal((await as(W, `delete from storage.objects where bucket_id = 'studio' and name like '${A}/${s1.id}/%' returning name`)).length, 3, '보관 끝난 파일 지움');
 assert.equal((await one(A, `select public.studio_status(${s1.id}) r`)).r.status, 'expired');
 await fails(as(A, `select public.studio_expire()`), /worker_only/, '회원은 못 부름');
 ok();

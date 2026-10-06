@@ -29,4 +29,8 @@ for (const k of keys) assert.ok(scene.checks[k].counts.PASS > 0 && scene.checks[
 // 내보낸 뷰어는 늘 embed(단독 화면의 목록·검사·출처 시트는 공개 주소에 두지 않는다)
 assert.ok(/^document\.documentElement\.classList\.add\('embed'\)/.test(read('maker/3d/view/mode.js')), 'mode.js 는 늘 embed');
 
+// 내 작업 장면은 부모가 말로 넘긴다(scene=@host) — 뷰어는 같은 출처 부모의 말만 듣는다
+const vjs = read('maker/3d/view/viewer.js');
+assert.ok(vjs.includes("e.origin === location.origin && e.source === parent") && vjs.includes("e.origin !== location.origin || e.source !== parent"), '뷰어 메시지 수신에 출처 확인');
+
 console.log('test-studio-live: OK');
