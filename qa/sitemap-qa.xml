@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- /qa 사이트맵 — 첫 발행 전 플레이스홀더 (루트 sitemap index가 404를 참조하지 않도록).
+     qa-publish 워크플로가 발행 시마다 tools/qa-build로 재생성한다. 수동 편집 금지. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+</urlset>
