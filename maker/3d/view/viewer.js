@@ -1202,6 +1202,7 @@ const azel = d => [Math.atan2(d.x, d.z), Math.asin(clamp(d.y, -1, 1))];
 const dirOf = (az, el, o = new THREE.Vector3()) => o.set(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
 const wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
 const flight = { pos: new THREE.Vector3(), yaw: 0, pitch: 0 }, lookPt = new THREE.Vector3();
+const SUN_I = sun.intensity;
 let arrived = 'house'; // 마지막으로 도착한 곳 — 멈춰 있을 때는 이것으로, 비행 중에는 카메라 자리(inside)로 방 안인지 본다
 // 천장 아래 + 실내 사각형 안 = 방 안. 섞임 값 k 로 판정하면 방→방 비행 중(천장을 비치게 하느라 k 가 내려간다) 전체에서 온 것으로 잘못 읽는다
 const inRect = (x, z, pad = 0) => { const [x0, y0, x1, y1] = S.P.envelope.interior_rect; return x > mm(x0) + pad && x < mm(x1) - pad && -z > mm(y0) + pad && -z < mm(y1) - pad; };
@@ -1237,13 +1238,20 @@ function flyTo(pose, kTo) {
     const tilt = flat ? el0 : 0, turn = flat ? wrap(az0 - azS) : 0, need = Math.hypot(Math.max(0, tilt), turn) / DEG * 1.5 / CAM.rate * 1000, level = need > 1 ? Math.max(300, need) : 0; // 몇 도짜리도 0.3초는 들여 까딱하지 않게
     Object.assign(tw, { mode: toRoom ? 'in' : out ? 'out' : 'air', a, b, daz: wrap(b.az - a.az), lift: toRoom || out ? lift : 0, tilt, turn, hold: level / (level + CAM.house[0]) });
   }
+  // 전체↔시점(in·out·air): 해 가림판(방 안 모습 ↔ 전체 보기 모습)은 비행마다 많아야 한 번, 해를 0 으로 줄여 놓은 프레임에 바꾼다(setBlend).
+  // 바꾸는 때는 카메라가 가림판 높이를 지나는 무렵(xt). 섞임 한가운데(.5)에서 바꾸면 공간 전체가 화면에 있는 순간에 바닥 햇빛과 모형 옆 그림자가 한 프레임에 꺼지고 켜진다.
+  // 카메라 높이로만 정하면 다른 비행을 끊고 시작할 때(이미 가림판 근처) 첫 프레임에 해가 꺼진다 — 그래서 진행률로 정한다
+  let xt = null;
   if (!reduced.matches) {
     const N = 240, o = { pos: new THREE.Vector3() };
     let peak = 0; // 한 칸(시간의 1/N)에 자세가 도는 최대 각 — 방위는 수직축, 앙각은 수평축 둘레라 둘이 직각이다
     tweenAt(tw, 0, o);
-    for (let i = 1, y = o.yaw, q = o.pitch; i <= N; i++) { tweenAt(tw, i / N, o); peak = Math.max(peak, Math.hypot(wrap(o.yaw - y), o.pitch - q)); y = o.yaw; q = o.pitch; }
+    const under = () => o.pos.y < S.slab.position.y, u0 = under();
+    for (let i = 1, y = o.yaw, q = o.pitch; i <= N; i++) { tweenAt(tw, i / N, o); peak = Math.max(peak, Math.hypot(wrap(o.yaw - y), o.pitch - q)); y = o.yaw; q = o.pitch; if (xt == null && under() !== u0) xt = i / N; }
     tw.dur = clamp(peak * N / DEG / CAM.rate * 1000, ...(tw.mode === 'line' ? CAM.room : CAM.house));
   }
+  { const in0 = S.slab.visible, w0 = in0 ? .05 : .15, w1 = in0 ? .15 : .05; // 해를 줄이고 되살리는 몫(비행 시간 비율): 가림판 위쪽에서는 길게, 아래쪽에서는 짧게
+    Object.assign(tw, { tNow: 0, sun0: sun.intensity / SUN_I - 1, far0: skyMat.opacity, void0: tw.mode !== 'line' && tween?.mode === 'line' && p0.y > mm(S.H_CEIL) - .3, look: tw.mode === 'line' || in0 === toRoom ? null : { in0, t: clamp(xt ?? 0, w0, 1 - w1), w0, w1 } }); } // sun0 = 줄어든 채 이어받은 해(다른 비행을 끊었을 때, 처음 10% 에 푼다) · far0 = 그때의 창밖 원경 · void0 = 방→방 비행이 천장 속에서 관·본체를 걷어 둔 채였나
   tween = tw;
   controls.enabled = false;
   invalidate();
@@ -1361,20 +1369,28 @@ function setBlend(k) {
     if (mat.acBody.transparent === on) { mat.acBody.transparent = !on; mat.acBody.needsUpdate = true; }
   }
   // 방→방 비행에서 카메라가 천장 속을 지나는 동안(반자 아래 0.3m 부터)은 배관·실내기 본체를 걷는다 — 코앞의 관이 화면을 덮는다(예시 평면에서 화면의 25% 까지, 0.1~0.2초)
-  const inVoid = tween?.mode === 'line' && camera.position.y > mm(S.H_CEIL) - .3;
+  // 그 사이에 다른 비행으로 끊었으면(void0) 천장 속 띠(반자 아래 0.3m ~ 가림판 위 6m)를 벗어날 때까지 걷어 둔 채로 — 누른 프레임에 코앞의 관·본체가 한 번에 켜지지 않게
+  const cy = camera.position.y;
+  if (tween?.void0 && (cy < mm(S.H_CEIL) - .3 || cy >= S.slab.position.y + 6)) tween.void0 = false;
+  const inVoid = !!tween?.void0 || (tween?.mode === 'line' && cy > mm(S.H_CEIL) - .3);
   S.g.pipes.visible = state.pipes && !inVoid; mat.acBody.visible = !inVoid;
   mat.grid.opacity = lerp(.32, .95, k); mat.grid.color.lerpColors(GRID_OVER, GRID_ROOM, k);
   mat.patch.opacity = .6 * (1 - k); mat.patchEdge.opacity = .9 * (1 - k); mat.arrow.opacity = .75 * (1 - k);
   S.patchObjs.forEach(o => { o.visible = k < .99; });
   // embed: 전체 보기 쪽으로 가는 전환(복귀)에선 원경을 걷는다 — 당겨 나오는 동안 빌딩이 히어로 전체에 기둥처럼 떠다닌다.
   // 통째로 끄면 복귀 첫 프레임에 창밖이 뚝 끊기므로, 카메라가 반자 아래 0.5m 에서 반자 높이까지 올라오는 동안 서서히
-  const far = EMBED && state.mode === 'house' ? k * clamp((mm(S.H_CEIL) - camera.position.y) / .5, 0, 1) : k;
+  let far = EMBED && state.mode === 'house' ? k * clamp((mm(S.H_CEIL) - camera.position.y) / .5, 0, 1) : k;
+  if (tween) far = clamp(far + (tween.farD ??= tween.far0 - far) * (1 - sstep(tween.tNow / .15)), 0, 1); // 비행 중: 시작 때 보이던 만큼에서 이어 간다(다른 비행을 끊고 시작했을 때)
   skyMat.opacity = far; towerMat.opacity = far;
   skyGroup.visible = far > .01;
   // 카메라가 방 안(반자 아래)에 있는 동안은 원경(하늘·먼 건물)을 반투명 패스 맨 처음에 그린다: 거리순으로 두면 방 한가운데가 중심인 하늘이 먼 벽·창틀보다 '가깝다'고 나중에 그려져,
   // 벽이 비치기 시작하는 순간과 도착 직전에 벽이 통째로 하늘로 바뀌었다 돌아왔다(방→방 화면의 8~17%). 반자 위(전체 보기 쪽)에서는 예전 순서 그대로 — 그때의 모습을 바꾸지 않는다
   skyGroup.renderOrder = inside(camera.position) ? -9 : 0;
-  S.slab.visible = k > .5;
+  // 전체↔시점 비행: 가림판은 flyTo 가 정한 때(look.t)에 바꾸고, 그 앞뒤로 해를 0 까지 줄였다 되살린다 — 바닥 햇빛이 한 프레임에 켜지거나 꺼지지 않는다.
+  // 방→방(line)과 멈춘 상태는 전과 같이 섞임 값으로
+  const tw = tween, lk = tw?.look;
+  S.slab.visible = tw && tw.mode !== 'line' ? (lk ? (tw.tNow < lk.t) === lk.in0 : S.slab.visible) : k > .5;
+  sun.intensity = SUN_I * (tw ? clamp(Math.min(1, lk ? Math.abs(tw.tNow - lk.t) / (tw.tNow < lk.t ? lk.w0 : lk.w1) : 1) + tw.sun0 * (1 - sstep(tw.tNow / .1)), 0, 1) : 1);
   $('labels').classList.toggle('off', k > .02 || state.mode !== 'house');
   lightForBlend();
 }
@@ -1502,7 +1518,7 @@ const northG = $('northG');
 function tick(now, manual) {
   let moving = false;
   if (tween) {
-    const t = tween.dur ? clamp((now - tween.t0) / tween.dur, 0, 1) : 1, e = tweenAt(tween, t, flight);
+    const t = tween.dur ? clamp((now - tween.t0) / tween.dur, 0, 1) : 1, e = tweenAt(tween, tween.tNow = t, flight);
     camera.position.copy(flight.pos); camera.rotation.set(flight.pitch, flight.yaw + Math.PI, 0, 'YXZ'); // 카메라는 -Z 를 본다
     camera.fov = lerp(tween.f0, tween.pose.fov, e); state.tanP = lerp(tween.s0, tween.pose.tanP, e); updProj();
     setBlend(clamp(lerp(tween.k0, tween.kTo, e) - (tween.dip ? .75 * Math.sin(Math.PI * e) : 0), 0, 1));
