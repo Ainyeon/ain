@@ -1,7 +1,12 @@
 // 에인연 업무 순수 로직 검사 — node tools/test-work-logic.js
 'use strict';
+// 한국 시간대로 고정한다. work-logic.js 의 날짜 계산(addDays·getFullYear 등)은 실행 기기의 로컬 시간대를 따라서,
+// 한국 밖(UTC·미국·유럽)에서는 betaEndLabel 이 하루 앞당겨 나온다(아래 '베타 마지막 날 표기').
+// 알려진 앱 결함을 이 핀으로 가려 둔 것이지 고친 것이 아니다 — 고치면 이 줄을 지운다.
+process.env.TZ = 'Asia/Seoul';
 const assert = require('assert');
 const L = require('../work/work-logic.js');
+assert.strictEqual(new Date(2027, 0, 1).getTimezoneOffset(), -540, 'TZ 고정(Asia/Seoul)이 적용되지 않았다');
 
 // 금액: 부가세 세 방식
 assert.deepStrictEqual(L.totals([{ name: '벽걸이', qty: 2, price: 50000 }], 'none'), { subtotal: 100000, supply: 100000, vat: 0, total: 100000 });
