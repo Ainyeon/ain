@@ -163,13 +163,12 @@
         const row = {
           nickname: nickEl.value.trim(),
           field: fieldEl.value,
-          region: document.getElementById('obRegion').value.trim() || null,
-          updated_at: new Date().toISOString()
+          region: document.getElementById('obRegion').value.trim() || null
         };
         const db = ainAuth.getClient();
-        let { error } = await db.from('profiles').update(row).eq('id', user.id);
+        let { error } = await db.from('profiles').update({ ...row, updated_at: new Date().toISOString() }).eq('id', user.id);
         if (!error && !profile) {
-          // 가입 트리거가 행을 못 만든 예외 케이스 자가복구
+          // 가입 트리거가 행을 못 만든 예외 케이스 자가복구 — INSERT 열 권한은 id·nickname·field·region 뿐(sql/07)이라 updated_at 은 보내지 않는다(DB 기본값)
           const r2 = await db.from('profiles').insert({ id: user.id, ...row });
           error = r2.error;
         }

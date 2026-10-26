@@ -140,8 +140,8 @@ const KNOWN = {
   anonExec: ['bump_stat', 'get_card', 'is_admin_user', 'submit_card_request', 'tg_mask_comment', 'tg_mask_post'],
   // definer 인데 본문이 로그인·권한을 직접 묻지 않는 함수 (조회수/카운터는 의도, 카드 둘은 토큰이 열쇠)
   noIdentityGuard: ['bump_stat', 'get_card', 'increment_post_view', 'submit_card_request'],
-  // 프런트 쓰기 페이로드가 열 GRANT 에 없는 곳 — onboard 자가복구 insert 가 updated_at 을 보낸다 (07:61 은 id,nickname,field,region 만)
-  frontWrite: ['onboard/index.html profiles.insert updated_at']
+  // 프런트 쓰기 페이로드가 열 GRANT 에 없는 곳 — 지금은 없다. (onboard 자가복구 insert 의 updated_at 은 보내지 않게 고쳤다: 07 의 INSERT 열은 id,nickname,field,region 뿐)
+  frontWrite: []
 };
 const found = { authDangerous: new Set(), anonDangerous: new Set(), sequences: new Set(), tableLevelWrite: new Set(), anonExec: new Set(), noIdentityGuard: new Set(), frontWrite: new Set() };
 const problems = [];
