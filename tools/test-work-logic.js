@@ -1,12 +1,9 @@
 // 에인연 업무 순수 로직 검사 — node tools/test-work-logic.js
 'use strict';
-// 한국 시간대로 고정한다. work-logic.js 의 날짜 계산(addDays·getFullYear 등)은 실행 기기의 로컬 시간대를 따라서,
-// 한국 밖(UTC·미국·유럽)에서는 betaEndLabel 이 하루 앞당겨 나온다(아래 '베타 마지막 날 표기').
-// 알려진 앱 결함을 이 핀으로 가려 둔 것이지 고친 것이 아니다 — 고치면 이 줄을 지운다.
-process.env.TZ = 'Asia/Seoul';
+// 시간대를 고정하지 않는다. 날짜 함수(dayKey·addDays 등)는 기기 로컬 = 한국 시간 가정이지만(work-logic.js 주석),
+// betaEndLabel 만은 절대 시각(한국 자정)에서 파생한 값이라 기기 시간대와 무관해야 한다 — 아래 '베타 마지막 날 표기'에서 시간대를 바꿔 가며 확인한다.
 const assert = require('assert');
 const L = require('../work/work-logic.js');
-assert.strictEqual(new Date(2027, 0, 1).getTimezoneOffset(), -540, 'TZ 고정(Asia/Seoul)이 적용되지 않았다');
 
 // 금액: 부가세 세 방식
 assert.deepStrictEqual(L.totals([{ name: '벽걸이', qty: 2, price: 50000 }], 'none'), { subtotal: 100000, supply: 100000, vat: 0, total: 100000 });
@@ -151,6 +148,16 @@ assert.ok(blog.includes('010-9999-0000') && !blog.includes('80000'), '블로그 
 let pv = L.planView(true, null, new Date('2026-10-01T00:00:00+09:00'));
 assert.strictEqual(pv.label, '베타 프로'); assert.strictEqual(pv.inBeta, true);
 assert.strictEqual(pv.betaEndLabel, '2027년 4월 30일', '베타 마지막 날 표기');
+// 기기 시간대와 무관하다(종료 시각이 한국 자정이라 한국 날짜로 센다). 옛 계산은 한국 밖에서 하루 앞당겨 '4월 29일' 로 나왔다.
+{
+  const tz0 = process.env.TZ;
+  for (const [tz, offsetMin] of [['Asia/Seoul', -540], ['UTC', 0], ['America/Los_Angeles', 480], ['Pacific/Kiritimati', -840], ['Pacific/Pago_Pago', 660]]) {
+    process.env.TZ = tz;
+    assert.strictEqual(new Date(2027, 0, 1).getTimezoneOffset(), offsetMin, tz + ' 로 바뀌지 않았다(검사가 헛돈다)');
+    assert.strictEqual(L.planView(true, null, new Date('2026-10-01T00:00:00+09:00')).betaEndLabel, '2027년 4월 30일', '베타 마지막 날 표기(' + tz + ')');
+  }
+  if (tz0 === undefined) delete process.env.TZ; else process.env.TZ = tz0;
+}
 pv = L.planView(false, { current_period_end: '2027-04-01T00:00:00+09:00' }, new Date('2027-06-01T00:00:00+09:00'));
 assert.strictEqual(pv.label, '무료'); assert.strictEqual(pv.until, null);
 pv = L.planView(true, { current_period_end: '2027-07-01T00:00:00+09:00' }, new Date('2027-06-01T00:00:00+09:00'));
