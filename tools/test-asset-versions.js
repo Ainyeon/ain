@@ -9,6 +9,8 @@
 //      (다르면 프리캐시가 다른 키로 저장돼 재방문 첫 로드에 구 스크립트가 섞인다 — sw.js 주석 참고).
 //   4. SHELL 의 로컬 경로는 모두 저장소에 있고 Jekyll 이 내보내는 경로다 (하나라도 404 면 cache.addAll 이 거부돼 SW 설치가 통째로 실패한다).
 //   5. maker-core.js 의 ASSET_V 는 SHELL 의 maker JSON ?v= 와 같다 (maker-core 가 그 URL을 직접 요청한다).
+//   6. 외부(CDN) 스크립트는 정확한 버전(@2 같은 부동 태그 금지) + integrity(sha384 등) + crossorigin 이 있다.
+//      supabase-js 는 모든 페이지·CSP·sw.js SHELL 이 같은 URL·같은 해시를 쓴다. 해시가 라이브 파일과 맞는지는 여기서 알 수 없다(네트워크 안 씀).
 //
 // 일부러 보지 않는 것: 업무(/work/)·시공 카드(/c/) 자산은 SHELL 에 넣지 않는 것이 설계라 SHELL 대조 대상이 아니다(1·2번만 본다).
 //   내보낸 3D 뷰어(maker/3d/view/)는 내용 해시(?v=453e5a9c)로 버전을 매기므로 숫자 버전 규칙에서 뺀다(같은 경로는 같은 해시여야 한다).
@@ -118,4 +120,53 @@ const makerJson = shell.filter((u) => /^\/maker\/[a-z]+\.json\?v=/.test(u));
 assert.ok(makerJson.length >= 3, 'SHELL 에 maker JSON 이 3개 미만이다');
 for (const u of makerJson) assert.ok(u.endsWith('?v=' + assetV), u + ' 가 maker-core ASSET_V(' + assetV + ')와 다르다');
 
-console.log('asset-versions OK — 자산 ' + refs.size + '개 경로 · 페이지 ' + pages.length + '개 · SHELL ' + shell.length + '개(대조 ' + compared + ') · ASSET_V ' + assetV);
+// 6. 외부 CDN 스크립트 고정. 배포 대상 = _config.yml exclude 와 _·. 폴더를 뺀 전부다.
+//    위의 htmlFiles() 는 legacy/ 를 건너뛰지만 legacy/ 는 exclude 에 없어 실제로 배포되므로, 여기서는 그 목록을 쓰지 않고 따로 훑는다.
+// (섹션 4 의 exclude 정규식은 첫 항목만 잡으므로 쓰지 않고, exclude: 블록의 "- 이름" 줄을 전부 읽는다.)
+const cfgExclude = new Set([...(((read('_config.yml').split(/^exclude:[^\n]*\n/m)[1] || '').split(/^(?=\S)/m)[0]).matchAll(/^\s+-\s+(\S+)/gm))].map((m) => m[1]));
+assert.ok(cfgExclude.has('docs') && cfgExclude.has('tools') && cfgExclude.has('sql'), '_config.yml exclude 를 읽지 못했다: ' + [...cfgExclude]);
+function deployedHtml(dir) {
+  const out = [];
+  for (const e of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
+    if (/^[._]/.test(e.name) || (dir === '' && cfgExclude.has(e.name))) continue;
+    const rel = dir ? dir + '/' + e.name : e.name;
+    if (e.isDirectory()) out.push(...deployedHtml(rel));
+    else if (e.name.endsWith('.html')) out.push(rel);
+  }
+  return out;
+}
+// supabase.js(npm 에 실린 원본 파일)만 허용한다. jsDelivr 의 supabase.min.js 는 원본 앞에 머리말을 붙여 즉석에서 만드는 파일이라
+// jsDelivr 자신이 SRI 를 쓰지 말라고 안내한다(원본과 unpkg 에서 바이트가 같은 supabase.js 는 해시가 안정적이다).
+const SUPA = /^https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@(\d+\.\d+\.\d+)\/dist\/umd\/supabase\.js$/;
+const deployed = deployedHtml('');
+const supaTags = [];
+for (const f of deployed) {
+  const html = read(f).replace(/<!--[\s\S]*?-->/g, '');
+  for (const m of html.matchAll(/<script\b[^>]*>/gi)) {
+    const tag = m[0];
+    const src = (tag.match(/\bsrc\s*=\s*["']([^"']+)["']/i) || [])[1];
+    if (!src || !/^(https?:)?\/\//i.test(src)) continue;
+    assert.ok(/@\d+\.\d+\.\d+(?:[-+][\w.]+)?\//.test(src), f + ': 외부 스크립트가 정확한 버전이 아니다(@2 같은 부동 태그 금지): ' + src);
+    const integrity = (tag.match(/\bintegrity\s*=\s*["'](sha(?:256|384|512)-[A-Za-z0-9+/]+=*)["']/i) || [])[1];
+    assert.ok(integrity, f + ': 외부 스크립트에 integrity(SRI)가 없다: ' + src);
+    assert.ok(/\bcrossorigin\b/i.test(tag), f + ': integrity 가 있는 외부 스크립트에 crossorigin 이 없다(없으면 브라우저가 SRI 를 검사하지 못한다): ' + src);
+    if (/supabase-js/.test(src)) supaTags.push({ f, src, integrity });
+  }
+}
+assert.ok(supaTags.length >= 15, 'supabase-js 태그를 거의 못 찾았다(검사가 헛돈다): ' + supaTags.length);
+const supaUrls = new Set(supaTags.map((t) => t.src));
+const supaSri = new Set(supaTags.map((t) => t.integrity));
+assert.ok(supaUrls.size === 1 && SUPA.test([...supaUrls][0]), 'supabase-js 는 모든 페이지가 같은 고정 URL(.../supabase-js@x.y.z/dist/umd/supabase.js)을 써야 한다: ' + [...supaUrls].join(' , '));
+assert.strictEqual(supaSri.size, 1, 'supabase-js 의 integrity 가 페이지마다 다르다: ' + [...supaSri].join(' , '));
+const supaVer = [...supaUrls][0].match(SUPA)[1];
+// sw.js SHELL 의 CDN URL 도 같은 주소여야 한다(다르면 프리캐시가 다른 키로 저장된다). 부동 태그도 남기지 않는다.
+const shellCdn = shell.filter((u) => /^https?:\/\//.test(u));
+assert.ok(shellCdn.every((u) => /@\d+\.\d+\.\d+\//.test(u)), 'sw.js SHELL 에 부동 CDN 주소가 있다: ' + shellCdn.join(' , '));
+assert.ok(shellCdn.includes([...supaUrls][0]), 'sw.js SHELL 의 supabase-js 주소가 페이지가 요청하는 ' + [...supaUrls][0] + ' 와 다르다');
+// CSP 가 허용하는 supabase-js 버전 경로도 같아야 한다(다르면 해당 페이지에서 스크립트가 막힌다).
+for (const f of deployed) {
+  const csp = (read(f).match(/<meta[^>]*Content-Security-Policy[^>]*>/i) || [''])[0];
+  for (const m of csp.matchAll(/supabase-js@([^/\s'"]+)\//g)) assert.strictEqual(m[1], supaVer, f + ': CSP 의 supabase-js 버전(' + m[1] + ')이 태그의 ' + supaVer + ' 와 다르다');
+}
+
+console.log('asset-versions OK — 자산 ' + refs.size + '개 경로 · 페이지 ' + pages.length + '개 · SHELL ' + shell.length + '개(대조 ' + compared + ') · ASSET_V ' + assetV + ' · CDN supabase-js@' + supaVer + ' ' + supaTags.length + '쪽 SRI');
