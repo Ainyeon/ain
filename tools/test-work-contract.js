@@ -50,7 +50,9 @@ for (const f of ['work/index.html', 'c/index.html']) {
 // 새 자산 ?v= 통일, 서비스워커 버전
 const v = [...read('work/index.html').matchAll(/\/work\/[\w.-]+\.(?:js|css)\?v=(\d+)/g)].map((m) => m[1]);
 assert.ok(v.length >= 5 && v.every((x) => x === v[0]), 'work 자산 ?v= 통일: ' + v);
-assert.ok(read('sw.js').includes("VERSION = 'ain-v" + v[0] + "'"), 'sw VERSION = ?v=');
+// 업무 자산은 SHELL 밖이라 sw 만 먼저 올려도 된다. 반대(자산 ?v= 가 sw VERSION 보다 큼 = sw 범프 누락)만 막는다.
+const swV = Number((read('sw.js').match(/VERSION = 'ain-v(\d+)'/) || [])[1]);
+assert.ok(swV >= Number(v[0]), 'sw VERSION(' + swV + ') >= 업무 자산 ?v=(' + v[0] + ')');
 assert.ok(!/work_|get_card|submit_card/.test(read('sw.js').match(/DATA_ALLOW = \[[^\]]*\]/)[0]), '회원 업무 데이터는 SW 캐시 금지');
 
 console.log('test-work-contract: OK');

@@ -69,14 +69,16 @@ const NOPROFILE = '00000000-0000-4000-8000-0000000000ff';
 await db.exec(`insert into auth.users values ('${A}'),('${B}'),('${ADMIN}'),('${NOPROFILE}');
   insert into public.profiles (id, nickname, role) values ('${A}','에이','member'),('${B}','비','member'),('${ADMIN}','운영','admin');`);
 
-// SQL 두 번 적용 — 재실행 안전 확인 (끝의 권한 단언 블록도 두 번 통과해야 한다)
-await db.exec(SQL);
-await db.exec(SQL);
-// 베타 종료 뒤를 흉내 낼 때 쓰는 사본: 같은 함수 본문, 종료 시각만 과거로
+// 베타 안/밖을 흉내 낼 때 쓰는 사본: 같은 함수 본문, 종료 시각 리터럴만 바꾼다.
+// '베타 중' 단언이 실제 시계에 기대면 2027-05-01(KST) 이후 이 검사가 저절로 깨지므로, 베타 중 쪽도 시각을 고정한다.
 const BETA_LIT = "timestamptz '2027-05-01 00:00+09'";
 assert.ok(SQL.includes(BETA_LIT), '베타 종료 시각 리터럴');
 assert.equal(new Date(L.PLAN.betaEnd).getTime(), new Date('2027-05-01T00:00:00+09:00').getTime(), 'JS PLAN.betaEnd = SQL 베타 종료');
+const SQL_IN_BETA = SQL.replace(BETA_LIT, "timestamptz '2099-01-01 00:00+09'");
 const SQL_AFTER_BETA = SQL.replace(BETA_LIT, "timestamptz '2020-01-01 00:00+09'");
+// SQL 두 번 적용 — 재실행 안전 확인 (끝의 권한 단언 블록도 두 번 통과해야 한다)
+await db.exec(SQL_IN_BETA);
+await db.exec(SQL_IN_BETA);
 
 async function as(uid, sql, params) {
   await db.exec(`reset role; select set_config('request.jwt.claim.sub', '${uid || ''}', false); set role ${uid ? 'authenticated' : 'anon'};`);
@@ -202,7 +204,7 @@ assert.deepEqual(ledger, ['manual_grant', 'manual_revoke']);
 assert.equal((await as(ADMIN, 'select * from public.work_jobs')).length, 0, '관리자도 남의 업무 데이터는 안 보임');
 await fails(as(ADMIN, `select public.admin_set_plan('${NOPROFILE}', now() + interval '1 day')`), /no such user/, '없는 회원');
 ok('관리자 부여·회수·원장·운영자 우회 없음');
-await db.exec(SQL);  // 다시 베타 중으로
+await db.exec(SQL_IN_BETA);  // 다시 베타 중으로
 
 // ── 시공 카드 (고객 단위, 무료 무제한)
 await as(A, `insert into public.work_profiles (biz_name, phone, intro, account, biz_no, logo_data) values ('시원설비','01099990000','에어컨 세척 전문','농협 123-45','123-45-67890','data:image/png;base64,iVBORw0KGgo=')`);

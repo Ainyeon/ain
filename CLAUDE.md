@@ -40,7 +40,9 @@
 2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
 3. **구 기능 목록 통과**: 메이커 캔버스 실렌더(#cv 크기>0) · 게시판 게이트/티저 렌더 ·
    입주 게이팅(비로그인 잠금 카드) · 시세 실데이터 · 업무 데모 견적서/보고서 이미지 생성 · 카드 데모 문의 접수
-   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`(PGlite) · 약관을 채운 뒤 `node tools/check-legal.js`
+   · `printf '%s\n' tools/test-*.js | xargs -n1 node` (파일마다 따로 실행, 하나라도 실패하면 exit≠0 —
+   `node tools/test-*.js` 는 글롭이 펼쳐져 첫 파일만 실행하므로 나머지가 실패해도 exit 0 이다) + `node tools/test-work-sql.mjs`(PGlite)
+   · 약관을 채운 뒤 `node tools/check-legal.js`
 4. **룩 혼재 push 금지**: 전 라우트가 design-tokens/components만 소비하는지
    `grep -rln "assets/css/ain.css" --include="*.html" .` 로 확인 (legacy/ 제외 0이어야 함)
 5. **로그인 필요 기능**(글 작성·삭제, 단지명 열람)은 무인 검증 불가 — 종료 요약에 사각으로 명시
@@ -78,7 +80,8 @@
   _config.yml 로 docs·supabase·sql·tools·CLAUDE.md·HANDOFF*.md 는 사이트에 배포하지 않는다(저장소는 공개라 GitHub에선 보임).
   **운영 SQL 적용 완료(Claude, 사용자 위임)**: site_17_work · site_16_jobs_board · pipe_18_program_notices (apply_migration, 전후 점검).
   sw ain-v29, 전 자산 ?v=29(design-tokens ?v=11 유지), maker-core ASSET_V=29 (v29: 교육 표시 보정·운영자 전용 요금제).
-  업무·카드 화면은 innerHTML 금지(test-work-contract.js가 검사). 베타 종료일은 SQL work_user_is_pro()와 work-logic.js PLAN.betaEnd 두 곳.
+  업무·카드 화면은 innerHTML 금지(test-work-contract.js가 검사). 베타 종료일은 SQL work_user_is_pro()와 work-logic.js PLAN.betaEnd 에 있고(test-work-sql.mjs 가 일치를 검사),
+  문서에 적힌 같은 날짜(요금제 초안·약관 문구는 docs/work/RUNBOOK.md §4, 그 밖에 SPEC.md·3D-HANDOFF.md)는 손으로 맞춘다.
 - 2026-09-28: 글래스(Clear Depth v2 — 위층만: .tnav ≥769 sticky · .tabbar · 메이커 .action-bar, blur ≤2면,
   @supports 불투명 폴백·투명도 줄이기·고대비·인쇄 대응) + 전체 검토 반영(정보·커뮤니티·도구). 토큰: --c-ink-faint #6E6A61,
   입력 테두리 --c-control. **sw ain-v30, 전 자산 ?v=30, design-tokens ?v=12**, maker-core ASSET_V=30.

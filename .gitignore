@@ -3,6 +3,9 @@
 /*.png
 .DS_Store
 
+# 로컬 점검 보고서 — 저장소·사이트에 올리지 않는다 (git add -A 로 딸려 들어가지 않게)
+/AUDIT-REPORT.md
+
 # 로컬 브라우저 세션 산출물 — 저장소에 커밋하지 않음
 # (feat/p3a-cards 582fea2 의 방어를 main 으로 선반영. 공개 레포라 세션 쿠키 유입 차단이 우선)
 /cookies.txt

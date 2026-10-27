@@ -115,6 +115,15 @@ function run({ eduRows, error, search }) {
 
 const settle = async () => { for (let i = 0; i < 12; i++) await new Promise((r) => setImmediate(r)); };
 
+// 구역 하나의 HTML (그 구역 <h2> 부터 다음 구역 <h2> 직전까지). 같은 글자가 필터 <option> 에도 있어서
+// 글자 첫 출현으로 자르면 구역이 아니라 필터에 걸린다 — 반드시 <h2> 로 찾는다.
+const sectionHtml = (html, title) => {
+  const a = html.indexOf('<h2>' + title);
+  if (a < 0) return '';
+  const b = html.indexOf('<h2>', a + 4);
+  return html.slice(a, b < 0 ? undefined : b);
+};
+
 (async () => {
   // 1. 뷰가 없을 때 — 원장만으로 정상 렌더
   {
@@ -138,7 +147,7 @@ const settle = async () => { for (let i = 0; i < 12; i++) await new Promise((r) 
     assert.strictEqual(b.el('statOrg').textContent, LEDGER.counts.orgs,
       '같은 기관이면 기관 수는 늘지 않아야 한다');
     // 마감 확정분은 '접수 마감일시 명시' 구역에 들어간다
-    assert.ok(html.includes('접수 마감일시 명시'), '마감 확정 회차가 마감 구역에 없다');
+    assert.ok(sectionHtml(html, '접수 마감일시 명시').includes('자동 수집 냉매회수 신규교육 추가 4차'), '마감 확정 회차가 마감 구역에 없다');
   }
 
   // 3. 같은 원문 주소는 한 번만 — 사람이 검수한 원장 쪽이 남는다
@@ -200,10 +209,13 @@ const settle = async () => { for (let i = 0; i < 12; i++) await new Promise((r) 
     const k = run({ eduRows: [STARTED] });
     await k.boot(); await settle();
     const html = k.panel.innerHTML;
-    const expired = html.slice(html.indexOf('접수 마감 경과'));
-    assert.ok(html.includes('접수 마감 경과') && expired.includes('개강 지난 타일 과정'), '개강 지난 과정이 현재 모집처럼 보인다');
-    assert.ok(expired.includes('<span class="edu-tag">원문 개강일 지남</span>'), '목록 카드에 경과 표시가 없다');
-    assert.ok(!expired.includes('<span class="edu-tag">접수 마감 경과</span>'), '원문에 없는 마감을 지났다고 적었다');
+    assert.ok(sectionHtml(html, '접수 마감 경과').includes('개강 지난 타일 과정'), '개강 지난 과정이 현재 모집처럼 보인다');
+    // 이 과정의 카드 하나만 본다. 구역 끝까지 보면 원장의 다른 회차가 실제 마감일을 넘긴 날부터
+    // (예: KRRC-NEW-C113, 2026-10-16) 그 카드의 정상 태그 '접수 마감 경과'에 걸려 날짜가 지나면 실패한다.
+    const card = (html.split('<article class="edu-card">').find((a) => a.includes('개강 지난 타일 과정')) || '').split('</article>')[0];
+    assert.ok(card, '개강 지난 과정의 카드를 찾지 못했다');
+    assert.ok(card.includes('<span class="edu-tag">원문 개강일 지남</span>'), '목록 카드에 경과 표시가 없다');
+    assert.ok(!card.includes('<span class="edu-tag">접수 마감 경과</span>'), '원문에 없는 마감을 지났다고 적었다');
     const k2 = run({ eduRows: [STARTED], search: '?id=' + encodeURIComponent(STARTED.notice_id) });
     await k2.boot(); await settle();
     assert.ok(k2.panel.innerHTML.includes('원문 개강일이 지남'), '상세가 개강일 경과를 알리지 않는다');

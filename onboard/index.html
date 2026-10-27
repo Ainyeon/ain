@@ -48,7 +48,7 @@
     .hint { font-size: var(--fs-4); color: var(--c-ink-sub); line-height: 1.6; }
     .gate-msg { padding: 28px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); text-align: center; font-size: 14px; color: var(--txt2); }
   </style>
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
   <script defer src="/auth.js?v=30"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
   <script defer src="/assets/js/ain-community.js?v=30"></script>
@@ -163,13 +163,12 @@
         const row = {
           nickname: nickEl.value.trim(),
           field: fieldEl.value,
-          region: document.getElementById('obRegion').value.trim() || null,
-          updated_at: new Date().toISOString()
+          region: document.getElementById('obRegion').value.trim() || null
         };
         const db = ainAuth.getClient();
-        let { error } = await db.from('profiles').update(row).eq('id', user.id);
+        let { error } = await db.from('profiles').update({ ...row, updated_at: new Date().toISOString() }).eq('id', user.id);
         if (!error && !profile) {
-          // 가입 트리거가 행을 못 만든 예외 케이스 자가복구
+          // 가입 트리거가 행을 못 만든 예외 케이스 자가복구 — INSERT 열 권한은 id·nickname·field·region 뿐(sql/07)이라 updated_at 은 보내지 않는다(DB 기본값)
           const r2 = await db.from('profiles').insert({ id: user.id, ...row });
           error = r2.error;
         }

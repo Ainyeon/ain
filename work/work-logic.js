@@ -412,7 +412,9 @@
     return {
       isPro: pro, inBeta, until,
       label: !pro ? '무료' : until ? '프로' : inBeta ? '베타 프로' : '프로',
-      betaEndLabel: (() => { const e = addDays(new Date(PLAN.betaEnd), -1); return e.getFullYear() + '년 ' + fmtDay(e).replace(/ \(.\)$/, ''); })()
+      // 종료 시각이 한국 시간 자정이므로 '마지막 날'도 기기 시간대와 무관하게 한국 날짜로 센다(한국은 일광절약시간이 없다).
+      // 종료 1ms 전 = 마지막 날의 한국 시각 → UTC 필드로 읽는다. (옛 계산은 기기 로컬 날짜라 한국 밖에서 하루 앞당겨 보였다)
+      betaEndLabel: (() => { const k = new Date(new Date(PLAN.betaEnd).getTime() - 1 + 9 * 3600000); return k.getUTCFullYear() + '년 ' + (k.getUTCMonth() + 1) + '월 ' + k.getUTCDate() + '일'; })()
     };
   }
   // 서버 오류 메시지 → 사람이 읽는 문장
