@@ -11,6 +11,8 @@
 //   5. maker-core.js 의 ASSET_V 는 SHELL 의 maker JSON ?v= 와 같다 (maker-core 가 그 URL을 직접 요청한다).
 //   6. 외부(CDN) 스크립트는 정확한 버전(@2 같은 부동 태그 금지) + integrity(sha384 등) + crossorigin 이 있다.
 //      supabase-js 는 모든 페이지·CSP·sw.js SHELL 이 같은 URL·같은 해시를 쓴다. 해시가 라이브 파일과 맞는지는 여기서 알 수 없다(네트워크 안 씀).
+//   7. 이 검사가 "배포 안 됨"으로 건너뛰는 폴더(ROOT_SKIP)와 개발 시안(maker/moodboard.html)은 _config.yml exclude 에 실제로 있다
+//      (없으면 이 검사가 못 보는 파일이 Jekyll 에 의해 사이트로 나간다).
 //
 // 일부러 보지 않는 것: 업무(/work/)·시공 카드(/c/) 자산은 SHELL 에 넣지 않는 것이 설계라 SHELL 대조 대상이 아니다(1·2번만 본다).
 //   내보낸 3D 뷰어(maker/3d/view/)는 내용 해시(?v=453e5a9c)로 버전을 매기므로 숫자 버전 규칙에서 뺀다(같은 경로는 같은 해시여야 한다).
@@ -33,6 +35,7 @@ function existsExact(rel) {
 }
 
 // 배포되는 HTML 만 훑는다. 최상위의 비배포 폴더와 _·. 로 시작하는 폴더(Jekyll 이 내보내지 않음)는 뺀다.
+// ROOT_SKIP 은 _config.yml exclude 와 같아야 한다(아래 6번이 확인) — 어긋나면 건너뛴 폴더가 그대로 배포된다.
 const ROOT_SKIP = new Set(['legacy', 'docs', 'tools', 'supabase', 'sql', 'node_modules']);
 function htmlFiles(dir) {
   const out = [];
@@ -103,7 +106,9 @@ for (const u of shell) {
 assert.ok(compared > 10, 'SHELL 과 페이지를 대조한 항목이 너무 적다: ' + compared);
 
 // 4. SHELL 의 로컬 경로가 저장소에 있고(대소문자 포함) Jekyll 이 내보내는 경로다
-const exclude = new Set([...((read('_config.yml').match(/^exclude:\s*\n((?:\s+-\s+\S+\s*\n?)+)/m) || [])[1] || '').matchAll(/-\s+(\S+)/g)].map((m) => m[1]));
+// exclude 목록은 줄 단위로 읽는다. 항목 사이에 주석·빈 줄이 있으면 거기서 끊긴다(_config.yml 머리말 참고).
+const exclude = new Set(((read('_config.yml').match(/^exclude:[ \t]*\n((?:[ \t]+-[^\n]*\n?)+)/m) || [])[1] || '')
+  .split('\n').map((l) => (l.match(/^\s+-\s+(\S+)/) || [])[1]).filter(Boolean));
 for (const u of shell) {
   if (!u.startsWith('/')) continue;
   const p = u.split('?')[0].replace(/^\//, '');
@@ -168,5 +173,9 @@ for (const f of deployed) {
   const csp = (read(f).match(/<meta[^>]*Content-Security-Policy[^>]*>/i) || [''])[0];
   for (const m of csp.matchAll(/supabase-js@([^/\s'"]+)\//g)) assert.strictEqual(m[1], supaVer, f + ': CSP 의 supabase-js 버전(' + m[1] + ')이 태그의 ' + supaVer + ' 와 다르다');
 }
+
+// 7. 비배포 가정 = _config.yml exclude (ROOT_SKIP 의 legacy/ 가 exclude 에 없어 /legacy/ 로 배포된 적이 있다)
+const NOT_DEPLOYED = [...ROOT_SKIP, 'maker/moodboard.html'];
+for (const p of NOT_DEPLOYED) assert.ok(exclude.has(p), p + ' 는 비배포로 가정하는데 _config.yml exclude 에 없다 — Jekyll 이 사이트로 내보낸다');
 
 console.log('asset-versions OK — 자산 ' + refs.size + '개 경로 · 페이지 ' + pages.length + '개 · SHELL ' + shell.length + '개(대조 ' + compared + ') · ASSET_V ' + assetV + ' · CDN supabase-js@' + supaVer + ' ' + supaTags.length + '쪽 SRI');
