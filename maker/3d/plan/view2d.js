@@ -1,6 +1,7 @@
 // 2D 캔버스 — 화면(px)↔도면(mm) 변환·팬줌(순수 함수)과 격자·밑그림·벽·방·개구부·기둥·제품 그리기(필요할 때만 rAF). import 해도 DOM 을 건드리지 않는다
 import { curFloor } from './core/model.js';
 import { jointsOf, wallSlice, wallLen, wallPointAt, wallPoints, polyCentroid, polyArea, rectPoly, circlePoly, roomAreaM2 } from './core/geom.js';
+import { findLabelSpot, swingPoly } from './labels.js';
 
 /* ---------- 순수: 화면 변환 (scale = px/mm 하나) ---------- */
 export const SCALE = Object.freeze({ min: 0.004, max: 2, start: 0.1 });
@@ -83,6 +84,10 @@ function build(f) {
   return { walls, rooms, cols, items, guides, ops, by };
 }
 export function floorCache(f) { let c = CACHE.get(f); if (!c) CACHE.set(f, (c = build(f))); return c; }
+/* 글씨 자리 — 문이 열리는 호·기둥·제품을 피한다(labels.js). 층 캐시에 붙여 두므로 문서가 바뀌면 같이 버려지고, 같은 배율에서는 다시 계산하지 않는다 */
+function swingsOf(fc) { return fc.swings || (fc.swings = fc.ops.filter((o) => o.el.type === 'door').map((o) => { const poly = swingPoly(o); return { poly, box: boxOf(poly) }; })); }
+function avoidOf(fc) { return fc.avoid || (fc.avoid = swingsOf(fc).concat(fc.cols.map((c) => ({ poly: c.poly, box: c.box })), fc.items.map((i) => ({ poly: i.poly, box: i.box })))); }
+function spotOf(fc, key, args) { const m = fc.spots || (fc.spots = new Map()); let v = m.get(key); if (!v) { if (m.size > 3000) m.clear(); m.set(key, (v = args ? findLabelSpot(args) : null)); } return v; }
 
 /* ---------- 그리기 보조 ---------- */
 export function drawPill(ctx, C, text, x, y, { color } = {}) { // 라벨 알약 — 중심 (x, y)
@@ -195,15 +200,29 @@ export function createView2D(canvas, { store, getState, getSel }) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // 여기부터 화면 좌표
     if (st.showLabels) {
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const many = fc.rooms.reduce((n, e) => n + (vis(e.box) ? 1 : 0), 0) > 60, taken = [];   // 방이 아주 많으면 자리 찾기는 건너뛰고 중심에 쓴다 · taken: 이미 글씨를 쓴 자리(제품 모델명이 피한다)
       for (const e of fc.rooms) {
         if (!vis(e.box)) continue;
         const w = (e.box[2] - e.box[0]) * s, h = (e.box[3] - e.box[1]) * s; if (w < 56 || h < 30) continue;
-        const q = toPx(vp, e.c);
-        ctx.fillStyle = C.ink; ctx.font = `${C.fw} ${C.fs3}px ${C.font}`; ctx.fillText(e.el.name, q[0], q[1] - C.fs4 * 0.7);
-        ctx.fillStyle = C.sub; ctx.font = `${C.fs4}px ${C.font}`; ctx.fillText(fmtArea(st.areaGross ? roomAreaM2(doc, e.el, { withWalls: true }) : e.net, st.unit), q[0], q[1] + C.fs3 * 0.8);
+        const area = fmtArea(st.areaGross ? roomAreaM2(doc, e.el, { withWalls: true }) : e.net, st.unit);
+        ctx.font = `${C.fw} ${C.fs3}px ${C.font}`; const nw = ctx.measureText(e.el.name).width; ctx.font = `${C.fs4}px ${C.font}`; const aw = ctx.measureText(area).width;
+        const lw = Math.max(nw, aw), lh = C.fs3 + C.fs4 + 8;   // 이름 + 면적 두 줄 상자
+        let sp = many ? { x: e.c[0], y: e.c[1] } : spotOf(fc, `${e.el.id}|${s.toFixed(4)}|${Math.round(lw)}`, { poly: e.el.poly, center: e.c, w: lw / s, h: lh / s, avoid: avoidOf(fc), step: 8 / s, pad: 3 / s }) || { x: e.c[0], y: e.c[1] }, nameOnly = false;
+        if (sp.blocked) { const one = spotOf(fc, `${e.el.id}|${s.toFixed(4)}|${Math.round(nw)}|n`, { poly: e.el.poly, center: e.c, w: nw / s, h: (C.fs3 + 4) / s, avoid: avoidOf(fc), step: 6 / s, pad: 3 / s }); if (one && !one.blocked) { sp = one; nameOnly = true; } }   // 두 줄이 안 들어가면 이름만이라도 비켜서
+        const q = toPx(vp, [sp.x, sp.y]), hx = (lw + 6) / 2 / s, hy = (nameOnly ? C.fs3 + 4 : lh) / 2 / s, rect = [[sp.x - hx, sp.y - hy], [sp.x + hx, sp.y - hy], [sp.x + hx, sp.y + hy], [sp.x - hx, sp.y + hy]];
+        taken.push({ poly: rect, box: [sp.x - hx, sp.y - hy, sp.x + hx, sp.y + hy] });
+        ctx.fillStyle = C.ink; ctx.font = `${C.fw} ${C.fs3}px ${C.font}`; ctx.fillText(e.el.name, q[0], nameOnly ? q[1] : q[1] - C.fs4 * 0.7);
+        if (!nameOnly) { ctx.fillStyle = C.sub; ctx.font = `${C.fs4}px ${C.font}`; ctx.fillText(area, q[0], q[1] + C.fs3 * 0.8); }
       }
       ctx.font = `${C.fs4}px ${C.font}`; ctx.fillStyle = C.sub;
-      for (const e of fc.items) { if (!vis(e.box) || (e.box[2] - e.box[0]) * s < 44) continue; const q = toPx(vp, e.el.c); ctx.fillText(e.el.code || e.el.model.toUpperCase(), q[0], q[1]); }
+      const avoidCode = swingsOf(fc).concat(taken);          // 문 호 + 방 이름·면적 글씨 — 이 프레임에서만 쓰므로 캐시하지 않는다(중심이 비어 있으면 바로 끝난다)
+      for (const e of fc.items) {
+        if (!vis(e.box) || (e.box[2] - e.box[0]) * s < 44) continue;
+        const code = e.el.code || e.el.model.toUpperCase(), cw = ctx.measureText(code).width;
+        const sp = many ? { x: e.el.c[0], y: e.el.c[1] } : findLabelSpot({ center: e.el.c, w: cw / s, h: C.fs4 / s, avoid: avoidCode, step: 6 / s, pad: 2 / s, maxRadius: Math.hypot(e.box[2] - e.box[0], e.box[3] - e.box[1]) / 2 + cw / s });
+        if (sp.blocked) continue;                           // 피할 자리가 없으면 겹쳐 쓰지 않고 생략한다(모델명은 제품 패널·물량표에 있다)
+        const q = toPx(vp, [sp.x, sp.y]); ctx.fillText(code, q[0], q[1]);
+      }
     }
     for (const id of sel.ids) { const e = fc.by.get(id); if (!e || !vis(e.box)) continue; if (e.kind === 'wall') wallLabel(e, st); else if (e.kind === 'guide') { const q = toPx(vp, [(e.el.a[0] + e.el.b[0]) / 2, (e.el.a[1] + e.el.b[1]) / 2]); drawPill(ctx, C, fmtLen(Math.hypot(e.el.a[0] - e.el.b[0], e.el.a[1] - e.el.b[1]), st.unit), q[0], q[1] - 14, { color: C.accent }); } }
     if (vp.w >= 560) { // 눈금자
