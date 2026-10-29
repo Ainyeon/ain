@@ -1,0 +1,10 @@
+{
+  "name": "바람대로",
+  "logo": "/maker/3d/partners/baramdaero.svg",
+  "home": "https://baramdaero.com/",
+  "accent": "#004e64",
+  "accentBg": "#e6eef1",
+  "accentLine": "#bfd3da",
+  "hide": ["tools"],
+  "hosts": ["https://baramdaero.com", "https://www.baramdaero.com"]
+}
