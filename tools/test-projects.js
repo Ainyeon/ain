@@ -28,7 +28,7 @@ const root = path.join(__dirname, '..'), read = (p) => fs.readFileSync(path.join
   for (const href of ['/maker/3d/', '/maker/3d/#stAsk', '/maker/3d/projects/', '/maker/3d/plan/', '/maker/3d/maps/']) assert.ok(shell.includes("'" + href + "'"), '메뉴 주소 ' + href);
   // 프로젝트 화면: 만들 수 없는 것을 약속하지 않는다 — 보기 4가지, 휴지통은 복원·완전 삭제만, 완전 삭제는 확인창
   const pj = read('maker/3d/projects/projects.js'); for (const t of ['전체 프로젝트', '북마크', '작업 결과', '휴지통', '복원', '완전 삭제', '이름 바꾸기', '복제']) assert.ok(pj.includes(t), '화면 글자: ' + t);
-  assert.ok(/confirmDelete\(m\)/.test(pj) && /lib\.deletePlan\(m\.id\); close\(\)/.test(pj) && (pj.match(/lib\.deletePlan/g) || []).length === 1, '완전 삭제는 확인창 한 곳에서만');
+  assert.ok(/confirmDelete\(m, fk\)/.test(pj) && /lib\.deletePlan\(m\.id\); close\(\)/.test(pj) && (pj.match(/lib\.deletePlan/g) || []).length === 1, '완전 삭제는 확인창 한 곳에서만');
   assert.ok(/\/maker\/3d\/\?ask=/.test(pj) && /\/maker\/3d\/plan\/\?new=1/.test(pj) && /\?doc=/.test(pj), '시작 페이지로 말 넘기기·새 도면·도면 열기 주소');
   // 시작 페이지 연결
   const st = read('maker/3d/index.html'); for (const href of ['/maker/3d/projects/', '/maker/3d/plan/', '/maker/3d/maps/']) assert.ok(st.includes('href="' + href + '"'), '시작 페이지 메뉴: ' + href);

@@ -1,5 +1,7 @@
 /* 스튜디오 앱 셸 — 토큰만(design-tokens.css). 사이드바 220px · 위 바 56px · 본문. 폰(≤768px)은 사이드바가 아래 탭이 된다. 아이콘 없이 글자 위계와 1px 선으로 */
 :root { --t-fast: 100ms; --t-base: 200ms; --t-slow: 350ms; --ease: cubic-bezier(.645, .045, .355, 1); --ease-out: cubic-bezier(.22, 1, .36, 1); --ap-side: 220px; --ap-top: 56px; }
+html { scroll-padding-top: calc(var(--ap-top) + var(--sp-4)); }
+.ap-vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 body.ap { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: var(--font-sans); font-size: var(--fs-3); line-height: var(--lh-3); word-break: keep-all; }
 .ap-shell { display: grid; grid-template-columns: var(--ap-side) minmax(0, 1fr); min-height: 100dvh; }
 .ap-side { position: sticky; top: 0; align-self: start; height: 100dvh; display: flex; flex-direction: column; gap: var(--sp-5); padding: var(--sp-4) var(--sp-3); background: var(--c-surface); border-right: 1px solid var(--c-line); overflow: hidden auto; }
@@ -29,5 +31,6 @@ body.ap { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
   .ap-brand.sm { display: flex; margin-right: auto; }
   .ap-top { padding: 0 var(--sp-4); }
   .ap-main { padding: var(--sp-4) var(--sp-4) 88px; }
+  html { scroll-padding-bottom: 72px; }   /* 아래 탭이 초점 잡힌 요소를 가리지 않게 */
 }
 @media (prefers-reduced-motion: reduce) { .ap-link { transition: none; } }

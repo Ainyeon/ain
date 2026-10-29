@@ -613,11 +613,12 @@
       chips.replaceChildren(...list.map((s) => h('button', { type: 'button', class: 'st-chip', text: s, onclick: () => run(s) })));
     };
     const add = (who, text) => { if (!text) return; log.append(h('p', { class: 'st-ask-' + who, text })); while (log.children.length > 6) log.firstChild.remove(); };
-    const run = (text) => {
+    const run = (text, fromUrl) => {
       const t = (text || '').trim();
       if (!t) return;
       add('me', t);
-      const r = window.AinAsk.parse(t, ctx());
+      let r = window.AinAsk.parse(t, ctx());
+      if (fromUrl && r.acts.some((a) => a.do === 'pickFile')) r = { acts: r.acts.filter((a) => a.do !== 'pickFile'), reply: r.reply.replace('파일 고르기를 엽니다.', '아래 [파일 고르기]를 눌러 도면을 넣어 주세요.') };   // 페이지를 막 연 뒤에는 브라우저가 파일 창을 막는다 — 열린다고 말하지 않는다
       add('bot', r.reply);
       for (const a of r.acts) { try { ASK_DO[a.do](a); } catch (e) { console.warn('ask', e); } }
       inp.value = '';
@@ -626,7 +627,7 @@
     $('stAskForm').addEventListener('submit', (e) => { e.preventDefault(); run(inp.value); });
     fresh();
     const url = new URL(location.href), ask = url.searchParams.get('ask');   // 프로젝트 화면의 '말로 시키기'가 넘긴 말 — 한 번 실행하고 주소에서 지운다(새로고침에 다시 실행되지 않게)
-    if (ask) { url.searchParams.delete('ask'); history.replaceState(history.state, '', url.pathname + url.search + url.hash); run(ask.slice(0, 80)); }
+    if (ask) { url.searchParams.delete('ask'); history.replaceState(history.state, '', url.pathname + url.search + url.hash); run(ask.slice(0, 80), true); }
     else if (location.hash === '#stAsk') { $('stAsk').scrollIntoView({ behavior: motion(), block: 'center' }); inp.focus({ preventScroll: true }); }   // 사이드바의 [말로 시키기]
     const follow = new MutationObserver(fresh);          // 방 단추가 생기고, 파일을 넣고, 결과가 오면 예시 문장도 따라간다
     follow.observe($('stLiveNav'), { childList: true }); follow.observe($('stSum'), { childList: true }); follow.observe($('stWiz'), { attributes: true, attributeFilter: ['data-file'] });
