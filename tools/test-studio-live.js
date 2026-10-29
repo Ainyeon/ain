@@ -74,4 +74,19 @@ for (const f of partners) {
 // 물량표 CSV — 엑셀 한글(BOM) · 수식으로 읽힐 글자 방어
 assert.ok(js.includes("'\\ufeff'") && /\^\(\[=\+@\]\|-\\D\)/.test(js), 'CSV 는 BOM 을 붙이고 = + @ - 로 시작하는 글자를 막는다');
 
+// 사용법 창(2026-10-29) — 첫 방문 안내는 처음 온 방문에만, 임베드·주소·로그인 왕복은 건드리지 않는다
+assert.ok(/id="stHelp"/.test(page) && /<dialog[^>]*id="stTour"/.test(page) && /id="stTourX"/.test(page) && /id="stTourGo"/.test(page), '사용법 단추·창이 있다');
+{
+  const i = js.indexOf('function tourOnce');
+  const fn = js.slice(i, js.indexOf('openSheet(', i));          // 자동으로 열기 직전까지
+  const i0 = js.indexOf('openSheet(', i);
+  assert.ok(i > 0 && /data-embed/.test(fn) && /\bhash\b/.test(fn) && /\bback\b/.test(fn) && fn.includes('TOUR_KEY'), 'tourOnce: 임베드·주소(조각)·로그인 왕복이면 자동으로 열지 않고, 한 번 열면 기록한다');
+  assert.ok(/else tourOnce\(hash, back\);\s*tell\('ready'\)/.test(js), '다른 갈래(작업·예시·도구)가 없을 때만 첫 방문 안내를 부른다');
+  assert.ok(/openSheet\(\$\('stTour'\), false\)/.test(fn + js.slice(i0, i0 + 120)), '자동으로 여는 창은 기록을 쌓지 않는다(조작 없는 pushState 는 뒤로가기에서 건너뛴다)');
+  assert.ok(/history\.state && history\.state\.sheet/.test(js), '창을 닫을 때 기록을 걷는 것은 현재 기록이 창이 쌓은 것일 때만');
+  assert.ok(js.includes("'maker_guide_studio_v1'"), '저장 이름은 다른 도구와 같은 규칙(maker_guide_<도구>_v1)');
+}
+assert.ok(rules.some(([s, b]) => /html\[data-partner\] \.st-wiz \.action-bar/.test(s) && /html\[data-embed\] \.st-wiz \.action-bar/.test(s) && /bottom:/.test(b)), '파트너·임베드 폰: 만들기 바는 탭바 자리(70px)가 아니라 바닥에 붙는다');
+assert.ok(/html\[data-embed\] \.page-head > div:first-child/.test(css) && !/html\[data-embed\] \.page-head\s*[,{]/.test(css), '임베드는 제목만 가리고 [사용법]은 남긴다');
+
 console.log('test-studio-live: OK');
