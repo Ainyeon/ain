@@ -187,14 +187,26 @@
   border-radius: var(--r-1); border: 1px solid var(--c-line); background: var(--c-surface); font: inherit; font-size: var(--fs-3); color: var(--c-ink); cursor: pointer;
   transition: border-color .2s ease, background-color .2s ease; }
 .st-jobs .s { color: var(--c-ink-sub); white-space: nowrap; }
-/* 사용법: 창 — 번호 · 이름 한 줄 + 설명 한 문장, 셋 이하 */
-.st-tour { display: grid; gap: var(--sp-3); margin: 0 0 var(--sp-4); padding: 0; list-style: none; counter-reset: st; }
-.st-tour li { display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: var(--sp-3); row-gap: var(--sp-1); counter-increment: st; }
-.st-tour li::before { content: counter(st); grid-row: 1 / span 2; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px;
-  background: var(--c-accent); color: var(--c-surface); font-size: var(--fs-3); font-weight: var(--fw-bold); }
-.st-tour { word-break: keep-all; overflow-wrap: break-word; }   /* 뜻 단위로 줄을 바꾼다 — 한 글자만 남지 않게 */
-.st-tour strong { font-size: var(--fs-2); font-weight: var(--fw-bold); color: var(--c-ink); }
-.st-tour span { font-size: var(--fs-3); line-height: var(--lh-3); color: var(--c-ink-sub); }
+/* 사용법: 창 — 그림 + 이름 + 한 문장, 한 번에 한 단계(셋) · 아래에 점과 [이전][다음] */
+.st-tour-dlg { width: min(calc(100% - 2 * var(--sp-4)), 460px); max-height: min(88svh, 640px); }
+.st-tour { display: grid; }
+.st-tour-p { display: grid; gap: var(--sp-2); }
+.st-tour-p[hidden] { display: none; }
+.st-tour-p:not([hidden]) { animation: st-in .3s ease backwards; }
+.st-tour-art { display: grid; grid-template: minmax(0, 1fr) / minmax(0, 1fr); place-items: center; aspect-ratio: 16 / 9; border-radius: var(--r-2); background: var(--c-surface-sub); overflow: hidden; }
+.st-tour-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.st-tour-art.plan img { object-fit: contain; }           /* 도면은 잘리지 않게 */
+.st-tour-art.trio { grid-template: none / repeat(3, minmax(0, 1fr)); gap: var(--sp-2); padding: var(--sp-3); }
+.st-tour-art.trio img { height: auto; aspect-ratio: 16 / 10; border-radius: var(--r-1); }
+.st-tour-p h3 { margin-top: var(--sp-2); font-size: var(--fs-1); font-weight: var(--fw-bold); letter-spacing: -0.02em; color: var(--c-ink); }
+.st-tour-p p { font-size: var(--fs-3); line-height: var(--lh-3); color: var(--c-ink-sub); word-break: keep-all; overflow-wrap: break-word; }   /* 뜻 단위로 줄을 바꾼다 */
+.st-tour-foot { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-2) var(--sp-4) var(--sp-4); }   /* 스크롤 영역 밖 — 낮은 화면에서도 단추가 보인다 */
+.st-tour-foot .st-row { flex-wrap: nowrap; margin-top: 0; }
+.st-tour-dots { display: flex; gap: var(--sp-1); }
+.st-tour-dots span { width: var(--sp-2); height: var(--sp-2); border-radius: 999px; background: var(--c-ink-faint); transition: width .2s ease, background-color .2s ease; }   /* 색만으로 알리지 않는다 — 지금 단계는 길다 */
+.st-tour-dots span.on { width: var(--sp-5); background: var(--c-ink); }
+@media (max-height: 520px) { .st-tour-art { aspect-ratio: 3 / 1; } }   /* 가로로 든 폰 — 그림을 낮춘다(넘치면 본문만 안에서 스크롤) */
+@media (max-width: 640px) { .st-tour-p p { min-height: calc(var(--lh-3) * 2em); } }   /* 단계마다 문장 줄 수가 달라도 창 높이가 뛰지 않게 */
 /* 사진 손질(기존 도구 화면) */
 .st-tools { padding: var(--sp-7) 24px 0; }
 .st-panel { margin-top: var(--sp-4); padding: var(--sp-5); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-3); box-shadow: var(--sh-2); }
@@ -230,6 +242,8 @@
 }
 @media (forced-colors: active) {
   .st-drop.over, .st-row button.on, .st-opt input:checked + .st-opt-b, .st-th input:checked + .b, .st-steps li[data-s=done] { outline: 3px solid Highlight; outline-offset: -3px; }
+  .st-tour-dots span { forced-color-adjust: none; background: GrayText; }
+  .st-tour-dots span.on { background: Highlight; }
 }
 /* 공동 브랜드(파트너) · 임베드 — 호스트의 로고·색만 보이고 제공사는 아래 한 줄(?partner=<이름>, ?embed=1). 첫 그림 전에 partner-boot.js 가 표시를 건다 */
 html[data-partner] .tnav, html[data-partner] .tabbar, html[data-embed] .tnav, html[data-embed] .tabbar, html[data-embed] .page-head > div:first-child, html[data-embed] #stMine { display: none; }   /* 임베드는 제목 없이 [사용법]만 남긴다 */

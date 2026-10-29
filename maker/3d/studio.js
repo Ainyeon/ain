@@ -480,12 +480,24 @@
     if (push !== false) { S.sheet = true; history.pushState({ v: S.view, sheet: 1 }, ''); }
     dlg.showModal();
   }
+  let tourAt = 0;
+  function tourStep(n) {                                 // 사용법 창 — 한 번에 한 단계(그림·이름·한 문장, 아래 점·[이전][다음])
+    const ps = [...$('stTour').querySelectorAll('.st-tour-p')];
+    tourAt = Math.max(0, Math.min(ps.length - 1, n));
+    ps.forEach((p, i) => { p.hidden = i !== tourAt; });
+    $('stTour').querySelectorAll('.st-tour-dots span').forEach((d, i) => d.classList.toggle('on', i === tourAt));
+    const prev = $('stTourPrev');
+    if (tourAt === 0 && document.activeElement === prev) $('stTourNext').focus({ preventScroll: true });   // 숨기는 단추에 초점이 있으면 초점이 문서로 떨어진다
+    prev.hidden = tourAt === 0;
+    $('stTourNext').textContent = tourAt === ps.length - 1 ? '시작하기' : '다음';
+  }
+  function openTour(push) { tourStep(0); openSheet($('stTour'), push); }   // 늘 첫 단계부터
   const TOUR_KEY = 'maker_guide_studio_v1';              // 다른 도구의 첫 방문 안내와 같은 이름 규칙(maker_guide_<도구>_v1)
   function tourOnce(hash, back) {                        // 맨 처음 온 방문에만 — 임베드(호스트 화면 안)·주소로 온 방문(작업·도구·예시)·로그인 왕복은 건드리지 않는다
     if (document.documentElement.hasAttribute('data-embed') || hash || back) return;
     try { if (localStorage.getItem(TOUR_KEY)) return; localStorage.setItem(TOUR_KEY, '1'); } catch (e) { return; }
     $('stHelp').focus({ preventScroll: true });          // 닫으면 초점이 [사용법]으로 돌아온다(열기 전 초점이 없던 방문)
-    openSheet($('stTour'), false);                       // 조작 없이 쌓은 기록은 크롬이 뒤로가기에서 건너뛴다 — 자동으로 여는 창은 기록을 쌓지 않는다
+    openTour(false);                                     // 조작 없이 쌓은 기록은 크롬이 뒤로가기에서 건너뛴다 — 자동으로 여는 창은 기록을 쌓지 않는다
   }
 
   async function myJobs() {                              // 창으로 — 큰 판은 뒤에 그대로. 뒤로가기 = 닫기
@@ -723,8 +735,9 @@
       dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });   // 창 밖을 누르면 닫는다
       dlg.addEventListener('close', () => { if (S.sheet) { S.sheet = false; if (history.state && history.state.sheet) { S.skip = true; history.back(); } } });   // 닫기·Esc — 창을 열 때 쌓은 기록을 걷는다(그 사이 화면이 넘어갔으면 건드리지 않는다)
     }
-    $('stHelp').addEventListener('click', () => openSheet($('stTour')));
-    $('stTourGo').addEventListener('click', () => $('stTour').close());
+    $('stHelp').addEventListener('click', () => openTour());
+    $('stTourPrev').addEventListener('click', () => tourStep(tourAt - 1));
+    $('stTourNext').addEventListener('click', () => { if (tourAt < $('stTour').querySelectorAll('.st-tour-p').length - 1) tourStep(tourAt + 1); else $('stTour').close(); });
     $('stTools').replaceChildren(...TOOLS.map((t) => h('button', { type: 'button', text: t.name, onclick: () => openTool(t.id) })));
     const drop = $('stDrop');
     document.addEventListener('dragover', (e) => { e.preventDefault(); if ($('stPanel').hidden) drop.classList.add('over'); });

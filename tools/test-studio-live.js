@@ -75,14 +75,25 @@ for (const f of partners) {
 assert.ok(js.includes("'\\ufeff'") && /\^\(\[=\+@\]\|-\\D\)/.test(js), 'CSV 는 BOM 을 붙이고 = + @ - 로 시작하는 글자를 막는다');
 
 // 사용법 창(2026-10-29) — 첫 방문 안내는 처음 온 방문에만, 임베드·주소·로그인 왕복은 건드리지 않는다
-assert.ok(/id="stHelp"/.test(page) && /<dialog[^>]*id="stTour"/.test(page) && /id="stTourX"/.test(page) && /id="stTourGo"/.test(page), '사용법 단추·창이 있다');
+assert.ok(/id="stHelp"/.test(page) && /<dialog[^>]*id="stTour"/.test(page) && /id="stTourX"/.test(page) && /id="stTourPrev"/.test(page) && /id="stTourNext"/.test(page), '사용법 단추·창이 있다');
+{
+  const tour = page.slice(page.indexOf('id="stTour"'), page.indexOf('</dialog>', page.indexOf('id="stTour"')));
+  const ps = (tour.match(/class="st-tour-p"/g) || []).length;
+  assert.ok(ps === 3 && (tour.match(/<span class="st-tour-dots/g) || []).length === 1 && (tour.match(/<span(?: class="on")?><\/span>/g) || []).length === ps, '사용법은 단계 셋 · 점 셋(단계는 셋 이하)');
+  assert.ok(/<\/div>\s*<\/div>\s*<div class="st-tour-foot">/.test(tour), '[이전][다음]은 스크롤 영역(.st-dlg-in) 밖에 둔다(낮은 화면에서도 보인다)');
+  assert.ok(!/role="group"/.test(tour) && (tour.match(/class="st-vh">3단계 중 \d단계/g) || []).length === ps, '단계 위치는 눈에 안 보이는 글로 읽힌다');
+  const ts = js.slice(js.indexOf('function tourStep'), js.indexOf('function openTour'));
+  assert.ok(ts.indexOf('.focus(') > 0 && ts.indexOf('.focus(') < ts.indexOf('prev.hidden'), '[이전]을 숨기기 전에 초점을 옮긴다');
+  for (const m of tour.matchAll(/<img src="([^"]+)"([^>]*)>/g)) assert.ok(fs.existsSync(path.join(__dirname, '..', m[1].slice(1))) && /width="\d+" height="\d+"/.test(m[2]), '사용법 그림: 있는 파일 · 크기 속성 ' + m[1]);
+}
 {
   const i = js.indexOf('function tourOnce');
-  const fn = js.slice(i, js.indexOf('openSheet(', i));          // 자동으로 열기 직전까지
-  const i0 = js.indexOf('openSheet(', i);
+  const end = js.indexOf('async function myJobs', i);
+  const whole = js.slice(i, end);                               // tourOnce 전체
+  const fn = js.slice(i, js.indexOf('openTour(', i));            // 자동으로 열기 직전까지
   assert.ok(i > 0 && /data-embed/.test(fn) && /\bhash\b/.test(fn) && /\bback\b/.test(fn) && fn.includes('TOUR_KEY'), 'tourOnce: 임베드·주소(조각)·로그인 왕복이면 자동으로 열지 않고, 한 번 열면 기록한다');
   assert.ok(/else tourOnce\(hash, back\);\s*tell\('ready'\)/.test(js), '다른 갈래(작업·예시·도구)가 없을 때만 첫 방문 안내를 부른다');
-  assert.ok(/openSheet\(\$\('stTour'\), false\)/.test(fn + js.slice(i0, i0 + 120)), '자동으로 여는 창은 기록을 쌓지 않는다(조작 없는 pushState 는 뒤로가기에서 건너뛴다)');
+  assert.ok(/openTour\(false\)/.test(whole) && /function openTour\(push\)[^\n]*openSheet\(\$\('stTour'\), push\)/.test(js), '자동으로 여는 창은 기록을 쌓지 않는다(조작 없는 pushState 는 뒤로가기에서 건너뛴다)');
   assert.ok(/history\.state && history\.state\.sheet/.test(js), '창을 닫을 때 기록을 걷는 것은 현재 기록이 창이 쌓은 것일 때만');
   assert.ok(js.includes("'maker_guide_studio_v1'"), '저장 이름은 다른 도구와 같은 규칙(maker_guide_<도구>_v1)');
 }
