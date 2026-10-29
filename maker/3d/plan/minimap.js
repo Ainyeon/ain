@@ -22,7 +22,8 @@ export function createMinimap(canvas, { store, view }) {
     ctx.setTransform(dpr * m.k, 0, 0, dpr * m.k, dpr * m.ox, dpr * m.oy);
     ctx.fillStyle = C.accentBg; for (const e of fc.rooms) { ctx.beginPath(); e.el.poly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.fill(); }
     ctx.fillStyle = C.sub; for (const e of fc.walls) for (const poly of e.polys) { ctx.beginPath(); poly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.fill(); }
-    ctx.fillStyle = C.accent; for (const e of fc.items) ctx.fillRect(e.el.c[0] - 150, e.el.c[1] - 150, 300, 300);
+    ctx.fillStyle = C.accent; for (const e of fc.items) if (e.el.kind !== 'appliance') ctx.fillRect(e.el.c[0] - 150, e.el.c[1] - 150, 300, 300);
+    ctx.fillStyle = C.faint; for (const e of fc.items) if (e.el.kind === 'appliance') { ctx.beginPath(); e.poly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.fill(); }   // 가전은 실제 크기 그대로
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const x = v.x0 * m.k + m.ox, y = v.y0 * m.k + m.oy, w = (v.x1 - v.x0) * m.k, h = (v.y1 - v.y0) * m.k; // 보이는 범위
     ctx.globalAlpha = 0.12; ctx.fillStyle = C.accent; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1; ctx.strokeStyle = C.accent; ctx.lineWidth = 1.5; ctx.strokeRect(x + 0.5, y + 0.5, w, h);

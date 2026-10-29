@@ -246,7 +246,9 @@ export function createTools({ store, view, sel, ui, state }) {
         const p = snap(c).p;
         if (!fl().rooms.some((r) => pointInPoly(r.poly, p))) return ui.toast('방 안에서 놓아 주세요', 'err');
         if (fl().items.some((i) => dist(i.c, p) < 1)) return; // 같은 자리에 또 누르면(더블클릭) 두 대가 겹쳐 놓이므로 무시
-        const ids = run({ type: 'addItem', kind: 'ac', model: opts.model, brand: opts.brand, c: p, rot, capacityKw: opts.capacityKw ?? null, code: opts.code || '', size: opts.size });
+        const ids = run(opts.kind === 'appliance' // 가전: 패널이 공식 제원의 크기·높이를 실어 보낸다(없으면 core 가 거절한다). 그 밖은 시스템에어컨
+          ? { type: 'addItem', kind: 'appliance', category: opts.category, brand: opts.brand, model: opts.model, name: opts.name || '', c: p, rot, size: opts.size, heightMm: opts.heightMm, code: opts.code || opts.model, url: opts.url }
+          : { type: 'addItem', kind: 'ac', model: opts.model, brand: opts.brand, c: p, rot, capacityKw: opts.capacityKw ?? null, code: opts.code || '', size: opts.size });
         if (ids) ui.say(`${opts.code || opts.model} 을 놓았습니다`);
       },
       overlay(g) {

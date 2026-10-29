@@ -1,5 +1,5 @@
-// 플래너 왼쪽 패널(템플릿·제품·마감재·설계형 라이브러리·리소스 관리) — DOM 을 직접 만들어 container 에 넣는다(innerHTML 없음). 검색·정렬·배치 크기 같은 순수 함수는 export 해서 node 로 시험한다.
-import { curFloor } from './core/model.js';
+// 플래너 왼쪽 패널(템플릿·제품(시스템에어컨·가전)·마감재·설계형 라이브러리·리소스 관리) — DOM 을 직접 만들어 container 에 넣는다(innerHTML 없음). 검색·정렬·배치 크기 같은 순수 함수는 export 해서 node 로 시험한다.
+import { curFloor, APPLIANCE_CATEGORIES, APPLIANCE_LABEL } from './core/model.js';
 import { pointInPoly } from './core/geom.js';
 
 export const MODEL_LABEL = { '1way': '1Way', '2way': '2Way', '4way': '4Way', '360': '360', mini4way: '미니 4Way' };
@@ -40,6 +40,32 @@ export function filterFinishes(list, { chip = 'all', query = '', ids = null } = 
 }
 export function filterTemplates(list, { size = 'all', layout = 'all' } = {}) { return list.filter((t) => (size === 'all' || t.size === size) && (layout === 'all' || t.layout === layout)); }
 
+/* ---------- 가전 (순수) — data/appliance-catalog.json 의 행 ---------- */
+const hay = new WeakMap(); // 행마다 검색용 글자(모델명·모델 코드들·제품명, 공백·대소문자 없앰)를 한 번만 만든다
+const hayOf = (m) => { let v = hay.get(m); if (v === undefined) hay.set(m, (v = norm([m.model, ...(m.modelCodes || []), m.name].join(' ')))); return v; };
+export function filterAppliances(items, { category = 'all', brand = 'all', query = '', ids = null } = {}) {
+  const q = norm(query);
+  return items.filter((m) => (category === 'all' || m.category === category) && (brand === 'all' || m.brand === brand) && (!ids || ids.has(m.id)) && (!q || hayOf(m).includes(q)));
+}
+// 분류 칩에 적는 개수 — 분류 말고 나머지 조건(브랜드·검색·즐겨찾기)을 적용한 결과의 분류별 수. all = 합계
+export function categoryCounts(items, { brand = 'all', query = '', ids = null } = {}) {
+  const out = { all: 0 };
+  for (const c of APPLIANCE_CATEGORIES) out[c] = 0;
+  for (const m of filterAppliances(items, { brand, query, ids })) { out.all++; if (m.category in out) out[m.category]++; }
+  return out;
+}
+const byName = (a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }) || a.model.localeCompare(b.model, 'ko', { numeric: true }) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+const dimDesc = (k) => (a, b) => (a[k] === null) - (b[k] === null) || (b[k] ?? 0) - (a[k] ?? 0) || byName(a, b); // 큰 순, 미확인(null)은 맨 뒤
+export const APP_SORTS = [{ id: 'name', label: '이름순', cmp: byName }, { id: 'width', label: '가로 큰 순', cmp: dimDesc('widthMm') }, { id: 'height', label: '높이 큰 순', cmp: dimDesc('heightMm') }];
+export function sortAppliances(items, id = 'name') { const s = APP_SORTS.find((x) => x.id === id) || APP_SORTS[0]; return items.slice().sort(s.cmp); }
+const mmText = (v) => (v === null || v === undefined ? '미확인' : v.toLocaleString('ko-KR'));
+export const dimLine = (w, d, h) => `가로 ${mmText(w)} · 깊이 ${mmText(d)} · 높이 ${mmText(h)} mm`;
+export const fmtApplianceDims = (m) => dimLine(m.widthMm, m.depthMm, m.heightMm);
+// ctx.setTool('placeItem', …) 에 넘기는 값 — 놓을 수 없는 행은 null. 크기는 가로·깊이, 높이는 따로(공식 제원 그대로)
+export function applianceOpts(m) {
+  return m.placeable ? { kind: 'appliance', category: m.category, brand: m.brand, model: m.model, name: m.name, code: m.model, size: [m.widthMm, m.depthMm], heightMm: m.heightMm, url: m.url } : null;
+}
+
 // 즐겨찾기 — localStorage('ain-plan-fav-<kind>') 에 id 배열. 저장소가 막혀 있어도 이번 화면 동안은 동작한다(저장 실패는 toggle 이 false 를 돌려준다)
 const browserStorage = () => { try { return localStorage; } catch (e) { return null; } }; // 접근하는 것만으로 SecurityError 를 던지는 브라우저(제3자 iframe·쿠키 차단)도 있다
 export function createFavs(kind, storage = browserStorage()) {
@@ -63,6 +89,7 @@ function loadData(name) {
   return cache.get(name);
 }
 export const loadCatalog = () => loadData('ac-catalog');
+export const loadApplianceCatalog = () => loadData('appliance-catalog'); // [가전] 을 처음 열 때만 불러온다(1MB 쯤)
 export const loadFinishes = () => loadData('finishes');
 export const loadTemplates = () => loadData('templates');
 
@@ -134,14 +161,16 @@ const emptyNote = (text, ...more) => h('p', { class: 'pl-empty' }, text, ...more
 const revealWhenStyled = (root, isGone) => { root.style.visibility = 'hidden'; ensureStyles().then(() => { if (!isGone()) root.style.visibility = ''; }); };
 
 /* ---------- 제품·마감재가 함께 쓰는 목록 판 ----------
-   cfg: name, title, favKind, tabs[{id,label}], load(), chips(data)→[{id,label}], entries(data)→[], filter(entries,{chip,query,ids}), sorts?, card(entry)→{main}, cols(1|2), searchLabel,
-   placed(data, ctx, api)→{node, refresh?} (마지막 탭), refresh?(grid, ctx)(문서가 바뀔 때 카드 표시만 고친다), foot?(data)→text, emptyFav, emptyNone */
+   cfg: name, title, favKind, tabs[{id,label}], load(), chips(data)→[{id,label}], entries(data)→[], filter(entries,{chip,chip2,query,ids}), sorts?, sort?(list,id), card(entry)→{main,name,extra?}, cols(1|2), searchLabel,
+   placed(data, ctx, api)→{node, refresh?} (마지막 탭, 자료를 못 불러와도 열린다), refresh?(grid, ctx)(문서가 바뀔 때 카드 표시만 고친다), foot?(data)→text, emptyFav, emptyNone,
+   둘째 칩 줄: chip2Label·chips2(data)→[…] (있으면 filter 의 chip2 로 넘어간다) · chipCounts?(entries,{chip2,query,ids})→{칩 id: 개수}(첫 칩 줄 글자에 개수를 적는다)
+   limit?: 한 번에 그리는 카드 수(넘으면 '더 보기') · countText?(total, shown) · embedded: 제품 판 안에 들어가는 판(제목 줄이 없다) */
 function browsePanel(container, ctx, cfg) {
-  const st = { tab: 'lib', chip: 'all', q: '', sort: cfg.sorts ? cfg.sorts[0].id : '' };
-  const favs = createFavs(cfg.favKind);
-  let data = null, view = null, placedView = null, gone = false;
+  const st = { tab: 'lib', chip: 'all', chip2: 'all', q: '', sort: cfg.sorts ? cfg.sorts[0].id : '' };
+  const favs = createFavs(cfg.favKind), lastTab = cfg.tabs[cfg.tabs.length - 1].id, page = cfg.limit || Infinity;
+  let data = null, phase = 'loading', view = null, placedView = null, gone = false;
   const toast = (m) => ctx.toast && ctx.toast(m);
-  const root = h('section', { class: 'pl-root', 'data-panel': cfg.name }, h('header', { class: 'pl-head' }, h('h2', { class: 'pl-title' }, cfg.title)));
+  const root = h('section', { class: 'pl-root' + (cfg.embedded ? ' pl-root--in' : ''), [cfg.embedded ? 'data-sub' : 'data-panel']: cfg.name }, cfg.embedded ? null : h('header', { class: 'pl-head' }, h('h2', { class: 'pl-title' }, cfg.title)));
   const tabsApi = tablist(`${cfg.title} 목록`, cfg.tabs, st.tab, (id) => { st.tab = id; show(); }, 'pl-tabs');
   const body = h('div', { class: 'pl-body', role: 'tabpanel' });
   root.append(tabsApi.el, body);
@@ -149,21 +178,24 @@ function browsePanel(container, ctx, cfg) {
   revealWhenStyled(root, () => gone);
   body.id = uid('pl-p');
   tabsApi.tabs.forEach((t) => t.setAttribute('aria-controls', body.id));
+  if (cfg.countTab) tabsApi.setLabel(lastTab, cfg.countTab(null, ctx));
 
   const status = (node) => body.replaceChildren(node);
+  const loadingNote = () => h('p', { class: 'pl-empty', role: 'status' }, '불러오는 중');
   const fail = () => status(emptyNote('목록을 불러오지 못했습니다 ', h('button', { type: 'button', class: 'pl-link', onclick: start }, '다시 시도')));
   function start() {
-    status(h('p', { class: 'pl-empty', role: 'status' }, '불러오는 중'));
-    cfg.load().then((d) => { if (gone) return; data = d; show(); }, () => { if (!gone) fail(); });
+    phase = 'loading';
+    if (st.tab !== lastTab) status(loadingNote());
+    cfg.load().then((d) => { if (gone) return; data = d; phase = 'ready'; show(); }, () => { if (gone) return; phase = 'fail'; if (st.tab !== lastTab) fail(); });
   }
 
   function show() {
-    if (!data) return;
-    if (cfg.countTab) tabsApi.setLabel(cfg.tabs[cfg.tabs.length - 1].id, cfg.countTab(data, ctx));
     tabsApi.select(st.tab);
     body.setAttribute('aria-labelledby', tabsApi.tabs.find((t) => t.dataset.id === st.tab).id);
+    if (cfg.countTab) tabsApi.setLabel(lastTab, cfg.countTab(data, ctx));
     view = placedView = null;
-    if (st.tab === cfg.tabs[cfg.tabs.length - 1].id && cfg.placed) { placedView = cfg.placed(data, ctx, { toast }); status(placedView.node); return; }
+    if (st.tab === lastTab && cfg.placed) { placedView = cfg.placed(data, ctx, { toast }); status(placedView.node); return; }
+    if (!data) { if (phase === 'fail') fail(); else status(loadingNote()); return; }
     body.replaceChildren(browse());
   }
 
@@ -178,46 +210,66 @@ function browsePanel(container, ctx, cfg) {
     const sort = cfg.sorts && h('select', { class: 'pl-sort', 'aria-label': '정렬' }, cfg.sorts.map((s) => h('option', { value: s.id }, s.label)));
     if (sort) { sort.value = st.sort; sort.addEventListener('change', () => { st.sort = sort.value; update(); }); sort.addEventListener('keydown', (e) => e.stopPropagation()); }
     const chips = tablist(cfg.chipLabel, chipItems, st.chip, (id) => { st.chip = id; update(); }, 'pl-chips');
+    const chips2 = cfg.chips2 && tablist(cfg.chip2Label, [{ id: 'all', label: '전체' }, ...cfg.chips2(data)], st.chip2, (id) => { st.chip2 = id; update(); }, 'pl-chips');
     const count = h('p', { class: 'pl-count', 'aria-live': 'polite' });
     const hint = h('p', { class: 'pl-hint' }, cfg.hint);
     const grid = h('ul', { class: 'pl-grid pl-grid--' + cfg.cols, 'aria-label': cfg.title });
+    const moreBtn = h('button', { type: 'button', class: 'pl-more', onclick: showMore });
     const foot = cfg.foot && h('p', { class: 'pl-foot' }, cfg.foot(data));
     const refreshTab = roving(grid, '.pl-card-main');
+    let list = [], shown = 0;
     const toggleFav = (id, btn) => {
       const saved = favs.toggle(id);
       if (!saved) toast('즐겨찾기를 저장하지 못했습니다 · 이번 화면에서만 유지됩니다');
       if (st.tab === 'fav') { const mains = [...grid.querySelectorAll('.pl-card-main')], i = mains.findIndex((m) => m.dataset.id === id); update(); const next = [...grid.querySelectorAll('.pl-card-main')]; (next[Math.min(i, next.length - 1)] || search).focus(); }
       else btn.setAttribute('aria-pressed', favs.has(id));
     };
-    grid.addEventListener('keydown', (e) => { // F = 즐겨찾기(카드에 초점이 있을 때만)
+    grid.addEventListener('keydown', (e) => { // F = 즐겨찾기, O = 공식 페이지 열기(카드에 초점이 있을 때만). 한글 자판에서도 되도록 글쇠 위치(code)로 본다
       const main = e.target.closest('.pl-card-main');
-      if (!main || e.ctrlKey || e.metaKey || e.altKey || (e.key !== 'f' && e.key !== 'F')) return;
-      e.preventDefault(); e.stopPropagation();
-      toggleFav(main.dataset.id, main.parentElement.querySelector('.pl-fav'));
+      if (!main || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') { e.preventDefault(); e.stopPropagation(); toggleFav(main.dataset.id, main.parentElement.querySelector('.pl-fav')); }
+      else if (e.code === 'KeyO' || e.key === 'o' || e.key === 'O') { const a = main.parentElement.querySelector('.pl-src'); if (a) { e.preventDefault(); e.stopPropagation(); a.click(); } }
     });
-    function update() {
+    function cardOf(en) {
+      const c = cfg.card(en, ctx, { toast }), id = en.id;
+      const fav = h('button', { type: 'button', class: 'pl-fav', 'aria-pressed': favs.has(id), 'aria-label': `${c.name} 즐겨찾기`, tabindex: '-1', 'aria-keyshortcuts': 'F', onclick: (e) => toggleFav(id, e.currentTarget) }, '즐겨찾기');
+      c.main.classList.add('pl-card-main'); c.main.dataset.id = id;
+      return h('li', { class: 'pl-card' }, c.main, fav, c.extra);
+    }
+    function syncMore() {
+      const left = list.length - shown;
+      moreBtn.hidden = left <= 0; moreBtn.textContent = `더 보기 (${Math.min(page, left).toLocaleString('ko-KR')}개)`;
+      count.textContent = cfg.countText ? cfg.countText(list.length, shown) : `${list.length}개`;
+    }
+    function update() { // 조건이 바뀌었다 — 처음 한 쪽부터 다시 그린다
       const ids = st.tab === 'fav' ? favs.all() : null;
-      let list = cfg.filter(entries, { chip: st.chip, query: st.q, ids });
+      list = cfg.filter(entries, { chip: st.chip, chip2: st.chip2, query: st.q, ids });
       if (cfg.sorts) list = cfg.sort(list, st.sort);
-      count.textContent = `${list.length}개`;
-      grid.replaceChildren(...list.map((en) => {
-        const c = cfg.card(en, ctx, { toast }), id = en.id;
-        const fav = h('button', { type: 'button', class: 'pl-fav', 'aria-pressed': favs.has(id), 'aria-label': `${c.name} 즐겨찾기`, tabindex: '-1', 'aria-keyshortcuts': 'F', onclick: (e) => toggleFav(id, e.currentTarget) }, '즐겨찾기');
-        c.main.classList.add('pl-card-main'); c.main.dataset.id = id;
-        return h('li', { class: 'pl-card' }, c.main, fav);
-      }));
-      if (!list.length) grid.append(h('li', { class: 'pl-empty-row' }, emptyNote(st.tab === 'fav' && !favs.all().size && !st.q && st.chip === 'all' ? cfg.emptyFav : cfg.emptyNone)));
-      refreshTab();
+      shown = Math.min(list.length, page);
+      if (cfg.chipCounts) { const n = cfg.chipCounts(entries, { chip2: st.chip2, query: st.q, ids }); for (const c of chipItems) chips.setLabel(c.id, `${c.label} ${(n[c.id] ?? 0).toLocaleString('ko-KR')}`); }
+      grid.replaceChildren(...list.slice(0, shown).map(cardOf));
+      if (!list.length) grid.append(h('li', { class: 'pl-empty-row' }, emptyNote(st.tab === 'fav' && !favs.all().size && !st.q && st.chip === 'all' && st.chip2 === 'all' ? cfg.emptyFav : cfg.emptyNone)));
+      syncMore(); refreshTab();
       if (cfg.refresh) cfg.refresh(grid, ctx);
+    }
+    function showMore() { // 앞의 카드는 그대로 두고 다음 쪽만 덧붙인다 — 스크롤 자리가 그대로이고, 초점은 새로 붙은 첫 카드로
+      const from = shown; shown = Math.min(list.length, shown + page);
+      const added = list.slice(from, shown).map(cardOf);
+      grid.append(...added);
+      syncMore(); refreshTab();
+      if (cfg.refresh) cfg.refresh(grid, ctx);
+      const first = added[0] && added[0].querySelector('.pl-card-main');
+      if (first) first.focus({ preventScroll: true });
     }
     view = { update, grid };
     update();
-    return h('div', { class: 'pl-browse' }, h('div', { class: 'pl-tools' }, search, sort), chips.el, hint, count, grid, foot);
+    const group = (title, el) => h('div', { class: 'pl-fgroup' }, h('span', { class: 'pl-flabel' }, title), el);
+    return h('div', { class: 'pl-browse' }, h('div', { class: 'pl-tools' }, search, sort), chips2 ? [group(cfg.chipLabel, chips.el), group(cfg.chip2Label, chips2.el)] : chips.el, hint, count, grid, moreBtn, foot);
   }
 
   const unsub = ctx.store.subscribe(() => {
-    if (gone || !data) return;
-    if (cfg.countTab) tabsApi.setLabel(cfg.tabs[cfg.tabs.length - 1].id, cfg.countTab(data, ctx));
+    if (gone) return;
+    if (cfg.countTab) tabsApi.setLabel(lastTab, cfg.countTab(data, ctx));
     if (placedView && placedView.refresh) placedView.refresh();
     if (view && cfg.refresh) cfg.refresh(view.grid, ctx);
   });
@@ -252,33 +304,97 @@ function productCard(m, ctx, api) {
   return { main, name };
 }
 
+// 배치된 제품 탭 — 시스템에어컨과 가전을 구역으로 나눠 보이고, 삭제는 잠금을 지키는 ctx.exec 로
 function placedProducts(data, ctx) {
-  const node = h('div', { class: 'pl-browse' }), list = h('ul', { class: 'pl-list', 'aria-label': '배치된 제품' }), head = h('p', { class: 'pl-count' });
-  node.append(head, list);
+  const node = h('div', { class: 'pl-browse' }), head = h('p', { class: 'pl-count' });
+  const sec = (title) => h('h3', { class: 'pl-sec' }, title);
+  const acHead = sec(''), acList = h('ul', { class: 'pl-list', 'aria-label': '배치된 시스템에어컨' }), appHead = sec(''), appList = h('ul', { class: 'pl-list', 'aria-label': '배치된 가전' });
+  node.append(head, acHead, acList, appHead, appList);
+  const row = (i, main, ...subs) => h('li', { class: 'pl-row' },
+    h('span', { class: 'pl-row-main' }, h('span', { class: 'pl-prod-code' }, main), subs.map((t) => h('span', { class: 'pl-row-sub' }, t))),
+    h('button', { type: 'button', class: 'pl-btn', 'aria-label': `${main} ${i.id} 삭제`, onclick: () => removeItem(ctx, i.id) }, '삭제'));
   const render = () => {
-    const f = curFloor(ctx.store.doc), items = f.items;
-    head.textContent = `${f.name} · ${items.length}대`;
-    list.replaceChildren(...items.map((i) => h('li', { class: 'pl-row' },
-      h('span', { class: 'pl-row-main' }, h('span', { class: 'pl-prod-code' }, i.code || '모델명 미확인'), h('span', { class: 'pl-row-sub' }, [BRAND_LABEL[i.brand], MODEL_LABEL[i.model], i.capacityKw === null ? '냉방 미확인' : `냉방 ${i.capacityKw} kW`, roomNameAt(f, i.c)].filter(Boolean).join(' · '))),
-      h('button', { type: 'button', class: 'pl-btn', 'aria-label': `${i.code || '모델명 미확인'} ${i.id} 삭제`, onclick: () => removeItem(ctx, i.id) }, '삭제'))));
-    if (!items.length) list.append(h('li', { class: 'pl-empty-row' }, emptyNote('아직 놓은 에어컨이 없습니다')));
+    const f = curFloor(ctx.store.doc), acs = f.items.filter((i) => i.kind === 'ac'), apps = f.items.filter((i) => i.kind === 'appliance');
+    head.textContent = `${f.name} · ${f.items.length}대`;
+    acHead.textContent = `시스템에어컨 ${acs.length}대`; appHead.textContent = `가전 ${apps.length}대`;
+    acList.replaceChildren(...acs.map((i) => row(i, i.code || '모델명 미확인', [BRAND_LABEL[i.brand], MODEL_LABEL[i.model], i.capacityKw === null ? '냉방 미확인' : `냉방 ${i.capacityKw} kW`, roomNameAt(f, i.c)].filter(Boolean).join(' · '))));
+    if (!acs.length) acList.append(h('li', { class: 'pl-empty-row' }, emptyNote('아직 놓은 에어컨이 없습니다')));
+    appList.replaceChildren(...apps.map((i) => row(i, i.code || i.model, [BRAND_LABEL[i.brand], APPLIANCE_LABEL[i.category], roomNameAt(f, i.c)].filter(Boolean).join(' · '), dimLine(i.size[0], i.size[1], i.heightMm))));
+    if (!apps.length) appList.append(h('li', { class: 'pl-empty-row' }, emptyNote('아직 놓은 가전이 없습니다')));
   };
   render();
   return { node, refresh: render };
 }
 
-function productsPanel(container, ctx) {
-  return browsePanel(container, ctx, {
-    name: 'products', title: '제품', favKind: 'ac', cols: 1,
+const countItems = (c) => curFloor(c.store.doc).items.length;
+function systemAcPanel(host, ctx) {
+  return browsePanel(host, ctx, {
+    name: 'ac', embedded: true, title: '제품', favKind: 'ac', cols: 1,
     tabs: [{ id: 'lib', label: '에어컨 라이브러리' }, { id: 'fav', label: '즐겨찾기' }, { id: 'placed', label: '배치된 제품' }],
     load: loadCatalog, entries: (d) => d.models, chipLabel: '에어컨 형식',
     chips: () => MODEL_ORDER.map((id) => ({ id, label: MODEL_LABEL[id] })),
     filter: (e, o) => filterModels(e, { type: o.chip, query: o.query, ids: o.ids }), sorts: MODEL_SORTS, sort: sortModels,
     searchLabel: '모델명·시리즈 검색', hint: '방향키로 고르고 Enter 로 놓습니다 · F 즐겨찾기',
-    card: productCard, placed: placedProducts, countTab: (d, c) => `배치된 제품 ${curFloor(c.store.doc).items.length}`,
+    card: productCard, placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
     emptyFav: '즐겨찾기한 에어컨이 없습니다', emptyNone: '찾는 에어컨이 없습니다',
     foot: (d) => `제원은 제조사 웹 카탈로그를 옮긴 값입니다 · 수집 ${d.meta.readme.checked} · 빈 칸은 미확인`,
   });
+}
+
+/* ---------- 제품(가전) ---------- */
+const APP_PAGE = 200; // 한 번에 그리는 카드 수 — 1,295개를 한꺼번에 그리지 않는다
+const isHttps = (u) => typeof u === 'string' && /^https:\/\/\S+$/.test(u);
+function applianceCard(m, ctx, api) {
+  const opts = applianceOpts(m), cat = APPLIANCE_LABEL[m.category] ?? m.category, dims = fmtApplianceDims(m), name = `${BRAND_LABEL[m.brand]} ${m.model}`;
+  const main = h('button', { type: 'button', class: 'pl-prod pl-app', 'aria-disabled': opts ? null : 'true',
+    'aria-label': [name, cat, m.name, dims, m.capacityText, m.discontinued && '단종 표시', opts ? '캔버스에 놓기' : `놓을 수 없음, ${m.whyNot}`].filter(Boolean).join(', '),
+    onclick: () => {
+      if (!opts) { api.toast(`${m.model} · ${m.whyNot}`); return; } // 눌러도 알림만
+      ctx.setTool('placeItem', opts);
+      api.toast(`${m.model} · 캔버스를 눌러 놓으세요`);
+    } },
+    h('span', { class: 'pl-prod-type' }, `${BRAND_LABEL[m.brand]} · ${cat}`),
+    h('span', { class: 'pl-prod-row' }, h('span', { class: 'pl-prod-code' }, m.model)),
+    h('span', { class: 'pl-prod-series pl-app-name', title: m.name }, m.name),
+    h('span', { class: 'pl-prod-dim' }, dims),
+    m.capacityText && h('span', { class: 'pl-prod-dim pl-app-cap', title: m.capacityText }, m.capacityText),
+    m.discontinued && h('span', { class: 'pl-flag' }, '단종 표시'),
+    !opts && h('span', { class: 'pl-why' }, m.whyNot));
+  const src = isHttps(m.url) && h('a', { class: 'pl-src', href: m.url, target: '_blank', rel: 'noopener noreferrer', tabindex: '-1', 'aria-label': `${m.model} 공식 페이지 (새 창)`, 'aria-keyshortcuts': 'O' }, '공식 페이지');
+  return { main, name, extra: src };
+}
+function appliancesPanel(host, ctx) {
+  return browsePanel(host, ctx, {
+    name: 'app', embedded: true, title: '가전', favKind: 'appliance', cols: 1, limit: APP_PAGE,
+    tabs: [{ id: 'lib', label: '가전 라이브러리' }, { id: 'fav', label: '즐겨찾기' }, { id: 'placed', label: '배치된 제품' }],
+    load: loadApplianceCatalog, entries: (d) => d.items,
+    chipLabel: '분류', chips: (d) => d.meta.categories.map((c) => ({ id: c.id, label: c.short })), chipCounts: (e, o) => categoryCounts(e, { brand: o.chip2, query: o.query, ids: o.ids }),
+    chip2Label: '브랜드', chips2: () => [{ id: 'samsung', label: BRAND_LABEL.samsung }, { id: 'lg', label: BRAND_LABEL.lg }],
+    filter: (e, o) => filterAppliances(e, { category: o.chip, brand: o.chip2, query: o.query, ids: o.ids }), sorts: APP_SORTS, sort: sortAppliances,
+    searchLabel: '모델명·제품명 검색', hint: '방향키로 고르고 Enter 로 놓습니다 · F 즐겨찾기 · O 공식 페이지',
+    card: applianceCard, placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
+    countText: (total, shown) => (shown < total ? `${total.toLocaleString('ko-KR')}개 중 ${shown.toLocaleString('ko-KR')}개 표시` : `${total.toLocaleString('ko-KR')}개`),
+    emptyFav: '즐겨찾기한 가전이 없습니다', emptyNone: '찾는 가전이 없습니다',
+    foot: (d) => `삼성·LG 공식 페이지 기준 · 수집일 ${d.meta.collectedAt}`,
+  });
+}
+
+// 제품 판: 맨 위 두 칸 전환 [시스템에어컨] [가전]. 시스템에어컨은 바로 열고, 가전은 처음 누를 때 만든다(카탈로그도 그때 불러온다)
+function productsPanel(container, ctx) {
+  const root = h('section', { class: 'pl-root', 'data-panel': 'products' }, h('header', { class: 'pl-head' }, h('h2', { class: 'pl-title' }, '제품')));
+  const hosts = { ac: h('div', { class: 'pl-host', role: 'tabpanel' }), app: h('div', { class: 'pl-host', role: 'tabpanel', hidden: true }) };
+  const seg = tablist('제품 종류', [{ id: 'ac', label: '시스템에어컨' }, { id: 'app', label: '가전' }], 'ac', (id) => pick(id), 'pl-seg');
+  for (const t of seg.tabs) { const host = hosts[t.dataset.id]; host.id = uid('pl-h'); host.setAttribute('aria-labelledby', t.id); t.setAttribute('aria-controls', host.id); }
+  root.append(seg.el, hosts.ac, hosts.app);
+  container.replaceChildren(root);
+  let gone = false;
+  revealWhenStyled(root, () => gone);
+  const subs = { ac: systemAcPanel(hosts.ac, ctx), app: null };
+  function pick(id) {
+    if (id === 'app' && !subs.app) subs.app = appliancesPanel(hosts.app, ctx);
+    hosts.ac.hidden = id !== 'ac'; hosts.app.hidden = id !== 'app';
+  }
+  return { destroy() { gone = true; for (const sp of Object.values(subs)) if (sp) sp.destroy(); root.remove(); } };
 }
 
 /* ---------- 마감재 ---------- */

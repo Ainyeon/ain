@@ -1,7 +1,7 @@
-// 2D 캔버스 — 화면(px)↔도면(mm) 변환·팬줌(순수 함수)과 격자·밑그림·벽·방·개구부·기둥·제품 그리기(필요할 때만 rAF). import 해도 DOM 을 건드리지 않는다
-import { curFloor } from './core/model.js';
+// 2D 캔버스 — 화면(px)↔도면(mm) 변환·팬줌(순수 함수)과 격자·밑그림·벽·방·개구부·기둥·제품(시스템에어컨·가전) 그리기(필요할 때만 rAF). import 해도 DOM 을 건드리지 않는다
+import { curFloor, APPLIANCE_LABEL } from './core/model.js';
 import { roomOutlineWithArcs, jointsOf, wallSlice, wallLen, wallPointAt, wallPoints, polyCentroid, polyArea, rectPoly, circlePoly, roomAreaM2 } from './core/geom.js';
-import { findLabelSpot, swingPoly } from './labels.js';
+import { findLabelSpot, swingPoly, rectInsidePoly } from './labels.js';
 
 /* ---------- 순수: 화면 변환 (scale = px/mm 하나) ---------- */
 export const SCALE = Object.freeze({ min: 0.004, max: 2, start: 0.1 });
@@ -169,6 +169,24 @@ export function createView2D(canvas, { store, getState, getSel }) {
     drawPill(ctx, C, fmtLen(wallLen(e.el), st.unit), q[0] + nx * (e.el.t * vp.scale / 2 + 14), q[1] + ny * (e.el.t * vp.scale / 2 + 14), { color: C.accent });
   }
 
+  // 가전 글씨: 분류 이름(굵게)을 상자 가운데에 — 상자 안에 들어갈 때만. 그 아래 모델 코드는 상자 안에서 문 호·방 글씨·분류 이름을 피한 자리에 — 안 들어가면 생략한다(작은 제품은 글씨 없음)
+  function applianceLabels(e, avoid, many) {
+    const s = vp.scale, [cx, cy] = e.el.c, name = APPLIANCE_LABEL[e.el.category] ?? e.el.category, taken = [];
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = `${C.fw} ${C.fs3}px ${C.font}`;
+    const nw = ctx.measureText(name).width, hx = (nw + 6) / 2 / s, hy = (C.fs3 + 4) / 2 / s, r = [cx - hx, cy - hy, cx + hx, cy + hy];
+    if (!rectInsidePoly(e.poly, r)) return;
+    const q = toPx(vp, [cx, cy]);
+    ctx.fillStyle = C.ink; ctx.fillText(name, q[0], q[1]);
+    taken.push({ poly: [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]], box: r });
+    const code = e.el.code || e.el.model;
+    ctx.font = `${C.fs4}px ${C.font}`;
+    const cw = ctx.measureText(code).width, sp = many ? { x: cx, y: cy + (C.fs3 + C.fs4) / 2 / s } : findLabelSpot({ poly: e.poly, center: [cx, cy + (C.fs3 + C.fs4 - 2) / 2 / s], w: cw / s, h: C.fs4 / s, avoid: avoid.concat(taken), step: 5 / s, pad: 2 / s, maxRadius: Math.hypot(e.box[2] - e.box[0], e.box[3] - e.box[1]) / 2 });
+    if (sp.blocked) return;
+    const p = toPx(vp, [sp.x, sp.y]);
+    ctx.fillStyle = C.sub; ctx.fillText(code, p[0], p[1]);
+  }
+
   function draw() {
     raf = 0; view.drawCount++;
     const st = getState(), doc = store.doc, f = curFloor(doc), fc = floorCache(f), sel = getSel(), s = vp.scale, px = 1 / s, R = viewRect(vp, 40);
@@ -202,7 +220,10 @@ export function createView2D(canvas, { store, getState, getSel }) {
     ctx.globalAlpha = 1;
     for (const e of fc.ops) if (vis(e.box)) openingSymbol(e, C.ink, px);
     for (const e of fc.cols) if (vis(e.box)) { path(e.poly); ctx.fillStyle = C.sub; ctx.fill(); ctx.strokeStyle = C.ink; ctx.lineWidth = px; ctx.stroke(); }
-    for (const e of fc.items) if (vis(e.box)) { // 에어컨: 판넬 테두리 + 가운데 X
+    for (const e of fc.items) if (vis(e.box) && e.el.kind === 'appliance') { // 가전: 연한 면 + 가는 실선 테두리(에어컨의 판넬 테두리 + X 와 구분). 에어컨이 위에 겹쳐 보이도록 먼저 그린다
+      path(e.poly); ctx.globalAlpha = 0.6; ctx.fillStyle = C.line; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = C.sub; ctx.lineWidth = px; ctx.stroke();
+    }
+    for (const e of fc.items) if (vis(e.box) && e.el.kind !== 'appliance') { // 에어컨: 판넬 테두리 + 가운데 X
       const poly = e.poly; path(poly); ctx.fillStyle = C.surface; ctx.fill(); ctx.strokeStyle = C.accent; ctx.lineWidth = px * 1.5; ctx.stroke();
       ctx.lineWidth = px; ctx.strokeStyle = C.accentLine; path([poly[0], poly[2]], false); ctx.stroke(); path([poly[1], poly[3]], false); ctx.stroke();
     }
@@ -232,7 +253,10 @@ export function createView2D(canvas, { store, getState, getSel }) {
       ctx.font = `${C.fs4}px ${C.font}`; ctx.fillStyle = C.sub;
       const avoidCode = swingsOf(fc).concat(taken);          // 문 호 + 방 이름·면적 글씨 — 이 프레임에서만 쓰므로 캐시하지 않는다(중심이 비어 있으면 바로 끝난다)
       for (const e of fc.items) {
-        if (!vis(e.box) || (e.box[2] - e.box[0]) * s < 44) continue;
+        if (!vis(e.box)) continue;
+        if (e.el.kind === 'appliance') { applianceLabels(e, avoidCode, many); continue; }
+        if ((e.box[2] - e.box[0]) * s < 44) continue;
+        ctx.font = `${C.fs4}px ${C.font}`; ctx.fillStyle = C.sub;   // 가전 글씨가 바꿔 둔 글꼴·색을 되돌린다
         const code = e.el.code || e.el.model.toUpperCase(), cw = ctx.measureText(code).width;
         const sp = many ? { x: e.el.c[0], y: e.el.c[1] } : findLabelSpot({ center: e.el.c, w: cw / s, h: C.fs4 / s, avoid: avoidCode, step: 6 / s, pad: 2 / s, maxRadius: Math.hypot(e.box[2] - e.box[0], e.box[3] - e.box[1]) / 2 + cw / s });
         if (sp.blocked) continue;                           // 피할 자리가 없으면 겹쳐 쓰지 않고 생략한다(모델명은 제품 패널·물량표에 있다)

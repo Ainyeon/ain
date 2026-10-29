@@ -1,5 +1,5 @@
 // 도면 저장소 — 명령(exec)으로만 문서를 바꾸고, 바뀐 부분만 새로 만든 불변 문서를 undo 스택에 쌓는다 (순수 로직, DOM 없음)
-import { DEFAULTS, PREFIX, COLS, MODELS, BRANDS, createDoc, cloneDoc, curFloor, newId, fixSeq, makeFloor, validateDoc } from './model.js';
+import { DEFAULTS, PREFIX, COLS, MODELS, BRANDS, APPLIANCE_CATEGORIES, createDoc, cloneDoc, curFloor, newId, fixSeq, makeFloor, validateDoc } from './model.js';
 import { dist, polyArea, signedArea, offsetPoly, roomInnerPoly, segSegIntersect, wallLen, bounds, pointInPoly } from './geom.js';
 import { History } from './history.js';
 
@@ -123,7 +123,13 @@ const CMD = {
     ok(isPt(c.a) && isPt(c.b) && dist(c.a, c.b) >= 1, '보조선의 두 점이 필요합니다');
     return [put(d, f, 'guides', { a: P2(c.a), b: P2(c.b) })];
   },
-  addItem(d, f, c) {
+  addItem(d, f, c) { // kind 'ac' = 시스템에어컨(천장), 'appliance' = 가전(바닥에 놓는 상자). 가전은 크기·높이를 받아야만 놓는다 — 제원을 지어내지 않는다
+    if (c.kind === 'appliance') {
+      ok(APPLIANCE_CATEGORIES.includes(c.category) && BRANDS.includes(c.brand) && typeof c.model === 'string' && c.model, '가전 분류·브랜드·모델명이 올바르지 않습니다');
+      ok(isPt(c.c), '제품 위치가 필요합니다');
+      ok(Array.isArray(c.size) && c.size.length === 2 && c.size.every((v) => Number.isFinite(v) && v > 0) && Number.isFinite(c.heightMm) && c.heightMm > 0, '가전은 크기(가로·깊이)와 높이가 있어야 놓을 수 있습니다');
+      return [put(d, f, 'items', { kind: 'appliance', category: c.category, brand: c.brand, model: c.model, name: c.name ?? '', c: P2(c.c), rot: c.rot ?? 0, size: [c.size[0], c.size[1]], heightMm: c.heightMm, code: c.code ?? c.model, ...(c.url === undefined ? {} : { url: c.url }) })];
+    }
     ok(c.kind === 'ac' && MODELS.includes(c.model) && BRANDS.includes(c.brand), '제품 종류·형식·브랜드가 올바르지 않습니다');
     ok(isPt(c.c), '제품 위치가 필요합니다');
     ok(Array.isArray(c.size) && c.size.length === 2 && c.size.every((v) => Number.isFinite(v) && v > 0), '제품 크기(가로·세로)가 필요합니다');

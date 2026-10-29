@@ -1,5 +1,5 @@
 // 2D 도면 편집기 — 화면 조립·저장/불러오기/내보내기·층과 상세 설정·선택 속성·밑그림·패널(panels.js)·3D(view3d.js) 연결·키보드. 그리기는 view2d.js, 도구는 tools.js, 미니맵은 minimap.js
-import { createDoc, curFloor, COLS } from './core/model.js';
+import { createDoc, curFloor, COLS, APPLIANCE_LABEL } from './core/model.js';
 import { Store } from './core/store.js';
 import { toDocJSON, fromDocJSON } from './core/export.js';
 import { roomAreaM2, bounds, wallLen, dist } from './core/geom.js';
@@ -259,12 +259,16 @@ function propsBuild() {
       return { el: h('label', { class: 'ed-f' }, [h('span', { text: label }), s]), sync };
     };
     const ro = (label, get) => { const o = h('output', { class: 'ed-out' }); return { el: h('div', { class: 'ed-f' }, [h('span', { text: label }), o]), sync() { const e = cur(); if (e) setText(o, get(e)); } }; };
-    kids.push(h('p', { class: 'ed-note', text: `${KO[first.col]} · ${id}` }));
+    const isApp = first.col === 'items' && first.el.kind === 'appliance';
+    kids.push(h('p', { class: 'ed-note', text: `${isApp ? '가전' : KO[first.col]} · ${id}` }));
     if (first.col === 'walls') { add(ro('길이', (e) => fmtLen(wallLen(e), state.unit))); add(num('두께', 'mm', (e) => e.t, (v) => up({ t: v }), { min: 10 })); add(pick('종류', [['inner', '내벽'], ['exterior', '외벽']], (e) => e.kind, (v) => up({ kind: v }))); add(num('곡선 처짐', 'mm', (e) => e.bulge, (v) => up({ bulge: v }))); }
     else if (first.col === 'rooms') { add(txt('이름', (e) => e.name, (v) => up({ name: v }))); add(ro('실면적', (e) => fmtArea(roomAreaM2(store.doc, e), state.unit))); }
     else if (first.col === 'columns') { const rect = first.el.kind === 'rect'; add(num(rect ? '가로' : '지름', 'mm', (e) => e.w, (v) => up(rect ? { w: v } : { w: v, d: v }), { min: 10 })); if (rect) add(num('세로', 'mm', (e) => e.d, (v) => up({ d: v }), { min: 10 })); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 15 })); }
     else if (first.col === 'openings') { add(pick('종류', Object.entries(OPENING_NAMES), (e) => e.type, (v) => up({ type: v }))); add(num('폭', 'mm', (e) => e.width, (v) => up({ width: v }), { min: 100 })); add(num('높이', 'mm', (e) => e.height, (v) => up({ height: v }), { min: 100 })); add(num('바닥에서', 'mm', (e) => e.sill, (v) => up({ sill: v }), { min: 0 })); }
-    else if (first.col === 'items') { add(ro('모델', (e) => e.code || e.model.toUpperCase())); add(ro('냉방 용량', (e) => (e.capacityKw ? `${e.capacityKw} kW` : '미확인'))); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 })); }
+    else if (isApp) { // 가전: 크기는 공식 제원 값이라 고치지 않는다(읽기 전용), 돌리기만
+      add(ro('분류', (e) => APPLIANCE_LABEL[e.category] ?? e.category)); add(ro('모델', (e) => e.code || e.model)); add(ro('제품명', (e) => e.name || '미확인'));
+      add(ro('크기', (e) => `가로 ${e.size[0].toLocaleString('ko-KR')} · 깊이 ${e.size[1].toLocaleString('ko-KR')} · 높이 ${e.heightMm.toLocaleString('ko-KR')} mm`)); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 }));
+    } else if (first.col === 'items') { add(ro('모델', (e) => e.code || e.model.toUpperCase())); add(ro('냉방 용량', (e) => (e.capacityKw ? `${e.capacityKw} kW` : '미확인'))); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 })); }
     else if (first.col === 'guides') add(ro('길이', (e) => fmtLen(dist(e.a, e.b), state.unit)));
   } else kids.push(h('p', { class: 'ed-note', text: `${ids.length}개를 골랐습니다` }));
   kids.push(h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: ids.length > 1 ? '선택한 것 지우기' : '지우기', onclick: delSel })]));

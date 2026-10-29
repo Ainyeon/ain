@@ -2,6 +2,10 @@
 export const DEFAULTS = Object.freeze({ wallT: 150, doorW: 900, doorH: 2100, winW: 1200, winH: 1200, winSill: 900, colW: 300, snapMm: 50, gridMinor: 100, gridMajor: 1000 });
 export const MODELS = ['1way', '2way', '4way', '360', 'mini4way'];
 export const BRANDS = ['samsung', 'lg'];
+// 가전(kind:'appliance') — 분류 12가지와 평면도·칩에 쓰는 짧은 이름. data/appliance-catalog.json 의 meta.categories 와 같다(시험이 대조한다)
+export const APPLIANCE_CATEGORIES = ['refrigerator', 'kimchi', 'washer', 'dryer', 'washtower', 'dishwasher', 'styler', 'airpurifier', 'aircon', 'tv', 'cooking', 'water'];
+export const APPLIANCE_LABEL = { refrigerator: '냉장고', kimchi: '김치냉장고', washer: '세탁기', dryer: '건조기', washtower: '워시타워·워시콤보', dishwasher: '식기세척기', styler: '의류관리기', airpurifier: '공기청정기', aircon: '에어컨', tv: 'TV', cooking: '조리가전', water: '정수기' };
+export const APPLIANCE_LIMITS = Object.freeze({ footMin: 50, footMax: 5000, heightMin: 50, heightMax: 4000 }); // 놓을 수 있는 가전 크기(mm): 평면 가로·깊이, 높이
 export const AC_PANEL_MM = 35, AC_BODY_MM = 140; // 엔진 공간 JSON 규약(size_mm[2], body_h_mm)
 export const PREFIX = { walls: 'W', rooms: 'R', columns: 'C', openings: 'O', guides: 'G', items: 'I' };
 export const COLS = Object.keys(PREFIX);
@@ -49,6 +53,23 @@ const nonneg = (v) => num(v) && v >= 0 && v <= COORD_MAX;
 const pt = (p) => Array.isArray(p) && p.length === 2 && p.every(co);
 const areaOf = (poly) => { let s = 0; poly.forEach((p, i) => { const q = poly[(i + 1) % poly.length]; s += p[0] * q[1] - q[0] * p[1]; }); return Math.abs(s / 2); };
 
+const checkAc = (i) => !MODELS.includes(i.model) ? '에어컨 형식이 올바르지 않습니다'
+  : !BRANDS.includes(i.brand) ? '브랜드는 samsung 또는 lg 입니다'
+  : !pt(i.c) || !num(i.rot) ? '제품 위치·회전이 올바르지 않습니다 (±10km 이내의 숫자)'
+  : !(i.capacityKw === null || (num(i.capacityKw) && i.capacityKw > 0)) ? '냉방 용량이 올바르지 않습니다'
+  : typeof i.code !== 'string' ? '모델명이 문자열이 아닙니다'
+  : !(Array.isArray(i.size) && i.size.length === 2 && i.size.every(len)) ? '제품 크기(가로·세로)는 0 보다 크고 10km 이하여야 합니다' : '';
+const inR = (v, a, b) => num(v) && v >= a && v <= b;
+// 가전: 크기는 공식 제원에서 온 값만 받는다(size·heightMm 가 없으면 거절 — 지어내지 않는다). size = [가로, 깊이]
+const checkAppliance = (i) => !APPLIANCE_CATEGORIES.includes(i.category) ? '가전 분류가 올바르지 않습니다'
+  : !BRANDS.includes(i.brand) ? '브랜드는 samsung 또는 lg 입니다'
+  : typeof i.model !== 'string' || !i.model ? '가전 모델명이 없습니다'
+  : typeof i.name !== 'string' || typeof i.code !== 'string' ? '가전 제품명·모델 코드가 문자열이 아닙니다'
+  : !pt(i.c) || !num(i.rot) ? '제품 위치·회전이 올바르지 않습니다 (±10km 이내의 숫자)'
+  : !(Array.isArray(i.size) && i.size.length === 2 && i.size.every((v) => inR(v, APPLIANCE_LIMITS.footMin, APPLIANCE_LIMITS.footMax))) ? `가전 크기(가로·깊이)는 ${APPLIANCE_LIMITS.footMin}~${APPLIANCE_LIMITS.footMax} mm 여야 합니다`
+  : !inR(i.heightMm, APPLIANCE_LIMITS.heightMin, APPLIANCE_LIMITS.heightMax) ? `가전 높이는 ${APPLIANCE_LIMITS.heightMin}~${APPLIANCE_LIMITS.heightMax} mm 여야 합니다`
+  : i.url !== undefined && !(typeof i.url === 'string' && /^https:\/\/\S+$/.test(i.url)) ? '가전 출처 주소는 https 주소여야 합니다' : '';
+
 // 요소 하나의 문제 한 줄(없으면 ''). f = 그 요소가 속한 층
 const CHECK = {
   walls: (w) => !pt(w.a) || !pt(w.b) ? '벽의 끝점 좌표가 올바르지 않습니다 (±10km 이내의 숫자)'
@@ -73,13 +94,7 @@ const CHECK = {
   },
   guides: (g) => !pt(g.a) || !pt(g.b) ? '보조선 좌표가 올바르지 않습니다 (±10km 이내의 숫자)'
     : Math.hypot(g.a[0] - g.b[0], g.a[1] - g.b[1]) < 1 ? '보조선 길이는 1mm 이상이어야 합니다' : '', // addGuide 와 같은 기준
-  items: (i) => i.kind !== 'ac' ? '제품 종류는 ac 입니다'
-    : !MODELS.includes(i.model) ? '에어컨 형식이 올바르지 않습니다'
-    : !BRANDS.includes(i.brand) ? '브랜드는 samsung 또는 lg 입니다'
-    : !pt(i.c) || !num(i.rot) ? '제품 위치·회전이 올바르지 않습니다 (±10km 이내의 숫자)'
-    : !(i.capacityKw === null || (num(i.capacityKw) && i.capacityKw > 0)) ? '냉방 용량이 올바르지 않습니다'
-    : typeof i.code !== 'string' ? '모델명이 문자열이 아닙니다'
-    : !(Array.isArray(i.size) && i.size.length === 2 && i.size.every(len)) ? '제품 크기(가로·세로)는 0 보다 크고 10km 이하여야 합니다' : '',
+  items: (i) => (i.kind === 'ac' ? checkAc(i) : i.kind === 'appliance' ? checkAppliance(i) : '제품 종류는 ac 또는 appliance 입니다'),
 };
 
 export function validateDoc(doc) {

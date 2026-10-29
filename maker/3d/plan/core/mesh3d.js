@@ -1,4 +1,4 @@
-// 평면 문서 → 3D 조각 데이터(three 없이 순수 데이터) — 개구부로 나뉜 벽·기둥·바닥·에어컨·경계. 단위 mm, 다각형은 [x,y] 평면 좌표(시계방향), 높이 z 는 바닥=0
+// 평면 문서 → 3D 조각 데이터(three 없이 순수 데이터) — 개구부로 나뉜 벽·기둥·바닥·제품(시스템에어컨·가전)·경계. 단위 mm, 다각형은 [x,y] 평면 좌표(시계방향), 높이 z 는 바닥=0
 import { AC_PANEL_MM, AC_BODY_MM } from './model.js';
 import { jointsOf, wallLen, wallSlice, wallPointAt, rectPoly, circlePoly, bounds, roomOutlineWithArcs } from './geom.js';
 
@@ -36,7 +36,9 @@ export function buildMesh(doc, floorIndex = doc.cur) {
   return {
     walls, openings,
     floors: f.rooms.map((r) => ({ id: r.id, name: r.name, poly: roomOutlineWithArcs(r, byId), z: 0, thickness: f.slabMm, finish: f.finish.floor })),
-    items: f.items.map((i) => ({ id: i.id, kind: i.kind, model: i.model, brand: i.brand, code: i.code, capacityKw: i.capacityKw, c: i.c, rot: i.rot, size: i.size, poly: rectPoly(i.c, i.size[0], i.size[1], i.rot), z0: H - AC_PANEL_MM, z1: H, mountZ: H, bodyH: AC_BODY_MM })),
-    bounds: b && { ...b, z0: 0, z1: H },
+    items: f.items.map((i) => (i.kind === 'appliance' // 가전: 바닥(z0=0)에서 제품 높이까지의 상자. 시스템에어컨: 천장 아래 판넬(z0~z1)과 천장 속 본체(mountZ~+bodyH)
+      ? { id: i.id, kind: i.kind, category: i.category, brand: i.brand, model: i.model, name: i.name, code: i.code, c: i.c, rot: i.rot, size: i.size, heightMm: i.heightMm, poly: rectPoly(i.c, i.size[0], i.size[1], i.rot), z0: 0, z1: i.heightMm }
+      : { id: i.id, kind: i.kind, model: i.model, brand: i.brand, code: i.code, capacityKw: i.capacityKw, c: i.c, rot: i.rot, size: i.size, poly: rectPoly(i.c, i.size[0], i.size[1], i.rot), z0: H - AC_PANEL_MM, z1: H, mountZ: H, bodyH: AC_BODY_MM })),
+    bounds: b && { ...b, z0: 0, z1: Math.max(H, ...f.items.map((i) => i.heightMm ?? 0)) }, // 층고보다 큰 가전이 있으면 카메라 상자도 그만큼 높인다
   };
 }

@@ -33,7 +33,8 @@ export function toSpaceJSON(doc, floorIndex = doc.cur, { spaceType = 'apartment'
     for (const w of f.walls) { const d = projectOnSeg(c, w.a, w.b).d - w.t / 2; if (!best || d < best.d) best = { d, w }; }
     return best;
   };
-  const acUnits = f.items.map((i) => {
+  // 가전(kind:'appliance')은 엔진 공간 JSON 스키마에 없다 — 내보내지 않는다(문서 JSON·견적·3D 에는 있다)
+  const acUnits = f.items.filter((i) => i.kind === 'ac').map((i) => {
     const room = roomAt(i.c), near = wallFaceDist(i.c), t = (i.rot * Math.PI) / 180;
     let edge = null;
     if (near) {

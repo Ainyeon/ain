@@ -260,6 +260,19 @@ const nearV = (a, b, eps, msg) => a.forEach((v, i) => near(v, b[i], eps, msg));
       assert.ok(gllog.draws > d0, '복원 직후 한 번 그린다');
       nearV(lastClear().slice(0, 3), [bg.r, bg.g, bg.b], 1 / 255, '복원 뒤 배경이 검정이 아니라 테마색'); assert.strictEqual(lastClear()[3], 1);
       v.destroy(); }
+
+    /* 24. 가전(kind:'appliance')이 든 문서: 다시 지어도 지오메트리가 새지 않고, 가전을 지우면 그 조각이 내려간다 */
+    { const s = mkStore(), FR = { type: 'addItem', kind: 'appliance', category: 'refrigerator', brand: 'samsung', model: 'RM90H64P2W', name: '냉장고', size: [912, 683], heightMm: 1853 };
+      s.exec({ ...FR, c: [1000, 1000] }); s.exec({ ...FR, c: [2500, 1000], category: 'tv', model: 'TV1', size: [1437, 302], heightMm: 890 }); s.exec({ type: 'addItem', kind: 'ac', model: '1way', brand: 'samsung', c: [2000, 2000], size: [1198, 500] });
+      const { v } = mkView(s); assert.deepStrictEqual(v.show(), { ok: true }); settle();
+      const g0 = v.stats().geometries; assert.strictEqual(g0, 4, '벽·바닥·에어컨·가전 지오메트리 넷');
+      for (let i = 0; i < 6; i++) { s.exec({ ...FR, c: [3000 + i * 10, 1500] }); settle(); s.undo(); settle(); s.exec({ type: 'move', ids: ['I1'], dx: 10, dy: 0 }); settle(); }
+      assert.strictEqual(v.stats().geometries, g0, '가전을 놓고 지우고 옮겨도 지오메트리 수가 그대로(누수 0)'); assert.strictEqual(v.stats().textures, 0);
+      assert.ok(v.stats().rebuilds >= 18, '다시 지었다');
+      s.exec({ type: 'remove', ids: ['I1', 'I2'] }); settle(); assert.strictEqual(v.stats().geometries, g0 - 1, '가전이 모두 없어지면 그 지오메트리는 내려간다');
+      s.undo(); settle(); assert.strictEqual(v.stats().geometries, g0, '되돌리면 다시 올라온다');
+      v.hide(); s.exec({ ...FR, c: [4500, 2500] }); tick(500); const r0 = v.stats().rebuilds; frames(); assert.strictEqual(v.stats().rebuilds, r0, '숨기는 동안은 다시 짓지 않는다(렌더 중지)'); v.show(); settle(); assert.strictEqual(v.stats().geometries, g0, '다시 열 때 한 번 반영');
+      v.destroy(); }
   } finally { THREE.Scene.prototype.onBeforeRender = before0; delete globalThis.self; Object.assign(globalThis, { setTimeout: real.st, clearTimeout: real.ct, requestAnimationFrame: real.raf, cancelAnimationFrame: real.caf }); }
   console.log('test-plan-3d: OK');
 })().catch((e) => { console.error(e); process.exit(1); });
