@@ -68,6 +68,7 @@ for (const f of partners) {
   assert.ok(/^https:\/\//.test(c.home), id + ': home 은 https');
   for (const k of ['accent', 'accentBg', 'accentLine']) assert.ok(/^#[0-9a-f]{6}$/i.test(c[k]), id + ': ' + k);
   assert.ok(cr(c.accent, '#ffffff') >= 4.5 && cr(c.accent, c.accentBg) >= 4.5, id + ': 강조색 글자 대비 4.5 이상');
+  assert.ok(cr(c.accentLine, '#5C5850') >= 4.5, id + ': 비활성 [만들기](accentLine 면 + 보조 글자색) 대비 4.5 이상');
   assert.ok(Array.isArray(c.hosts) && c.hosts.every((o) => /^https:\/\/[a-z0-9.-]+$/.test(o)), id + ': hosts 는 https 출처만(경로 없음)');
   assert.ok((c.hide || []).every((k) => k === 'tools'), id + ': hide 는 tools 만');
 }
@@ -104,7 +105,10 @@ assert.ok(/html\[data-embed\] \.page-head > div:first-child/.test(css) && !/html
 {
   const raw = read('maker/3d/studio.css');
   assert.ok(/--t-fast:\s*100ms/.test(raw) && /--t-base:\s*200ms/.test(raw) && /--t-slow:\s*350ms/.test(raw) && /--ease:\s*cubic-bezier/.test(raw), '움직임 토큰(--t-fast·--t-base·--t-slow·--ease)이 있다');
-  assert.ok(!/(?<![\w-])\d*\.?\d+m?s\s+(?:ease|linear|cubic)/.test(css.replace(/animation:\s*st-run[^;]*;/g, '')), 'studio.css 전환·애니메이션 시간은 토큰으로(리터럴 .2s ease 등 금지 — 무한 쓸기 1.6s 만 예외)');
+  {
+    const bare = css.replace(/animation:\s*st-run[^;]*;/g, '').split('\n').filter((l) => /transition|animation/.test(l)).join('\n').replace(/calc\(var\(--i, 0\) \* 30ms\)/g, '');
+    assert.ok(!/(?<![\w.-])\d*\.?\d+m?s\b/.test(bare.replace(/:root[^}]*}/g, '')), 'studio.css 전환·애니메이션 시간은 토큰으로(숫자 리터럴 금지 — 무한 쓸기 1.6s 와 번호 줄 지연 30ms 만 예외)');
+  }
   assert.ok(!/still\(\) \? 0 : 200|\}, 400\)/.test(js), 'studio.js 타이머는 CSS 토큰을 따라간다(200·400 리터럴 금지)');
   assert.ok(/\.st-th\.kept\s*\{/.test(css) && /\.st-steps\.stop li\[data-s=now\]::after/.test(css) && /::backdrop/.test(css) && /\.st-live-box\[aria-busy=true\]::after/.test(css), '번호 줄 유지·멈춘 막대·창 뒷막·큰 판 로딩 신호 규칙');
   assert.ok(/:active/.test(css) && /-webkit-tap-highlight-color/.test(css), '눌림(:active) 반응이 있다');
@@ -112,6 +116,13 @@ assert.ok(/html\[data-embed\] \.page-head > div:first-child/.test(css) && !/html
   assert.ok(/const keepQ = /.test(js) && (js.match(/keepQ\(\)/g) || []).length >= 4, '다시 쓰는 주소에 파트너·임베드 표시를 남긴다(새로고침에서 호스트 얼굴이 사라지지 않게)');
   assert.ok(/S\.sending/.test(js) && /beforeunload[^\n]*S\.busy \|\| S\.sending/.test(js), '올리는 중(만들기·사진 손질)에는 떠날 때 경고');
   assert.ok(/ain-pt-/.test(read('maker/3d/partner-boot.js')) && /#\[0-9a-f\]\{6\}/i.test(read('maker/3d/partner-boot.js')), '색 캐시는 검증된 #rrggbb 셋만 읽는다');
+  assert.ok(/const lostLogin = /.test(js) && /42501/.test(js) && /lostLogin\(r\.error\)/.test(js), '로그인 풀림은 서버가 실제로 내는 거절(42501)로 알아본다 — login_required 문자열만 기다리지 않는다');
+  assert.ok(/setItem\('ain-job'/.test(js.slice(js.indexOf('function runView'), js.indexOf('function runView') + 900)), '작업 화면을 열 때 작업 번호를 저장한다(어느 로그인 단추를 눌러도 돌아온다)');
+  assert.ok(js.indexOf("s.get('p')))) resume()") > 0 && js.indexOf("s.get('p')))) resume()") < js.indexOf('else if (back && S.session && savedJob)'), '맡겨 둔 도면 복원이 저장된 작업 번호보다 먼저');
+  assert.ok(/S\.toolJob/.test(js) && /사진 다시 고르기/.test(js) && /내 작업 보기/.test(js), '실패 뒤 단추는 도면·사진 손질·내 작업을 가려서 보낸다');
+  assert.ok(/const off = \(bad\)/.test(js) && /removeProperty\(k\)/.test(js) && /removeItem\('ain-pt-'/.test(js), '파트너 검증이 실패하면 먼저 건 캐시 색과 캐시를 걷는다');
+  assert.ok(/S\.bt = setTimeout/.test(js) && /T\.wait/.test(js), '큰 판 로딩 신호의 대기는 타이머로(동작 줄이기에서도 번쩍이지 않게)');
+  assert.ok(/closest\('#_ain_in'\)/.test(js) && /keepQ\(\)/.test(js.slice(js.indexOf("closest('#_ain_in')") - 200, js.indexOf("closest('#_ain_in')") + 300)), '파트너·임베드 주소의 헤더 로그인은 허용된 돌아올 주소(스튜디오 로그인)로 보낸다');
   const wiz = page.slice(page.indexOf('id="stIn"'), page.indexOf('</section>', page.indexOf('id="stIn"')));
   assert.ok(/id="stDropF"/.test(wiz) && /id="stFileF"/.test(wiz) && /st-fold-in/.test(wiz), '드롭 칸·파일 줄은 접히는 칸 안에');
 }

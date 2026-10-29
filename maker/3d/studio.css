@@ -98,7 +98,7 @@
 .st-steps li::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: inherit; background: var(--c-accent); opacity: 0; transition: opacity var(--t-base) var(--ease); animation: st-run 1.6s linear infinite; }
 .st-steps li[data-s=now]::after { opacity: 1; }                /* 켜고 끌 때 쓸기가 뚝 사라지지 않고 흐려진다 */
 .st-steps.stop li[data-s=now]::after { width: 100%; background: var(--c-up); animation: none; opacity: 1; }   /* 멈춘 막대는 40% 가짜 수치가 아니라 한 칸이 찬 오류 색 */
-@media (prefers-reduced-motion: reduce) { .st-steps:not(.stop) li::after { display: none; } .st-steps:not(.stop) li[data-s=now] { background: var(--c-accent-line); } }   /* 움직임 줄이기 — 쓸기 대신 옅은 색 '지금 이 칸' */
+@media (prefers-reduced-motion: reduce) { .st-steps:not(.stop) li::after { display: none; } .st-steps:not(.stop) li[data-s=now] { background: var(--c-control); } }   /* 움직임 줄이기 — 쓸기 대신 옅은 색 '지금 이 칸' */
 @keyframes st-run { from { translate: -100% 0; } to { translate: 250% 0; } }
 .st-tail { display: flex; align-items: center; min-height: 44px; flex-wrap: wrap; gap: var(--sp-3); }
 .st-msg { font-size: var(--fs-3); color: var(--c-ink-sub); }
@@ -194,7 +194,8 @@
   transition: opacity var(--t-base) var(--ease), translate var(--t-base) var(--ease), overlay var(--t-base) allow-discrete, display var(--t-base) allow-discrete; }
 .st-dlg[open] { display: flex; flex-direction: column; opacity: 1; translate: 0 0; }
 @starting-style { .st-dlg[open] { opacity: 0; translate: 0 var(--sp-2); } }
-.st-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, transparent); opacity: 0; transition: opacity var(--t-base) var(--ease), overlay var(--t-base) allow-discrete, display var(--t-base) allow-discrete; }
+/* 구형(Chrome<122·Safari<17.4)은 ::backdrop 이 :root 변수를 못 받아 대체값(black)을 둔다 */
+.st-dlg::backdrop { background: color-mix(in srgb, var(--c-ink, black) 40%, transparent); opacity: 0; transition: opacity var(--t-base) var(--ease), overlay var(--t-base) allow-discrete, display var(--t-base) allow-discrete; }
 .st-dlg[open]::backdrop { opacity: 1; }
 @starting-style { .st-dlg[open]::backdrop { opacity: 0; } }   /* 뒷막도 창과 함께 어두워지고 걷힌다 */
 #stJobsBody { min-height: calc(3 * 48px + 2 * var(--sp-2)); }   /* 목록이 올 때 창이 한 번에 커지지 않게 */
@@ -254,9 +255,9 @@
 .st-acts a:focus-visible, .st-tail button:focus-visible, .st-dlg button:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
 /* 단추 질감 한 가지 — 흰 단추: hover 는 배경·테두리가 한 단계, 눌림은 한 단계 더 / 채운 단추: hover 는 어둡게(.94), 눌림은 더 어둡게(.88)와 .98 로 눌림. 번쩍이지 않는다 */
 .st-main .btn-line, .st-dlg .btn-line, .st-row button, .st-jobs button, .st-save, .st-go button, .st-bar button { -webkit-tap-highlight-color: transparent;
-  transition: color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), filter var(--t-fast) var(--ease), scale var(--t-fast) var(--ease), opacity var(--t-base) var(--ease); }
+  transition: color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), filter var(--t-fast) var(--ease), scale var(--t-fast) var(--ease), opacity var(--t-base) var(--ease); }
 @media (hover: hover) {
-  .st-main .btn-line:hover, .st-dlg .btn-line:hover, .st-row button:not(.primary):not(.on):hover, .st-jobs button:hover { border-color: var(--c-control); background: var(--c-surface-sub); color: var(--c-ink); }
+  .st-main .btn-line:hover, .st-dlg .btn-line:hover, .st-row button:not(.primary):not(.on):hover, .st-jobs button:hover, #stRe:not(:disabled):hover { border-color: var(--c-control); background: var(--c-surface-sub); color: var(--c-ink); }
   .st-opt:hover input:not(:checked) + .st-opt-b, .st-th:hover input:not(:checked) + .b { border-color: var(--c-control); background: var(--c-surface-sub); }
   .st-opt:hover input:not(:checked) + .st-opt-b .t, .st-th:hover input:not(:checked) ~ .t { color: var(--c-ink); }
   .st-row button.primary:hover, .st-save:not(:disabled):hover, .st-go button:not(:disabled):hover, #stGo:not(:disabled):hover { filter: brightness(.94); }
