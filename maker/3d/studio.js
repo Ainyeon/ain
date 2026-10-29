@@ -595,13 +595,16 @@
     tool: (a) => { const b = [...$('stTools').children].find((x) => x.textContent === a.v); if (b) b.click(); },
     sum: () => { $('stSum').focus({ preventScroll: true }); $('stSum').scrollIntoView({ behavior: motion(), block: 'start' }); },
     tour: () => openTour(),
-    make: () => { const go = $('stGo'); if (S.view === 'pick' && !go.hidden && !go.disabled) go.click(); },   // 숨은 단추도 click() 은 먹히므로 만들기 화면에서만
+    make: () => {                                        // 만들기는 작업 1건과 월 한도를 쓴다 — 말이 누르지 않고 단추로 데려가 초점만 준다(누르는 것은 사람)
+      const go = [$('stRe'), $('stGo')].find((b) => b && !b.hidden && !b.disabled);
+      if (go) { go.scrollIntoView({ behavior: motion(), block: 'center' }); go.focus({ preventScroll: true }); }
+    },
     pickFile: () => $('stPick').click(),                 // 보내기를 누른 직후라 파일 창이 열린다
   };
   function askUI() {
     if (!window.AinAsk) { $('stAsk').hidden = true; return; }   // ask.js 를 못 받았으면 카드를 숨긴다
     const inp = $('stAskIn'), log = $('stAskLog'), chips = $('stAskChips');
-    const ctx = () => ({ hasFile: !!S.file, hasResult: !!$('stSum').children.length, session: !!S.session, canMake: S.view === 'pick' && !S.busy, tools: !noTools(), rooms: [...$('stLiveNav').children].map((b) => b.textContent) });
+    const ctx = () => ({ hasFile: !!S.file, hasResult: !!$('stSum').children.length, session: !!S.session, canMake: !S.busy && (S.view === 'pick' || !$('stRe').hidden), tools: !noTools(), rooms: [...$('stLiveNav').children].map((b) => b.textContent) });
     let shown = '';
     const fresh = () => {                                // 예시 문장이 그대로면 다시 그리지 않는다(눌러 둔 단추의 초점이 사라지지 않게)
       const list = window.AinAsk.suggest(ctx()), key = list.join('|');

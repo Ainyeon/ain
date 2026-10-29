@@ -72,13 +72,61 @@ for (const s of ['전체를 삼성으로 해줘', '전체적으로 우드로']) 
 assert.ok(/침실3으로/.test(P('침실3 보여줘', r3).reply) && /침실1로/.test(P('침실1', r3).reply) && /침실10으로/.test(P('침실10', { rooms: ['침실10'] }).reply), '숫자로 끝나는 방 이름의 조사');
 for (const s of ['?', '...', '!!']) assert.ok(P(s).reply && P(s).acts.length === 0, '부호뿐인 입력도 답한다: ' + s);
 { const r = P('지우개 열어줘', { tools: false }); assert.ok(!r.acts.length && /쓰지 않습니다/.test(r.reply), '도구가 없는 화면에서는 연다고 답하지 않는다'); }
+// ── 회귀 말뭉치: 두 번의 독립 리뷰(47건)에서 나온 실제 입력. 값 선택은 되돌릴 수 있어도 말한 것과 반대로 눌리면 안 된다.
+const F = { hasFile: true, session: true, canMake: true, rooms: ['전체', '거실', '침실1', '침실2', '주방'] }, NF = { hasFile: false, session: true, rooms: F.rooms };
+const acts = (s, c) => P(s, c || F).acts, kinds = (s, c) => acts(s, c).map((a) => a.do + (a.k ? ':' + a.k : '') + (a.v ? '=' + a.v : '')).join(' ');
+const NOACT = (list, c) => list.forEach((s) => assert.strictEqual(kinds(s, c), '', '아무것도 하면 안 된다: ' + s));
+const ONLY = (list, want, c) => list.forEach((s) => assert.strictEqual(kinds(s, c), want, s + ' → ' + want));
+// 되돌릴 수 없는 만들기: 말이 누르지 않고(ASK_DO.make 가 초점만), 명령형이 아니면 준비도 하지 않는다
+NOACT(['시작하지 마', '만들어도 돼?', '카메라 돌려줘', '모형 돌려서 보여줘', '진행 상황 알려줘', '만들어진 거 보여줘', '제작 시간 얼마나 걸려', '시작 화면으로', '다 만들어졌어?', '생성된 결과 보여줘', '제작 방법 알려줘', '안 만들어', '안 만들어줘', '안 시작해', '만들어?', '시작해?', '진행해?', '만들어요?']);
+NOACT(['삼성 LG 둘 다 만들어줘', '도면대로 사진처럼 만들어줘', '화이트랑 우드 만들어줘', '낮이랑 저녁 둘 다 만들어줘', '삼성 말고 만들어줘']);
+NOACT(['견적 만들어줘', '엑셀 만들어줘', '물량표 만들어줘', 'csv 만들어줘'], Object.assign({}, F, { hasResult: false }));
+ONLY(['사용법 만들어줘', '사용법 시작해', '둘러보기 시작해'], 'tour');   // 사용법을 열 뿐 만들기를 준비하지 않는다
+ONLY(['만들어 줄래', '만들어줄래', '만들어 주십시오', '만들어주셈', '시작하세요', '시작합시다', '설정 안 해도 되니까 만들어줘', '그만하고 만들어줘', '취소하고 다시 만들어줘', '만들기 눌러줘'], 'make');
+ONLY(['삼성으로 해서 만들어줘', '삼성 말고 lg로 만들어줘'].slice(0, 1), 'opt:brand=samsung make');
+// 부정·제외는 그 값을 고르지 않는다 / 말고·아니라 는 뒤의 값
+NOACT(['삼성 안 할래', '삼성 안 쓸래', '삼성 안 써', '삼성은 빼', '삼성 빼줘', '삼성 제외', '삼성 아님', '삼성은 아니야', '삼성 별로야', '삼성 안 좋아', '삼성 아닌 걸로', '디자인으로 안 할래', '도면대로 안 할래', '사진처럼은 안 할래', '우드 안 할래', '저녁 안 할래', '디자인 안 좋아', '디자인 안 예뻐', '디자인 안 바꿔', '거실 안 볼래']);
+ONLY(['삼성 아냐 LG야', '삼성은 싫고 LG로 해줘', '삼성으로 하지 말고 LG로 해줘', '취소하고 LG로 해줘'], 'opt:brand=lg');
+ONLY(['우드 하지 말고 화이트로 해줘', '우드 톤은 싫고 화이트로 해줘', '우드는 하지 말고 화이트로'], 'opt:style=white');
+ONLY(['낮으로 하지 말고 저녁으로 해줘'], 'opt:mood=evening'); ONLY(['도면대로 하지 말고 사진처럼 받을래'], 'out=photo');
+ONLY(['지우개 말고 자르기 열어줘'], 'tool=자르기'); ONLY(['지우개 대신 색보정 열어줘'], 'tool=색'); ONLY(['지우개가 아니라 자르기'], 'tool=자르기'); ONLY(['색보정 말고 지우개', '배경 떼기 말고 지우개'], 'tool=지우개');
+ONLY(['물량표 말고 거실 보여줘', '사용법 말고 거실 보여줘', '거실 그만 보고 주방 보여줘', '방금 한 거 취소하고 거실 보여줘'].slice(0, 2), 'room=거실');
+// 둘을 이어 말하면(이랑·와/과·하고·이나) 고르게 한다
+for (const s of ['삼성이랑 LG', '삼성과 LG 비교해줘', '삼성하고 LG 비교', '삼성이나 LG로 해줘', '삼성과 엘지 중에 골라줘', '우드와 화이트 비교해줘', '우드하고 화이트', '우드나 화이트로 해줘', '낮과 저녁 비교해줘', '낮하고 밤']) { assert.strictEqual(kinds(s), '', s); assert.ok(/하나만/.test(P(s, F).reply), s + ' → 되묻는다'); }
+// 묻는 말(존재·가능·물음표)은 값을 바꾸지 않고, 부탁하는 말은 실행한다
+NOACT(['삼성도 있나요', '삼성은 없나요', '삼성 모델도 있나요', '삼성도 있어', '삼성으로 할까요', '삼성이 좋을까요', '삼성이 낫냐', '저녁으로 바꿀까요', '삼성으로 하나요', '거실 볼 수 있나요', '삼성도 되나요', '삼성으로 변경 가능한가요']);
+ONLY(['가능하면 삼성으로 해주세요', '삼성으로 바꿔 주시면 안 될까요', '삼성으로 부탁드려도 될까요', '삼성으로 해줘?'], 'opt:brand=samsung'); ONLY(['거실 좀 보여주시면 안 될까요'], 'room=거실');
+// 띄어쓰기 없이·조사·접미·전각·영문 혼용
+ONLY(['삼성으로해줘', '삼성전자로 해줘', '삼성에어컨으로 해줘', '삼성걸로 해줘', '삼성이요', '삼성으로요', '삼성이야', '삼성입니다', '삼성제품으로'], 'opt:brand=samsung');
+ONLY(['lg로바꿔줘', '엘지로바꿔', 'LG전자로', 'LG에어컨', 'L G로', 'ＬＧ로 해줘', 'ｌｇ로'], 'opt:brand=lg');
+ONLY(['화이트로해줘', '화이트톤으로 해줘', '흰색톤으로', '하얀색으로 해줘'], 'opt:style=white'); ONLY(['우드톤으로 해줘', '우드마감으로', '나무톤으로', '원목 톤', '원목으로 해줘', '목재 톤으로'], 'opt:style=wood'); ONLY(['그레이톤으로', '회색톤으로'], 'opt:style=gray');
+ONLY(['저녁으로해줘', '저녁시간으로', '야경으로 해줘', '야경', '석양', '노을 분위기'], 'opt:mood=evening'); ONLY(['오전으로', '오후로', '한낮', '대낮으로', '낮시간으로'], 'opt:mood=day');
+NOACT(['온도를 낮춰줘', '낮춰줘', '낮은 천장', '밤새 돌려줘', '밤색 우드', '집 디자인 어때', '디자인 좋네', '배경을 화이트로'].filter((s) => !/배경|밤색/.test(s)));
+assert.strictEqual(kinds('밤색 우드'), 'opt:style=wood', '밤색은 밤이 아니다'); assert.strictEqual(kinds('배경을 화이트로'), 'opt:style=white');
+// 전체 · 방 이름
+ONLY(['전체', '전체로', '전체 화면', '집 전체', '처음 화면으로', '돌아가줘', '원래 화면', '처음으로 돌아가'], 'room=전체');
+NOACT(['베란다 보여줘', '침실4 보여줘', '안방 보여줘', '사용 방법 알려줘', '방향 바꿔줘', '전체를 삼성으로 해줘'].filter((s) => !/전체를/.test(s)));
+ONLY(['2번 침실 보여줘', '둘째 침실 보여줘', '두번째 침실', '침실 두번째', '침실２ 보여줘', '마지막 침실'], 'room=침실2'); ONLY(['침실１ 보여줘', '첫째 침실'], 'room=침실1'); ONLY(['부엌 보여줘'], 'room=주방');
+for (const s of ['베란다 보여줘', '침실4 보여줘', '안방 보여줘']) assert.ok(/그 방은 없습니다/.test(P(s, F).reply), s + ' → 없는 방이라고 말한다');
+// 파일 창은 올리겠다는 말에만(지난 일·방법·부정에는 열지 않는다)
+NOACT(['업로드했어', '첨부했어', '첨부 파일 보여줘', '업로드한 도면 보여줘', '파일 선택했어', '이미지 선택했어요', '도면 등록했어', '도면 올려놨어', '사진 올려놨어', '파일 선택 안됨', '파일을 선택하지 않았어', '사진 올리는 법', '도면 올리는 방법 알려줘', '도면 안 올릴게'], NF);
+ONLY(['도면 넣고 싶어', '도면을 넣고 싶어', '도면 한 장 올려줘', '사진 한 장 올려줘', 'pdf 올려줘', 'pdf 넣을게', '파일 열어줘', '도면 열기'], 'pickFile', NF);
+// 사진 손질 도구를 부르는 흔한 말
+ONLY(['글자 넣어줘', '글자 넣기', '문구 넣어줘', '텍스트 넣을래', '글자를 넣고 싶어'], 'tool=글자'); ONLY(['밝기 올려줘', '채도 높여줘', '밝기 조절'], 'tool=색'); NOACT(['문구 알려줘']);
+// 입력 방어: 방 이름이 빈 글이 되어도 끝난다(무한 루프 방지) · 이상한 ctx · 아주 긴 입력 · 문서 조각
+{ const t0 = Date.now();
+  for (const rooms of [[' ', '-', '.', '·', '()', '?', '\n', '거실'], 'not-array', null, [1, null, {}, '거실'], ['거실(1)', '방[2]', '침실+1']]) { const r = A.parse('거실 보여줘 침실1 삼성으로', { rooms }); assert.ok(Array.isArray(r.acts)); }
+  A.parse('삼성으로 해줘 '.repeat(20000), F); A.parse('ㅋ'.repeat(100000), F); A.parse('<script>alert(1)</script> ../../etc/passwd \u0000 😀', F);
+  assert.ok(Date.now() - t0 < 1500, '어떤 입력에도 빨리 끝난다'); }
+assert.strictEqual(kinds('거실(1) 보여줘', { rooms: ['전체', '거실(1)', '방[2]'] }), 'room=거실(1)', '방 이름의 정규식 특수문자는 글자 그대로');
 // studio.js 가 모든 동작 종류를 실제로 실행한다 — 동작마다 눌러야 할 요소와 값의 쓰임까지 확인(비워도·선택자가 바뀌어도 걸린다)
 const js = fs.readFileSync(path.join(__dirname, '..', 'maker/3d/studio.js'), 'utf8'), page = fs.readFileSync(path.join(__dirname, '..', 'maker/3d/index.html'), 'utf8');
 const block = js.slice(js.indexOf('const ASK_DO'), js.indexOf('function askUI')), ui = js.slice(js.indexOf('function askUI'), js.indexOf('async function login'));
 const entry = {}; block.replace(/\n    (\w+): ([\s\S]*?)(?=\n    \w+: |\n  \};)/g, (m, k, v) => { entry[k] = v; return m; });
-const NEED = { out: ['stPickSet', 'input[value="\' + a.v + \'"]', '.click()'], opt: ['stMoreBody', 'LBL[a.v]', '.click()'], room: ['stRail', 'stLiveNav', 'a.v', '.click()'], tool: ['stTools', 'a.v', '.click()'], sum: ['stSum', 'scrollIntoView'], tour: ['openTour'], make: ["S.view === 'pick'", 'go.hidden', 'go.disabled', 'go.click()'], pickFile: ['stPick', '.click()'] };
+const NEED = { out: ['stPickSet', 'input[value="\' + a.v + \'"]', '.click()'], opt: ['stMoreBody', 'LBL[a.v]', '.click()'], room: ['stRail', 'stLiveNav', 'a.v', '.click()'], tool: ['stTools', 'a.v', '.click()'], sum: ['stSum', 'scrollIntoView'], tour: ['openTour'], make: ["$('stRe')", "$('stGo')", '!b.hidden', '!b.disabled', '.focus('], pickFile: ['stPick', '.click()'] };
 for (const d of DO) { assert.ok(entry[d], 'studio.js 가 동작 ' + d + ' 를 실행한다'); for (const need of NEED[d]) assert.ok(entry[d].includes(need), 'ASK_DO.' + d + ' 가 ' + need + ' 를 쓴다'); }
 assert.ok(!/querySelector(All)?\(\s*a\.|eval\(|Function\(|innerHTML|location/.test(block), '동작이 말로 선택자·주소·코드를 만들지 않는다');
+assert.ok(!entry.make.includes('.click(') && !entry.make.includes('submit'), '말은 [만들기]를 누르지 않는다 — 초점만 준다(작업 1건과 월 한도는 사람이 누른다)');
 assert.ok(/\n\s+askUI\(\);/.test(js), 'askUI() 를 부른다');
 assert.ok(ui.includes("!window.AinAsk") && ui.includes("$('stAsk').hidden = true"), 'ask.js 를 못 받으면 카드를 숨긴다');
 assert.ok(ui.includes('canMake') && ui.includes('tools: !noTools()') && ui.includes('hasFile') && ui.includes('session'), 'ctx 가 화면 상태(만들 수 있나·도구 있나)를 알려 준다');

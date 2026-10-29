@@ -68,6 +68,9 @@ for (const f of partners) {
   assert.ok(/^https:\/\//.test(c.home), id + ': home 은 https');
   for (const k of ['accent', 'accentBg', 'accentLine']) assert.ok(/^#[0-9a-f]{6}$/i.test(c[k]), id + ': ' + k);
   assert.ok(cr(c.accent, '#ffffff') >= 4.5 && cr(c.accent, c.accentBg) >= 4.5, id + ': 강조색 글자 대비 4.5 이상');
+  const bg = /--c-bg:\s*(#[0-9a-f]{6})/i.exec(read('assets/css/design-tokens.css'));   // 선택된 번호 이름은 페이지 바탕 위에 놓인다 — studio.js 의 런타임 검증과 같은 쌍
+  assert.ok(bg && cr(c.accent, bg[1]) >= 4.5, id + ': 강조색 × 페이지 바탕(--c-bg) 대비 4.5 이상(런타임이 이 쌍도 검사해 모자라면 파트너 색을 버린다)');
+  assert.ok(js.includes("getPropertyValue('--c-bg')"), 'studio.js 가 파트너 강조색을 페이지 바탕과도 검사한다');
   assert.ok(cr(c.accentLine, '#5C5850') >= 4.5, id + ': 비활성 [만들기](accentLine 면 + 보조 글자색) 대비 4.5 이상');
   assert.ok(Array.isArray(c.hosts) && c.hosts.every((o) => /^https:\/\/[a-z0-9.-]+$/.test(o)), id + ': hosts 는 https 출처만(경로 없음)');
   assert.ok((c.hide || []).every((k) => k === 'tools'), id + ': hide 는 tools 만');
