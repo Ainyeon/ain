@@ -18,6 +18,7 @@
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/maker/3d/partner-boot.js?v=1"></script>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
   <link rel="stylesheet" href="/assets/css/components.css?v=30">
   <link rel="stylesheet" href="/maker/maker.css?v=30">
@@ -28,6 +29,10 @@
   <script defer src="/maker/3d/studio.js?v=10"></script>
 </head>
 <body class="has-tabbar">
+  <header class="pt-bar" id="ptBar" hidden>
+    <a class="pt-logo" id="ptLogo" target="_blank" rel="noopener"><img id="ptLogoImg" alt="" height="24"></a>
+    <span class="pt-auth" id="ptAuth"></span>
+  </header>
   <nav class="tnav">
     <div class="tnav-in">
       <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
@@ -112,6 +117,7 @@
 
     <p class="fineprint">예시는 합성 평면입니다(실제 세대 아님). 올린 파일은 14일 뒤 지웁니다. 색·자르기·글자는 기기 안에서만 처리합니다. 'AI' 표시는 생성형 모델 결과입니다. (가정)은 도면에 없는 값입니다.</p>
   </main>
+  <footer class="pt-foot" id="ptFoot" hidden><a href="https://ainyeon.com/" target="_blank" rel="noopener">에인연 제공</a></footer>
   <dialog class="st-dlg" id="stJobs" aria-labelledby="stJobsH">
     <header><h2 class="st-sh" id="stJobsH">내 작업</h2><button type="button" class="btn-line" id="stJobsX">닫기</button></header>
     <div class="st-dlg-in" id="stJobsBody"></div>

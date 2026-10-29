@@ -74,6 +74,40 @@
     el.classList.add('bye');
     el._t = setTimeout(() => { el.hidden = true; el.classList.remove('bye'); }, still() ? 0 : 200);
   }
+  // ── 공동 브랜드(파트너) · 임베드 ─────────────────────────
+  // ?partner=<이름> → /maker/3d/partners/<이름>.json(이름·로고·색·숨길 칸·허용 사이트). 검증을 통과한 것만 쓰고, 못 받으면 에인연 화면 그대로.
+  // ?embed=1 → 상단 메뉴 없이, 허용 사이트(hosts)에만 말을 건넨다(postMessage ns 'ain3d': ready · job · done).
+  const P = { cfg: null };
+  const lum = (hex) => { const v = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4)); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
+  const contrast = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + .05) / (y + .05); };
+  async function partner() {
+    const root = document.documentElement, id = root.getAttribute('data-partner');
+    if (!id) return;
+    const off = () => root.removeAttribute('data-partner');
+    try {
+      const r = await fetch('/maker/3d/partners/' + id + '.json');
+      if (!r.ok) return off();
+      const c = await r.json(), hex = /^#[0-9a-f]{6}$/i;
+      const ok = typeof c.name === 'string' && c.name.length > 0 && c.name.length <= 20 && /^\/maker\/3d\/partners\/[a-z0-9-]+\.svg$/.test(c.logo || '') && /^https:\/\//.test(c.home || '')
+        && [c.accent, c.accentBg, c.accentLine].every((x) => hex.test(x)) && contrast(c.accent, '#ffffff') >= 4.5 && contrast(c.accent, c.accentBg) >= 4.5;   // 글자 대비가 모자란 색은 쓰지 않는다
+      if (!ok) return off();
+      P.cfg = c; P.id = id;
+      root.style.setProperty('--c-accent', c.accent); root.style.setProperty('--c-accent-bg', c.accentBg); root.style.setProperty('--c-accent-line', c.accentLine);
+      if (!root.hasAttribute('data-embed')) {
+        $('ptLogo').href = c.home; $('ptLogoImg').src = c.logo; $('ptLogoImg').alt = c.name;
+        $('ptAuth').append($('authSlot'));              // 로그인 단추도 이 줄로(같은 칸이라 로그인 동작은 그대로)
+        $('ptBar').hidden = false; $('ptFoot').hidden = false;
+      }
+      if ((c.hide || []).includes('tools')) document.querySelector('.st-tools').hidden = true;
+      document.title = c.name + ' 3D 스튜디오';
+    } catch (e) { off(); }
+  }
+  const noTools = () => !!(P.cfg && (P.cfg.hide || []).includes('tools'));
+  function tell(type, data) {                           // 임베드일 때만, 파트너가 허용한 사이트(hosts)에만 — 아무에게나 보내지 않는다
+    if (!P.cfg || !document.documentElement.hasAttribute('data-embed') || window.parent === window) return;
+    for (const o of P.cfg.hosts || []) try { parent.postMessage(Object.assign({ ns: 'ain3d', type }, data), o); } catch (e) {}
+  }
+
   function see() {                                       // 큰 판과 그 아래 줄이 다 보이면 그대로, 가려져 있으면 큰 판 위로(붙은 메뉴 아래)
     const el = $('stLive'), top = el.getBoundingClientRect().top, low = $('stOut').getBoundingClientRect().bottom;
     if (top < (parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0) || low > innerHeight) el.scrollIntoView({ behavior: motion(), block: 'start' });
@@ -330,9 +364,14 @@
     show(S.items.includes(S.pic) ? S.pic : m || null);   // 보던 예시는 그대로, 작업에서 돌아왔으면 넣은 도면(없으면 모형)
   }
 
+  const BOM_HEAD = ['구분', '품목', '규격', '수량', '단위', '근거'];
+  function csv(rows) {                                   // 물량표 CSV — 엑셀에서 한글이 깨지지 않게 BOM, 수식으로 읽힐 글자는 앞에 ' 를 붙인다
+    const cell = (v) => { let t = String(v ?? '').replace(/\r?\n/g, ' '); if (/^([=+@]|-\D)/.test(t)) t = "'" + t; return /[",]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+    save(new Blob(['\ufeff' + [BOM_HEAD].concat(rows).map((r) => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }), '물량표.csv');
+  }
   function render(sum) {                                 // 물량 · 확인 필요 — 두 칼럼 아래 폭 전체
     const box = h('div', { class: 'st-out' });
-    if ((sum.bom || []).length) box.append(h('h3', { text: '물량' }), h('div', { class: 'st-wrap' }, h('table', { class: 'st-table' }, [
+    if ((sum.bom || []).length) box.append(h('div', { class: 'st-sumhead' }, [h('h3', { text: '물량' }), h('button', { type: 'button', class: 'btn-line', text: 'CSV', onclick: () => csv(sum.bom) })]), h('div', { class: 'st-wrap' }, h('table', { class: 'st-table' }, [
       h('tr', {}, ['구분', '품목', '규격', '수량', '단위', '근거'].map((x) => h('th', { text: x }))),
       ...sum.bom.map((r) => h('tr', {}, r.map((x) => h('td', { text: String(x ?? '') }))))])));
     if ((sum.pending || []).length) box.append(h('h3', { text: '확인 필요' }), h('ul', {}, sum.pending.map((x) => h('li', { class: 'st-msg', text: x }))));
@@ -377,10 +416,11 @@
     setView('out', push ?? S.view !== 'out');
     history.replaceState({ v: 'out' }, '', '#job-' + id);
     const t0 = Date.now();
-    let last = '', fails = 0, now = -1;
+    let last = '', fails = 0, now = -1, told = '';
+    const note = (status, extra) => { if (told !== status) { told = status; tell('job', Object.assign({ id, status }, extra)); } };   // 상태가 바뀔 때만 한 번씩
     const paint = (n) => { if (n !== now) { now = n; [...steps.children].forEach((li, i) => { li.dataset.s = i < n ? 'done' : i === n ? 'now' : 'next'; }); } };   // 단계가 바뀔 때만(5초마다 다시 그리면 움직임이 끊긴다)
     const say = (t, err) => { if (t !== last) { last = t; msg.textContent = t; msg.className = err ? 'st-msg err' : 'st-msg'; } };
-    const end = (t, err) => { say(t, err); steps.classList.add('stop'); S.fin = err ? 'fail' : 'ok'; bar(); tail.replaceChildren(); };
+    const end = (t, err) => { say(t, err); steps.classList.add('stop'); S.fin = err ? 'fail' : 'ok'; bar(); tail.replaceChildren(); if (err) note('failed'); };
     paint(0);
     const tick = async () => {
       let r;
@@ -394,10 +434,10 @@
         const s = r.data;
         if ((s.status === 'running' || s.status === 'done') && !S.scene) { try { await scene(id); } catch (e) {} if (stale()) return; }
         if (s.status === 'uploading' || s.status === 'queued') {
-          paint(0);
+          paint(0); note('queued');
           say(s.ahead ? `접수됨 · 앞에 ${s.ahead}건` : s.worker_alive ? '접수됨 · 곧 시작' : '접수됨 · 늦어질 수 있음');
         } else if (s.status === 'running') {
-          paint(1);
+          paint(1); note('running');
           say(`${S.scene ? '그림 만드는 중' : '만드는 중'} · ${Math.max(1, Math.round((Date.now() - t0) / 60000))}분째`);
         } else if (s.status === 'failed') { paint(1); return end(s.error_ko || '만들지 못했습니다.', true); }
         else if (s.status === 'expired') return end('14일 지나 지웠습니다', true);
@@ -405,6 +445,7 @@
           const got = await results(s.outputs || [], stale);
           if (stale()) return;
           paint(3);
+          if (!got.empty) note('done', { bom: got.bom, pend: got.pend });
           end(got.empty ? '결과가 비었습니다 · 다시 넣어 주세요' : '완료' + (got.bom && got.pend ? ' · 확인 필요 ' + got.pend : ''), got.empty);
           if (got.bom || got.pend) tail.replaceChildren(h('button', { type: 'button', class: 'btn-line', text: got.bom ? '물량' : '확인 필요 ' + got.pend,
             onclick: () => { $('stSum').focus({ preventScroll: true }); $('stSum').scrollIntoView({ behavior: motion(), block: 'start' }); } }));
@@ -460,8 +501,15 @@
     });
   }
   async function login(withFile) {
+    if (document.documentElement.hasAttribute('data-embed')) {   // 카카오 로그인 화면은 iframe 안에서 열리지 않는다 — 같은 파트너 화면을 새 창으로
+      window.open(location.origin + '/maker/3d/' + (P.id ? '?partner=' + P.id : ''), '_blank', 'noopener');
+      $('stInMsg').className = 'st-msg'; $('stInMsg').textContent = '새 창에서 로그인해 주세요';
+      return;
+    }
     if (withFile && S.file) await idb('readwrite', (s) => s.put({ f: S.file, out: S.out, opt: S.opt, at: Date.now() }, 'p'));
-    client().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/maker/3d/' + (withFile ? '?resume=1' : '') } });   // 돌아오는 주소의 조각에는 로그인 토큰이 실려 온다 — 표시는 쿼리에
+    if (P.id) try { localStorage.setItem('ain-partner', JSON.stringify({ id: P.id, at: Date.now() })); } catch (e) {}   // 돌아와도 같은 파트너 화면(partner-boot.js 가 읽는다)
+    // 돌아오는 주소에는 아무 표시도 붙이지 않는다 — 허용 목록과 글자까지 맞아야 하고, 주소 조각에는 로그인 토큰이 실려 온다
+    client().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/maker/3d/' } });
   }
   async function resume() {
     const p = await idb('readonly', (s) => s.get('p'));
@@ -492,7 +540,7 @@
   }
   function openTool(id) {
     const t = TOOLS.find((x) => x.id === id);
-    if (!t) return;
+    if (!t || noTools()) return;
     S.tool = id;
     if (!/^#job-/.test(location.hash)) history.replaceState(history.state, '', '#' + id);
     return t.kind === 'erase' || t.kind === 'cutout' ? photoJobTool(t) : localTool(t);
@@ -644,7 +692,9 @@
 
   // ── 시작 ───────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
+    const back = /access_token=|[?&]code=/.test(location.hash + location.search);   // 로그인 왕복에서 돌아옴 — 로그인 라이브러리가 주소를 걷기 전에 읽는다
     try { window.ainAuth.init('authSlot'); } catch (e) {}
+    await partner();                                     // 공동 브랜드 — 못 받으면 에인연 화면 그대로
     try { Object.assign(S.opt, JSON.parse(localStorage.getItem('ain-studio-opt') || '{}')); } catch (e) {}
     const pickFrom = (inp) => { inp.value = ''; inp.click(); };
     $('stPick').addEventListener('click', () => pickFrom($('stFile')));
@@ -683,7 +733,6 @@
     const job = hash.match(/^#job-(\d+)$/);
     if (hash === '#interior') S.out = 'photo';
     if (hash === '#design') S.out = 'design';
-    const back = new URLSearchParams(location.search).has('resume');   // 로그인 왕복에서 돌아옴(파일을 맡겨 두고 갔다)
     const first = () => {
       pick();
       setView('in', false);
@@ -699,8 +748,9 @@
     document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = title; });   // '(완료)' 표시는 돌아와 보면 걷는다
     if (!(back && S.session)) idb('readwrite', (s) => s.delete('p'));   // 이어 올리지 않는 방문 — 맡겨 둔 도면을 기기에 남기지 않는다
     if (job && S.session) runView(+job[1]);
-    else if (back && S.session) resume();
+    else if (back && S.session && (await idb('readonly', (s) => s.get('p')))) resume();   // 파일을 맡겨 두고 로그인하러 갔다 온 방문만
     else if (hash === '#sample') see();
     else if (TOOLS.some((t) => '#' + t.id === hash)) openTool(hash.slice(1));
+    tell('ready');
   });
 }());
