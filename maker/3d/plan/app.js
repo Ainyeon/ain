@@ -4,7 +4,7 @@ import { Store } from './core/store.js';
 import { toDocJSON, fromDocJSON } from './core/export.js';
 import { roomAreaM2, bounds, wallLen, dist } from './core/geom.js';
 import { createLibrary } from './library.js';
-import { createView2D, fmtLen, fmtArea, readTheme } from './view2d.js';
+import { createView2D, fmtLen, fmtArea, readTheme, floorAreaM2 } from './view2d.js';
 import { createTools, Selection, TOOL_ROWS, OPENING_NAMES, findEl } from './tools.js';
 import { createMinimap } from './minimap.js';
 
@@ -30,10 +30,12 @@ const prefs = (() => { try { return JSON.parse(storage.getItem(UI_KEY)) || {}; }
 const a01 = (v) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
 const state = { locked: false, multi: false, showGrid: prefs.showGrid !== false, showLabels: prefs.showLabels !== false, unit: prefs.unit === 'ft' ? 'ft' : 'mm', wallAlpha: a01(prefs.wallAlpha), floorAlpha: a01(prefs.floorAlpha), areaGross: !!prefs.areaGross, mode: '2d' };
 const savePrefs = () => { try { storage.setItem(UI_KEY, JSON.stringify({ unit: state.unit, showGrid: state.showGrid, showLabels: state.showLabels, wallAlpha: state.wallAlpha, floorAlpha: state.floorAlpha, areaGross: state.areaGross })); } catch (e) { /* 환경설정은 못 남겨도 된다 */ } };
-const narrow = matchMedia('(max-width: 768px)');
+const narrow = matchMedia('(max-width: 768px)'), mid = matchMedia('(max-width: 1023px)'), coarse = matchMedia('(pointer: coarse)');   // mid: 중간 폭(태블릿 세로 등)에서는 오른쪽 패널을 접어 두어 캔버스를 넓힌다
+state.touch = narrow.matches || coarse.matches; // 키보드가 없는 화면 — 도구 안내문이 키 대신 누르는 동작을 말하고 [끝내기] 단추가 보인다
+const NO_STORE = '이 브라우저는 저장소를 막고 있어 저장되지 않습니다 · 도면 내보내기(.json)로 보관하세요';
 const PANEL_TITLES = { templates: '템플릿', draw: '도면 그리기', products: '제품', materials: '마감재', library: '설계형 라이브러리', resources: '리소스 관리' };
 
-let store, view, tools, sel, mini, v3 = null, curId = null, savedAt = null, leaving = false, openingType = 'door';
+let store, view, tools, sel, mini, v3 = null, curId = null, savedAt = null, leaving = false, openingType = 'door', endBtn = null;
 
 /* ---------- 알림·창 ---------- */
 function toast(msg, kind = '') {
@@ -88,7 +90,7 @@ const unsaved = () => store.dirty || (curId === null && hasContent(store.doc));
 const ui = {
   toast, say,
   cursor: (c) => { $('plCanvas').style.cursor = c; },
-  hint: (name, text) => { $('plHintName').textContent = name; $('plHintText').textContent = text; },
+  hint: (name, text) => { $('plHintName').textContent = name; $('plHintText').textContent = text; if (endBtn) endBtn.hidden = !(state.touch && tools && tools.tool !== 'select'); },
   setTool(name, o) {
     if (state.mode === '3d') exit3d();
     if (!tools.setTool(name, o || {})) return false;
@@ -119,6 +121,7 @@ function setUrl(set) { // 주소의 문서 관련 키(doc·new·template·underl
   history.replaceState(null, '', '?' + q);
 }
 function save() {
+  if (!kept) { toast(NO_STORE, 'err'); return false; } // 이 창 안에서만 쓰는 임시 저장소에는 저장한 것으로 치지 않는다 — 저장 안 됨·나가기 경고가 그대로 남는다
   try {
     const m = lib.savePlan(store.doc, curId ? { id: curId } : {});
     curId = m.id; savedAt = m.updated; store.markSaved();
@@ -139,6 +142,11 @@ function replaceDoc(doc, id, updated = null) {
 async function newDoc() {
   if (!(await confirmDiscard('새로 만들면'))) return;
   replaceDoc(createDoc(), null); setUrl({ new: 1 });
+}
+async function openTemplate(id) { // 템플릿 카드 — 저장 안 한 변경은 다른 시작 경로와 같은 확인창을 거친다
+  if (!(await confirmDiscard('템플릿으로 시작하면'))) return;
+  try { replaceDoc(await loadTemplate(id), null); } catch (e) { return toast(e.message, 'err'); }
+  setUrl({ template: id }); if (narrow.matches) setPanel(false);
 }
 async function importFile(file) {
   if (file.size > 25e6) return toast('파일이 너무 큽니다 · 25MB 이하만 불러옵니다', 'err');
@@ -198,18 +206,19 @@ async function underlayStart() { // ?underlay=1 — 올리기부터 시작
 /* ---------- 화면 갱신 ---------- */
 let rf = 0;
 const schedule = () => { if (!rf) rf = requestAnimationFrame(() => { rf = 0; refresh(); }); };
+const setText = (el, t) => { if (el.textContent !== t) el.textContent = t; }; // 낭독 영역(status·output)은 글자가 바뀔 때만 쓴다 — 같은 글자를 다시 쓰면 낭독기가 다시 읽는다
 const setVal = (el, v) => { if (document.activeElement !== el && el.value !== String(v)) el.value = String(v); };
 function refresh() {
   const d = store.doc, f = curFloor(d);
   $('plUndo').disabled = !store.canUndo; $('plRedo').disabled = !store.canRedo;
   setVal($('plTitle'), d.title); document.title = `${d.title} | 도면 그리기 · 3D 스튜디오`;
   const dirty = unsaved(), ss = $('plSaveState');
-  ss.dataset.s = dirty ? 'dirty' : 'saved';
-  ss.textContent = dirty ? '저장 안 됨' : savedAt ? `저장됨 · ${new Date(savedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` : '저장 이력 없음';
+  ss.dataset.s = dirty || !kept ? 'dirty' : 'saved';
+  setText(ss, !kept ? NO_STORE : dirty ? '저장 안 됨' : savedAt ? `저장됨 · ${new Date(savedAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` : '저장 이력 없음');
   const fs = $('plFloorSel'), names = JSON.stringify(d.floors.map((x) => x.name));
   if (fs.dataset.k !== names) { fs.replaceChildren(...d.floors.map((x, i) => h('option', { value: String(i), text: x.name }))); fs.dataset.k = names; }
   fs.value = String(d.cur); setVal($('plFloorName'), f.name); setVal($('plFloorH'), f.heightMm); setVal($('plSlab'), f.slabMm);
-  $('plArea').textContent = fmtArea(f.rooms.reduce((s, r) => s + roomAreaM2(d, r, { withWalls: state.areaGross }), 0), state.unit);
+  setText($('plArea'), fmtArea(floorAreaM2(d, f, state.areaGross), state.unit));
   $('plAreaNet').setAttribute('aria-pressed', String(!state.areaGross)); $('plAreaGross').setAttribute('aria-pressed', String(state.areaGross));
   setVal($('plWallA'), Math.round(state.wallAlpha * 100)); setVal($('plWallAn'), Math.round(state.wallAlpha * 100));
   setVal($('plFloorA'), Math.round(state.floorAlpha * 100)); setVal($('plFloorAn'), Math.round(state.floorAlpha * 100));
@@ -231,22 +240,25 @@ function propsBuild() {
     const id = first.id, cur = () => (findEl(store.doc, id) || {}).el, up = (patch) => run({ type: 'update', id, patch });
     const num = (label, unit, get, set, { min, step = 10 } = {}) => {
       const input = h('input', { type: 'number', step, min, inputmode: 'decimal', 'aria-label': label });
-      const sync = () => { const e = cur(); if (e && document.activeElement !== input) input.value = String(Math.round(get(e) * 100) / 100); };
-      input.addEventListener('change', () => { const v = Number(input.value); if (input.value === '' || !Number.isFinite(v) || (min != null && v < min)) { toast(`${label} 값이 올바르지 않습니다`, 'err'); input.value = ''; return sync(); } set(v); sync(); });
+      const show = () => { const e = cur(); if (e) input.value = String(Math.round(get(e) * 100) / 100); }; // 칸을 문서 값으로 — 거절된 값이 칸에 남지 않게 한다
+      const sync = () => { if (document.activeElement !== input) show(); };
+      input.addEventListener('change', () => { const v = Number(input.value); if (input.value === '' || !Number.isFinite(v) || (min != null && v < min)) toast(`${label} 값이 올바르지 않습니다`, 'err'); else set(v); show(); });
       return { el: h('label', { class: 'ed-f' }, [h('span', { text: label }), h('span', { class: 'in' }, [input, unit ? h('em', { text: unit }) : null])]), sync };
     };
     const txt = (label, get, set) => {
       const input = h('input', { type: 'text', maxlength: '40', autocomplete: 'off', 'aria-label': label });
-      const sync = () => { const e = cur(); if (e && document.activeElement !== input) input.value = get(e); };
-      input.addEventListener('change', () => { const v = input.value.trim(); if (!v) { toast(`${label} 을 비울 수 없습니다`, 'err'); return sync(); } set(v); sync(); });
+      const show = () => { const e = cur(); if (e) input.value = get(e); };
+      const sync = () => { if (document.activeElement !== input) show(); };
+      input.addEventListener('change', () => { const v = input.value.trim(); if (!v) toast(`${label} 을 비울 수 없습니다`, 'err'); else set(v); show(); });
       return { el: h('label', { class: 'ed-f' }, [h('span', { text: label }), h('span', { class: 'in' }, [input])]), sync };
     };
     const pick = (label, opts, get, set) => {
       const s = h('select', { 'aria-label': label }, opts.map(([v, t]) => h('option', { value: v, text: t })));
-      s.addEventListener('change', () => set(s.value));
-      return { el: h('label', { class: 'ed-f' }, [h('span', { text: label }), s]), sync() { const e = cur(); if (e) s.value = get(e); } };
+      const sync = () => { const e = cur(); if (e) s.value = get(e); };
+      s.addEventListener('change', () => { set(s.value); sync(); });
+      return { el: h('label', { class: 'ed-f' }, [h('span', { text: label }), s]), sync };
     };
-    const ro = (label, get) => { const o = h('output', { class: 'ed-out' }); return { el: h('div', { class: 'ed-f' }, [h('span', { text: label }), o]), sync() { const e = cur(); if (e) o.textContent = get(e); } }; };
+    const ro = (label, get) => { const o = h('output', { class: 'ed-out' }); return { el: h('div', { class: 'ed-f' }, [h('span', { text: label }), o]), sync() { const e = cur(); if (e) setText(o, get(e)); } }; };
     kids.push(h('p', { class: 'ed-note', text: `${KO[first.col]} · ${id}` }));
     if (first.col === 'walls') { add(ro('길이', (e) => fmtLen(wallLen(e), state.unit))); add(num('두께', 'mm', (e) => e.t, (v) => up({ t: v }), { min: 10 })); add(pick('종류', [['inner', '내벽'], ['exterior', '외벽']], (e) => e.kind, (v) => up({ kind: v }))); add(num('곡선 처짐', 'mm', (e) => e.bulge, (v) => up({ bulge: v }))); }
     else if (first.col === 'rooms') { add(txt('이름', (e) => e.name, (v) => up({ name: v }))); add(ro('실면적', (e) => fmtArea(roomAreaM2(store.doc, e), state.unit))); }
@@ -278,12 +290,14 @@ function underlayUI(d) { // 밑그림이 있을 때만: 투명도·축척·이�
 /* ---------- 왼쪽: 줄·패널 ---------- */
 let panelName = null, panelHandle = null, panelTok = 0, panelsMod = null, drawRows = null, panelOpen = true;
 const getPanels = () => (panelsMod ||= import('./panels.js').catch((e) => { panelsMod = null; throw e; }));
-const ctx = { get store() { return store; }, setTool: (n, o) => ui.setTool(n, o), toast, openDialog };
+const ctx = { get store() { return store; }, exec: run, setTool: (n, o) => ui.setTool(n, o), toast, openDialog, openTemplate }; // exec = 잠금을 지키는 문서 명령 — 패널은 store.exec 를 직접 부르지 않는다
 function setPanel(open) {
+  if (open && narrow.matches) setSide(false); // 폰: 시트와 서랍은 하나만 연다
   panelOpen = open; $('plApp').classList.toggle('no-panel', !open);
   const b = $('plPanelToggle'); b.textContent = open ? '‹' : '›'; b.setAttribute('aria-expanded', String(open)); b.setAttribute('aria-label', open ? '왼쪽 패널 접기' : '왼쪽 패널 펴기');
 }
 function setSide(open) {
+  if (open && narrow.matches) setPanel(false);
   $('plApp').classList.toggle('no-side', !open);
   const b = $('plSideToggle'); b.textContent = open ? '›' : '‹'; b.setAttribute('aria-expanded', String(open)); b.setAttribute('aria-label', open ? '오른쪽 패널 접기' : '오른쪽 패널 펴기');
 }
@@ -336,22 +350,26 @@ async function openPanel(name) {
 }
 
 /* ---------- 3D (view3d.js) ---------- */
-let finishMap = null;
-async function finishColors() {
-  if (!finishMap) { try { finishMap = new Map(((await (await getPanels()).loadFinishes()).finishes || []).map((x) => [x.id, x.sw])); } catch (e) { finishMap = new Map(); } }
+let finishMap = null, v3Plain = false, entering3d = false; // v3Plain = 3D 화면을 마감재 색 없이 만들었다
+async function finishColors() { // 마감재 id → 색(panels.js 의 자료). 못 읽으면 저장해 두지 않는다 — 다음 3D 진입에서 다시 읽는다
+  if (!finishMap) { try { finishMap = new Map(((await (await getPanels()).loadFinishes()).finishes || []).map((x) => [x.id, x.sw])); } catch (e) { /* 이번에는 기본 색 */ } }
   return finishMap;
 }
 async function enter3d(which = 'iso') {
   if (!curFloor(store.doc).rooms.length) return openDialog('방이 하나 이상 필요합니다', [h('p', { text: '방을 만들어 주세요.' }), okRow()], { small: true });
+  if (entering3d) return; // 여는 중에 또 누르면 3D 화면(캔버스·WebGL)을 하나 더 만들지 않는다
+  entering3d = true;
   let r; $('plView3d').hidden = false; // 크기를 재야 하니 만들기 전에 보인다
   try {
+    const sw = await finishColors();
+    if (v3 && v3Plain && sw) { v3.destroy(); v3 = null; } // 처음 열 때 못 읽은 마감재 색을 이제 읽었으면 다시 만든다
     if (!v3) {
-      const m = await import('./view3d.js'), sw = await finishColors(); // 마감재 id → 색(panels.js 의 자료). 못 읽으면 기본 색
-      const v = m.createView3D($('plView3d'), store, { view: which, wallAlpha: state.wallAlpha, floorAlpha: state.floorAlpha, finishColor: (kind, id) => sw.get(id) });
-      if (v && v.ok === false) r = v; else v3 = v;
+      const m = await import('./view3d.js');
+      const v = m.createView3D($('plView3d'), store, { view: which, wallAlpha: state.wallAlpha, floorAlpha: state.floorAlpha, finishColor: (kind, id) => finishMap && finishMap.get(id), onEmpty: () => { exit3d(); openDialog('방이 하나 이상 필요합니다', [h('p', { text: '방을 만들어 주세요.' }), okRow()], { small: true }); } });   // 보는 중에 층을 바꾸거나 새로 만들어 방이 없어지면 빈 화면으로 두지 않는다
+      if (v && v.ok === false) r = v; else { v3 = v; v3Plain = !sw; }
     }
     if (v3) r = v3.show();
-  } catch (e) { $('plView3d').hidden = true; return errDialog('3D 화면을 열지 못했습니다', 'view3d.js 를 불러오거나 실행하지 못했습니다', e); }
+  } catch (e) { $('plView3d').hidden = true; return errDialog('3D 화면을 열지 못했습니다', 'view3d.js 를 불러오거나 실행하지 못했습니다', e); } finally { entering3d = false; }
   if (r && r.ok === false) {
     $('plView3d').hidden = true;
     return r.reason === 'rooms' ? openDialog('방이 하나 이상 필요합니다', [h('p', { text: '방을 만들어 주세요.' }), okRow()], { small: true }) : errDialog('3D 화면을 열지 못했습니다', r.reason === 'webgl' ? '이 브라우저는 WebGL 을 쓸 수 없습니다' : `사유 ${r.reason}`);
@@ -379,7 +397,7 @@ function wire() {
   const menu = $('plMenu'), closeMenu = () => { menu.classList.remove('open'); $('plMore').setAttribute('aria-expanded', 'false'); };
   $('plMore').onclick = () => { const on = menu.classList.toggle('open'); $('plMore').setAttribute('aria-expanded', String(on)); };
   document.addEventListener('pointerdown', (e) => { if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== $('plMore')) closeMenu(); });
-  menu.addEventListener('click', (e) => { if (e.target.closest('button')) closeMenu(); });
+  menu.addEventListener('click', (e) => { if (e.target.closest('button')) { closeMenu(); if ($('plMore').offsetParent !== null) $('plMore').focus({ preventScroll: true }); } });   // 항목이 연 창을 닫으면 초점이 메뉴 단추로 돌아온다
   $('plRename').onclick = async () => { const v = await ask({ title: '도면 이름', label: '이름', value: store.doc.title }); if (v) run({ type: 'rename', title: v }); };
   $('plEstimate').onclick = async () => { try { (await import('./estimate.js')).openEstimate(ctx); } catch (e) { errDialog('견적 물량표를 열지 못했습니다', 'estimate.js 를 불러오거나 실행하지 못했습니다', e); } };
   $('plExport').onclick = () => { download(`ain-도면-${safe(store.doc.title)}.json`, new Blob([toDocJSON(store.doc)], { type: 'application/json' })); toast('도면 파일을 내려받았습니다'); };
@@ -409,13 +427,19 @@ function wire() {
 
   $('plFloorSel').onchange = (e) => run({ type: 'setCur', index: Number(e.target.value) });
   $('plFloorAdd').onclick = () => { if (run({ type: 'addFloor' })) say('층을 추가했습니다'); };
-  const intField = (id, key, min, max, label) => { const el = $(id); el.addEventListener('change', () => { const v = Number(el.value); if (el.value === '' || !Number.isFinite(v) || v < min || v > max) { toast(`${label}은 ${min}~${max} mm 사이여야 합니다`, 'err'); el.value = ''; return schedule(); } run({ type: 'setFloor', patch: { [key]: v } }); schedule(); }); };
+  const intField = (id, key, min, max, label) => { const el = $(id); el.addEventListener('change', () => { const v = Number(el.value); if (el.value === '' || !Number.isFinite(v) || v < min || v > max) toast(`${label}은 ${min}~${max} mm 사이여야 합니다`, 'err'); else run({ type: 'setFloor', patch: { [key]: v } }); el.value = String(curFloor(store.doc)[key]); schedule(); }); }; // 거절된 값은 칸에 남기지 않고 문서 값으로
   intField('plFloorH', 'heightMm', 100, 20000, '층 높이'); intField('plSlab', 'slabMm', 0, 2000, '슬래브 두께');
-  const nm = $('plFloorName'); nm.addEventListener('change', () => { const v = nm.value.trim(); if (!v) { toast('층 이름을 비울 수 없습니다', 'err'); return schedule(); } run({ type: 'setFloor', patch: { name: v } }); });
+  const nm = $('plFloorName'); nm.addEventListener('change', () => { const v = nm.value.trim(); if (!v) toast('층 이름을 비울 수 없습니다', 'err'); else run({ type: 'setFloor', patch: { name: v } }); nm.value = curFloor(store.doc).name; schedule(); });
   $('plAreaNet').onclick = () => { state.areaGross = false; savePrefs(); schedule(); }; $('plAreaGross').onclick = () => { state.areaGross = true; savePrefs(); schedule(); };
   const alpha = (rangeId, numId, key, apply) => { for (const id of [rangeId, numId]) $(id).addEventListener('input', (e) => { const v = Number(e.target.value); if (e.target.value === '' || !Number.isFinite(v)) return; state[key] = a01(v / 100); if (v > 100 || v < 0) e.target.value = String(Math.round(state[key] * 100)); apply(state[key]); savePrefs(); schedule(); }); };
   alpha('plWallA', 'plWallAn', 'wallAlpha', (a) => v3 && v3.setWallAlpha(a)); alpha('plFloorA', 'plFloorAn', 'floorAlpha', (a) => v3 && v3.setFloorAlpha(a));
 
+  endBtn = h('button', { type: 'button', class: 'ed-b', id: 'plEndTool', text: '끝내기', hidden: true, onclick: () => ui.setTool('select') }); // 폰: 도구를 연 동안 안내 줄 옆에 보이는 선택 도구 복귀 단추
+  endBtn.style.pointerEvents = 'auto'; $('plHint').append(endBtn);
+  const onMode = () => { // 창 폭·입력 방식이 바뀌면(회전) 폰 상태를 정리한다 — 폰: 시트·서랍 닫기, 데스크톱: 둘 다 펴기
+    state.touch = narrow.matches || coarse.matches; setPanel(!narrow.matches); setSide(!mid.matches); tools.hint();
+  };
+  narrow.addEventListener('change', onMode); mid.addEventListener('change', onMode); coarse.addEventListener('change', () => { state.touch = narrow.matches || coarse.matches; tools.hint(); });
   window.addEventListener('keydown', onKey); window.addEventListener('keyup', onKeyUp);
   window.addEventListener('blur', () => { tools.setShift(false); tools.setSpace(false); });
   window.addEventListener('resize', () => { view.refreshTheme(); if (v3 && state.mode === '3d' && v3.resize) v3.resize(); });
@@ -426,13 +450,16 @@ const typing = (t) => !!t && t.nodeType === 1 && (t.isContentEditable || /^(INPU
 function onKey(e) {
   if (document.querySelector('dialog[open]')) return;
   const mod = e.ctrlKey || e.metaKey, onCanvas = e.target === document.body || e.target.id === 'plCanvas';
-  if (mod && e.code === 'KeyS') { e.preventDefault(); save(); return; }
+  if (mod && e.code === 'KeyS') { // 입력칸에 쓰던 값은 칸을 벗어나야(change) 문서에 들어간다 — 먼저 벗어나게 한 뒤 저장하고 칸으로 돌아온다
+    e.preventDefault(); const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur();
+    save(); if (a && a !== document.body && a.focus) a.focus({ preventScroll: true }); return;
+  }
   if (typing(e.target)) return;
   if (mod && e.code === 'KeyZ') { e.preventDefault(); if (e.shiftKey) doRedo(); else doUndo(); return; }
   if (mod && e.code === 'KeyY') { e.preventDefault(); doRedo(); return; }
   if (mod && e.code === 'KeyA' && state.mode === '2d' && onCanvas) { e.preventDefault(); const f = curFloor(store.doc); sel.set(COLS.flatMap((c) => f[c].map((x) => x.id))); return; }
   if (e.key === 'Shift') tools.setShift(true);
-  if (e.code === 'Escape' && $('plMenu').classList.contains('open')) { $('plMenu').classList.remove('open'); return; }
+  if (e.code === 'Escape' && $('plMenu').classList.contains('open')) { $('plMenu').classList.remove('open'); $('plMore').setAttribute('aria-expanded', 'false'); $('plMore').focus({ preventScroll: true }); return; }
   if (state.mode === '3d') { // 3D: 2·3·4 = 보기, ESC = 2D 로, 도구 글쇠 = 2D 로 돌아가 그 도구
     const v = { Digit2: 'plan', Digit3: 'iso', Digit4: 'free', Numpad2: 'plan', Numpad3: 'iso', Numpad4: 'free' }[e.code];
     if (v) { set3dView(v); e.preventDefault(); } else if (e.code === 'Escape') exit3d(); else if (e.code.startsWith('Key') && tools.key(e)) e.preventDefault();
@@ -458,10 +485,17 @@ async function boot() {
   mini = createMinimap($('plMini'), { store, view }); view.onChange = (vp) => { mini.draw(); canvas.dataset.scale = vp.scale.toFixed(4); }; // data-scale = px/mm (화면 확인용 표시)
   store.subscribe(() => { sel.prune(store.doc); schedule(); });
   wire();
-  if (narrow.matches) { setPanel(false); setSide(false); }
+  const appEl = $('plApp'); appEl.style.transition = 'none'; // 시작할 때의 패널 접힘은 애니메이션 없이 — 애니메이션 도중의 캔버스 폭으로 맞추면 평면이 작게 맞춰진다
+  if (narrow.matches) setPanel(false);
+  if (mid.matches) setSide(false); // 폰 + 중간 폭: 오른쪽 패널은 접어서 시작
   openPanel('draw'); tools.setTool('select');
   view.resize(); view.fit(bounds(store.doc)); refresh();
-  if (!kept) toast('이 브라우저에서는 저장 공간을 쓸 수 없습니다 · 도면 내보내기(.json)로 보관해 주세요', 'err');
+  requestAnimationFrame(() => requestAnimationFrame(() => { appEl.style.transition = ''; }));
+  // 처음 맞춤은 캔버스 크기가 확정되기 전에 계산될 수 있다(패널 접힘·템플릿 불러오기 도중) — 사용자가 화면을 만지기 전까지는 크기가 바뀔 때마다 다시 맞춘다
+  let touched = false; const touch = () => { touched = true; };
+  for (const ev of ['pointerdown', 'wheel', 'keydown']) canvas.addEventListener(ev, touch, { once: true, passive: true });
+  new ResizeObserver(() => { if (!touched && state.mode === '2d') { view.resize(); view.fit(bounds(store.doc)); } }).observe(canvas);
+  if (!kept) { toast(NO_STORE, 'err'); $('plSaveState').title = NO_STORE; } // 상태 칸이 좁아 잘려 보여도 전체 문구는 마우스를 올리면 나온다
   if (init.notice) toast(init.notice, 'err');
   if (new URLSearchParams(location.search).get('underlay')) underlayStart();
 }

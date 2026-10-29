@@ -1,6 +1,6 @@
 // 평면 문서 → 3D 조각 데이터(three 없이 순수 데이터) — 개구부로 나뉜 벽·기둥·바닥·에어컨·경계. 단위 mm, 다각형은 [x,y] 평면 좌표(시계방향), 높이 z 는 바닥=0
 import { AC_PANEL_MM, AC_BODY_MM } from './model.js';
-import { jointsOf, wallLen, wallSlice, wallPointAt, rectPoly, circlePoly, bounds } from './geom.js';
+import { jointsOf, wallLen, wallSlice, wallPointAt, rectPoly, circlePoly, bounds, roomOutlineWithArcs } from './geom.js';
 
 // walls 의 조각: {id, poly, z0, z1, kind:'inner'|'exterior'|'column', part:'full'|'sill'(창 아래·문 옆 낮은 벽)|'lintel'(상인방)|'column'}
 // 개구부는 길이(u)로 구간을 나눠 구간마다 개구부가 비운 높이 띠를 빼고 남은 높이를 조각으로 만든다(겹친 개구부도 맞다)
@@ -32,10 +32,10 @@ export function buildMesh(doc, floorIndex = doc.cur) {
     }
   }
   for (const c of f.columns) walls.push({ id: c.id, poly: c.kind === 'round' ? circlePoly(c.c, c.w / 2) : rectPoly(c.c, c.w, c.d, c.rot), z0: 0, z1: H, kind: 'column', part: 'column' });
-  const b = bounds(doc, f);
+  const b = bounds(doc, f), byId = new Map(f.walls.map((w) => [w.id, w]));
   return {
     walls, openings,
-    floors: f.rooms.map((r) => ({ id: r.id, name: r.name, poly: r.poly, z: 0, thickness: f.slabMm, finish: f.finish.floor })),
+    floors: f.rooms.map((r) => ({ id: r.id, name: r.name, poly: roomOutlineWithArcs(r, byId), z: 0, thickness: f.slabMm, finish: f.finish.floor })),
     items: f.items.map((i) => ({ id: i.id, kind: i.kind, model: i.model, brand: i.brand, code: i.code, capacityKw: i.capacityKw, c: i.c, rot: i.rot, size: i.size, poly: rectPoly(i.c, i.size[0], i.size[1], i.rot), z0: H - AC_PANEL_MM, z1: H, mountZ: H, bodyH: AC_BODY_MM })),
     bounds: b && { ...b, z0: 0, z1: H },
   };

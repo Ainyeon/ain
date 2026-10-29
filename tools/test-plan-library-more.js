@@ -51,5 +51,10 @@ const assert = require('assert');
   assert.deepStrictEqual(summarize({ floors: [null, { rooms: [null, 'x', { poly: [[0, 0], [NaN, 1], [1, 1]] }, room(1000, 1000)], items: [null, { kind: 'ac' }] }] }), { floors: 2, rooms: 2, areaM2: 1, ac: 1 }, 'null·NaN 은 건너뛴다');
   assert.deepStrictEqual(summarize({ floors: 'x' }), { floors: 0, rooms: 0, areaM2: 0, ac: 0 });
   { const lib = createLibrary(mem(), () => ++t, () => 0.5); assert.ok(lib.savePlan({ v: 1, title: '깨진', floors: [{ rooms: [null], walls: [null], items: [null] }] }).id, '깨진 항목이 있는 문서도 저장된다'); }
+  // 10) 곡선벽이 방 경계에 있으면 목록의 면적도 호를 따른다(플래너 화면과 같은 값) — 4000×3000 방 위쪽 벽 처짐 1000 → 12 − 2.7956 ≈ 9.2044㎡
+  { const { Store } = await import('../maker/3d/plan/core/store.js'), { createDoc } = await import('../maker/3d/plan/core/model.js'), { roomAreaM2 } = await import('../maker/3d/plan/core/geom.js');
+    const st = new Store(createDoc('곡선')); st.exec({ type: 'addRoomRect', a: [0, 0], b: [4000, 3000] }); const top = st.doc.floors[0].walls.find((w) => w.a[1] === w.b[1] && w.a[1] < 500);
+    assert.strictEqual(summarize(st.doc).areaM2, 12, '직선이면 12㎡'); st.exec({ type: 'update', id: top.id, patch: { bulge: 1000 } });
+    assert.ok(Math.abs(summarize(st.doc).areaM2 - 9.2044) < 0.02, '안쪽으로 볼록하면 줄어든다(호를 5° 선분으로 근사해 손계산 값과 0.01㎡ 안쪽)'); assert.strictEqual(summarize(st.doc).areaM2, Math.round(roomAreaM2(st.doc, st.doc.floors[0].rooms[0]) * 100) / 100, '플래너의 면적과 같은 값'); }
   console.log('test-plan-library-more: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

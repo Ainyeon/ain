@@ -1,5 +1,5 @@
 // 플래너 3D(maker/3d/plan/view3d.js) 순수 부분 시험 — buildMesh 결과 → 정점 자료(벽 구멍·에어컨 높이·면 방향)와 보기별 카메라 사양(화면 맞춤·방향)을 손으로 계산한 값으로 단언한다.
-// WebGL 은 node 에서 못 돌리므로 그리기·dispose·크기 대응은 단독 하네스 페이지에서 사람이 본다. 변이 시험용으로 PLAN_3D_FILE 로 다른 사본(같은 폴더)을 가리킬 수 있다.
+// 그리기 결과(픽셀)는 node 에서 못 보므로 단독 하네스 페이지에서 사람이 보고, 5번은 가짜 DOM·WebGL 로 createView3D 의 상태 전이(카메라 맞춤·흐림 복구·컨텍스트 복원)를 실제 코드로 돌린다. 변이 시험용으로 PLAN_3D_FILE 로 다른 사본(같은 폴더)을 가리킬 수 있다.
 // 실행: node tools/test-plan-3d.js (Node 22.7+)
 'use strict';
 const assert = require('assert');
@@ -143,7 +143,9 @@ const nearV = (a, b, eps, msg) => a.forEach((v, i) => near(v, b[i], eps, msg));
   /* ===== 4. createView3D: 모양과 실패 경로(WebGL·DOM 없는 node) ===== */
   const cont = { hidden: true, clientWidth: 0, clientHeight: 0, appendChild() { throw new Error('만들어지면 안 된다'); } };
   const empty = new Store(), v0 = V.createView3D(cont, empty);
-  assert.deepStrictEqual(Object.keys(v0).sort(), ['destroy', 'hide', 'resize', 'setFloorAlpha', 'setView', 'setWallAlpha', 'show', 'stats', 'zoom']);
+  assert.deepStrictEqual(Object.keys(v0).sort(), ['destroy', 'hide', 'isEmpty', 'resize', 'setFloorAlpha', 'setView', 'setWallAlpha', 'show', 'stats', 'zoom']);
+  assert.strictEqual(typeof V.needsRefit, 'function');
+  assert.strictEqual(v0.isEmpty(), true, '방이 없는 문서의 isEmpty()'); assert.strictEqual(V.createView3D(cont, st).isEmpty(), false, '방이 있으면 isEmpty() 는 false');
   assert.deepStrictEqual(v0.show(), { ok: false, reason: 'rooms' }, '방이 없으면 show() 대신 이유를 돌려준다');
   assert.strictEqual(cont.hidden, true, '실패하면 컨테이너를 보이지 않는다');
   assert.strictEqual(v0.setView('plan'), true); assert.strictEqual(v0.setView('top'), false);
@@ -156,5 +158,108 @@ const nearV = (a, b, eps, msg) => a.forEach((v, i) => near(v, b[i], eps, msg));
   assert.deepStrictEqual(v1.show(), { ok: false, reason: 'destroyed' }, 'destroy 뒤엔 show 가 거절한다');
   assert.strictEqual(v1.setView('iso'), false); st.exec({ type: 'addColumn', kind: 'rect', c: [3200, 2500] }); // 구독이 끊겨 있어야 한다(던지지 않는다)
   void n0;
+
+  /* ===== 4-1. needsRefit: 다른 모형일 때만 카메라를 다시 맞춘다 ===== */
+  const d2 = (cur) => ({ cur });
+  assert.strictEqual(V.needsRefit(0, d2(1), 'setCur'), true, '현재 층이 바뀌면 맞춘다(층 선택·층 추가·되돌리기)');
+  assert.strictEqual(V.needsRefit(1, d2(0), 'undo'), true);
+  assert.strictEqual(V.needsRefit(0, d2(0), 'replace'), true, '불러오기·새로 만들기는 층 번호가 같아도 다른 모형');
+  for (const t of ['addRoomRect', 'moveItem', 'commit', 'cancel', 'undo', 'redo', 'setFloor']) assert.strictEqual(V.needsRefit(0, d2(0), t), false, `같은 층의 ${t} 는 카메라를 그대로 둔다`);
+
+  /* ===== 5. 가짜 DOM·WebGL 로 실제 createView3D 상태 전이 ===== */
+  const real = { st: globalThis.setTimeout, ct: globalThis.clearTimeout, raf: globalThis.requestAnimationFrame, caf: globalThis.cancelAnimationFrame };
+  let clock = 0, tid = 0; const timers = new Map();
+  globalThis.setTimeout = (fn, ms = 0) => { timers.set(++tid, { at: clock + ms, fn }); return tid; };
+  globalThis.clearTimeout = (id) => { timers.delete(id); };
+  const tick = (ms) => { const end = clock + ms; for (;;) { let b = null; for (const [id, t] of timers) if (t.at <= end && (!b || t.at < b[1].at)) b = [id, t]; if (!b) break; timers.delete(b[0]); clock = b[1].at; b[1].fn(); } clock = end; };
+  let rafQ = []; globalThis.requestAnimationFrame = (fn) => { rafQ.push(fn); return rafQ.length; }; globalThis.cancelAnimationFrame = () => { rafQ = []; };
+  const frames = () => { for (let i = 0; i < 3; i++) { const q = rafQ; rafQ = []; q.forEach((f) => f(performance.now() + 1e6)); } }; // 한 프레임이면 트윈이 끝난다
+  class WebGL2RenderingContext {} globalThis.WebGL2RenderingContext = WebGL2RenderingContext;
+  const consts = new Map();
+  const fakeGL = (log) => { const gl = new Proxy(new WebGL2RenderingContext(), { get(t, k) { // 어떤 호출이든 받는 WebGL2 흉내 — three 가 묻는 값만 돌려준다
+    if (k in t || typeof k !== 'string') return t[k];
+    if (/^[A-Z][A-Z0-9_]+$/.test(k)) { if (!consts.has(k)) consts.set(k, consts.size + 1); return consts.get(k); }
+    switch (k) {
+      case 'getContextAttributes': return () => ({ alpha: true, depth: true, stencil: true, antialias: true, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: 'default', failIfMajorPerformanceCaveat: false });
+      case 'getParameter': return (q) => (q === gl.VERSION ? 'WebGL 2.0' : q === gl.SHADING_LANGUAGE_VERSION ? 'WebGL GLSL ES 3.00' : 16);
+      case 'getExtension': return (n) => (n === 'WEBGL_lose_context' ? { loseContext() {}, restoreContext() {} } : null);
+      case 'getShaderPrecisionFormat': return () => ({ precision: 23, rangeMin: 127, rangeMax: 127 });
+      case 'getProgramParameter': case 'getShaderParameter': return (a, q) => (q === gl.LINK_STATUS || q === gl.COMPILE_STATUS ? true : 0);
+      case 'getProgramInfoLog': case 'getShaderInfoLog': case 'getShaderSource': return () => '';
+      case 'isContextLost': return () => false;
+      case 'getError': return () => 0;
+      case 'checkFramebufferStatus': return () => gl.FRAMEBUFFER_COMPLETE;
+      case 'clearColor': return (...a) => { log.clear.push(a); };
+      case 'drawElements': case 'drawArrays': return () => { log.draws++; };
+      default: return () => ({});
+    }
+  } }); return gl; };
+  const gllog = { clear: [], draws: 0 };
+  const mkCanvas = () => ({ style: {}, width: 300, height: 150, attrs: {}, on: {}, setAttribute(k, v) { this.attrs[k] = v; }, addEventListener(t, f) { (this.on[t] ??= []).push(f); }, removeEventListener() {}, getContext() { return (this.gl ??= fakeGL(gllog)); }, remove() {}, getRootNode: () => globalThis.document, fire(t, e = {}) { (this.on[t] || []).forEach((f) => f({ preventDefault() {}, ...e })); } });
+  globalThis.self = { requestAnimationFrame: () => 0, cancelAnimationFrame() {} }; // three 의 애니메이션 루프가 쓴다(destroy 의 dispose)
+  globalThis.window = { devicePixelRatio: 1, addEventListener() {}, removeEventListener() {} };
+  globalThis.document = { documentElement: {}, hidden: false, createElement: mkCanvas, addEventListener() {}, removeEventListener() {} };
+  globalThis.getComputedStyle = () => ({ getPropertyValue: () => '' }); // 토큰 CSS 없음 — FALLBACK 색을 쓴다
+  globalThis.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
+  let lastCam = null; const before0 = THREE.Scene.prototype.onBeforeRender; // render() 가 장면마다 부르는 갈고리로 마지막에 그린 카메라를 잡는다
+  THREE.Scene.prototype.onBeforeRender = function (r, sc, cam) { lastCam = cam; };
+  try {
+    const mkStore = () => { // 1층 4×3 m · 2층 6×5 m(멀리 x=30 m) · 3층은 빈 층으로 나중에
+      const s = new Store();
+      s.exec({ type: 'addRoomRect', a: [0, 0], b: [4000, 3000], name: '1층' });
+      s.exec({ type: 'addFloor' }); s.exec({ type: 'addRoomRect', a: [30000, 0], b: [36000, 5000], name: '2층' }); s.exec({ type: 'setCur', index: 0 });
+      return s;
+    };
+    const mkView = (s, o = {}) => { const c = { hidden: true, clientWidth: 800, clientHeight: 600, children: [], appendChild(x) { this.children.push(x); } }; const v = V.createView3D(c, s, { view: 'iso', ...o }); return { v, c, cv: () => c.children[0] }; };
+    const settle = () => { tick(500); frames(); };
+    const specFor = (s, view = 'iso') => V.cameraFor(view, buildMesh(s.doc, s.doc.cur).bounds, 800 / 600);
+    const isFit = (s, msg, view) => { const sp = specFor(s, view); nearV(lastCam.position.toArray(), sp.pos, 1e-6, msg + ' 위치'); near(lastCam.zoom, 1, 1e-9, msg + ' 확대 1배'); if (sp.type === 'ortho') near(lastCam.top, sp.halfH, 1e-6, msg + ' 화면 크기'); };
+
+    /* 21. 보는 중에 층·문서가 바뀌면 새 모형에 맞춘다 */
+    { const s = mkStore(); let empties = 0; const { v } = mkView(s, { onEmpty: () => empties++ });
+      assert.deepStrictEqual(v.show(), { ok: true }); settle(); isFit(s, '처음 1층');
+      v.zoom(2); frames(); near(lastCam.zoom, 2, 1e-9, '사용자가 확대했다');
+      s.exec({ type: 'addColumn', kind: 'round', c: [2000, 1500] }); settle(); near(lastCam.zoom, 2, 1e-9, '같은 층 편집은 카메라를 그대로 둔다');
+      s.exec({ type: 'setCur', index: 1 }); settle(); isFit(s, '2층으로 이동(사용자가 만진 뒤에도)');
+      s.exec({ type: 'setCur', index: 0 }); settle(); isFit(s, '1층으로 복귀');
+      const doc1 = JSON.parse(JSON.stringify(s.doc)); v.zoom(2); frames(); s.replace(doc1); settle(); isFit(s, '같은 층 번호의 문서 교체(불러오기)');
+      assert.strictEqual(empties, 0); assert.strictEqual(v.isEmpty(), false);
+      s.exec({ type: 'addFloor' }); settle(); // 층 추가 = 방 없는 새 층
+      assert.strictEqual(v.isEmpty(), true, '빈 새 층'); assert.strictEqual(empties, 1, 'onEmpty 가 한 번 불린다');
+      s.exec({ type: 'setFloor', patch: { heightMm: 2500 } }); settle(); assert.strictEqual(empties, 1, '빈 채로 이어지는 변경에서는 다시 부르지 않는다');
+      s.exec({ type: 'setCur', index: 1 }); settle(); isFit(s, '빈 층에서 방 있는 층으로'); assert.strictEqual(v.isEmpty(), false); assert.strictEqual(empties, 1);
+      s.replace(new Store().doc); settle(); assert.strictEqual(empties, 2, '새로 만들기 → 방이 없으니 다시 알린다'); // createDoc 기본 문서는 방이 없다
+      assert.deepStrictEqual(v.show(), { ok: false, reason: 'rooms' }, '빈 문서는 다시 열 수 없다');
+      v.destroy(); }
+    { const s = mkStore(); const { v } = mkView(s, { onEmpty() { throw new Error('앱 쪽 오류'); } }); // onEmpty 가 던져도 뷰는 멀쩡하다
+      v.show(); settle(); const err = console.error; console.error = () => {}; try { s.replace(new Store().doc); settle(); } finally { console.error = err; }
+      assert.strictEqual(v.isEmpty(), true); v.destroy(); }
+    { const s = mkStore(), { v } = mkView(s); // 숨겨 둔 동안 층이 바뀌면 다시 열 때 맞춘다
+      v.show(); settle(); v.hide(); s.exec({ type: 'setCur', index: 1 }); tick(500); assert.deepStrictEqual(v.show(), { ok: true }); settle(); isFit(s, '숨긴 동안 바뀐 층'); v.destroy(); }
+
+    /* 22. 보기 전환 연타: 어떤 순서에서도 마지막엔 보이고(opacity 1) 마지막 보기의 투영이다 */
+    { const s = mkStore(), { v, cv } = mkView(s); v.show(); settle();
+      v.setView('free'); v.setView('iso'); assert.strictEqual(cv().style.opacity, '1', '직교→원근을 누르자마자 직교로 되돌리면 바로 보인다');
+      settle(); assert.strictEqual(cv().style.opacity, '1'); assert.ok(lastCam.isOrthographicCamera);
+      v.setView('free'); tick(30); assert.strictEqual(cv().style.opacity, '0', '흐려지는 중'); tick(100); assert.strictEqual(cv().style.opacity, '1', '100ms 뒤 원근으로 바뀌며 보인다');
+      let seed = 7; const rnd = (n) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+      for (let t = 0; t < 300; t++) {
+        const seq = Array.from({ length: 2 + rnd(5) }, () => ['plan', 'iso', 'free'][rnd(3)]), gaps = seq.map(() => [0, 10, 50, 99, 100, 101, 150, 400][rnd(8)]);
+        seq.forEach((n, i) => { v.setView(n); tick(gaps[i]); }); settle();
+        assert.strictEqual(cv().style.opacity, '1', `연타 ${seq} / ${gaps} 뒤 opacity`);
+        assert.strictEqual(!!lastCam.isOrthographicCamera, V.VIEWS[seq.at(-1)].type === 'ortho', `연타 ${seq} 뒤 투영`);
+      }
+      v.destroy(); }
+
+    /* 23. WebGL 컨텍스트 복원 뒤 배경색을 테마색으로 다시 입히고 곧바로 한 번 그린다 */
+    { const s = mkStore(), { v, cv } = mkView(s); v.show(); settle();
+      const bg = new THREE.Color('#F3F2EF').getRGB({}, THREE.SRGBColorSpace), lastClear = () => gllog.clear.at(-1);
+      nearV(lastClear().slice(0, 3), [bg.r, bg.g, bg.b], 1 / 255, '손실 전 배경은 테마색'); assert.strictEqual(lastClear()[3], 1);
+      const d0 = gllog.draws, log0 = console.log; console.log = () => {}; // three 가 손실·복원을 console.log 로 알린다
+      try { cv().fire('webglcontextlost'); cv().fire('webglcontextrestored'); } finally { console.log = log0; }
+      assert.ok(gllog.draws > d0, '복원 직후 한 번 그린다');
+      nearV(lastClear().slice(0, 3), [bg.r, bg.g, bg.b], 1 / 255, '복원 뒤 배경이 검정이 아니라 테마색'); assert.strictEqual(lastClear()[3], 1);
+      v.destroy(); }
+  } finally { THREE.Scene.prototype.onBeforeRender = before0; delete globalThis.self; Object.assign(globalThis, { setTimeout: real.st, clearTimeout: real.ct, requestAnimationFrame: real.raf, cancelAnimationFrame: real.caf }); }
   console.log('test-plan-3d: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

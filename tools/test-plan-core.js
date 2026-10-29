@@ -18,6 +18,8 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
   const [M, G, H, S, X, MESH] = await Promise.all(FILES.map((f) => import(pathToFileURL(path.join(DIR, f + '.js')).href)));
   const sample = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'maker/3d/view/apartment.json'), 'utf8')).data.space;
   const cf = M.curFloor;
+  const wallsOf = (doc, r) => r.wallIds.map((i) => cf(doc).walls.find((w) => w.id === i));
+  const badRooms = (doc) => cf(doc).rooms.filter((r) => G.roomInnerPoly(wallsOf(doc, r), r.poly).some((p, i) => Math.hypot(p[0] - r.poly[i][0], p[1] - r.poly[i][1]) > 1e-3)).map((r) => r.id); // 방 다각형과 벽이 어긋난 방
 
   /* ===== 0. 정적 점검: DOM 없음, 계약 이름 그대로 ===== */
   for (const f of FILES) {
@@ -289,16 +291,18 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
   { // mirror · rotate
     const s = fixture(), orig = J(s.doc), b0 = G.bounds(s.doc), sx = b0.x0 + b0.x1, sy = b0.y0 + b0.y1;
     s.exec({ type: 'mirror', axis: 'x' }); const f = cf(s.doc);
-    assert.deepStrictEqual(f.walls[0].a, [sx - -75, -75], 'x → 경계 상자 중심 기준 뒤집힘'); assert.deepStrictEqual(G.bounds(s.doc), b0, '경계 상자는 그대로');
+    assert.deepStrictEqual([f.walls[0].a, f.walls[0].b], [[sx - 5075, -75], [sx - -75, -75]], 'x → 경계 상자 중심 기준 뒤집힘 + 벽 a↔b 교환(문 열림 방향 유지)'); assert.deepStrictEqual(G.bounds(s.doc), b0, '경계 상자는 그대로');
     assert.ok(f.rooms.every((r) => G.signedArea(r.poly) > 0), '반전 뒤에도 방 다각형은 시계방향');
     assert.deepStrictEqual(f.rooms[0].wallIds, ['W3', 'W2', 'W1', 'W4'], '변 i ↔ wallIds[i] 를 지키려 벽 순서도 바뀐다');
     assert.deepStrictEqual(f.rooms.map((r) => G.roomInnerPoly(r.wallIds.map((i) => f.walls.find((w) => w.id === i)), r.poly)), f.rooms.map((r) => r.poly), '반전한 방 모두: 변 i 의 벽이 실제 그 변 옆에 있다');
-    assert.strictEqual(f.walls.find((w) => w.id === 'W12').bulge, -300, '곡선벽 처짐 방향이 뒤집힌다'); assert.strictEqual(f.items[0].rot, 180 - 90); assert.strictEqual(f.items[1].rot, 165); assert.strictEqual(f.columns[0].rot, 150);
+    { const w12 = cf(JSON.parse(orig)).walls.find((w) => w.id === 'W12'), m12 = f.walls.find((w) => w.id === 'W12'); // 곡선벽은 호 중점이 거울상 자리에 있다(a↔b 를 바꾸면 처짐 부호는 그대로)
+      assert.strictEqual(m12.bulge, 300); nearPt(G.wallPointAt(m12, 0.5).p, [sx - G.wallPointAt(w12, 0.5).p[0], G.wallPointAt(w12, 0.5).p[1]], 1e-6, '곡선벽 호 중점 = 거울상'); }
+    assert.strictEqual(f.items[0].rot, 180 - 90); assert.strictEqual(f.items[1].rot, 165); assert.strictEqual(f.columns[0].rot, 150);
     assert.deepStrictEqual(f.openings[0], cf(M.cloneDoc(JSON.parse(orig))).openings[0], '개구부는 벽 기준이라 그대로');
     s.exec({ type: 'update', id: 'W1', patch: { t: 300 } }); // 반전 뒤에 벽을 고쳐도 방이 올바른 쪽으로 줄어든다
     near(G.polyArea(cf(s.doc).rooms[0].poly), 5000 * 3925, 1e-6); s.undo();
     s.exec({ type: 'mirror', axis: 'x' }); assert.strictEqual(J(s.doc), orig, '좌우 반전 두 번 = 원래');
-    s.exec({ type: 'mirror', axis: 'y' }); assert.deepStrictEqual(cf(s.doc).walls[0].a, [-75, sy - -75]); assert.strictEqual(cf(s.doc).items[0].rot, -90); assert.deepStrictEqual(G.bounds(s.doc), b0);
+    s.exec({ type: 'mirror', axis: 'y' }); assert.deepStrictEqual(cf(s.doc).walls[0].a, [5075, sy - -75], 'y 반전: 벽 a↔b 교환'); assert.strictEqual(cf(s.doc).items[0].rot, -90); assert.deepStrictEqual(G.bounds(s.doc), b0);
     s.exec({ type: 'mirror', axis: 'y' }); assert.strictEqual(J(s.doc), orig, '상하 반전 두 번 = 원래');
     // 회전: 시계방향 90°
     const cx = (b0.x0 + b0.x1) / 2, cy = (b0.y0 + b0.y1) / 2; s.exec({ type: 'rotate', deg: 90 });
@@ -516,13 +520,164 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
     }
   }
 
+  /* ===== 8b. 리뷰 확정 결함 회귀(#1 #2 #5 #7 #13 #14 #15 #16) ===== */
+  const TPL = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'maker/3d/plan/data/templates.json'), 'utf8')).templates;
+  function sharedDoc() { // 방 A(왼쪽)·B(오른쪽)가 가운데 벽 W2 를 같이 쓴다. B 의 왼쪽 변은 W2 와 방향이 반대다. W2 문 O1, A 위 창 O2, B 오른쪽 문 O3
+    const d = M.createDoc('공유 벽'), f = d.floors[0], w = (id, a, b) => f.walls.push({ id, a, b, t: 150, kind: 'inner', bulge: 0 });
+    w('W1', [0, 0], [3000, 0]); w('W2', [3000, 0], [3000, 4000]); w('W3', [3000, 4000], [0, 4000]); w('W4', [0, 4000], [0, 0]); w('W5', [3000, 0], [6000, 0]); w('W6', [6000, 0], [6000, 4000]); w('W7', [6000, 4000], [3000, 4000]);
+    f.rooms.push({ id: 'R1', name: '방 A', poly: [[75, 75], [2925, 75], [2925, 3925], [75, 3925]], wallIds: ['W1', 'W2', 'W3', 'W4'] }, { id: 'R2', name: '방 B', poly: [[3075, 75], [5925, 75], [5925, 3925], [3075, 3925]], wallIds: ['W5', 'W6', 'W7', 'W2'] });
+    f.openings.push({ id: 'O1', wall: 'W2', at: 0.5, width: 900, height: 2100, sill: 0, type: 'door' }, { id: 'O2', wall: 'W1', at: 0.5, width: 1200, height: 1200, sill: 900, type: 'window' }, { id: 'O3', wall: 'W6', at: 0.5, width: 900, height: 2100, sill: 0, type: 'door' });
+    return new S.Store(d);
+  }
+  { const s = sharedDoc(); assert.deepStrictEqual(M.validateDoc(s.doc), []); assert.deepStrictEqual(badRooms(s.doc), [], '시험 문서: 두 방 모두 벽과 맞다'); }
+  { // #1 벽 길이가 바뀌면 개구부를 새 길이에 다시 맞추고, 못 들어가면 거절한다
+    const room = () => { const s = new S.Store(); s.exec({ type: 'addRoomRect', a: [1000, 1000], b: [5000, 4000] }); return s; }; // W1: (925,925)→(5075,925) 길이 4150
+    const s = room(); s.exec({ type: 'addOpening', wall: 'W1', at: 0.5, kind: 'door' }); const keep = s.doc, op = () => cf(s.doc).openings[0];
+    throwsKo(() => s.exec({ type: 'update', id: 'W1', patch: { b: [1200, 925] } }), /개구부/, '문 900 이 새 길이 275 보다 길다'); assert.strictEqual(s.doc, keep, '거절하면 문서를 건드리지 않는다');
+    throwsKo(() => s.exec({ type: 'update', id: 'W1', patch: { b: [1824, 925] } }), /개구부/, '길이 899 < 900'); s.exec({ type: 'update', id: 'W1', patch: { b: [1825, 925] } }); assert.strictEqual(op().at, 0.5, '길이 900 = 문 폭이면 들어간다');
+    s.undo(); s.exec({ type: 'update', id: 'W1', patch: { b: [2925, 925] } }); assert.strictEqual(op(), keep.floors[0].openings[0], '들어가면 개구부 객체를 그대로 둔다(길이 2000)');
+    const s2 = room(); s2.exec({ type: 'addOpening', wall: 'W1', at: 0.12, kind: 'door' }); s2.exec({ type: 'update', id: 'W1', patch: { b: [1925, 925] } }); near(cf(s2.doc).openings[0].at, 450 / 1000, 1e-12, '비율 0.12 는 벽 안으로 당겨진다');
+    assert.deepStrictEqual(M.validateDoc(s2.doc), []); s2.undo(); assert.strictEqual(cf(s2.doc).openings[0].at, 0.12, 'undo 하면 개구부도 돌아온다');
+    const s3 = room(); s3.exec({ type: 'addOpening', wall: 'W1', at: 0.2, kind: 'door' }); s3.exec({ type: 'addOpening', wall: 'W1', at: 0.8, kind: 'door' }); // 4150: 중심 830·3320, 간격 2490
+    const k3 = s3.doc; throwsKo(() => s3.exec({ type: 'update', id: 'W1', patch: { b: [2425, 925] } }), /겹/, '길이 1500: 0.3·0.7 로 당겨 중심 간격 600 < 900'); assert.strictEqual(s3.doc, k3);
+    s3.exec({ type: 'update', id: 'W1', patch: { b: [3425, 925] } }); assert.deepStrictEqual(cf(s3.doc).openings.map((o) => o.at), [0.2, 0.8], '길이 2500: 간격 1500 ≥ 900 이라 그대로');
+    const s4 = new S.Store(); s4.exec({ type: 'addWall', a: [0, 0], b: [800, 0], bulge: 400 }); s4.exec({ type: 'addOpening', wall: 'W1', at: 0.5, kind: 'door' }); // 반원 호 길이 1257
+    const k4 = s4.doc; throwsKo(() => s4.exec({ type: 'update', id: 'W1', patch: { bulge: 0 } }), /개구부/, '곡선을 펴면 길이 800 < 900'); assert.strictEqual(s4.doc, k4); s4.exec({ type: 'update', id: 'W1', patch: { bulge: 300 } }); assert.deepStrictEqual(M.validateDoc(s4.doc), []); throwsKo(() => s4.exec({ type: 'update', id: 'W1', patch: { bulge: 100 } }), /개구부/, '처짐 100 은 호 길이 833 < 900');
+    const s5 = room(); s5.exec({ type: 'addOpening', wall: 'W1', at: 0.5, kind: 'door' }); s5.exec({ type: 'update', id: 'W1', patch: { t: 300 } }); assert.strictEqual(cf(s5.doc).openings[0].at, 0.5, '두께만 바꾸면 개구부는 그대로');
+  }
+  { // #2 벽을 직접 옮기면 끝점이 맞닿은 벽의 끝점이 따라와 모서리가 닫혀 있다(1mm 이내)
+    const s = new S.Store(); s.exec({ type: 'addRoomRect', a: [1000, 1000], b: [5000, 4000] }); s.exec({ type: 'addOpening', wall: 'W2', at: 0.5, kind: 'window' });
+    const before = s.doc, w = (id) => cf(s.doc).walls.find((x) => x.id === id);
+    const ids = s.exec({ type: 'move', ids: ['W1'], dx: 0, dy: -500 });
+    assert.deepStrictEqual([w('W1').a, w('W1').b, w('W2').a, w('W4').b], [[925, 425], [5075, 425], [5075, 425], [925, 425]], '위 벽과 양옆 벽 끝점이 같이 움직였다');
+    assert.deepStrictEqual([w('W2').b, w('W4').a], [[5075, 4075], [-75 + 1000, 4075]].map((p, i) => (i ? [925, 4075] : p)), '반대쪽 끝점은 그대로'); assert.deepStrictEqual(cf(s.doc).rooms[0].poly, [[1000, 500], [5000, 500], [5000, 4000], [1000, 4000]]);
+    assert.deepStrictEqual(ids.sort(), ['R1'].concat(['W1', 'W2', 'W4']).filter((i) => i !== 'R1').sort(), '바뀐 벽 id'); assert.strictEqual(w('W3'), before.floors[0].walls[2], '닿지 않은 벽은 객체 그대로');
+    near(G.roomAreaM2(s.doc, cf(s.doc).rooms[0]), 14, 1e-9); assert.deepStrictEqual(badRooms(s.doc), []); assert.deepStrictEqual(M.validateDoc(s.doc), []);
+    near(cf(s.doc).openings[0].at, 0.5, 1e-12, '늘어난 벽의 개구부는 비율을 지킨다'); s.undo(); assert.strictEqual(J(s.doc), J(before), 'undo 한 번에 원상');
+    // 방향키처럼 조금씩 여러 번 옮겨도 모서리가 안 벌어진다
+    for (let i = 0; i < 6; i++) s.exec({ type: 'move', ids: ['W1'], dx: 50, dy: -100 }); assert.deepStrictEqual([w('W2').a, w('W4').b], [[5075 + 300, 925 - 600], [925 + 300, 925 - 600]], '6번 옮긴 뒤에도 같은 점'); s.undo(); s.undo(); s.undo(); s.undo(); s.undo(); s.undo();
+    // 1mm 안은 따라오고 밖은 아니다. 직접 고른 벽끼리는 통째로 옮겨 서로 어긋나지 않는다
+    const t = new S.Store(); t.exec({ type: 'addWall', a: [0, 0], b: [1000, 0] }); t.exec({ type: 'addWall', a: [1000.9, 0], b: [1000, 1000] }); t.exec({ type: 'addWall', a: [1002, 0], b: [3000, 0] });
+    t.exec({ type: 'move', ids: ['W1'], dx: 0, dy: 100 }); const tw = (id) => cf(t.doc).walls.find((x) => x.id === id); assert.deepStrictEqual([tw('W2').a, tw('W2').b, tw('W3').a], [[1000.9, 100], [1000, 1000], [1002, 0]], '0.9mm 는 따라오고 2mm 는 아니다');
+    t.exec({ type: 'move', ids: ['W1', 'W2'], dx: 10, dy: 0 }); assert.deepStrictEqual([tw('W1').b, tw('W2').a, tw('W2').b], [[1010, 100], [1010.9, 100], [1010, 1000]], '직접 고른 벽은 통째로');
+    // 따라오는 벽이 줄어 0 을 지나 반대로 접히는 이동은 거절한다
+    const v = new S.Store(); v.exec({ type: 'addWall', a: [0, 0], b: [1000, 0] }); v.exec({ type: 'addWall', a: [1000, 0], b: [1000, 500] }); const kv = v.doc;
+    throwsKo(() => v.exec({ type: 'move', ids: ['W2'], dx: -1500, dy: 0 }), /뒤집/, '가로벽이 -500 까지 접힌다'); throwsKo(() => v.exec({ type: 'move', ids: ['W2'], dx: -1000, dy: 0 }), /뒤집/, '길이 0 까지 접힌다'); assert.strictEqual(v.doc, kv);
+    v.exec({ type: 'move', ids: ['W2'], dx: -900, dy: 0 }); assert.deepStrictEqual(cf(v.doc).walls[0].b, [100, 0], '접히기 직전까지는 된다'); v.exec({ type: 'move', ids: ['W2'], dx: 2000, dy: 0 }); assert.deepStrictEqual(cf(v.doc).walls[0].b, [2100, 0], '늘리는 쪽은 얼마든지');
+    // 따라오는 벽에 개구부가 안 들어가면 명령 전체를 거절한다
+    const u = new S.Store(); u.exec({ type: 'addRoomRect', a: [1000, 1000], b: [5000, 4000] }); u.exec({ type: 'addOpening', wall: 'W2', at: 0.5, kind: 'window' }); const ku = u.doc; // W2 길이 3150, 창 1200
+    throwsKo(() => u.exec({ type: 'move', ids: ['W1'], dx: 0, dy: 2500 }), /개구부/, 'W2 가 650 으로 줄어 창 1200 이 못 들어간다'); assert.strictEqual(u.doc, ku, '거절하면 문서 그대로'); u.exec({ type: 'move', ids: ['W1'], dx: 0, dy: 1500 }); assert.deepStrictEqual(M.validateDoc(u.doc), []);
+  }
+  { // #15 방을 옮기면 이웃과 공유한 벽은 복제해 그 방만 갖고 가고, 이웃 방과 벽은 그대로다
+    const s = sharedDoc(), before = s.doc, f0 = cf(before), w = (id) => cf(s.doc).walls.find((x) => x.id === id), room = (id) => cf(s.doc).rooms.find((x) => x.id === id);
+    const out = s.exec({ type: 'move', ids: ['R2'], dx: 200, dy: -1500 }), f = cf(s.doc);
+    assert.deepStrictEqual(M.validateDoc(s.doc), []); assert.deepStrictEqual(badRooms(s.doc), [], '두 방 모두 벽과 맞는다');
+    assert.strictEqual(room('R1'), f0.rooms[0], '이웃 방은 객체 그대로'); for (const i of ['W1', 'W2', 'W3', 'W4']) assert.strictEqual(w(i), f0.walls.find((x) => x.id === i), `이웃 방의 벽 ${i} 는 그대로(연결된 벽도 안 늘어난다)`);
+    assert.deepStrictEqual(room('R2').poly, [[3275, -1425], [6125, -1425], [6125, 2425], [3275, 2425]], '옮긴 방 다각형'); const nid = room('R2').wallIds[3]; assert.strictEqual(nid, 'W8', '공유 벽 W2 는 복제본(새 id)으로 바뀐다'); assert.deepStrictEqual(room('R2').wallIds, ['W5', 'W6', 'W7', 'W8']);
+    assert.deepStrictEqual([w('W8').a, w('W8').b], [[3200, -1500], [3200, 2500]], '복제본은 옮긴 위치'); assert.deepStrictEqual([w('W5').a, w('W6').b], [[3200, -1500], [6200, 2500]]); assert.strictEqual(f.walls.length, f0.walls.length + 1);
+    assert.deepStrictEqual(f.openings.filter((o) => o.wall === 'W2').map((o) => o.id), ['O1'], '개구부는 원래 벽에 남는다'); assert.ok(!f.openings.some((o) => o.wall === 'W8')); assert.deepStrictEqual(f.openings.filter((o) => o.wall === 'W6').map((o) => o.id), ['O3'], '옮긴 방만 쓰던 벽의 개구부는 같이 간다');
+    assert.deepStrictEqual(out.sort(), ['R2', 'W5', 'W6', 'W7', 'W8'], '바뀐 id 에 복제본 포함'); near(G.roomAreaM2(s.doc, room('R2')), 2.85 * 3.85, 1e-9);
+    s.undo(); assert.strictEqual(J(s.doc), J(before), 'undo 한 번에 원상'); s.redo(); s.undo();
+    // 방 둘을 같이 옮기면 공유 벽은 복제 없이 한 번만 간다
+    s.exec({ type: 'move', ids: ['R1', 'R2'], dx: 100, dy: 100 }); assert.strictEqual(cf(s.doc).walls.length, f0.walls.length); assert.deepStrictEqual(w('W2').a, [3100, 100]); assert.deepStrictEqual(badRooms(s.doc), []); s.undo();
+    // 옮긴 방을 지워도 이웃 방은 멀쩡하다
+    s.exec({ type: 'move', ids: ['R2'], dx: 0, dy: -1500 }); s.exec({ type: 'remove', ids: ['R2'] }); assert.deepStrictEqual(M.validateDoc(s.doc), []); assert.deepStrictEqual(badRooms(s.doc), []); assert.ok(cf(s.doc).walls.some((x) => x.id === 'W2') && cf(s.doc).openings.some((o) => o.id === 'O1'), '이웃 방의 공유 벽·문은 남는다'); assert.ok(!cf(s.doc).walls.some((x) => x.id === 'W8'), '복제본은 방과 함께 지워진다');
+    // 벽을 직접 고르면 공유 벽도 그 자리에서 움직이고 이웃 방이 늘어나 따라간다
+    const t = sharedDoc(); t.exec({ type: 'move', ids: ['W2'], dx: 300, dy: 0 }); assert.deepStrictEqual(badRooms(t.doc), []); assert.deepStrictEqual(cf(t.doc).rooms.map((r) => r.poly[1][0] + '/' + r.poly[0][0]), ['3225/75', '5925/3375'], 'A 는 늘고 B 는 줄어든다'); assert.strictEqual(cf(t.doc).walls.length, 7);
+  }
+  for (const t of TPL) { // 모든 템플릿의 모든 방을 옮겨 본다 — 이웃 방은 그대로, 옮긴 방은 평행이동 그대로, 방과 벽은 계속 맞는다
+    assert.deepStrictEqual(badRooms(new S.Store(t.doc).doc), [], `${t.id} 방이 벽과 맞는다`);
+    for (const r0 of cf(new S.Store(t.doc).doc).rooms) {
+      const s = new S.Store(t.doc), base = s.doc, f0 = cf(base), r = f0.rooms.find((q) => q.id === r0.id), shared = r.wallIds.filter((i) => f0.rooms.some((q) => q.id !== r.id && q.wallIds.includes(i)));
+      s.exec({ type: 'move', ids: [r.id], dx: 130, dy: -70 }); const f = cf(s.doc), m = f.rooms.find((q) => q.id === r.id), tag = `${t.id} ${r.name}`;
+      assert.deepStrictEqual(M.validateDoc(s.doc), [], tag); assert.deepStrictEqual(badRooms(s.doc), [], `${tag}: 이동 뒤 방과 벽이 맞는다`);
+      assert.deepStrictEqual(m.poly, r.poly.map((p) => [p[0] + 130, p[1] - 70]), `${tag}: 평행이동`); assert.strictEqual(f.walls.length, f0.walls.length + shared.length, `${tag}: 공유 벽만 복제`);
+      for (const q of f0.rooms) if (q.id !== r.id) { assert.strictEqual(f.rooms.find((x) => x.id === q.id), q, `${tag}: 이웃 ${q.name} 방 그대로`); for (const i of q.wallIds) assert.strictEqual(f.walls.find((x) => x.id === i), f0.walls.find((x) => x.id === i), `${tag}: 이웃 벽 ${i} 그대로`); }
+      assert.deepStrictEqual(f.openings, f0.openings, `${tag}: 개구부는 원래 벽에 남는다`); s.undo(); assert.strictEqual(J(s.doc), J(base), `${tag}: undo`);
+    }
+  }
+  { // #16 방을 지우면 그 방만 쓰던 벽과 그 개구부만 지운다 — 남은 방이 쓰는 공유 벽과 개구부는 남는다
+    const s = sharedDoc(), before = s.doc; const got = s.exec({ type: 'remove', ids: ['R2'] }), f = cf(s.doc);
+    assert.deepStrictEqual(got.sort(), ['O3', 'R2', 'W5', 'W6', 'W7'], 'B 만 쓰던 벽 W5 W6 W7 과 O3'); assert.ok(f.walls.some((w) => w.id === 'W2') && f.openings.some((o) => o.id === 'O1'), '공유 벽 W2 와 문 O1 은 남는다'); assert.deepStrictEqual(f.openings.map((o) => o.id), ['O1', 'O2']);
+    assert.deepStrictEqual(M.validateDoc(s.doc), []); assert.deepStrictEqual(badRooms(s.doc), []); s.undo(); assert.strictEqual(J(s.doc), J(before));
+    const t = sharedDoc(); t.exec({ type: 'remove', ids: ['R1'] }); assert.deepStrictEqual(cf(t.doc).openings.map((o) => o.id), ['O1', 'O3'], 'A 를 지우면 W1 의 창 O2 만 간다'); t.exec({ type: 'remove', ids: ['R2'] }); assert.strictEqual(cf(t.doc).walls.length, 0); assert.strictEqual(cf(t.doc).openings.length, 0, '마지막 방까지 지우면 공유 벽도 개구부도 간다');
+    for (const tp of TPL) for (const r of cf(new S.Store(tp.doc).doc).rooms) { // 템플릿 전수: 지워진 벽 = 그 방만 쓰던 벽, 개구부 = 지워진 벽의 것
+      const st = new S.Store(tp.doc), f0 = cf(st.doc), alone = f0.walls.filter((w) => r.wallIds.includes(w.id) && !f0.rooms.some((q) => q.id !== r.id && q.wallIds.includes(w.id))).map((w) => w.id).sort();
+      st.exec({ type: 'remove', ids: [r.id] }); const f1 = cf(st.doc);
+      assert.deepStrictEqual(f0.walls.filter((w) => !f1.walls.some((x) => x.id === w.id)).map((w) => w.id).sort(), alone, `${tp.id} ${r.name}: 지워진 벽`);
+      assert.deepStrictEqual(f1.openings.map((o) => o.id), f0.openings.filter((o) => !alone.includes(o.wall)).map((o) => o.id), `${tp.id} ${r.name}: 남은 벽의 개구부는 남는다`);
+    }
+  }
+  { // #14 곡선벽이 방 경계에 있으면 면적·바닥이 호를 따른다
+    const seg = (c, h) => { const r = (c * c / 4 + h * h) / (2 * h), th = Math.asin(c / 2 / r); return (r * r * (th - Math.sin(th) * Math.cos(th))) / 1e6; }; // 현 c·처짐 h 인 호 조각 넓이(㎡) — 4000/1000: r=2500, θ=asin(0.8)
+    near(seg(4000, 1000), 2.795595, 1e-6, '손계산: 6.25e6×(0.9272952−0.48)');
+    const room = () => { const s = new S.Store(); s.exec({ type: 'addRoomRect', a: [0, 0], b: [4000, 3000] }); return s; }, area = (s, o) => G.roomAreaM2(s.doc, cf(s.doc).rooms[0], o);
+    const s = room(); near(area(s), 12, 1e-9); // W1 은 위 벽 (-75,-75)→(4075,-75), 처짐 + 는 a→b 의 오른쪽 = 아래(방 안쪽)
+    s.exec({ type: 'update', id: 'W1', patch: { bulge: 1000 } }); near(area(s), 12 - seg(4000, 1000), 0.01, '안쪽으로 볼록: 12 − 2.7956'); assert.ok(area(s) > 12 - seg(4000, 1000), '호에 내접한 다각형이라 이상값보다 아주 조금 크다');
+    near(area(s, { withWalls: true }), 14.19 - seg(4300, 1000), 0.01, '실면적+내외벽: 바깥 면 4300×3300 에서 호 조각'); const poly = MESH.buildMesh(s.doc).floors[0].poly; near(G.polyArea(poly) / 1e6, area(s), 1e-9, '3D 바닥 = 면적 다각형'); assert.ok(poly.length > 20);
+    { const A = G.arcFrom3([0, 0], [4000, 0], 1000), arc = poly.filter((p) => p[1] > 0 && p[1] < 3000 && p[0] > 0 && p[0] < 4000); assert.ok(arc.length > 15 && arc.every((p) => Math.abs(G.dist(p, A.c) - 2500) < 1e-6), '호 위의 점: 중심 (2000,−1500) 반지름 2500'); nearPt(A.c, [2000, -1500]); }
+    assert.notStrictEqual(G.hitTest(s.doc, [2000, 500], 0)?.kind, 'room', '안쪽으로 파인 호 밖은 방이 아니다'); assert.deepStrictEqual(G.hitTest(s.doc, [2000, 2000], 0), { kind: 'room', id: 'R1' });
+    s.exec({ type: 'update', id: 'W1', patch: { bulge: -1000 } }); near(area(s), 12 + seg(4000, 1000), 0.01, '바깥으로 볼록: 12 + 2.7956'); near(area(s, { withWalls: true }), 14.19 + seg(4300, 1000), 0.01);
+    assert.deepStrictEqual(G.hitTest(s.doc, [2000, -500], 0), { kind: 'room', id: 'R1' }, '바깥으로 부푼 호 안은 방'); near(G.polyArea(MESH.buildMesh(s.doc).floors[0].poly) / 1e6, area(s), 1e-9);
+    s.exec({ type: 'update', id: 'W1', patch: { bulge: 0 } }); near(area(s), 12, 1e-9); assert.strictEqual(MESH.buildMesh(s.doc).floors[0].poly.length, 4, '직선이면 네 점 그대로');
+    assert.strictEqual(X.toSpaceJSON(s.doc).rooms[0].area_m2, 12);
+    // 방 변과 벽 방향이 반대인 쪽: 가운데 벽 W2(A 의 오른쪽 변과 같은 방향, B 의 왼쪽 변과 반대)가 A 쪽으로 볼록하면 A 는 줄고 B 는 같은 만큼 는다
+    const sh = sharedDoc(), a0 = G.roomAreaM2(sh.doc, cf(sh.doc).rooms[0]), b0 = G.roomAreaM2(sh.doc, cf(sh.doc).rooms[1]); sh.exec({ type: 'update', id: 'W2', patch: { bulge: 500 } });
+    const da = G.roomAreaM2(sh.doc, cf(sh.doc).rooms[0]) - a0, db = G.roomAreaM2(sh.doc, cf(sh.doc).rooms[1]) - b0; near(da, -seg(3850, 500), 0.01, 'A: 오른쪽 변 → 처짐 +500 은 서쪽(안쪽)'); near(db, seg(3850, 500), 0.01, 'B: 같은 벽을 반대 방향에서 보면 바깥쪽 볼록'); near(da + db, 0, 1e-9, '합은 그대로');
+    sh.exec({ type: 'update', id: 'W2', patch: { bulge: -500 } }); near(G.roomAreaM2(sh.doc, cf(sh.doc).rooms[0]) - a0, seg(3850, 500), 0.01); near(G.roomAreaM2(sh.doc, cf(sh.doc).rooms[1]) - b0, -seg(3850, 500), 0.01);
+    // 곡선벽이 방 경계가 아니면(자유 벽) 방은 그대로
+    const fr = room(); fr.exec({ type: 'addWall', a: [0, 5000], b: [3000, 5000], bulge: 800 }); near(area(fr), 12, 1e-9);
+  }
+  { // #5 좌우·상하 반전, 회전 뒤에도 문 열림 방향(벽 +법선)이 방 안쪽이다
+    const s = new S.Store(); s.exec({ type: 'addRoomRect', a: [1000, 1000], b: [5000, 4000] });
+    for (const [wid, at] of [['W1', 0.3], ['W2', 0.7], ['W3', 0.35], ['W4', 0.5]]) s.exec({ type: 'addOpening', wall: wid, at, kind: 'door' }); s.exec({ type: 'addOpening', wall: 'W1', at: 0.8, kind: 'window' });
+    const orig = J(s.doc), doors = (doc) => cf(doc).openings.filter((o) => o.type === 'door');
+    const tip = (doc, o) => { const w = cf(doc).walls.find((x) => x.id === o.wall), { p, tan } = G.wallPointAt(w, o.at), n = [-tan[1], tan[0]]; return [p[0] + n[0] * 300, p[1] + n[1] * 300]; }; // view2d 가 문짝을 여는 쪽 = a→b 의 +법선
+    const inside = (doc) => doors(doc).every((o) => G.pointInPoly(cf(doc).rooms[0].poly, tip(doc, o))), center = (doc, o) => G.wallPointAt(cf(doc).walls.find((x) => x.id === o.wall), o.at).p;
+    assert.ok(inside(s.doc), '처음엔 모두 방 안쪽');
+    const b0 = G.bounds(s.doc), sx = b0.x0 + b0.x1, sy = b0.y0 + b0.y1, c0 = cf(s.doc).openings.map((o) => center(s.doc, o));
+    s.exec({ type: 'mirror', axis: 'x' }); assert.ok(inside(s.doc), '좌우 반전 뒤에도 방 안쪽'); cf(s.doc).openings.forEach((o, i) => nearPt(center(s.doc, o), [sx - c0[i][0], c0[i][1]], 1e-6, `개구부 ${o.id} 는 거울상 자리`)); assert.deepStrictEqual(cf(s.doc).openings.map((o) => o.at), [0.7, 0.3, 0.65, 0.5, 0.2], 'at → 1 − at');
+    s.exec({ type: 'mirror', axis: 'x' }); assert.strictEqual(J(s.doc), orig, '좌우 반전 두 번 = 원래 문서(0.3 같은 값도 그대로)');
+    s.exec({ type: 'mirror', axis: 'y' }); assert.ok(inside(s.doc), '상하 반전 뒤에도 방 안쪽'); cf(s.doc).openings.forEach((o, i) => nearPt(center(s.doc, o), [c0[i][0], sy - c0[i][1]], 1e-6)); s.exec({ type: 'mirror', axis: 'y' }); assert.strictEqual(J(s.doc), orig, '상하 반전 두 번 = 원래');
+    s.exec({ type: 'mirror', axis: 'x' }); s.exec({ type: 'rotate', deg: 90 }); assert.ok(inside(s.doc), '반전 + 회전 뒤에도'); s.exec({ type: 'rotate', deg: -90 }); s.exec({ type: 'mirror', axis: 'x' }); assert.strictEqual(J(s.doc), orig);
+    for (const deg of [90, -90, 90]) { s.exec({ type: 'rotate', deg }); assert.ok(inside(s.doc), `회전 ${deg} 뒤에도 방 안쪽`); } assert.deepStrictEqual(cf(s.doc).openings.map((o) => o.at), [0.3, 0.7, 0.35, 0.5, 0.8], '회전은 개구부 비율을 안 바꾼다');
+    // 곡선벽 + 문도 반전 뒤 같은 자리·같은 쪽: 호 위의 문 중심이 거울상이다
+    const cv = new S.Store(); cv.exec({ type: 'addWall', a: [0, 0], b: [3000, 0], bulge: 600 }); cv.exec({ type: 'addOpening', wall: 'W1', at: 0.3, kind: 'door' }); const cp = center(cv.doc, cf(cv.doc).openings[0]); cv.exec({ type: 'mirror', axis: 'x' });
+    nearPt(center(cv.doc, cf(cv.doc).openings[0]), [3000 - cp[0], cp[1]], 1e-6, '곡선벽 위 문 중심'); assert.strictEqual(cf(cv.doc).walls[0].bulge, 600);
+    // 템플릿 전수: 반전·회전 뒤 모든 문이 열리던 방 쪽(같은 방)으로 열린다
+    for (const t of TPL) { const st = new S.Store(t.doc), roomOf = (doc, o, p) => cf(doc).rooms.find((r) => r.wallIds.includes(o.wall) && G.pointInPoly(r.poly, p))?.id ?? null;
+      const sides = (doc) => doors(doc).map((o) => roomOf(doc, o, tip(doc, o))), s0 = sides(st.doc);
+      for (const cmd of [{ type: 'mirror', axis: 'x' }, { type: 'mirror', axis: 'y' }, { type: 'rotate', deg: 90 }]) { st.exec(cmd); assert.deepStrictEqual(sides(st.doc), s0, `${t.id} ${cmd.type}: 문마다 열리는 방이 그대로`); } }
+  }
+  { // #7 보조선 길이 0 은 update·validateDoc 에서도 거절(addGuide 와 같은 기준 1mm)
+    const s = new S.Store(); s.exec({ type: 'addGuide', a: [1000, 1000], b: [4000, 1000] }); const keep = s.doc;
+    throwsKo(() => s.exec({ type: 'update', id: 'G1', patch: { b: [1000, 1000] } }), /보조선.*1mm/, '반대 끝에 끌어다 놓기'); throwsKo(() => s.exec({ type: 'update', id: 'G1', patch: { b: [1000.5, 1000] } }), /보조선/, '0.5mm'); assert.strictEqual(s.doc, keep);
+    s.exec({ type: 'update', id: 'G1', patch: { b: [1001, 1000] } }); assert.deepStrictEqual(M.validateDoc(s.doc), [], '1mm 는 허용'); throwsKo(() => s.exec({ type: 'addGuide', a: [0, 0], b: [0.9, 0] }), /보조선/);
+    const d = M.cloneDoc(s.doc); d.floors[0].guides[0].b = [...d.floors[0].guides[0].a]; const p = M.validateDoc(d); assert.ok(p.some((m) => /보조선 길이/.test(m)) && p.every(ko), p.join()); throwsKo(() => X.fromDocJSON(J(d)), /읽지 못/);
+  }
+  { // #13 seq 는 유한한 정수만, 좌표·치수는 ±10km 이내만
+    const base = JSON.parse(X.toDocJSON(fixture().doc)), str = (fn) => { const d = M.cloneDoc(base); fn(d); return J(d); };
+    const bad = (label, str_, re) => { const e = throwsKo(() => X.fromDocJSON(str_), /^도면 파일을 읽지 못했습니다$/, label); assert.ok(e.problems.every(ko) && e.problems.some((m) => re.test(m)), label + ' ' + e.problems); };
+    bad('seq 무한대', J(base).replace('"W":12', '"W":1e999'), /seq|카운터/); assert.strictEqual(JSON.parse(J(base).replace('"W":12', '"W":1e999')).seq.W, Infinity, '시험 입력은 정말 Infinity');
+    bad('seq 1e21', str((d) => { d.seq.W = 1e21; }), /카운터/); bad('seq 소수', str((d) => { d.seq.R = 1.5; }), /카운터/); bad('seq 음수', str((d) => { d.seq.O = -1; }), /카운터/); bad('seq 문자열', str((d) => { d.seq.I = '7'; }), /카운터/); bad('seq null', str((d) => { d.seq.G = null; }), /카운터/); bad('seq 배열', str((d) => { d.seq = [1]; }), /카운터/); bad('seq 숫자', str((d) => { d.seq = 5; }), /카운터/);
+    assert.ok(X.fromDocJSON(str((d) => { delete d.seq; })).seq.W >= 12, 'seq 가 없으면 id 에서 복구'); assert.ok(X.fromDocJSON(str((d) => { d.seq = { W: 0 }; })).seq.W >= 12, '낡은 seq 는 id 로 끌어올린다'); assert.ok(X.fromDocJSON(str((d) => { d.seq = null; })).seq.W >= 12);
+    assert.deepStrictEqual(M.validateDoc(Object.assign(M.cloneDoc(base), { seq: { W: Number.MAX_SAFE_INTEGER } })), [], '안전 정수 끝값은 형식으로는 맞다'); assert.ok(M.validateDoc(Object.assign(M.cloneDoc(base), { seq: { W: 2 ** 53 } })).length);
+    { const d = M.cloneDoc(base); d.seq.W = Infinity; assert.strictEqual(M.newId(d, 'W'), 'W13', 'newId 도 망가진 카운터를 실제 id 로 대체'); const e = M.cloneDoc(base); e.seq.W = 1e21; assert.strictEqual(M.fixSeq(e).seq.W, 12); }
+    const E = 1e7; bad('좌표 1e200', str((d) => { d.floors[0].walls[0].a = [1e200, 0]; }), /좌표/); bad('좌표 10km 초과', str((d) => { d.floors[0].walls[0].b = [E + 1, 0]; }), /좌표/); bad('좌표 -10km 초과', str((d) => { d.floors[0].walls[0].a = [0, -E - 1]; }), /좌표/);
+    X.fromDocJSON(str((d) => { d.floors[0].walls[0].b = [E, 0]; })); X.fromDocJSON(str((d) => { d.floors[0].walls[0].a = [-E, 0]; })); // 정확히 10km 는 허용
+    bad('방 점', str((d) => { d.floors[0].rooms[0].poly[0] = [E + 1, 0]; }), /방 모양/); bad('기둥', str((d) => { d.floors[0].columns[0].c = [E + 1, 0]; }), /기둥/); bad('기둥 크기', str((d) => { d.floors[0].columns[0].w = 1e300; }), /기둥 크기/); bad('보조선', str((d) => { d.floors[0].guides[0].b = [1e300, 0]; }), /보조선/);
+    bad('제품 위치', str((d) => { d.floors[0].items[0].c = [0, 1e300]; }), /제품/); bad('제품 크기', str((d) => { d.floors[0].items[0].size = [1e300, 5]; }), /제품 크기/); bad('벽 두께', str((d) => { d.floors[0].walls[0].t = 1e300; }), /두께/); bad('처짐', str((d) => { d.floors[0].walls[0].bulge = 1e300; }), /처짐/);
+    bad('개구부 폭', str((d) => { d.floors[0].openings[0].width = 1e300; }), /개구부/); bad('층 높이', str((d) => { d.floors[0].heightMm = 1e300; }), /층 높이/); bad('밑그림 위치', str((d) => { d.underlay = { name: 'a', src: 'data:,x', x: 1e300, y: 0, mmPerPx: 1, rot: 0, opacity: 1 }; }), /밑그림/);
+    const st = fixture(); throwsKo(() => st.exec({ type: 'update', id: 'W1', patch: { b: [1e200, 0] } }), /10km/, '명령으로도 못 넣는다'); throwsKo(() => st.exec({ type: 'addWall', a: [0, 0], b: [1e8, 0] }), /10km/); throwsKo(() => st.exec({ type: 'move', ids: ['I1'], dx: 1e8, dy: 0 }), /10km/);
+  }
+
   /* ===== 9. 규모: 요소 1만 개에서도 명령이 느려지지 않는다(무른 기준) ===== */
   {
     const d = M.createDoc(), f = d.floors[0];
     for (let i = 0; i < 10000; i++) f.walls.push({ id: 'W' + (i + 1), a: [i * 10, 0], b: [i * 10 + 5, 100], t: 150, kind: 'inner', bulge: 0 });
-    const s = new S.Store(d); let t0 = process.hrtime.bigint(); for (let i = 0; i < 10; i++) s.exec({ type: 'move', ids: ['W1'], dx: 1, dy: 0 });
-    const ms = Number(process.hrtime.bigint() - t0) / 1e6 / 10; assert.ok(ms < 100, `1만 벽에서 명령 한 번 ${ms.toFixed(1)}ms`);
-    t0 = process.hrtime.bigint(); G.wallOutlines(cf(s.doc).walls); const ms2 = Number(process.hrtime.bigint() - t0) / 1e6; assert.ok(ms2 < 500, `1만 벽 외곽 ${ms2.toFixed(1)}ms`);
+    const s = new S.Store(d), best = (fn, n = 5) => { let m = Infinity; for (let k = 0; k < n; k++) { const t = process.hrtime.bigint(); fn(); m = Math.min(m, Number(process.hrtime.bigint() - t) / 1e6); } return m; };   // 컴퓨터가 바쁠 때 흔들리지 않게 여러 번 재서 가장 빠른 값
+    const ms = best(() => { for (let i = 0; i < 10; i++) s.exec({ type: 'move', ids: ['W1'], dx: 1, dy: 0 }); }) / 10; assert.ok(ms < 100, `1만 벽에서 명령 한 번 ${ms.toFixed(1)}ms`);
+    const ms2 = best(() => G.wallOutlines(cf(s.doc).walls), 3); assert.ok(ms2 < 500, `1만 벽 외곽 ${ms2.toFixed(1)}ms`);
     assert.ok(MESH.buildMesh(s.doc).walls.length === 10000);
   }
 

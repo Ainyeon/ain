@@ -91,6 +91,9 @@ export function applyCameraSpec(cam, s, aspect = 1) { // 사양을 카메라에 
   cam.lookAt(...s.target); cam.updateProjectionMatrix(); cam.updateMatrixWorld();
 }
 
+// 보는 중에 문서가 바뀌었을 때 카메라를 새 모형에 다시 맞출지 — 다른 모형으로 바뀐 경우(불러오기·새로 만들기 = replace, 현재 층이 바뀜)만 맞춘다. 같은 층의 편집은 사용자가 맞춰 둔 카메라를 그대로 둔다
+export function needsRefit(builtCur, doc, type) { return type === 'replace' || builtCur !== doc.cur; }
+
 /* ---------- 화면 쪽 ---------- */
 const FALLBACK = { '--c-bg': '#F3F2EF', '--c-surface': '#FFFFFF', '--c-line-strong': '#D8D4CA', '--c-accent': '#2D4A9E' }; // 토큰 CSS 가 없는 곳(시험)용 — 실제 쓰는 값은 getComputedStyle 이 읽는다
 const tok = (n) => { try { return getComputedStyle(document.documentElement).getPropertyValue(n).trim() || FALLBACK[n]; } catch { return FALLBACK[n]; } };
@@ -99,10 +102,11 @@ const reduced = () => { try { return matchMedia('(prefers-reduced-motion: reduce
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2); // easeInOutCubic — --ease 와 같은 곡선
 const clamp01 = (v) => Math.min(1, Math.max(0, Number.isFinite(v) ? v : 1));
 
-// opts: { view:'iso', finishColor?(kind:'wall'|'floor', finishId)→css 색|falsy } — 마감재 id 를 색으로 바꾸는 함수는 마감재 데이터를 가진 쪽(패널)이 넘긴다
+// opts: { view:'iso', finishColor?(kind:'wall'|'floor', finishId)→css 색|falsy, onEmpty?() } — 마감재 id 를 색으로 바꾸는 함수는 마감재 데이터를 가진 쪽(패널)이 넘긴다.
+// onEmpty: 보는 중에 현재 층의 방이 하나도 없게 되면(새로 만들기·빈 층으로 이동·층 추가) 재빌드 뒤 한 번 부른다 — 빈 화면으로 두지 말고 3D 를 닫고 안내하는 것은 부른 쪽의 일이다. isEmpty() 로 언제든 물을 수 있다
 export function createView3D(container, store, opts = {}) {
   let view = VIEWS[opts.view] ? opts.view : 'iso', visible = false, dead = false, dirty = true, fitPending = true, rebuilds = 0, bounds = null;
-  let renderer, canvas, controls, ro, raf = 0, inFrame = false, tw = null, fadeSeq = 0, fadeT = 0, fading = false, buildT = 0, moved = false, applied = null;
+  let renderer, canvas, controls, ro, raf = 0, inFrame = false, tw = null, fadeSeq = 0, fadeT = 0, fading = false, buildT = 0, moved = false, applied = null, builtCur = -1, refitNext = false, emptyFired = false;
   const scene = new THREE.Scene();
   const mat = () => new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
   const mats = { wall: mat(), floor: mat(), ac: mat() };
@@ -138,6 +142,7 @@ export function createView3D(container, store, opts = {}) {
     clearTimeout(buildT); buildT = 0;
     dirty = false; rebuilds++;
     const doc = store.doc, f = doc.floors[doc.cur], mesh = buildMesh(doc, doc.cur), data = meshData(mesh), key = { walls: 'wall', floors: 'floor', ac: 'ac' };
+    builtCur = doc.cur;
     for (const [k, mk] of Object.entries(key)) { const o = meshes[mk]; o.geometry.dispose(); o.geometry = geometryOf(data[k]); o.visible = data[k].idx.length > 0; }
     bounds = mesh.bounds; fitPending = true;
     theme(f);
@@ -166,11 +171,14 @@ export function createView3D(container, store, opts = {}) {
     if (want !== camera) {
       const swap = () => { if (seq !== fadeSeq || dead) return; fading = false; camera = want; controls.object = want; place(spec); canvas.style.opacity = '1'; requestRender(); };
       if (still) swap(); else { fading = true; canvas.style.opacity = '0'; fadeT = setTimeout(swap, tokMs('--t-fast', 100)); }
-    } else if (still) { place(spec); requestRender(); }
-    else {
-      camera.near = spec.near; camera.far = spec.far;
-      tw = { t0: performance.now(), dur: tokMs('--t-slow', 350), spec, from: { pos: camera.position.clone(), target: controls.target.clone(), size: camera.top, zoom: camera.zoom } };
-      controls.enabled = false; requestRender();
+    } else {
+      canvas.style.opacity = '1'; // 흐려지는 중에 같은 투영으로 되돌아오면 위 clearTimeout 이 swap 을 취소했으므로 여기서 다시 보이게 한다
+      if (still) { place(spec); requestRender(); }
+      else {
+        camera.near = spec.near; camera.far = spec.far;
+        tw = { t0: performance.now(), dur: tokMs('--t-slow', 350), spec, from: { pos: camera.position.clone(), target: controls.target.clone(), size: camera.top, zoom: camera.zoom } };
+        controls.enabled = false; requestRender();
+      }
     }
   }
   function stepTween(now) {
@@ -194,7 +202,9 @@ export function createView3D(container, store, opts = {}) {
     Object.assign(canvas.style, { display: 'block', width: '100%', height: '100%', transition: 'opacity var(--t-fast) var(--ease)' });
     canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', '도면 입체 보기');
     canvas.addEventListener('webglcontextlost', (e) => e.preventDefault());
-    canvas.addEventListener('webglcontextrestored', requestRender);
+    canvas.addEventListener('webglcontextrestored', () => { // three 가 렌더러 안쪽(배경·프로그램 캐시)을 새로 만들어 clearColor 가 검정으로 돌아가므로 테마색·재질 색을 다시 입히고 곧바로 한 번 그린다
+      theme(store.doc.floors[store.doc.cur]); applyAlpha(); draw();
+    });
     container.appendChild(canvas);
     controls = new OrbitControls(camera, canvas);
     controls.zoomToCursor = true; controls.maxPolarAngle = Math.PI / 2 - 0.02;               // 바닥 밑으로 못 간다
@@ -222,27 +232,36 @@ export function createView3D(container, store, opts = {}) {
     draw();
   }
   const onVis = () => { if (!document.hidden) requestRender(); };
+  const isEmpty = () => { const d = store.doc; return !d.floors[d.cur].rooms.length; };
+  function sync() { // 보는 중의 변경을 모형에 반영한다. 같은 층의 편집은 카메라를 건드리지 않고, 다른 모형(층 이동·새로 만들기)이면 다시 맞춘다
+    const refit = refitNext; refitNext = false;
+    rebuild(); fitPending = false;
+    if (isEmpty()) { if (!emptyFired) { emptyFired = true; try { opts.onEmpty?.(); } catch (err) { console.error(err); } } } // 방이 없으면 보여 줄 모형이 없다 — 한 번만 알린다
+    else { const was = emptyFired; emptyFired = false; if (refit || was) go(view, true); } // 빈 상태에서 돌아온 모형도 새 모형이다
+    requestRender();
+  }
   const unsub = store.subscribe((e) => {
     if (e.type === 'rename' || e.type === 'setUnderlay') return;
     dirty = true;
-    if (visible) { clearTimeout(buildT); buildT = setTimeout(() => { rebuild(); fitPending = false; requestRender(); }, REBUILD_MS); } // 보는 중의 변경은 카메라를 건드리지 않는다
+    if (!visible) return;
+    if (needsRefit(builtCur, store.doc, e.type)) refitNext = true;
+    clearTimeout(buildT); buildT = setTimeout(sync, REBUILD_MS);
   });
 
   /* 공개 */
   function show() {
     if (dead) return { ok: false, reason: 'destroyed' };
-    const doc = store.doc;
-    if (!doc.floors[doc.cur].rooms.length) return { ok: false, reason: 'rooms' };
+    if (isEmpty()) return { ok: false, reason: 'rooms' };
     if (!ensureGL()) return { ok: false, reason: 'webgl' };
-    container.hidden = false; visible = true;
-    if (dirty) rebuild(); else theme(doc.floors[doc.cur]);
+    container.hidden = false; visible = true; refitNext = false; emptyFired = false;
+    if (dirty) rebuild(); else theme(store.doc.floors[store.doc.cur]);
     resize();
     if (fitPending || applied !== view) { fitPending = false; go(view, true); }
     draw(); requestRender();
     return { ok: true };
   }
   function hide() {
-    visible = false; clearTimeout(buildT); buildT = 0; if (raf) { cancelAnimationFrame(raf); raf = 0; } tw = null;
+    visible = false; clearTimeout(buildT); buildT = 0; refitNext = false; emptyFired = false; if (raf) { cancelAnimationFrame(raf); raf = 0; } tw = null;
     if (controls) controls.enabled = true;
     container.hidden = true;
   }
@@ -272,7 +291,7 @@ export function createView3D(container, store, opts = {}) {
     renderer = canvas = controls = null;
   }
   return {
-    show, hide, setView, zoom, resize, destroy,
+    show, hide, setView, zoom, resize, destroy, isEmpty,
     setWallAlpha(a) { wallA = clamp01(a); applyAlpha(); },
     setFloorAlpha(a) { floorA = clamp01(a); applyAlpha(); },
     stats: () => ({ view, rebuilds, visible, geometries: renderer?.info.memory.geometries ?? 0, textures: renderer?.info.memory.textures ?? 0, calls: renderer?.info.render.calls ?? 0, frames: renderer?.info.render.frame ?? 0, triangles: renderer?.info.render.triangles ?? 0, pixelRatio: renderer?.getPixelRatio() ?? 0 }),

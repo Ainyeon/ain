@@ -1,6 +1,6 @@
 // 2D 캔버스 — 화면(px)↔도면(mm) 변환·팬줌(순수 함수)과 격자·밑그림·벽·방·개구부·기둥·제품 그리기(필요할 때만 rAF). import 해도 DOM 을 건드리지 않는다
 import { curFloor } from './core/model.js';
-import { jointsOf, wallSlice, wallLen, wallPointAt, wallPoints, polyCentroid, polyArea, rectPoly, circlePoly, roomAreaM2 } from './core/geom.js';
+import { roomOutlineWithArcs, jointsOf, wallSlice, wallLen, wallPointAt, wallPoints, polyCentroid, polyArea, rectPoly, circlePoly, roomAreaM2 } from './core/geom.js';
 import { findLabelSpot, swingPoly } from './labels.js';
 
 /* ---------- 순수: 화면 변환 (scale = px/mm 하나) ---------- */
@@ -29,6 +29,12 @@ export function gridSteps(scale, minPx = 9) { // 가는 격자(기본 100mm)와 
   const minor = GRID.find((s) => s * scale >= minPx) ?? GRID.at(-1);
   return { minor, major: minor * 10 };
 }
+// 화면 안에 들어오는 격자선의 화면 좌표(px). 반복 횟수를 화면 칸 수로 세므로 좌표가 극단적으로 커서 step 을 더해도 값이 안 변하는 경우에도 끝난다
+export function gridLines(origin, size, scale, step) {
+  const i0 = Math.ceil(-origin / scale / step), n = Math.min(Math.floor(size / (scale * step)) + 2, 4000), out = [];
+  for (let k = 0, prev; k < n; k++) { const p = (i0 + k) * step * scale + origin; if (!(p <= size) || p === prev) break; out.push(Math.round(p) + 0.5); prev = p; }
+  return out;
+}
 export const snapStep = (scale) => [50, 100, 500, 1000, 5000, 10000].find((s) => s * scale >= 4) ?? 10000; // 스냅 격자(기본 50mm)
 export function niceLen(mmTarget) { // 눈금자용 보기 좋은 길이(1·2·5 × 10^n)
   const e = 10 ** Math.floor(Math.log10(Math.max(mmTarget, 1))), m = mmTarget / e;
@@ -41,6 +47,13 @@ export function fmtLen(mm, unit = 'mm') {
 export function fmtArea(m2, unit = 'mm') {
   const v = unit === 'ft' ? m2 * 10.7639 : m2;
   return v.toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + (unit === 'ft' ? ' ft²' : ' m²');
+}
+// 층의 방 면적 합(m²). withWalls 면 방을 둘러싼 벽의 면적(길이 × 두께)을 벽마다 한 번만 더한다 — 이웃 방이 같이 쓰는 벽을 두 번 세지 않는다
+export function floorAreaM2(doc, f, withWalls = false) {
+  const net = f.rooms.reduce((s, r) => s + roomAreaM2(doc, r), 0);
+  if (!withWalls) return net;
+  const used = new Set(f.rooms.flatMap((r) => r.wallIds));
+  return net + f.walls.reduce((s, w) => s + (used.has(w.id) ? (wallLen(w) * w.t) / 1e6 : 0), 0);
 }
 export const angleDeg = (a, b) => (((Math.atan2(-(b[1] - a[1]), b[0] - a[0]) * 180) / Math.PI) + 360) % 360; // 오른쪽 0°, 위쪽 90°(화면 기준)
 
@@ -67,7 +80,9 @@ function build(f) {
     });
     by.set(w.id, e); return e;
   });
-  const rooms = f.rooms.map((r) => { const e = memo(r, '', () => ({ kind: 'room', el: r, outline: [r.poly], box: boxOf(r.poly), c: polyCentroid(r.poly), net: polyArea(r.poly) / 1e6 })); by.set(r.id, e); return e; });
+  const rooms = f.rooms.map((r) => { // 방 바닥은 벽의 곡선(호)을 따른다 — 벽이 바뀌면 다시 만든다
+    const e = memo(r, r.wallIds.map((id) => { const w = wallById.get(id); return w ? `${w.bulge}|${w.a}|${w.b}` : '-'; }).join(';'), () => { const poly = roomOutlineWithArcs(r, f.walls); return { kind: 'room', el: r, poly, outline: [poly], box: boxOf(poly), c: polyCentroid(poly), net: polyArea(poly) / 1e6 }; });
+    by.set(r.id, e); return e; });
   const cols = f.columns.map((c) => { const e = memo(c, '', () => { const poly = c.kind === 'round' ? circlePoly(c.c, c.w / 2, 24) : rectPoly(c.c, c.w, c.d, c.rot); return { kind: 'column', el: c, poly, outline: [poly], box: boxOf(poly) }; }); by.set(c.id, e); return e; });
   const items = f.items.map((i) => { const e = memo(i, '', () => { const poly = rectPoly(i.c, i.size[0], i.size[1], i.rot); return { kind: 'item', el: i, poly, outline: [poly], box: boxOf(poly) }; }); by.set(i.id, e); return e; });
   const guides = f.guides.map((g) => { const e = memo(g, '', () => ({ kind: 'guide', el: g, outline: [[g.a, g.b]], box: boxOf([g.a, g.b]) })); by.set(g.id, e); return e; });
@@ -131,8 +146,8 @@ export function createView2D(canvas, { store, getState, getSel }) {
   function grid() {
     const { minor, major } = gridSteps(vp.scale), line = (step, color) => {
       ctx.strokeStyle = color; ctx.beginPath();
-      for (let x = Math.ceil(-vp.ox / vp.scale / step) * step; x * vp.scale + vp.ox <= vp.w; x += step) { const X = Math.round(x * vp.scale + vp.ox) + 0.5; ctx.moveTo(X, 0); ctx.lineTo(X, vp.h); }
-      for (let y = Math.ceil(-vp.oy / vp.scale / step) * step; y * vp.scale + vp.oy <= vp.h; y += step) { const Y = Math.round(y * vp.scale + vp.oy) + 0.5; ctx.moveTo(0, Y); ctx.lineTo(vp.w, Y); }
+      for (const X of gridLines(vp.ox, vp.w, vp.scale, step)) { ctx.moveTo(X, 0); ctx.lineTo(X, vp.h); }
+      for (const Y of gridLines(vp.oy, vp.h, vp.scale, step)) { ctx.moveTo(0, Y); ctx.lineTo(vp.w, Y); }
       ctx.stroke();
     };
     ctx.lineWidth = 1; ctx.globalAlpha = 0.55; line(minor, C.line); ctx.globalAlpha = 1; line(major, C.strong);
@@ -174,7 +189,7 @@ export function createView2D(canvas, { store, getState, getSel }) {
       ctx.globalAlpha = 1;
     }
     ctx.globalAlpha = st.floorAlpha; ctx.fillStyle = C.accentBg; // 방 바닥
-    for (const e of fc.rooms) if (vis(e.box)) { path(e.el.poly); ctx.fill(); }
+    for (const e of fc.rooms) if (vis(e.box)) { path(e.poly); ctx.fill(); }
     ctx.globalAlpha = 1;
     ctx.strokeStyle = C.faint; ctx.lineWidth = px; ctx.setLineDash([6 * px, 4 * px]); // 보조선
     for (const e of fc.guides) if (vis(e.box)) { path(e.el.a ? [e.el.a, e.el.b] : [], false); ctx.stroke(); }
@@ -207,8 +222,8 @@ export function createView2D(canvas, { store, getState, getSel }) {
         const area = fmtArea(st.areaGross ? roomAreaM2(doc, e.el, { withWalls: true }) : e.net, st.unit);
         ctx.font = `${C.fw} ${C.fs3}px ${C.font}`; const nw = ctx.measureText(e.el.name).width; ctx.font = `${C.fs4}px ${C.font}`; const aw = ctx.measureText(area).width;
         const lw = Math.max(nw, aw), lh = C.fs3 + C.fs4 + 8;   // 이름 + 면적 두 줄 상자
-        let sp = many ? { x: e.c[0], y: e.c[1] } : spotOf(fc, `${e.el.id}|${s.toFixed(4)}|${Math.round(lw)}`, { poly: e.el.poly, center: e.c, w: lw / s, h: lh / s, avoid: avoidOf(fc), step: 8 / s, pad: 3 / s }) || { x: e.c[0], y: e.c[1] }, nameOnly = false;
-        if (sp.blocked) { const one = spotOf(fc, `${e.el.id}|${s.toFixed(4)}|${Math.round(nw)}|n`, { poly: e.el.poly, center: e.c, w: nw / s, h: (C.fs3 + 4) / s, avoid: avoidOf(fc), step: 6 / s, pad: 3 / s }); if (one && !one.blocked) { sp = one; nameOnly = true; } }   // 두 줄이 안 들어가면 이름만이라도 비켜서
+        let sp = many ? { x: e.c[0], y: e.c[1] } : spotOf(fc, `${e.el.id}|${s.toFixed(4)}|${Math.round(lw)}`, { poly: e.poly, center: e.c, w: lw / s, h: lh / s, avoid: avoidOf(fc), step: 8 / s, pad: 3 / s }) || { x: e.c[0], y: e.c[1] }, nameOnly = false;
+        if (sp.blocked) { const one = spotOf(fc, `${e.el.id}|${s.toFixed(4)}|${Math.round(nw)}|n`, { poly: e.poly, center: e.c, w: nw / s, h: (C.fs3 + 4) / s, avoid: avoidOf(fc), step: 6 / s, pad: 3 / s }); if (one && !one.blocked) { sp = one; nameOnly = true; } }   // 두 줄이 안 들어가면 이름만이라도 비켜서
         const q = toPx(vp, [sp.x, sp.y]), hx = (lw + 6) / 2 / s, hy = (nameOnly ? C.fs3 + 4 : lh) / 2 / s, rect = [[sp.x - hx, sp.y - hy], [sp.x + hx, sp.y - hy], [sp.x + hx, sp.y + hy], [sp.x - hx, sp.y + hy]];
         taken.push({ poly: rect, box: [sp.x - hx, sp.y - hy, sp.x + hx, sp.y + hy] });
         ctx.fillStyle = C.ink; ctx.font = `${C.fw} ${C.fs3}px ${C.font}`; ctx.fillText(e.el.name, q[0], nameOnly ? q[1] : q[1] - C.fs4 * 0.7);

@@ -41,7 +41,8 @@ export function filterFinishes(list, { chip = 'all', query = '', ids = null } = 
 export function filterTemplates(list, { size = 'all', layout = 'all' } = {}) { return list.filter((t) => (size === 'all' || t.size === size) && (layout === 'all' || t.layout === layout)); }
 
 // 즐겨찾기 — localStorage('ain-plan-fav-<kind>') 에 id 배열. 저장소가 막혀 있어도 이번 화면 동안은 동작한다(저장 실패는 toggle 이 false 를 돌려준다)
-export function createFavs(kind, storage = typeof localStorage === 'undefined' ? null : localStorage) {
+const browserStorage = () => { try { return localStorage; } catch (e) { return null; } }; // 접근하는 것만으로 SecurityError 를 던지는 브라우저(제3자 iframe·쿠키 차단)도 있다
+export function createFavs(kind, storage = browserStorage()) {
   const key = 'ain-plan-fav-' + kind;
   let set = new Set();
   try { const a = JSON.parse(storage.getItem(key) || '[]'); if (Array.isArray(a)) set = new Set(a.filter((x) => typeof x === 'string')); } catch (e) { /* 저장소 없음·깨진 값은 빈 목록 */ }
@@ -224,6 +225,12 @@ function browsePanel(container, ctx, cfg) {
   return { destroy() { gone = true; unsub(); root.remove(); } };
 }
 
+/* ---------- 문서 명령: 잠금을 지키는 ctx.exec 로만 (없으면 store.exec) ---------- */
+const exec = (ctx, cmd) => (ctx.exec ? ctx.exec(cmd) : ctx.store.exec(cmd));
+export const removeItem = (ctx, id) => exec(ctx, { type: 'remove', ids: [id] });
+export const applyFinish = (ctx, f) => exec(ctx, { type: 'setFloor', patch: { finish: { [f.target]: f.id } } });
+export const clearFinish = (ctx, target) => exec(ctx, { type: 'setFloor', patch: { finish: { [target]: '' } } });
+
 /* ---------- 제품(에어컨) ---------- */
 const roomNameAt = (f, p) => f.rooms.find((r) => pointInPoly(r.poly, p))?.name ?? '';
 
@@ -253,7 +260,7 @@ function placedProducts(data, ctx) {
     head.textContent = `${f.name} · ${items.length}대`;
     list.replaceChildren(...items.map((i) => h('li', { class: 'pl-row' },
       h('span', { class: 'pl-row-main' }, h('span', { class: 'pl-prod-code' }, i.code || '모델명 미확인'), h('span', { class: 'pl-row-sub' }, [BRAND_LABEL[i.brand], MODEL_LABEL[i.model], i.capacityKw === null ? '냉방 미확인' : `냉방 ${i.capacityKw} kW`, roomNameAt(f, i.c)].filter(Boolean).join(' · '))),
-      h('button', { type: 'button', class: 'pl-btn', 'aria-label': `${i.code || '모델명 미확인'} ${i.id} 삭제`, onclick: () => ctx.store.exec({ type: 'remove', ids: [i.id] }) }, '삭제'))));
+      h('button', { type: 'button', class: 'pl-btn', 'aria-label': `${i.code || '모델명 미확인'} ${i.id} 삭제`, onclick: () => removeItem(ctx, i.id) }, '삭제'))));
     if (!items.length) list.append(h('li', { class: 'pl-empty-row' }, emptyNote('아직 놓은 에어컨이 없습니다')));
   };
   render();
@@ -280,7 +287,7 @@ function finishCard(f, ctx, api) {
   const sw = h('span', { class: 'pl-sw', 'aria-hidden': 'true' });
   sw.style.background = f.sw; // 색 견본은 자료(finishes.json)의 값
   const main = h('button', { type: 'button', class: 'pl-fin', 'aria-label': `${name} 적용`, 'data-target': f.target,
-    onclick: () => { ctx.store.exec({ type: 'setFloor', patch: { finish: { [f.target]: f.id } } }); api.toast(`${curFloor(ctx.store.doc).name} ${TARGET_LABEL[f.target]} 마감 · ${f.name}`); } },
+    onclick: () => { if (applyFinish(ctx, f)) api.toast(`${curFloor(ctx.store.doc).name} ${TARGET_LABEL[f.target]} 마감 · ${f.name}`); } },
     sw, h('span', { class: 'pl-fin-name' }, f.name), h('span', { class: 'pl-fin-sub' }, TARGET_LABEL[f.target], h('span', { class: 'pl-on' }, '적용 중')));
   return { main, name };
 }
@@ -298,7 +305,7 @@ function placedFinishes(data, ctx) {
       const fi = by.get(f.finish[t]), sw = h('span', { class: 'pl-sw pl-sw--s', 'aria-hidden': 'true' });
       if (fi) sw.style.background = fi.sw;
       return h('li', { class: 'pl-row' }, sw, h('span', { class: 'pl-row-main' }, h('span', { class: 'pl-prod-code' }, fi ? fi.name : f.finish[t]), h('span', { class: 'pl-row-sub' }, TARGET_LABEL[t])),
-        h('button', { type: 'button', class: 'pl-btn', 'aria-label': `${TARGET_LABEL[t]} 마감 해제`, onclick: () => ctx.store.exec({ type: 'setFloor', patch: { finish: { [t]: '' } } }) }, '해제'));
+        h('button', { type: 'button', class: 'pl-btn', 'aria-label': `${TARGET_LABEL[t]} 마감 해제`, onclick: () => clearFinish(ctx, t) }, '해제'));
     }));
     if (!rows.length) list.append(h('li', { class: 'pl-empty-row' }, emptyNote('아직 지정한 마감재가 없습니다')));
   };
@@ -378,7 +385,7 @@ function emptyPanel(name, title) {
 
 const PANELS = { templates: templatesPanel, products: productsPanel, materials: materialsPanel, library: emptyPanel('library', '설계형 라이브러리'), resources: emptyPanel('resources', '리소스 관리') };
 
-// name: 'templates'|'products'|'materials'|'library'|'resources', ctx: {store, setTool(name,opts), toast(msg), openDialog(title,node), openTemplate?(id)}
+// name: 'templates'|'products'|'materials'|'library'|'resources', ctx: {store, exec?(cmd)(잠금을 지키는 문서 명령), setTool(name,opts), toast(msg), openDialog(title,node), openTemplate?(id)}
 export function mountPanel(name, container, ctx) {
   const make = PANELS[name];
   if (!make) throw new Error(`알 수 없는 패널입니다: ${name}`);

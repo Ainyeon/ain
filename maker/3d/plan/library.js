@@ -1,15 +1,17 @@
 // 도면 문서 보관 — localStorage 에 목록(meta)과 문서를 따로 둔다. DOM 없음: node 에서 storage 를 주입해 테스트하고, 편집기와 프로젝트 화면이 같이 쓴다.
+import { roomOutlineWithArcs, polyArea } from './core/geom.js';
 const LIST = 'ain-plan-docs', KEY = (id) => 'ain-plan-' + id;
 export const QUOTA_MSG = '저장 공간이 부족합니다 · 안 쓰는 도면을 지워 주세요';
 const isQuota = (e) => !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014);
 const polyAreaM2 = (p) => { let s = 0; for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length]; s += a[0] * b[1] - b[0] * a[1]; } return Math.abs(s) / 2 / 1e6; };
 
+const arcAreaM2 = (r, f) => { try { return polyArea(roomOutlineWithArcs(r, Array.isArray(f.walls) ? f.walls : [])) / 1e6; } catch (e) { return polyAreaM2(r.poly); } };   // 곡선벽이 방 경계에 있으면 호를 따른다(플래너의 면적과 같은 값) — 깨진 방은 직선 현으로
 // 문서에서 목록에 보일 수치(전 층 방 면적 합·방 수·에어컨 수)
 export function summarize(doc) {
   let rooms = 0, area = 0, ac = 0;
   for (const f of (doc && Array.isArray(doc.floors) ? doc.floors : [])) {
     if (!f || typeof f !== 'object') continue;                    // 깨진 항목(null)은 세지 않는다 — 한 건이 저장·목록을 막지 않게
-    for (const r of Array.isArray(f.rooms) ? f.rooms : []) { if (!r || typeof r !== 'object') continue; rooms++; if (Array.isArray(r.poly) && r.poly.length > 2 && r.poly.every((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))) area += polyAreaM2(r.poly); }
+    for (const r of Array.isArray(f.rooms) ? f.rooms : []) { if (!r || typeof r !== 'object') continue; rooms++; if (Array.isArray(r.poly) && r.poly.length > 2 && r.poly.every((p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]))) area += arcAreaM2(r, f); }
     ac += (Array.isArray(f.items) ? f.items : []).filter((i) => i && i.kind === 'ac').length;
   }
   return { floors: doc && Array.isArray(doc.floors) ? doc.floors.length : 0, rooms, areaM2: Math.round(area * 100) / 100, ac };

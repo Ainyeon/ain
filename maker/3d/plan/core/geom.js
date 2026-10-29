@@ -41,12 +41,14 @@ export function projectOnSeg(p, a, b) {
   const q = [a[0] + r[0] * t, a[1] + r[1] * t];
   return { p: q, t, d: dist(p, q) };
 }
+const r6 = (v) => Math.round(v * 1e6) / 1e6; // 부동소수 잡음(4999.999999999)을 µm 에서 정리
 const lineX = (p1, d1, p2, d2) => { // 두 직선의 교점(평행이면 null)
   const den = cr(d1, d2);
   if (Math.abs(den) < 1e-9 * len2(d1) * len2(d2)) return null;
-  const t = cr(sub(p2, p1), d2) / den, r = (v) => Math.round(v * 1e6) / 1e6; // 부동소수 잡음(4999.999999999)을 µm 에서 정리
-  return [r(p1[0] + d1[0] * t), r(p1[1] + d1[1] * t)];
+  const t = cr(sub(p2, p1), d2) / den;
+  return [r6(p1[0] + d1[0] * t), r6(p1[1] + d1[1] * t)];
 };
+const onLine = (q, p, d) => { const L2 = d[0] * d[0] + d[1] * d[1], t = L2 ? ((q[0] - p[0]) * d[0] + (q[1] - p[1]) * d[1]) / L2 : 0; return [r6(p[0] + d[0] * t), r6(p[1] + d[1] * t)]; }; // q 를 직선 위로 내린 점
 // 변마다 dists[i] 만큼 바깥으로 민 다각형(꺾임은 마이터). 시계방향·반시계 어느 쪽이든 '바깥'으로 민다
 export function offsetPoly(poly, dists) {
   const n = poly.length, o = signedArea(poly) >= 0 ? 1 : -1;
@@ -65,7 +67,8 @@ export function roomInnerPoly(W, old) {
     if (nn[0] * -oe[1] + nn[1] * oe[0] < 0) nn = [-nn[0], -nn[1]]; // 옛 변의 안쪽과 같은 쪽
     return { p: [w.a[0] + (nn[0] * w.t) / 2, w.a[1] + (nn[1] * w.t) / 2], d: e };
   });
-  return lines.map((B, i) => { const A = lines[(i + n - 1) % n]; return lineX(A.p, A.d, B.p, B.d) ?? B.p; });
+  // 이웃한 두 벽이 한 직선이면 꼭짓점은 옛 꼭짓점을 새 벽 선 위로 내린 점(벽이 방 변과 반대 방향이어도 맞다)
+  return lines.map((B, i) => { const A = lines[(i + n - 1) % n]; return lineX(A.p, A.d, B.p, B.d) ?? onLine(old[i], B.p, B.d); });
 }
 export function rectPoly(c, w, d, rotDeg = 0) { // 중심 c, 가로 w, 세로 d, 회전 → 시계방향 네 점
   const t = rotDeg * RAD, co = Math.cos(t), si = Math.sin(t);
@@ -190,7 +193,7 @@ export function hitTest(doc, p, tolMm = 0) {
     ['column', f.columns, (c) => (c.kind === 'round' ? (dist(p, c.c) <= c.w / 2 + tolMm ? dist(p, c.c) : null) : inRect(c, c.w, c.d))],
     ['wall', f.walls, (w) => { const n = nearestOnWall(w, p); return n.d <= w.t / 2 + tolMm ? n.d : null; }],
     ['guide', f.guides, (g) => { const d = projectOnSeg(p, g.a, g.b).d; return d <= tolMm ? d : null; }],
-    ['room', f.rooms, (r) => (pointInPoly(r.poly, p) ? polyArea(r.poly) : null)],
+    ['room', f.rooms, (r) => (pointInPoly(roomOutlineWithArcs(r, W), p) ? polyArea(r.poly) : null)], // 곡선벽이면 호 안쪽까지
   ];
   for (const [kind, arr, d] of found) { const e = best(arr, d); if (e) return { kind, id: e.id }; }
   return null;
@@ -207,14 +210,28 @@ export function bounds(doc, floor = curFloor(doc)) {
   const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
   return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
 }
-// 방 면적(㎡). 실면적 = 안쪽 면 다각형, withWalls(실면적+내외벽) = 바깥 벽 면까지(벽 두께 전부) 넓힌 다각형
+// 방 경계 다각형 — 방 변(room.poly[i]→[i+1])의 벽이 곡선이면 그 변을 같은 현·같은 처짐의 호 위 점들로 바꾼다(호 꼭짓점이 벽 면과 맞는다).
+// 벽 방향(a→b)이 방 변과 반대이면 처짐 부호를 뒤집는다. 곡선벽이 없으면 room.poly 그대로. withWalls = 바깥 벽 면(벽 두께만큼 민 다각형) 기준
+// walls = 같은 층 벽 배열 또는 id→벽 Map
+export function roomOutlineWithArcs(room, walls, { withWalls = false } = {}) {
+  const n = room.poly.length, get = Array.isArray(walls) ? (id) => walls.find((w) => w.id === id) : (id) => walls.get(id);
+  const ws = room.wallIds.length === n ? room.wallIds.map(get) : [];
+  const base = withWalls ? offsetPoly(room.poly, room.poly.map((_, i) => ws[i]?.t ?? DEFAULTS.wallT)) : room.poly;
+  if (!ws.some((w) => w && Math.abs(w.bulge || 0) > 1e-6)) return base;
+  const out = [];
+  base.forEach((p, i) => {
+    out.push(p);
+    const w = ws[i];
+    if (!w || !(Math.abs(w.bulge || 0) > 1e-6)) return;
+    const e = sub(room.poly[(i + 1) % n], room.poly[i]), rev = (w.b[0] - w.a[0]) * e[0] + (w.b[1] - w.a[1]) * e[1] < 0;
+    out.push(...wallPoints({ a: p, b: base[(i + 1) % n], bulge: rev ? -w.bulge : w.bulge }).slice(1, -1));
+  });
+  return out;
+}
+// 방 면적(㎡). 실면적 = 안쪽 면 다각형(곡선벽은 호를 따른다), withWalls(실면적+내외벽) = 바깥 벽 면까지(벽 두께 전부) 넓힌 다각형
 export function roomAreaM2(doc, room, { withWalls = false } = {}) {
-  let poly = room.poly;
-  if (withWalls) {
-    const f = doc.floors.find((x) => x.rooms.some((r) => r.id === room.id)) ?? curFloor(doc);
-    poly = offsetPoly(poly, poly.map((_, i) => f.walls.find((w) => w.id === room.wallIds[i])?.t ?? DEFAULTS.wallT));
-  }
-  return polyArea(poly) / 1e6;
+  const f = doc.floors.find((x) => x.rooms.some((r) => r.id === room.id)) ?? curFloor(doc);
+  return polyArea(roomOutlineWithArcs(room, f.walls, { withWalls })) / 1e6;
 }
 export const grossWallLen = (doc) => curFloor(doc).walls.reduce((s, w) => s + wallLen(w), 0);
 // 현재 층 벽 길이 합에서 개구부 폭을 뺀 값(mm)

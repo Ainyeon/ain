@@ -68,6 +68,15 @@ export function createTools({ store, view, sel, ui, state }) {
   const hitHandle = (one, px) => handlesOf(one).find((h) => { const q = view.toPx(h.p); return Math.hypot(q[0] - px[0], q[1] - px[1]) <= PX.handle; }) || null;
   const abort = () => { if (drag && drag.started) store.cancel(); drag = null; };
   const end = () => { op = null; redraw(); };
+  const kb = (key, touch) => (state.touch ? touch : key); // 안내문 — 키보드가 없는 화면(폰·태블릿)은 키 대신 누르는 동작을 말한다
+  const sameWall = (w, q) => !!w && dist(w.a, q.a) < 1 && dist(w.b, q.b) < 1;
+  // 실행 취소·다시 실행이 문서를 바꾸면 이어 그리던 벽도 문서에 남은 벽까지만 인정한다 — 되돌린 벽의 끝점에서 이어 그리지 않는다
+  store.subscribe((e) => {
+    if (!op || !op.chain || (e.type !== 'undo' && e.type !== 'redo')) return;
+    const have = new Map(fl().walls.map((w) => [w.id, w]));
+    let m = 0; while (m < op.chain.length && sameWall(have.get(op.chain[m].id), op.chain[m])) m++;
+    op.n = m; op.a = m ? op.chain[m - 1].b : op.first; redraw();
+  });
 
   function mark(g, s) { // 스냅 표시: 끝점 네모 · 중점 세모 · 직교 십자 · 격자 점
     if (!s || s.kind === 'none') return;
@@ -86,7 +95,7 @@ export function createTools({ store, view, sel, ui, state }) {
   /* 도구별 처리: down/move/up(포인터), hint(안내), overlay(미리보기) */
   const H = {
     select: {
-      hint: () => (state.locked ? '잠금 상태입니다 · 고르기만 할 수 있습니다' : sel.size ? '끌어서 옮깁니다 · 끝점 핸들을 끌어 길이를 고칩니다 · Delete 로 지웁니다' : '도형을 눌러 고르고, 빈 곳을 끌어 한꺼번에 고릅니다 · 방은 두 번 눌러 이름을 바꿉니다'),
+      hint: () => (state.locked ? '잠금 상태입니다 · 고르기만 할 수 있습니다' : sel.size ? `끌어서 옮깁니다 · 끝점 핸들을 끌어 길이를 고칩니다 · ${kb('Delete 로 지웁니다', '오른쪽 패널의 [지우기]로 지웁니다')}` : '도형을 눌러 고르고, 빈 곳을 끌어 한꺼번에 고릅니다 · 방은 두 번 눌러 이름을 바꿉니다'),
       down(c) {
         const one = single(), multi = c.shift || state.multi;
         if (one && !state.locked) { const hd = hitHandle(one, c.px); if (hd) { const ex = new Set([one.id]), joined = []; if (one.col === 'walls' && hd.k !== 'bulge') for (const w of fl().walls) if (w.id !== one.id) for (const k of ['a', 'b']) if (dist(w[k], hd.p) < 1) { joined.push({ id: w.id, k }); ex.add(w.id); } drag = { kind: 'handle', one, k: hd.k, joined, ex, started: false, failed: false }; return; } }
@@ -137,21 +146,23 @@ export function createTools({ store, view, sel, ui, state }) {
       },
     },
     wall: {
-      hint: () => (op ? '끝점을 누르세요 · 더블클릭·ESC 로 끝냅니다 · Shift 를 누르면 직교' : '시작점을 누르세요 · 끌어서 한 번에 그릴 수도 있습니다'),
+      hint: () => (op ? `끝점을 누르세요 · ${kb('더블클릭·ESC 로 끝냅니다 · Shift 를 누르면 직교', '같은 자리를 두 번 누르거나 [끝내기]를 누르면 끝납니다')}` : '시작점을 누르세요 · 끌어서 한 번에 그릴 수도 있습니다'),
       up(c) {
-        if (!op && c.isDrag) { const a = snap(c.dn).p, b = snap(c, a).p; if (dist(a, b) >= 1) { if (run({ type: 'addWall', a, b })) { op = { a: b, first: a, n: 1 }; ui.say('벽을 추가했습니다'); } } return redraw(); } // 끌어서 한 번에
+        if (!op && c.isDrag) { const a = snap(c.dn).p, b = snap(c, a).p; if (dist(a, b) >= 1) { const ids = run({ type: 'addWall', a, b }); if (ids) { op = { a: b, first: a, n: 1, chain: [{ id: ids[0], a, b }] }; ui.say('벽을 추가했습니다'); } } return redraw(); } // 끌어서 한 번에
         const p = snap(c, op && op.a).p;
-        if (!op) { op = { a: p, first: p, n: 0 }; return redraw(); }
+        if (!op) { op = { a: p, first: p, n: 0, chain: [] }; return redraw(); }
         if (dist(op.a, p) < 1) return end(); // 같은 자리를 또 누르면(더블클릭) 끝
-        if (!run({ type: 'addWall', a: op.a, b: p })) return redraw();
-        op.n++; ui.say(`벽을 추가했습니다 · ${Math.round(dist(op.a, p)).toLocaleString('ko-KR')} mm`);
+        const ids = run({ type: 'addWall', a: op.a, b: p });
+        if (!ids) return redraw();
+        op.chain = [...op.chain.slice(0, op.n), { id: ids[0], a: op.a, b: p }]; op.n = op.chain.length; // 되돌린 뒤 이어 그리면 되돌린 벽의 기록은 버린다
+        ui.say(`벽을 추가했습니다 · ${Math.round(dist(op.a, p)).toLocaleString('ko-KR')} mm`);
         if (op.n >= 3 && dist(p, op.first) < 1) return end(); // 처음 점으로 돌아와 닫힘
         op.a = p; redraw();
       },
       overlay(g) { if (!cur) return; const s = snap(cur, op && op.a); if (op) { thick(g, op.a, s.p, DEFAULTS.wallT); lenLabel(g, op.a, s.p); } mark(g, s); },
     },
     arc: {
-      hint: () => (!op ? '곡선벽의 시작점을 누르세요' : !op.b ? '끝점을 누르세요' : '처짐 점을 눌러 곡선을 정하세요 · ESC 로 취소'),
+      hint: () => (!op ? '곡선벽의 시작점을 누르세요' : !op.b ? '끝점을 누르세요' : `처짐 점을 눌러 곡선을 정하세요 · ${kb('ESC 로 취소', '취소하려면 [끝내기]를 누르세요')}`),
       up(c) {
         if (op && op.b) { const bulge = bulgeOf(op.a, op.b, c.mm); if (!bulge) { ui.toast('처짐이 0 입니다 · 현에서 떨어진 곳을 누르세요', 'err'); return; } if (run({ type: 'addWall', a: op.a, b: op.b, bulge })) ui.say('곡선벽을 추가했습니다'); return end(); }
         const p = snap(c, op && op.a).p;
@@ -165,7 +176,7 @@ export function createTools({ store, view, sel, ui, state }) {
       },
     },
     room: {
-      hint: () => (!op ? '두 모서리를 끌어 방을 그립니다 · Shift 를 누르고 누르면 다각형' : op.mode === 'rect' ? '반대쪽 모서리를 누르세요 · ESC 로 취소' : '점을 차례로 누르고, 첫 점을 눌러 닫습니다 · Enter 로도 닫습니다'),
+      hint: () => (!op ? `두 모서리를 끌어 방을 그립니다${kb(' · Shift 를 누르고 누르면 다각형', '')}` : op.mode === 'rect' ? `반대쪽 모서리를 누르세요 · ${kb('ESC 로 취소', '취소하려면 [끝내기]를 누르세요')}` : `점을 차례로 누르고, 첫 점을 눌러 닫습니다${kb(' · Enter 로도 닫습니다', '')}`),
       up(c) {
         const last = op && op.mode === 'poly' ? op.pts.at(-1) : null;
         if (!op) {
@@ -205,7 +216,7 @@ export function createTools({ store, view, sel, ui, state }) {
       },
     },
     guide: {
-      hint: () => (op ? '끝점을 누르세요 · ESC 로 취소' : '시작점을 누르세요 · 끌어서 그릴 수도 있습니다'),
+      hint: () => (op ? `끝점을 누르세요 · ${kb('ESC 로 취소', '취소하려면 [끝내기]를 누르세요')}` : '시작점을 누르세요 · 끌어서 그릴 수도 있습니다'),
       up(c) {
         if (!op && c.isDrag) { const a = snap(c.dn).p, b = snap(c, a).p; if (run({ type: 'addGuide', a, b })) ui.say('보조선을 추가했습니다'); return redraw(); }
         const p = snap(c, op && op.a).p;
@@ -217,7 +228,7 @@ export function createTools({ store, view, sel, ui, state }) {
       overlay(g) { if (!cur) return; const s = snap(cur, op && op.a); if (op) { seg(g, op.a, s.p, { dash: [6, 4] }); lenLabel(g, op.a, s.p); } mark(g, s); },
     },
     measure: {
-      hint: () => (!op ? '재기 시작할 점을 누르세요 · 저장되지 않습니다' : op.done ? '다시 누르면 새로 잽니다 · ESC 로 지웁니다' : '끝점을 누르세요'),
+      hint: () => (!op ? '재기 시작할 점을 누르세요 · 저장되지 않습니다' : op.done ? `다시 누르면 새로 잽니다 · ${kb('ESC 로 지웁니다', '[끝내기]를 누르면 지웁니다')}` : '끝점을 누르세요'),
       up(c) {
         const p = snap(c, op && !op.done ? op.a : null).p;
         if (!op || op.done) op = { a: p }; else if (dist(op.a, p) < 1) return end(); else { op.b = p; op.done = true; ui.say(`거리 ${Math.round(dist(op.a, p)).toLocaleString('ko-KR')} mm`); }
@@ -230,10 +241,11 @@ export function createTools({ store, view, sel, ui, state }) {
       },
     },
     placeItem: {
-      hint: () => '방 안을 눌러 놓습니다 · [ ] 로 90° 돌립니다 · ESC 로 끝냅니다',
+      hint: () => `방 안을 눌러 놓습니다 · ${kb('[ ] 로 90° 돌립니다 · ESC 로 끝냅니다', '놓은 뒤 오른쪽 패널의 [회전]으로 돌립니다 · 끝내려면 [끝내기]를 누르세요')}`,
       up(c) {
         const p = snap(c).p;
         if (!fl().rooms.some((r) => pointInPoly(r.poly, p))) return ui.toast('방 안에서 놓아 주세요', 'err');
+        if (fl().items.some((i) => dist(i.c, p) < 1)) return; // 같은 자리에 또 누르면(더블클릭) 두 대가 겹쳐 놓이므로 무시
         const ids = run({ type: 'addItem', kind: 'ac', model: opts.model, brand: opts.brand, c: p, rot, capacityKw: opts.capacityKw ?? null, code: opts.code || '', size: opts.size });
         if (ids) ui.say(`${opts.code || opts.model} 을 놓았습니다`);
       },
@@ -255,7 +267,7 @@ export function createTools({ store, view, sel, ui, state }) {
       overlay(g) { if (!op) return; const b = cur ? cur.mm : op.a; seg(g, op.a, b); mark(g, { p: op.a, kind: 'end' }); if (cur) lenLabel(g, op.a, b); },
     },
     moveUnderlay: {
-      hint: () => '밑그림을 끌어 옮깁니다 · ESC 로 끝냅니다',
+      hint: () => `밑그림을 끌어 옮깁니다 · ${kb('ESC 로 끝냅니다', '끝내려면 [끝내기]를 누르세요')}`,
       down(c) { const u = doc().underlay; if (u) drag = { kind: 'underlay', start: c.mm, x: u.x, y: u.y }; },
       move(c) { if (drag && drag.kind === 'underlay') { view.underlayTemp = { x: drag.x + c.mm[0] - drag.start[0], y: drag.y + c.mm[1] - drag.start[1] }; view.requestDraw(); } },
       up() { const d = drag, t = view.underlayTemp; drag = null; view.underlayTemp = null; if (d && t && (t.x !== d.x || t.y !== d.y)) run({ type: 'setUnderlay', underlay: { ...doc().underlay, x: t.x, y: t.y } }); view.requestDraw(); },
@@ -266,8 +278,8 @@ export function createTools({ store, view, sel, ui, state }) {
 
   function colTool(kind) {
     return {
-      hint: () => `${kind === 'rect' ? '사각' : '원형'} 기둥을 놓을 자리를 누르세요 · ESC 로 끝냅니다`,
-      up(c) { if (run({ type: 'addColumn', kind, c: snap(c).p })) ui.say('기둥을 놓았습니다'); },
+      hint: () => `${kind === 'rect' ? '사각' : '원형'} 기둥을 놓을 자리를 누르세요 · ${kb('ESC 로 끝냅니다', '끝내려면 [끝내기]를 누르세요')}`,
+      up(c) { const p = snap(c).p; if (fl().columns.some((q) => dist(q.c, p) < 1)) return; if (run({ type: 'addColumn', kind, c: p })) ui.say('기둥을 놓았습니다'); }, // 같은 자리에 또 누르면(더블클릭) 기둥이 겹치므로 무시
       overlay(g) { if (!cur) return; const s = snap(cur), W = DEFAULTS.colW; polyOverlay(g, kind === 'round' ? circlePoly(s.p, W / 2, 24) : rectPoly(s.p, W, W, 0)); mark(g, s); },
     };
   }
@@ -290,7 +302,7 @@ export function createTools({ store, view, sel, ui, state }) {
   /* ---------- 포인터 파이프라인: 팬(가운데 버튼·스페이스·두 손가락) → 도구 ---------- */
   function ctxOf(e, px) {
     const c = { e, px, mm: view.toMm(px), shift: e.shiftKey, dn, moved: false, isDrag: false };
-    if (dn) { c.moved = Math.hypot(px[0] - dn.px[0], px[1] - dn.px[1]) > (e.pointerType === 'mouse' ? PX.drag : PX.drag * 2); c.isDrag = c.moved && e.pointerType === 'mouse'; } // moved = 끌기 시작(손가락은 더 멀리), isDrag = 마우스로 끌어 그리기
+    if (dn) { c.moved = Math.hypot(px[0] - dn.px[0], px[1] - dn.px[1]) > (e.pointerType === 'mouse' ? PX.drag : PX.drag * 2); c.isDrag = c.moved; } // moved = 끌기 시작(손가락은 더 멀리), isDrag = 끌어 그리기 — 마우스·펜·손가락 모두 누른 자리에서 시작한다
     return c;
   }
   function beginGesture() {

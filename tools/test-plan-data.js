@@ -41,7 +41,7 @@ const r2 = (v) => Math.round(v * 100) / 100;
     const src = read(f), code = src.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
     assert.ok(/^\/\/ \S/.test(src), f + ' 맨 위 한 줄 역할 주석');
     assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML|\beval\s*\(|new Function|document\.write/.test(code), f + ' — innerHTML 류·eval 금지');
-    assert.ok(!/\blocalStorage\b/.test(code.replace(/typeof localStorage[^:]*:\s*localStorage/g, '')), f + ' — localStorage 는 createFavs 한 곳에서만');
+    assert.ok(!/\blocalStorage\b/.test(code.replace(/try \{ return localStorage; \} catch \(e\) \{ return null; \}/g, '')), f + ' — localStorage 는 createFavs 의 기본 저장소 한 곳(접근 오류를 잡는다)에서만');
   }
   assert.ok(/^\/\* \S/.test(read('panels.css')), 'panels.css 맨 위 한 줄 역할 주석');
   const css = read('panels.css').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -171,6 +171,22 @@ const r2 = (v) => Math.round(v * 100) / 100;
   assert.strictEqual(f2.all().size, 0, '깨진 값은 빈 목록'); assert.strictEqual(f2.toggle('z'), false, '저장 실패를 알린다'); assert.ok(f2.has('z'), '이번 화면에서는 유지');
   assert.strictEqual(P.createFavs('ac', null).toggle('q'), false, '저장소 없음');
   assert.deepStrictEqual([...P.createFavs('ac', { getItem: () => '[1,"x",null]', setItem() {} }).all()], ['x'], '문자열 id 만');
+
+  // 접근하는 것만으로 SecurityError 를 던지는 저장소(제3자 iframe·쿠키 차단) — 기본 저장소로 즐겨찾기를 만들어도 터지지 않고 이번 화면에서는 동작한다
+  { const had = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    Object.defineProperty(globalThis, 'localStorage', { get() { throw new Error('SecurityError: The operation is insecure.'); }, configurable: true });
+    try { const f3 = P.createFavs('ac'); assert.strictEqual(f3.all().size, 0); assert.strictEqual(f3.toggle('a'), false, '저장은 못 한다고 알린다'); assert.ok(f3.has('a'), '이번 화면에서는 유지'); }
+    finally { if (had) Object.defineProperty(globalThis, 'localStorage', had); else delete globalThis.localStorage; } }
+
+  // 잠금: 제품 패널의 삭제·마감재 적용·해제는 store 에 곧바로 쓰지 않고 앱의 ctx.exec(잠금 검사)로만 간다
+  { const cmds = [], boom = { exec() { throw new Error('store.exec 를 직접 불러서는 안 된다'); } };
+    const ctx = { store: boom, exec: (c) => { cmds.push(c); return ctx.locked ? null : []; } };
+    assert.deepStrictEqual(P.removeItem(ctx, 'I3'), []); assert.deepStrictEqual(P.applyFinish(ctx, { id: 'wall-wood-walnut', target: 'wall' }), []); assert.deepStrictEqual(P.clearFinish(ctx, 'floor'), []);
+    assert.deepStrictEqual(cmds, [{ type: 'remove', ids: ['I3'] }, { type: 'setFloor', patch: { finish: { wall: 'wall-wood-walnut' } } }, { type: 'setFloor', patch: { finish: { floor: '' } } }]);
+    ctx.locked = true; assert.strictEqual(P.removeItem(ctx, 'I3'), null, '잠금이면 앱이 거절한 결과(null)를 그대로 돌려준다'); assert.strictEqual(P.applyFinish(ctx, { id: 'x', target: 'floor' }), null);
+    const real = new S.Store(createDoc()); real.exec({ type: 'setFloor', patch: { finish: { wall: 'wall-wood-walnut' } } });
+    P.clearFinish({ store: real }, 'wall'); assert.strictEqual(curFloor(real.doc).finish.wall, '', 'ctx.exec 가 없으면 store.exec'); }
+  assert.ok(!/ctx\.store\.exec/.test(read('panels.js').replace(/\/\/.*$/gm, '').replace(/ctx\.store\.exec\(cmd\)/, '')), 'panels.js 는 ctx.store.exec 를 곧바로 부르지 않는다(ctx.exec 를 거친다)');
 
   /* ===== 3. 마감재 ===== */
   const fin = JSON.parse(read('data/finishes.json')), chipIds = fin.chips.map((c) => c.id);

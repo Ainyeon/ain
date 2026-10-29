@@ -92,7 +92,7 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
     ['라이브러리 import', /from '\.\/library\.js'/], ['저장', /lib\.savePlan\(/], ['?doc', /get\('doc'\)/], ['?new', /get\('new'\)/], ['?template', /get\('template'\)/], ['?underlay', /get\('underlay'\)/], ['마지막 문서', /lib\.lastPlanId\(\)/], ['나가기 주소', /\/maker\/3d\/projects\//],
     ['저장 안 한 변경 확인', /beforeunload/], ['Ctrl+S', /KeyS/], ['되돌리기 Z', /KeyZ/], ['다시 실행 Y', /KeyY/], ['글쇠 위치로 판정(한글 자판)', /e\.code/], ['잠금', /state\.locked/], ['3D 오류를 그대로 안내', /errDialog\('3D 화면을 열지 못했습니다'/], ['패널 오류를 그대로 안내', /패널 파일\(panels\.js\)을 불러오지 못했습니다 · \$\{e\.message\}/], ['빈 문서 3D 안내', /방이 하나 이상 필요합니다/], ['반전·회전 명령', /type: 'mirror', axis: 'x'[\s\S]*type: 'rotate', deg: -90/], ['밑그림 축척', /type: 'setUnderlay'/], ['저장 공간 오류는 알린다', /toast\(e\.message, 'err'\)/]]) assert.ok(re.test(app), '코드: ' + what);
   assert.ok(/code\.startsWith\('Key'\) \? SHORTCUTS\[code\.slice\(3\)\]/.test(strip(rd('tools.js'))) && !/SHORTCUTS\[[^\]]*toUpperCase/.test(strip(rd('tools.js'))), '도구 글쇠는 글쇠 위치(e.code)로 — 한글 자판에서도 L 이 L');
-  assert.ok(/const ctx = \{ get store\(\) \{ return store; \}, setTool: [^\n]*, toast, openDialog \};/.test(app), 'ctx = {store, setTool, toast, openDialog}');
+  assert.ok(/const ctx = \{ get store\(\) \{ return store; \}, exec: run, setTool: [^\n]*, toast, openDialog, openTemplate \};/.test(app), 'ctx = {store, exec(잠금을 지키는 run), setTool, toast, openDialog, openTemplate}');
   assert.ok(!/localStorage\.(set|get)Item\(\s*['"]ain-plan-/.test(app), '문서 저장은 library.js 만 쓴다(키를 직접 만들지 않는다)');
   assert.ok(/'ain-plan-ui'/.test(app), '화면 환경설정 키는 따로');
 
@@ -159,6 +159,101 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
   assert.deepStrictEqual(T.handlesOf(T.findEl(d1, 'W1')).map((h) => h.k), ['a', 'b'], '직선벽 핸들'); assert.deepStrictEqual(T.handlesOf({ col: 'walls', el: { ...ff.walls[0], bulge: 300 } }).map((h) => h.k), ['a', 'b', 'bulge'], '곡선벽 핸들');
   assert.deepStrictEqual(T.handlesOf(T.findEl(d1, 'C1')), [], '기둥은 끝점 핸들 없음'); assert.deepStrictEqual(T.handlesOf(null), []);
   assert.strictEqual(T.findEl(d1, 'O1').col, 'openings'); assert.strictEqual(T.findEl(d1, 'nope'), null);
+
+  /* ===== 10. 도구 상태기계: 가짜 캔버스로 포인터를 흘려 본다 (px → mm 는 ×10, 스냅 50mm) ===== */
+  const mkTools = (over = {}) => {
+    const store = new Store(Mo.createDoc()), vp0 = { scale: 0.1, ox: 0, oy: 0, w: 800, h: 600 }, state = { locked: false, multi: false, touch: false, ...over }, log = { toasts: [], hint: null };
+    const view = { vp: vp0, hover: null, underlayTemp: null, toMm: (p) => M.toMm(vp0, p), toPx: (p) => M.toPx(vp0, p), requestDraw() {}, panBy() {}, set() {} };
+    let tools;
+    const ui = { toast: (m) => log.toasts.push(m), say() {}, cursor() {}, hint: (n, t) => { log.hint = [n, t]; }, setTool: (n, o) => tools.setTool(n, o), renameRoom() {}, calibrated() {} };
+    tools = T.createTools({ store, view, sel: new T.Selection(), ui, state });
+    const canvas = { l: {}, addEventListener(t, f) { (this.l[t] ||= []).push(f); }, getBoundingClientRect: () => ({ left: 0, top: 0 }), setPointerCapture() {}, focus() {} };
+    tools.attach(canvas);
+    const fire = (type, x, y, o = {}) => (canvas.l[type] || []).forEach((f) => f({ type, pointerId: 1, pointerType: 'mouse', button: 0, shiftKey: false, clientX: x, clientY: y, preventDefault() {}, ...o }));
+    return { store, tools, state, log, fire, flr: () => Mo.curFloor(store.doc), tap(x, y, o) { fire('pointerdown', x, y, o); fire('pointerup', x, y, o); }, drag(x0, y0, x1, y1, o) { fire('pointerdown', x0, y0, o); fire('pointermove', x1, y1, o); fire('pointerup', x1, y1, o); } };
+  };
+  const stub = { model: '1way', brand: 'samsung', code: 'AC023CN1DBC1', capacityKw: 2.3, size: [1200, 500] };
+
+  // 같은 자리 더블클릭 — 제품·기둥이 한 번만 놓인다(견적 수량이 부풀지 않게). 다른 자리·같은 자리 되돌린 뒤 다시는 놓인다
+  { const t = mkTools(); t.store.exec({ type: 'addRoomRect', a: [0, 0], b: [6000, 5000] });
+    t.tools.setTool('placeItem', stub); t.tap(200, 200); t.tap(200, 200); t.tap(200, 200);
+    assert.strictEqual(t.flr().items.length, 1, '같은 자리 연타는 제품 한 대'); assert.deepStrictEqual(t.log.toasts, [], '막은 자리에 알림을 띄우지 않는다');
+    t.tap(300, 200); assert.strictEqual(t.flr().items.length, 2, '다른 자리는 놓인다');
+    t.store.undo(); t.tap(300, 200); assert.strictEqual(t.flr().items.length, 2, '되돌린 자리에는 다시 놓인다');
+    for (const kind of ['colRect', 'colRound']) { const u = mkTools(); u.tools.setTool(kind); u.tap(200, 200); u.tap(200, 200); assert.strictEqual(u.flr().columns.length, 1, kind + ' 연타는 기둥 하나'); u.tap(400, 200); assert.strictEqual(u.flr().columns.length, 2, kind + ' 다른 자리'); } }
+
+  // 벽 그리는 중 실행 취소·다시 실행 — 이어 그리기 상태가 문서와 맞는다
+  { const t = mkTools(); t.tools.setTool('wall'); t.tap(100, 100); t.tap(400, 100); t.tap(400, 300);
+    assert.strictEqual(t.flr().walls.length, 2); assert.strictEqual(t.tools.op.n, 2);
+    t.store.undo(); assert.deepStrictEqual([t.tools.op.a, t.tools.op.n], [[4000, 1000], 1], '되돌린 벽의 끝점이 아니라 남은 벽의 끝점에서 이어진다');
+    t.tap(100, 300); const w = t.flr().walls; assert.deepStrictEqual([w.length, w[1].a, w[1].b], [2, [4000, 1000], [1000, 3000]], '다음 벽은 직전 벽에 이어진다');
+    t.store.undo(); t.store.undo(); assert.deepStrictEqual([t.tools.op.a, t.tools.op.n], [[1000, 1000], 0], '벽을 모두 되돌리면 첫 점을 막 누른 상태');
+    t.tap(400, 100); t.tap(100, 100); assert.deepStrictEqual([t.flr().walls.length, t.tools.op !== null], [2, true], '벽이 둘뿐이면 첫 점으로 돌아와도 닫히지 않고 이어진다');
+    const r = mkTools(); r.tools.setTool('wall'); r.tap(100, 100); r.tap(400, 100); r.store.undo(); r.store.redo();
+    assert.deepStrictEqual([r.tools.op.a, r.tools.op.n], [[4000, 1000], 1], '다시 실행하면 그 벽의 끝점');
+    const s = mkTools(); s.tools.setTool('wall'); s.tap(100, 100); s.tap(400, 100); s.tap(400, 300); s.tap(100, 300); s.store.undo(); s.store.undo(); s.store.redo();
+    assert.deepStrictEqual([s.tools.op.a, s.tools.op.n], [[4000, 3000], 2], '여러 단계 되돌리고 다시 실행'); }
+
+  // 펜·손가락으로 끌어 그리기 — 마우스와 같이 누른 자리에서 시작한다
+  for (const pt of ['mouse', 'pen', 'touch']) {
+    { const t = mkTools(); t.tools.setTool('room'); t.drag(100, 100, 400, 300, { pointerType: pt });
+      assert.deepStrictEqual([t.flr().rooms.length, t.tools.op], [1, null], pt + ' 끌기로 방'); assert.deepStrictEqual(t.flr().rooms[0].poly[0], [1000, 1000], pt + ' 방은 누른 자리에서'); }
+    { const t = mkTools(); t.tools.setTool('wall'); t.drag(100, 100, 400, 100, { pointerType: pt }); assert.deepStrictEqual([t.flr().walls.length, t.flr().walls[0].a, t.flr().walls[0].b], [1, [1000, 1000], [4000, 1000]], pt + ' 끌기로 벽'); }
+    { const t = mkTools(); t.tools.setTool('guide'); t.drag(100, 100, 400, 100, { pointerType: pt }); assert.strictEqual(t.flr().guides.length, 1, pt + ' 끌기로 보조선'); }
+  }
+  { const t = mkTools(); t.tools.setTool('room'); t.tap(100, 100, { pointerType: 'touch' }); assert.strictEqual(t.tools.op.mode, 'rect', '손가락으로 살짝 누르면 모서리 하나 찍기'); t.tap(400, 300, { pointerType: 'touch' }); assert.strictEqual(t.flr().rooms.length, 1, '두 번 눌러도 방'); }
+
+  // 안내문: 키보드 화면은 키를, 폰·태블릿(state.touch)은 키 없이 누르는 동작과 [끝내기] 단추를 말한다
+  { const KEYS = /ESC|Esc|Shift|Delete|Enter|\[ \]|더블클릭/, hints = {};
+    for (const touch of [true, false]) {
+      const t = mkTools({ touch }), seen = hints[touch] = [], grab = () => seen.push(t.log.hint[1]);
+      t.store.exec({ type: 'addRoomRect', a: [0, 0], b: [6000, 5000] });
+      t.tools.setTool('select'); grab(); t.tap(300, 250); grab(); // 방 하나 고른 뒤의 안내
+      for (const name of ['wall', 'arc', 'room', 'delete', 'colRect', 'colRound', 'opening', 'guide', 'measure', 'placeItem', 'calibrate', 'moveUnderlay']) {
+        t.tools.setTool(name, name === 'placeItem' ? stub : {}); grab(); t.tap(100, 100); grab(); t.tap(400, 100); grab(); t.tap(400, 300); grab();
+        t.tools.setTool(name, name === 'placeItem' ? stub : {}); t.tap(100, 100, { shiftKey: true }); grab(); // 방은 Shift 로 다각형
+      }
+      assert.ok(seen.every((x) => typeof x === 'string' && x), '안내문이 비지 않는다');
+    }
+    assert.deepStrictEqual(hints[true].filter((x) => KEYS.test(x)), [], '폰 안내문은 폰에 없는 키(ESC·Shift·Delete·Enter·[ ])를 말하지 않는다');
+    for (const word of ['ESC', 'Shift', 'Delete', 'Enter', '[ ]']) assert.ok(hints[false].some((x) => x.includes(word)), '키보드 안내문에는 ' + word + ' 가 남는다');
+    assert.ok(hints[true].some((x) => x.includes('[끝내기]')), '폰 안내문은 [끝내기] 단추를 가리킨다');
+    const live = mkTools(); live.tools.setTool('wall'); live.tap(100, 100); assert.ok(/ESC/.test(live.log.hint[1])); live.state.touch = true; live.tools.hint(); assert.ok(!/ESC/.test(live.log.hint[1]), 'touch 가 바뀌면 안내문이 바로 바뀐다'); }
+
+  /* ===== 11. 격자선: 좌표가 극단적이어도 끝난다 · 층 면적 합: 공유 벽을 한 번만 ===== */
+  { const old = (origin, size, scale, step) => { const o = []; for (let x = Math.ceil(-origin / scale / step) * step; x * scale + origin <= size; x += step) o.push(Math.round(x * scale + origin) + 0.5); return o; };
+    for (const [origin, size, scale, step] of [[100, 800, 0.1, 100], [-2450, 1280, 0.35, 500], [37.5, 390, 0.004, 5000], [0, 600, 2, 100]]) assert.deepStrictEqual(M.gridLines(origin, size, scale, step), old(origin, size, scale, step), `격자선 ${origin},${size},${scale},${step}`);
+    // 끝나지 않는 회귀는 시험이 매달리지 않게 따로 띄운 프로세스에서 시간 제한을 걸어 본다
+    const probe = `import { gridLines } from ${JSON.stringify(pathToFileURL(path.join(DIR, 'view2d.js')).href)}; for (const o of [-1.18e201, 1e200, -1e300, Infinity, -Infinity, NaN]) for (const st of [100, 5000, 50000]) { const l = gridLines(o, 800, 0.004, st); if (!(l.length < 4000 && l.every(Number.isFinite))) throw new Error('격자선 ' + o + ' ' + st + ' ' + l.length); }`;
+    const r = require('child_process').spawnSync(process.execPath, ['--input-type=module', '-e', probe], { timeout: 15000, encoding: 'utf8' });
+    assert.strictEqual(r.status, 0, `극단 좌표(1e200 등)에서도 격자선 계산이 끝나야 한다 ${r.error ? r.error.code : ''} ${r.stderr}`); }
+  { const tpl = JSON.parse(fs.readFileSync(path.join(DIR, 'data/templates.json'), 'utf8')).templates, apt = tpl.find((t) => t.id === 'apt-a').doc, af = Mo.curFloor(apt);
+    near(M.floorAreaM2(apt, af), 82.4625, 1e-9, '실면적 = 방 면적 합');
+    // 손계산: apt-a 의 방을 둘러싼 벽 26개(길이 합 74.2 m) × 두께 150 mm = 11.13 m² → 82.4625 + 11.13 = 93.5925. 방마다 더하던 98.9025 는 내벽을 두 번 센 값
+    near(M.floorAreaM2(apt, af, true), 93.5925, 1e-9, 'apt-a 실면적+내외벽'); assert.strictEqual(M.fmtArea(M.floorAreaM2(apt, af, true)), '93.6 m²');
+    assert.ok(af.rooms.some((r) => af.rooms.some((q) => q !== r && q.wallIds.some((i) => r.wallIds.includes(i)))), 'apt-a 에는 이웃 방이 같이 쓰는 벽이 있다');
+    for (const t of tpl) { const f = Mo.curFloor(t.doc), b = G.bounds(t.doc), box = ((b.x1 - b.x0) * (b.y1 - b.y0)) / 1e6, net = M.floorAreaM2(t.doc, f), gross = M.floorAreaM2(t.doc, f, true);
+      const walls = new Set(f.rooms.flatMap((r) => r.wallIds)); let wa = 0; for (const w of f.walls) if (walls.has(w.id)) wa += (G.wallLen(w) * w.t) / 1e6;
+      near(gross - net, wa, 1e-9, t.id + ' 벽 면적은 벽마다 한 번'); assert.ok(gross > net && gross <= box * 1.005, `${t.id} 실면적+내외벽 ${gross.toFixed(2)} 은 바깥 경계 ${box.toFixed(2)} 를 넘지 않는다`); } }
+
+  /* ===== 12. app.js 약속(DOM 이 있어야 돌아서 코드 모양으로 지킨다 — 화면 동작은 playwright 로 따로 본다) ===== */
+  { const code = app, has = (re, m) => assert.ok(re.test(code), '코드: ' + m);
+    has(/mod && e\.code === 'KeyS'\) \{[^}]*a\.blur\(\);\s*save\(\);/, 'Ctrl+S — 포커스된 입력칸을 먼저 벗어나 미확정 값을 문서에 넣고 저장');
+    has(/function save\(\) \{\s*if \(!kept\) \{ toast\(NO_STORE, 'err'\); return false; \}/, '저장소가 막혀 있으면 저장한 것으로 치지 않는다');
+    has(/setText\(ss, !kept \? NO_STORE :/, '저장 상태에 막힌 저장소 안내를 계속 보인다'); has(/ss\.dataset\.s = dirty \|\| !kept/, '막힌 저장소는 저장됨 표시를 하지 않는다');
+    assert.ok(/이 브라우저는 저장소를 막고 있어 저장되지 않습니다 · 도면 내보내기\(\.json\)로 보관하세요/.test(rd('app.js')), '막힌 저장소 안내 문구');
+    has(/const setText = \(el, t\) => \{ if \(el\.textContent !== t\) el\.textContent = t; \}/, '낭독 영역은 글자가 바뀔 때만 쓴다'); has(/setText\(\$\('plArea'\)/, '면적 output'); has(/setText\(o, get\(e\)\)/, '선택 속성 output');
+    assert.ok(!/(ss|\$\('plArea'\))\.textContent =/.test(code), '저장 상태·면적을 textContent 로 곧바로 쓰지 않는다');
+    has(/floorAreaM2\(d, f, state\.areaGross\)/, '층 면적 합은 floorAreaM2 로');
+    has(/toast\(`\$\{label\} 값이 올바르지 않습니다`, 'err'\); else set\(v\); show\(\);/, '속성 숫자 칸 — 거절돼도 칸을 문서 값으로'); has(/toast\(`\$\{label\} 을 비울 수 없습니다`, 'err'\); else set\(v\); show\(\);/, '속성 글자 칸');
+    has(/el\.value = String\(curFloor\(store\.doc\)\[key\]\)/, '층 높이·슬래브 칸'); has(/nm\.value = curFloor\(store\.doc\)\.name/, '층 이름 칸');
+    has(/let finishMap = null, v3Plain = false, entering3d = false;/, '3D 진입 상태'); assert.ok(!/finishMap = new Map\(\)\; \}/.test(code) && !/catch \(e\) \{ finishMap = new Map\(\)/.test(code), '마감재 목록을 못 읽었을 때 빈 목록을 저장해 두지 않는다');
+    has(/if \(entering3d\) return;\s*entering3d = true;/, '3D 여는 중 가드'); has(/finally \{ entering3d = false; \}/, '가드는 끝나면 풀린다'); has(/finishColor: \(kind, id\) => finishMap && finishMap\.get\(id\)/, '3D 가 읽는 마감재 색은 지금의 목록');
+    has(/if \(v3 && v3Plain && sw\) \{ v3\.destroy\(\); v3 = null; \}/, '색 없이 만든 3D 는 목록을 읽은 뒤 다시 만든다');
+    has(/function setPanel\(open\) \{\s*if \(open && narrow\.matches\) setSide\(false\);/, '폰: 시트를 열면 서랍을 닫는다'); has(/function setSide\(open\) \{\s*if \(open && narrow\.matches\) setPanel\(false\);/, '폰: 서랍을 열면 시트를 닫는다');
+    has(/narrow\.addEventListener\('change', onMode\); mid\.addEventListener\('change', onMode\)/, '창 폭이 바뀌면(회전·확대) 패널 상태를 정리'); has(/setPanel\(!narrow\.matches\); setSide\(!mid\.matches\)/, '폰: 시트 닫음 · 1023px 이하: 오른쪽 패널 접음 · 데스크톱: 둘 다 연다'); has(/if \(narrow\.matches\) setPanel\(false\);\s*if \(mid\.matches\) setSide\(false\);/, '시작할 때도 같은 규칙');
+    has(/state\.touch = narrow\.matches \|\| coarse\.matches;/, '폰·터치 화면 판정'); has(/class: 'ed-b', id: 'plEndTool', text: '끝내기'[^\n]*ui\.setTool\('select'\)/, '[끝내기] 단추 = 선택 도구로'); has(/endBtn\.hidden = !\(state\.touch && tools && tools\.tool !== 'select'\)/, '[끝내기] 단추는 터치 화면에서 도구를 연 동안만');
+    has(/async function openTemplate\(id\) \{[^}]*await confirmDiscard\('템플릿으로 시작하면'\)/, '템플릿 시작도 저장 안 한 변경 확인창을 거친다'); }
 
   console.log('test-plan-ui: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

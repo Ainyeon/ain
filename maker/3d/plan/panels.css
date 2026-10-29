@@ -121,4 +121,13 @@
 .pl-est-dl { min-height: 40px; padding: 0 var(--sp-4); background: var(--c-accent); border: 1px solid var(--c-accent); border-radius: var(--r-1); color: var(--c-surface); font-weight: var(--fw-semi); }
 .pl-est-dl:hover { background: var(--c-ink); border-color: var(--c-ink); }
 
+/* 터치(손가락): 판 안의 눌리는 것은 전부 44px 이상 — plan.css 의 .ed-* 규칙과 같은 값. 즐겨찾기는 카드 오른쪽 위에 얹히므로 카드 윗줄을 그만큼 비운다 */
+@media (pointer: coarse) {
+  .pl-tabs-tab, .pl-chips-tab, .pl-fav, .pl-btn, .pl-link, .pl-search, .pl-sort, .pl-est-dl { min-height: 44px; }
+  .pl-tabs-tab, .pl-chips-tab, .pl-fav, .pl-btn { min-width: 44px; }
+  .pl-link { display: inline-flex; align-items: center; }
+  .pl-grid--1 .pl-fav { top: var(--sp-1); right: var(--sp-1); }
+  .pl-prod-type { min-height: 40px; }
+}
+
 @media (prefers-reduced-motion: reduce) { .pl-root *, .pl-est * { transition: none !important; } }
