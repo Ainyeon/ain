@@ -475,11 +475,24 @@
     return { bom: sum ? (sum.bom || []).length : 0, pend: sum ? (sum.pending || []).length : 0, empty: !items.length && !sum };
   }
 
+  function openSheet(dlg, push) {                        // 창 열기 — 기록을 하나 쌓아 두어 뒤로가기 = 닫기(push === false: 쌓지 않는다)
+    if (dlg.open) return;
+    if (push !== false) { S.sheet = true; history.pushState({ v: S.view, sheet: 1 }, ''); }
+    dlg.showModal();
+  }
+  const TOUR_KEY = 'maker_guide_studio_v1';              // 다른 도구의 첫 방문 안내와 같은 이름 규칙(maker_guide_<도구>_v1)
+  function tourOnce(hash, back) {                        // 맨 처음 온 방문에만 — 임베드(호스트 화면 안)·주소로 온 방문(작업·도구·예시)·로그인 왕복은 건드리지 않는다
+    if (document.documentElement.hasAttribute('data-embed') || hash || back) return;
+    try { if (localStorage.getItem(TOUR_KEY)) return; localStorage.setItem(TOUR_KEY, '1'); } catch (e) { return; }
+    $('stHelp').focus({ preventScroll: true });          // 닫으면 초점이 [사용법]으로 돌아온다(열기 전 초점이 없던 방문)
+    openSheet($('stTour'), false);                       // 조작 없이 쌓은 기록은 크롬이 뒤로가기에서 건너뛴다 — 자동으로 여는 창은 기록을 쌓지 않는다
+  }
+
   async function myJobs() {                              // 창으로 — 큰 판은 뒤에 그대로. 뒤로가기 = 닫기
     if (!S.session) return login(false);
     const dlg = $('stJobs'), body = $('stJobsBody');
     body.replaceChildren(h('p', { class: 'st-msg', text: '불러오는 중…' }));
-    if (!dlg.open) { S.sheet = true; history.pushState({ v: S.view, sheet: 1 }, ''); dlg.showModal(); }
+    openSheet(dlg);
     const r = await client().from('studio_jobs').select('id,tool,status,created_at').order('id', { ascending: false }).limit(20);
     const st = { uploading: '올리는 중', queued: '대기', running: '만드는 중', done: '완료', failed: '실패', expired: '보관 끝' };
     body.replaceChildren(r.error ? h('p', { class: 'st-msg err', text: errText(r.error) })
@@ -704,10 +717,14 @@
     $('stGo').addEventListener('click', submit);
     $('stRe').addEventListener('click', submit);
     $('stMine').addEventListener('click', myJobs);
-    const dlg = $('stJobs');
-    $('stJobsX').addEventListener('click', () => dlg.close());
-    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });   // 창 밖을 누르면 닫는다
-    dlg.addEventListener('close', () => { if (S.sheet) { S.sheet = false; S.skip = true; history.back(); } });   // 닫기·Esc — 창을 열 때 쌓은 기록을 걷는다
+    const sheets = [[$('stJobs'), $('stJobsX')], [$('stTour'), $('stTourX')]];
+    for (const [dlg, x] of sheets) {
+      x.addEventListener('click', () => dlg.close());
+      dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });   // 창 밖을 누르면 닫는다
+      dlg.addEventListener('close', () => { if (S.sheet) { S.sheet = false; if (history.state && history.state.sheet) { S.skip = true; history.back(); } } });   // 닫기·Esc — 창을 열 때 쌓은 기록을 걷는다(그 사이 화면이 넘어갔으면 건드리지 않는다)
+    }
+    $('stHelp').addEventListener('click', () => openSheet($('stTour')));
+    $('stTourGo').addEventListener('click', () => $('stTour').close());
     $('stTools').replaceChildren(...TOOLS.map((t) => h('button', { type: 'button', text: t.name, onclick: () => openTool(t.id) })));
     const drop = $('stDrop');
     document.addEventListener('dragover', (e) => { e.preventDefault(); if ($('stPanel').hidden) drop.classList.add('over'); });
@@ -719,7 +736,7 @@
     });
     window.addEventListener('popstate', (e) => {                // 폰 뒤로가기 = 앞 단계. 넣기로 돌아가면 파일을 비운다(넣기 칸이 다시 보이게)
       if (S.skip) { S.skip = false; return; }                   // 창을 닫으며 걷은 기록
-      if (S.sheet) { S.sheet = false; dlg.close(); return; }    // 창이 떠 있으면 닫기만
+      if (S.sheet) { S.sheet = false; for (const [d] of sheets) d.close(); return; }    // 창이 떠 있으면 닫기만
       let v = (e.state && e.state.v) || 'in';
       const j = location.hash.match(/^#job-(\d+)$/);
       if (v === 'out' && j && S.session) return runView(+j[1], false);   // 작업 기록으로 돌아오면 그 작업을 다시 연다(다시 만든 뒤 뒤로 = 앞 작업)
@@ -751,6 +768,7 @@
     else if (back && S.session && (await idb('readonly', (s) => s.get('p')))) resume();   // 파일을 맡겨 두고 로그인하러 갔다 온 방문만
     else if (hash === '#sample') see();
     else if (TOOLS.some((t) => '#' + t.id === hash)) openTool(hash.slice(1));
+    else tourOnce(hash, back);
     tell('ready');
   });
 }());

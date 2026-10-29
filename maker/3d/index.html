@@ -22,11 +22,11 @@
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
   <link rel="stylesheet" href="/assets/css/components.css?v=30">
   <link rel="stylesheet" href="/maker/maker.css?v=30">
-  <link rel="stylesheet" href="/maker/3d/studio.css?v=8">
+  <link rel="stylesheet" href="/maker/3d/studio.css?v=9">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
   <script defer src="/auth.js?v=30"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
-  <script defer src="/maker/3d/studio.js?v=10"></script>
+  <script defer src="/maker/3d/studio.js?v=11"></script>
 </head>
 <body class="has-tabbar">
   <header class="pt-bar" id="ptBar" hidden>
@@ -52,7 +52,10 @@
         <div class="sec-label">도구</div>
         <h1 class="page-title">3D 스튜디오</h1>
       </div>
-      <button type="button" class="btn-line" id="stMine" hidden>내 작업</button>
+      <div class="st-head-btns">
+        <button type="button" class="btn-line" id="stHelp">사용법</button>
+        <button type="button" class="btn-line" id="stMine" hidden>내 작업</button>
+      </div>
     </header>
 
     <div class="st-wiz" id="stWiz">
@@ -121,6 +124,17 @@
   <dialog class="st-dlg" id="stJobs" aria-labelledby="stJobsH">
     <header><h2 class="st-sh" id="stJobsH">내 작업</h2><button type="button" class="btn-line" id="stJobsX">닫기</button></header>
     <div class="st-dlg-in" id="stJobsBody"></div>
+  </dialog>
+  <dialog class="st-dlg" id="stTour" aria-labelledby="stTourH">
+    <header><h2 class="st-sh" id="stTourH">사용법</h2><button type="button" class="btn-line" id="stTourX">닫기</button></header>
+    <div class="st-dlg-in">
+      <ol class="st-tour" role="list">
+        <li><strong>도면 넣기</strong><span>DWG · DXF · PDF · 사진, 20MB까지.</span></li>
+        <li><strong>받을 것 고르기</strong><span>도면대로 · 사진처럼 · 디자인 제안 중 하나.</span></li>
+        <li><strong>만들기</strong><span>카카오 로그인 뒤 만들고, 결과는 14일 동안 계정에 남습니다.</span></li>
+      </ol>
+      <div class="st-row"><button type="button" class="primary" id="stTourGo">시작하기</button></div>
+    </div>
   </dialog>
 </body>
 </html>
