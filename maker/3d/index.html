@@ -23,11 +23,12 @@
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
   <link rel="stylesheet" href="/assets/css/components.css?v=30">
   <link rel="stylesheet" href="/maker/maker.css?v=30">
-  <link rel="stylesheet" href="/maker/3d/studio.css?v=11">
+  <link rel="stylesheet" href="/maker/3d/studio.css?v=12">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
   <script defer src="/auth.js?v=30"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
-  <script defer src="/maker/3d/studio.js?v=13"></script>
+  <script defer src="/maker/3d/ask.js?v=1"></script>
+  <script defer src="/maker/3d/studio.js?v=14"></script>
 </head>
 <body class="has-tabbar">
   <header class="pt-bar" id="ptBar" hidden>
@@ -58,6 +59,16 @@
         <button type="button" class="btn-line" id="stMine" hidden>내 작업</button>
       </div>
     </header>
+
+    <section class="st-ask" id="stAsk" aria-labelledby="stAskH">
+      <h2 class="st-vh" id="stAskH">말로 시키기</h2>
+      <form class="st-ask-card" id="stAskForm" autocomplete="off">
+        <input type="text" id="stAskIn" name="ask" placeholder="스튜디오를 말로 시킵니다 · 예) 거실 보여줘" enterkeyhint="send" maxlength="80" aria-label="말로 시키기">
+        <button type="submit" class="st-ask-send" id="stAskGo">보내기</button>
+      </form>
+      <div class="st-ask-chips" id="stAskChips" role="group" aria-label="예시 문장"></div>
+      <ol class="st-ask-log" id="stAskLog" role="log" aria-live="polite"></ol>
+    </section>
 
     <div class="st-wiz" id="stWiz">
       <div class="st-left">

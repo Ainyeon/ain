@@ -127,4 +127,8 @@ assert.ok(/html\[data-embed\] \.page-head > div:first-child/.test(css) && !/html
   assert.ok(/id="stDropF"/.test(wiz) && /id="stFileF"/.test(wiz) && /st-fold-in/.test(wiz), '드롭 칸·파일 줄은 접히는 칸 안에');
 }
 
+// 말로 시키기(2026-10-29) — ask.js 는 페이지와 sw SHELL 에 같은 주소로, 카드는 임베드에서 숨긴다
+assert.ok(page.includes('/maker/3d/ask.js?v=1') && sw.includes("'/maker/3d/ask.js?v=1'") && /id="stAskForm"/.test(page), 'ask.js 와 말로 시키기 카드');
+assert.ok(/html\[data-embed\] \.st-ask\s*\{\s*display:\s*none/.test(css), '임베드(호스트 화면 안)에서는 말로 시키기 카드를 숨긴다');
+
 console.log('test-studio-live: OK');

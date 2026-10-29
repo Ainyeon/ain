@@ -583,6 +583,49 @@
       } catch (e) { res(null); }
     });
   }
+  // ── 말로 시키기 ────────────────────────────────────────────
+  const ASK_DO = {                                       // ask.js 가 내는 동작 종류 → 화면의 단추를 누른다(값은 ask.js 의 정해진 어휘뿐 — 선택자에 말을 싣지 않는다)
+    out: (a) => { const i = $('stPickSet').querySelector('input[value="' + a.v + '"]'); if (i) i.click(); },
+    opt: (a) => { const b = [...$('stMoreBody').querySelectorAll('button')].find((x) => x.textContent === LBL[a.v]); if (b) b.click(); },
+    room: (a) => {
+      const m = [...$('stRail').querySelectorAll('input')].find((q) => q._x === null);   // 큰 판이 그림이면 먼저 모형으로
+      if (m && !m.checked) m.click();
+      const b = [...$('stLiveNav').children].find((x) => x.textContent === a.v); if (b) b.click();
+    },
+    tool: (a) => { const b = [...$('stTools').children].find((x) => x.textContent === a.v); if (b) b.click(); },
+    sum: () => { $('stSum').focus({ preventScroll: true }); $('stSum').scrollIntoView({ behavior: motion(), block: 'start' }); },
+    tour: () => openTour(),
+    make: () => { if (!$('stGo').disabled) $('stGo').click(); },
+    pickFile: () => $('stPick').click(),                 // 보내기를 누른 직후라 파일 창이 열린다
+  };
+  function askUI() {
+    if (!window.AinAsk) { $('stAsk').hidden = true; return; }   // ask.js 를 못 받았으면 카드를 숨긴다
+    const inp = $('stAskIn'), log = $('stAskLog'), chips = $('stAskChips');
+    const ctx = () => ({ hasFile: !!S.file, hasResult: !!$('stSum').children.length, session: !!S.session, rooms: [...$('stLiveNav').children].map((b) => b.textContent) });
+    let shown = '';
+    const fresh = () => {                                // 예시 문장이 그대로면 다시 그리지 않는다(눌러 둔 단추의 초점이 사라지지 않게)
+      const list = window.AinAsk.suggest(ctx()), key = list.join('|');
+      if (key === shown) return;
+      shown = key;
+      chips.replaceChildren(...list.map((s) => h('button', { type: 'button', class: 'st-chip', text: s, onclick: () => run(s) })));
+    };
+    const add = (who, text) => { if (!text) return; log.append(h('li', { class: 'st-ask-' + who, text })); while (log.children.length > 6) log.firstChild.remove(); };
+    const run = (text) => {
+      const t = (text || '').trim();
+      if (!t) return;
+      add('me', t);
+      const r = window.AinAsk.parse(t, ctx());
+      add('bot', r.reply);
+      for (const a of r.acts) { try { ASK_DO[a.do](a); } catch (e) { console.warn('ask', e); } }
+      inp.value = '';
+      fresh();
+    };
+    $('stAskForm').addEventListener('submit', (e) => { e.preventDefault(); run(inp.value); });
+    fresh();
+    const follow = new MutationObserver(fresh);          // 방 단추가 생기고, 파일을 넣고, 결과가 오면 예시 문장도 따라간다
+    follow.observe($('stLiveNav'), { childList: true }); follow.observe($('stSum'), { childList: true }); follow.observe($('stWiz'), { attributes: true, attributeFilter: ['data-file'] });
+  }
+
   async function login(withFile, btn) {                  // btn: 누른 단추(없으면 [만들기]) — 이동 중 표시와 실패 복구는 그 단추에
     if (document.documentElement.hasAttribute('data-embed')) {   // 카카오 로그인 화면은 iframe 안에서 열리지 않는다 — 같은 파트너 화면을 새 창으로
       window.open(location.origin + '/maker/3d/' + (P.id ? '?partner=' + P.id : ''), '_blank', 'noopener');
@@ -789,6 +832,7 @@
     const back = /access_token=|[?&]code=/.test(location.hash + location.search);   // 로그인 왕복에서 돌아옴 — 로그인 라이브러리가 주소를 걷기 전에 읽는다
     let savedJob = 0;                                    // 로그인하러 가기 전에 보던 작업 번호(번호만, 15분) — 돌아오는 주소에는 아무것도 못 싣는다
     try { const j = JSON.parse(localStorage.getItem('ain-job') || 'null'); if (j && Date.now() - j.at < 15 * 60000) savedJob = +j.id || 0; if (back) localStorage.removeItem('ain-job'); } catch (e) {}
+    askUI();
     for (const id of ['stInMsg', 'stLiveMsg']) rise($(id));   // 안내·오류·모형 글이 바뀔 때 떠오르게
     try { window.ainAuth.init('authSlot'); } catch (e) {}
     $('authSlot').addEventListener('click', (e) => {     // 파트너·임베드 주소에는 ?partner 가 남아 있다 — 헤더 로그인이 그 쿼리를 돌아올 주소에 싣지 않게(로그인 허용 주소는 글자까지 맞아야 한다)

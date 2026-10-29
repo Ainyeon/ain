@@ -230,6 +230,24 @@
 .st-tour-dots span.on { width: var(--sp-5); background: var(--c-ink); }
 @media (max-height: 520px) { .st-tour-art { aspect-ratio: 3 / 1; } }   /* 가로로 든 폰 — 그림을 낮춘다(넘치면 본문만 안에서 스크롤) */
 @media (max-width: 640px) { .st-tour-p p { min-height: calc(var(--lh-3) * 2em); } }   /* 단계마다 문장 줄 수가 달라도 창 높이가 뛰지 않게 */
+/* 말로 시키기 — 입력 카드 + 예시 문장 알약 + 응답 줄(정해진 말을 알아듣는다). 아키스케치 에이전트 화면의 구조만: 카드 하나, 아래에 눌러 보는 예시 */
+.st-ask { padding: var(--sp-4) 24px 0; }
+.st-ask-card { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1); background: var(--c-surface); border: 1px solid var(--c-control); border-radius: var(--r-3);
+  transition: border-color var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
+.st-ask-card:focus-within { border-color: var(--c-accent); box-shadow: 0 0 0 1px var(--c-accent); }
+.st-ask-card input { flex: 1; min-width: 0; min-height: 44px; padding: 0 var(--sp-3); border: 0; background: transparent; color: var(--c-ink); font: inherit; font-size: 16px /* iOS 확대 방지 예외 */; }
+.st-ask-card input:focus { outline: none; }
+.st-ask-send { min-height: 44px; padding: 0 var(--sp-5); border: 0; border-radius: var(--r-1); background: var(--c-accent); color: var(--c-surface); font: inherit; font-size: var(--fs-3); font-weight: var(--fw-bold); cursor: pointer; }
+.st-ask-chips { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); padding-bottom: 2px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+.st-chip { flex: none; min-height: 40px; padding: 0 var(--sp-4); border: 1px solid var(--c-line-strong); border-radius: 999px; background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: var(--fs-3); font-weight: var(--fw-semi); cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), scale var(--t-fast) var(--ease); }
+.st-chip:focus-visible, .st-ask-send:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+.st-ask-log { margin: var(--sp-2) 0 0; padding: 0; list-style: none; display: grid; gap: var(--sp-1); }
+.st-ask-log:empty { display: none; }
+.st-ask-log li { font-size: var(--fs-3); line-height: var(--lh-3); overflow-wrap: anywhere; word-break: keep-all; animation: st-in var(--t-slow) var(--ease-out) backwards; }
+.st-ask-me { justify-self: end; padding: var(--sp-1) var(--sp-3); border: 1px solid var(--c-line); border-radius: 999px; background: var(--c-surface-sub); color: var(--c-ink); }
+.st-ask-bot { color: var(--c-ink-sub); }
+html[data-embed] .st-ask { display: none; }   /* 호스트 화면 안에서는 조용히 */
 /* 사진 손질(기존 도구 화면) */
 .st-tools { padding: var(--sp-7) 24px 0; }
 .st-panel { margin-top: var(--sp-4); padding: var(--sp-5); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-3); box-shadow: var(--sh-2); }
@@ -254,24 +272,25 @@
 .st-row button:focus-visible, .st-jobs button:focus-visible, .st-go button:focus-visible, .st-bar button:focus-visible, .st-save:focus-visible,
 .st-acts a:focus-visible, .st-tail button:focus-visible, .st-dlg button:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
 /* 단추 질감 한 가지 — 흰 단추: hover 는 배경·테두리가 한 단계, 눌림은 한 단계 더 / 채운 단추: hover 는 어둡게(.94), 눌림은 더 어둡게(.88)와 .98 로 눌림. 번쩍이지 않는다 */
-.st-main .btn-line, .st-dlg .btn-line, .st-row button, .st-jobs button, .st-save, .st-go button, .st-bar button { -webkit-tap-highlight-color: transparent;
+.st-main .btn-line, .st-dlg .btn-line, .st-row button, .st-jobs button, .st-save, .st-go button, .st-bar button, .st-ask-send { -webkit-tap-highlight-color: transparent;
   transition: color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), filter var(--t-fast) var(--ease), scale var(--t-fast) var(--ease), opacity var(--t-base) var(--ease); }
 @media (hover: hover) {
+  .st-chip:hover { border-color: var(--c-control); background: var(--c-surface-sub); }
   .st-main .btn-line:hover, .st-dlg .btn-line:hover, .st-row button:not(.primary):not(.on):hover, .st-jobs button:hover, #stRe:not(:disabled):hover { border-color: var(--c-control); background: var(--c-surface-sub); color: var(--c-ink); }
   .st-opt:hover input:not(:checked) + .st-opt-b, .st-th:hover input:not(:checked) + .b { border-color: var(--c-control); background: var(--c-surface-sub); }
   .st-opt:hover input:not(:checked) + .st-opt-b .t, .st-th:hover input:not(:checked) ~ .t { color: var(--c-ink); }
-  .st-row button.primary:hover, .st-save:not(:disabled):hover, .st-go button:not(:disabled):hover, #stGo:not(:disabled):hover { filter: brightness(.94); }
+  .st-row button.primary:hover, .st-ask-send:hover, .st-save:not(:disabled):hover, .st-go button:not(:disabled):hover, #stGo:not(:disabled):hover { filter: brightness(.94); }
 }
 .st-main .btn-line:active, .st-dlg .btn-line:active, .st-row button:not(.primary):not(.on):active, .st-jobs button:active, #stRe:not(:disabled):active { background: var(--c-bg); }
-.st-row button.primary:active, .st-save:not(:disabled):active, .st-go button:not(:disabled):active, #stGo:not(:disabled):active { filter: brightness(.88); scale: .98; }
-.st-th:active .b, .st-opt:active .st-opt-b { scale: .97; }
+.st-row button.primary:active, .st-ask-send:active, .st-save:not(:disabled):active, .st-go button:not(:disabled):active, #stGo:not(:disabled):active { filter: brightness(.88); scale: .98; }
+.st-th:active .b, .st-opt:active .st-opt-b, .st-chip:active { scale: .97; }
 /* 흰 단추(btn-line)는 한 규격 — 44px · 같은 안쪽 여백·글자(터치 노트북·가로 태블릿도 같게) */
 .st-main .btn-line, .st-dlg .btn-line { min-height: 44px; padding: 0 var(--sp-4); font-size: var(--fs-3); font-weight: var(--fw-bold); }
 /* 채운 단추도 한 규격 — 글자·모서리는 같고 높이만 44(만들기 바 안은 48) */
 .st-save, .st-go button, .st-row button.primary, .st-bar button { font-size: var(--fs-3); font-weight: var(--fw-bold); border-radius: var(--r-1); }
 .st-save:disabled, .st-go button:disabled, #stGo:disabled { opacity: 1; background: var(--c-accent-line); color: var(--c-ink-sub); cursor: default; }   /* 비활성도 읽히게 — 흰 글자 3.07 → 4.5 이상 */
 @media (max-width: 768px) {
-  .st-wiz, .st-tools, .st-sum { padding-left: 16px; padding-right: 16px; }
+  .st-wiz, .st-tools, .st-sum, .st-ask { padding-left: 16px; padding-right: 16px; }
   .st-panel { padding: var(--sp-4); }
   .st-canvas[style] { max-width: min(100%, calc(60svh * var(--ar))); margin-inline: auto; }   /* 칠 캔버스 위아래에 페이지를 밀 자리를 남긴다 */
 }
