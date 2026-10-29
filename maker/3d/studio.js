@@ -30,16 +30,21 @@
   const EX = [].concat(...Object.entries(DEMO).map(([g, xs]) => xs.map(([f, cap, short]) => ({ url: f.startsWith('/') ? f : D + f, cap, short, group: g, ai: g === 'photo' }))));
   const BLANK = {};                                      // 큰 판에 올릴 것이 아직 없을 때(주소로 연 작업) — 글 없는 빈 판
   const LBL = { lg: 'LG', samsung: '삼성', white: '화이트', wood: '우드', gray: '그레이', day: '낮', evening: '저녁' };
-  const ERR = {
-    login_required: '로그인이 필요합니다.', tool_not_allowed: '지금은 쓸 수 없는 도구입니다.', limit_month: '이번 달 작업 한도를 다 썼습니다.',
-    limit_active: '진행 중인 작업이 끝나면 다시 올려 주세요.', bad_file: '올릴 수 없는 파일입니다.', not_found: '작업을 찾지 못했습니다.',
+  const ERR = {                                          // 사실 + 다음 행동 — 서버 오류 코드는 화면에 그대로 내보내지 않는다(한도 숫자는 서버 상수라 싣지 않는다)
+    login_required: '로그인이 풀렸습니다 · 다시 로그인해 주세요.', tool_not_allowed: '지금은 쓸 수 없습니다 · 다른 받을 것을 골라 주세요.',
+    limit_month: '이번 달 작업 한도를 다 썼습니다 · 다음 달 1일에 다시 열립니다.', limit_active: '진행 중이거나 올리다 멈춘 작업이 있습니다 · 내 작업에서 확인해 주세요. 멈춘 작업은 얼마 뒤 풀립니다.',
+    bad_file: '이 파일은 올릴 수 없습니다 · DWG·DXF·PDF·사진으로 다시 넣어 주세요.', not_found: '이 계정에서 찾을 수 없는 작업입니다 · 내 작업에서 골라 주세요.',
     PGRST202: '지금은 예시만 됩니다.',
   };
   const OK_EXT = ['dwg', 'dxf', 'pdf', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];
   const S = { session: null, file: null, out: 'cg', opt: { brand: 'lg', style: 'white', mood: 'day', area: '' }, timer: null, busy: false, view: 'in',
     items: [], pic: null, tok: 0, fin: false, sent: null, sheet: false };   // items 번호 줄 · pic 큰 판에 올린 것(null = 모형) · sent 이 방문에서 올린 작업
   const $ = (id) => document.getElementById(id);
+  document.addEventListener('touchstart', () => {}, { passive: true });
+  const rise = (el) => { if (el) new MutationObserver(() => { el.classList.remove('say'); void el.offsetWidth; el.classList.add('say'); }).observe(el, { childList: true, characterData: true, subtree: true }); };   // 상태 글이 바뀌면 띡 바뀌지 않고 떠오른다(애니는 .say 가 건다)   // iOS 사파리는 이게 있어야 눌린 순간(:active)이 보인다
   const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const CSSV = getComputedStyle(document.documentElement), ms = (k, d) => parseFloat(CSSV.getPropertyValue(k)) || d;   // 전환 시간은 CSS 토큰이 정한다 — 타이머도 같은 값을 따라간다
+  const T = { base: ms('--t-base', 200), slow: ms('--t-slow', 350), wait: ms('--t-wait', 250) };
   const motion = () => (still() ? 'auto' : 'smooth');
 
   function h(tag, attrs, kids) {                         // 작은 DOM 도우미 — 글자는 textContent 로만
@@ -54,7 +59,15 @@
     for (const c of [].concat(kids || [])) if (c) el.append(c);
     return el;
   }
-  const errText = (e) => ERR[(e && (e.code === 'PGRST202' ? 'PGRST202' : e.message)) || ''] || ('처리하지 못했습니다' + (e && e.message ? ' — ' + e.message : ''));
+  const lostLogin = (e) => !!e && (e.code === '42501' || e.code === 'PGRST301' || e.status === 401 || /login_required|permission denied|jwt/i.test(e.message || ''));   // 로그인이 풀리면 서버는 함수 권한 없음(42501)으로 거절한다 — 코드 문자열을 기다리지 않는다
+  const errText = (e) => {
+    if (lostLogin(e)) return ERR.login_required;
+    const known = ERR[(e && (e.code === 'PGRST202' ? 'PGRST202' : e.message)) || ''];
+    if (known) return known;
+    if (!navigator.onLine || /network|fetch|load failed|timeout/i.test((e && e.message) || '')) return '연결이 끊겼습니다 · 네트워크를 확인하고 다시 눌러 주세요.';
+    console.warn('studio', e);                          // 원문은 콘솔에만
+    return '처리하지 못했습니다 · 잠시 뒤 다시 눌러 주세요.';
+  };
   const client = () => window.ainAuth && window.ainAuth.getClient();
   const fmtMB = (n) => (n / MB < 1 ? Math.max(1, Math.round(n / 1024)) + 'KB' : (n / MB).toFixed(1) + 'MB');
   const clean = (cap) => (cap || '').replace(/\s*·\s*형태 일치 \d+%/, '').replace('(AI)', '').replace(' — 마감·가구는 AI', '').replace(' 다듬기', '');   // 수치는 AI 사진이 도면만큼 정확하다는 뜻으로 읽혀 화면에선 뺀다 · 'AI' 는 표시가, 나머지는 받을 것 줄이 이미 말한다
@@ -72,7 +85,7 @@
     if (!off) { el.classList.remove('bye'); el.hidden = false; return; }
     if (el.hidden) return;
     el.classList.add('bye');
-    el._t = setTimeout(() => { el.hidden = true; el.classList.remove('bye'); }, still() ? 0 : 200);
+    el._t = setTimeout(() => { el.hidden = true; el.classList.remove('bye'); }, still() ? 0 : T.base);
   }
   // ── 공동 브랜드(파트너) · 임베드 ─────────────────────────
   // ?partner=<이름> → /maker/3d/partners/<이름>.json(이름·로고·색·숨길 칸·허용 사이트). 검증을 통과한 것만 쓰고, 못 받으면 에인연 화면 그대로.
@@ -83,16 +96,22 @@
   async function partner() {
     const root = document.documentElement, id = root.getAttribute('data-partner');
     if (!id) return;
-    const off = () => root.removeAttribute('data-partner');
+    const off = (bad) => {
+      root.removeAttribute('data-partner');
+      for (const k of ['--c-accent', '--c-accent-bg', '--c-accent-line']) root.style.removeProperty(k);   // 검증 전에 캐시 색을 먼저 걸었다 — 실패하면 걷는다
+      if (bad) try { localStorage.removeItem('ain-pt-' + id); } catch (e) {}
+    };
     try {
-      const r = await fetch('/maker/3d/partners/' + id + '.json');
-      if (!r.ok) return off();
-      const c = await r.json(), hex = /^#[0-9a-f]{6}$/i;
+      const c = await (window.__ptCfg || fetch('/maker/3d/partners/' + id + '.json').then((r) => (r.ok ? r.json() : r.status === 404 ? null : { fail: true })));   // partner-boot.js 가 이미 받기 시작했다
+      if (c && c.fail) return off(false);                 // 못 받았다(망·서버 오류) — 색만 걷고 검증된 캐시는 남긴다
+      if (!c) return off(true);                           // 자료가 없다(404) — 캐시도 지운다
+      const hex = /^#[0-9a-f]{6}$/i;
       const ok = typeof c.name === 'string' && c.name.length > 0 && c.name.length <= 20 && /^\/maker\/3d\/partners\/[a-z0-9-]+\.svg$/.test(c.logo || '') && /^https:\/\//.test(c.home || '')
-        && [c.accent, c.accentBg, c.accentLine].every((x) => hex.test(x)) && contrast(c.accent, '#ffffff') >= 4.5 && contrast(c.accent, c.accentBg) >= 4.5;   // 글자 대비가 모자란 색은 쓰지 않는다
-      if (!ok) return off();
+        && [c.accent, c.accentBg, c.accentLine].every((x) => hex.test(x)) && contrast(c.accent, '#ffffff') >= 4.5 && contrast(c.accent, c.accentBg) >= 4.5 && contrast(c.accentLine, '#5C5850') >= 4.5;   // 비활성 [만들기] 는 accentLine 면에 보조 글자색   // 글자 대비가 모자란 색은 쓰지 않는다
+      if (!ok) return off(true);
       P.cfg = c; P.id = id;
       root.style.setProperty('--c-accent', c.accent); root.style.setProperty('--c-accent-bg', c.accentBg); root.style.setProperty('--c-accent-line', c.accentLine);
+      try { localStorage.setItem('ain-pt-' + id, JSON.stringify([c.accent, c.accentBg, c.accentLine])); } catch (e) {}   // 검증을 통과한 색만 — 다음 방문 첫 그림에 쓴다
       if (!root.hasAttribute('data-embed')) {
         $('ptLogo').href = c.home; $('ptLogoImg').src = c.logo; $('ptLogoImg').alt = c.name;
         $('ptAuth').append($('authSlot'));              // 로그인 단추도 이 줄로(같은 칸이라 로그인 동작은 그대로)
@@ -102,6 +121,12 @@
       document.title = c.name + ' 3D 스튜디오';
     } catch (e) { off(); }
   }
+  const keepQ = () => {                                  // 다시 쓰는 주소에 파트너·임베드 표시를 남긴다 — 로그인 토큰·코드는 싣지 않는다(표시 속성은 partner-boot.js 가 검증해 건 것)
+    const r = document.documentElement, k = [];
+    if (r.hasAttribute('data-partner')) k.push('partner=' + r.getAttribute('data-partner'));
+    if (r.hasAttribute('data-embed')) k.push('embed=1');
+    return k.length ? '?' + k.join('&') : '';
+  };
   const noTools = () => !!(P.cfg && (P.cfg.hide || []).includes('tools'));
   function tell(type, data) {                           // 임베드일 때만, 파트너가 허용한 사이트(hosts)에만 — 아무에게나 보내지 않는다
     if (!P.cfg || !document.documentElement.hasAttribute('data-embed') || window.parent === window) return;
@@ -115,6 +140,7 @@
   function clearFile() {                                 // 넣은 도면을 비운다 — 썸네일 주소도 놓는다
     if (S.file && S.file.thumb) URL.revokeObjectURL(S.file.thumb);
     S.file = S.mine = null;
+    const m = $('stInMsg'); m.className = 'st-msg'; m.textContent = '';   // 앞선 안내는 그 파일에 대한 것 — 파일과 함께 사라진다
     fileRow();
   }
   function seg(opts, cur, on, label) {                   // 하나 고르기 줄 — 다시 그리지 않고 표시만 바꾼다(색 전환이 돌고 초점이 남는다)
@@ -133,7 +159,7 @@
       demo();
     }
     bar();
-    if (push) history.pushState({ v }, '', location.pathname + location.search);
+    if (push) history.pushState({ v }, '', location.pathname + keepQ());
     if (v === 'pick') { $('stPickH').focus({ preventScroll: true }); $('stPickH').scrollIntoView({ behavior: motion(), block: 'nearest' }); }   // 보이면 그대로 — 큰 판에 올린 내 도면을 밀어내지 않는다
     if (v === 'out') { $('stOutH').focus({ preventScroll: true }); see(); }
   }
@@ -146,14 +172,16 @@
     if (S.live === mine) return;                         // 같은 장면이면 그대로(보던 자리 유지) — S.live: 아직 없음 undefined · 예시 null · 내 장면
     S.live = mine;
     const box = $('stLiveBox'), msg = $('stLiveMsg'), nav = $('stLiveNav');
-    if (S.frame) S.frame.remove();
+    const gone0 = S.frame; if (gone0) { gone0.inert = true; setTimeout(() => gone0.remove(), still() ? 0 : T.slow); }   // 옛 모형은 흐려지는 동안 조감 그림을 받치고 있다가 지운다(한 프레임에 사라지지 않게)
     box.classList.remove('on');
-    msg.textContent = '';
+    clearTimeout(S.slowT);
+    msg.textContent = '모형 받는 중…';                       // 받는 동안 빈 줄로 두지 않는다 — 늦으면 그렇게 말한다
+    S.slowT = setTimeout(() => { if (!box.classList.contains('on')) { msg.textContent = '모형이 늦어지고 있습니다'; S.slowT = setTimeout(() => { if (!box.classList.contains('on')) msg.textContent = '모형을 열지 못했습니다 · 번호 줄의 그림으로 확인해 주세요'; }, 22000); } }, 8000);
     nav.replaceChildren();
     box.querySelector('img').hidden = !!mine;            // 예시 그림은 내 모형 밑에 깔지 않는다('예시' 표시는 show() 가 맞춘다)
     const frame = S.frame = h('iframe', { src: '/maker/3d/view/?embed&scene=' + (mine ? '@host' : 'apartment&v=2'), title: mine ? '내 공간 모형' : '예시 평면 모형', loading: mine ? null : 'lazy' });
     const send = (m) => frame.contentWindow.postMessage(Object.assign({ ns: 'bd3d' }, m), location.origin);
-    const mark = (id) => { for (const b of nav.children) { const on = b.dataset.id === (id || '') || (!!id && b.dataset.zone === id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); } };   // 바닥을 눌러 들어가면 id 가 구역이다
+    const mark = (id) => { for (const b of nav.children) { const on = b.dataset.id === (id || '') || (!!id && b.dataset.zone === id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); if (on && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2, behavior: motion() }); } };   // 바닥을 눌러 들어가면 id 가 구역이다
     window.removeEventListener('message', S.heard);
     window.addEventListener('message', S.heard = (e) => {
       const m = e.data;
@@ -161,12 +189,13 @@
       if (m.type === 'need') { if (mine) send({ type: 'load', bundle: mine }); }
       else if (m.type === 'ready') {
         box.classList.add('on');
+        clearTimeout(S.slowT);
         S.up = frame;
         frame.inert = !!S.pic;
         if (mine && S.pic && (S.pic.mine || S.pic === BLANK)) show(null);   // 기다리던 판(내 도면·빈 판)이면 이제 모형으로 겹쳐 넘긴다 — 그 사이 고른 그림·결과는 덮지 않는다
         msg.textContent = '실내기를 눌러 보세요';
-        nav.replaceChildren(h('button', { type: 'button', 'data-id': '', text: '전체', onclick: () => send({ type: 'home' }) }),
-          ...(m.entries || []).slice(0, 12).map((en) => h('button', { type: 'button', 'data-id': String(en.id), 'data-zone': String(en.zone || ''), text: String(en.name), onclick: () => send({ type: 'goUnit', id: en.id }) })));
+        nav.replaceChildren(h('button', { type: 'button', 'data-id': '', style: '--i:0', text: '전체', onclick: () => send({ type: 'home' }) }),
+          ...(m.entries || []).slice(0, 12).map((en, k) => h('button', { type: 'button', 'data-id': String(en.id), 'data-zone': String(en.zone || ''), style: '--i:' + (k + 1), text: String(en.name), onclick: () => send({ type: 'goUnit', id: en.id }) })));
         mark(null);
       } else if (m.type === 'enter') { msg.textContent = `${m.title} · ${m.sub}`; mark(m.id); }
       else if (m.type === 'home') { msg.textContent = '실내기를 눌러 보세요'; mark(null); }
@@ -181,12 +210,14 @@
   function rail(items) {
     S.items = items;
     const had = $('stRail').contains(document.activeElement);   // 방향키로 넘기던 중이면 다시 그린 뒤 초점을 돌려준다
+    const old = new Set([...$('stRail').querySelectorAll('input')].map((q) => q._x));   // 이미 줄에 있던 칸 — 다시 그려도 사라졌다 떠오르지 않는다(새로 생긴 칸만 떠오른다)
     let n = 0, i = 0;
     const tile = (x, body, name, label) => {
       const inp = h('input', { type: 'radio', name: 'view', 'aria-label': label, onchange: () => show(x) });
       inp._x = x;
-      const el = h('label', { class: 'st-th' + (x && x.mine ? ' mine' : '') }, [inp, h('span', { class: 'b' }, body), h('span', { class: 't', text: name })]);
-      el.style.setProperty('--i', Math.min(i++, 12));
+      const kept = old.has(x);
+      const el = h('label', { class: 'st-th' + (x && x.mine ? ' mine' : '') + (kept ? ' kept' : '') }, [inp, h('span', { class: 'b' }, body), h('span', { class: 't', text: name })]);
+      if (!kept) el.style.setProperty('--i', Math.min(i++, 12));
       return el;
     };
     const pic = (x) => h('img', { src: x.url, alt: '', loading: 'lazy', decoding: 'async' });
@@ -223,22 +254,26 @@
     };
     if (x === prev) return sync();                       // 같은 것을 다시 올림 — 열리는 중인 층이 그대로 이긴다(토큰을 올리면 그 층이 스스로 지워진다)
     const tok = ++S.tok;
-    const old = [...box.querySelectorAll('.st-pic')], drop = () => setTimeout(() => old.forEach((o) => o.remove()), 400);
-    if (!x) { sync(); old.forEach((o) => o.classList.remove('in')); return drop(); }
+    const old = [...box.querySelectorAll('.st-pic')], drop = () => setTimeout(() => old.forEach((o) => o.remove()), T.slow + 50);   // 옛 층은 새 층이 다 열린 뒤에 지운다
+    if (!x) { clearTimeout(S.bt); box.removeAttribute('aria-busy'); sync(); old.forEach((o) => o.classList.remove('in')); return drop(); }
     const layer = h('div', { class: 'st-pic', 'data-d': prev && S.items.indexOf(prev) > S.items.indexOf(x) ? 'p' : 'n' });
-    const on = () => { if (tok !== S.tok) return layer.remove(); sync(); void layer.offsetWidth; layer.classList.add('in'); drop(); };
+    const on = () => { if (tok !== S.tok) return layer.remove(); clearTimeout(S.bt); box.removeAttribute('aria-busy'); sync(); void layer.offsetWidth; layer.classList.add('in'); drop(); };
     const fail = () => {                                 // 못 열었다(서명 주소 만료·망 끊김) — 앞 상태로 되돌린다(모형이면 다시 눌린다)
       layer.remove();
       if (tok !== S.tok) return;
+      clearTimeout(S.bt); box.removeAttribute('aria-busy');
       S.pic = prev; mark();
       if (prev) capErr(); else $('stLiveMsg').textContent = '열지 못했습니다';
     };
+    clearTimeout(S.bt); box.removeAttribute('aria-busy');
+    if (x.url) S.bt = setTimeout(() => { if (tok === S.tok) box.setAttribute('aria-busy', 'true'); }, T.wait);   // 빨리 열리면 신호를 켜지 않는다(CSS 지연은 동작 줄이기에서 꺼진다)
     if (x.url) layer.append(h('img', { src: x.url, alt: x.cap || '', decoding: 'async', onload: on, onerror: fail }));
     else if (x.ext) layer.append(h('div', { class: 'st-doc' }, [h('strong', { text: x.ext }), h('span', { text: x.cap })]));
     box.append(layer);
     if (!x.url) on();
   }
-  const capErr = () => $('stCapT').replaceChildren(h('span', { class: 'c', text: '열지 못했습니다' }));
+  const capErr = (t) => $('stCapT').replaceChildren(h('span', { class: 'c', text: t || '그림을 열지 못했습니다' }),   // 결과 화면이면 다시 불러오기(서명 주소는 한 시간짜리라 만료되기도 한다)
+    ...(S.job && S.view === 'out' ? [h('button', { type: 'button', class: 'btn-line', text: '다시 불러오기', onclick: () => runView(S.job, false) })] : []));
   const ready = (x) => (x.ready = x.ready || client().storage.from('studio').download(x.path).then((d) => { if (d.error) x.ready = null; else x.blob = d.data; }, () => { x.ready = null; }));
   function keepPic(x, btn) {                             // 저장 — 폰은 공유 창(사진첩에 닿는다), 그 밖은 내려받기
     if (!x.blob) {                                       // 아직 못 받았다 — 받는 동안 단추를 잠그고(여러 번 눌러도 한 번) 다 받으면 이어서
@@ -253,17 +288,17 @@
   }
 
   // ── 넣기 ──────────────────────────────────────────
-  async function take(f) {
+  async function take(f, many) {                         // many: 한꺼번에 놓은 파일 수 — 첫 파일만 쓴다
     const msg = $('stInMsg');
     msg.className = 'st-msg err';
     if (!f) return;
     const ext = (f.name.split('.').pop() || '').toLowerCase();
-    if (!OK_EXT.includes(ext)) { msg.textContent = 'DWG·DXF·PDF·사진만 됩니다'; return; }
-    if (f.size > 20 * MB) { msg.textContent = '20MB까지 됩니다'; return; }
+    if (!OK_EXT.includes(ext)) { msg.textContent = (/^[a-z0-9]{2,5}$/.test(ext) ? '.' + ext + ' 는 올릴 수 없습니다 · ' : '이 파일은 올릴 수 없습니다 · ') + 'DWG·DXF·PDF·사진(JPG·PNG·WEBP)으로 넣어 주세요'; return; }
+    if (f.size > 20 * MB) { msg.textContent = fmtMB(f.size) + ' 파일입니다 · 20MB 이하로 줄여 다시 넣어 주세요'; return; }
     let blob = f, up = ext, isImg = /^(png|jpe?g|webp|heic|heif)$/.test(ext), thumb = null;
     if (isImg) {
       const im = await loadImage(f);
-      if (!im) { msg.textContent = '열지 못했습니다 · 사진첩에서 다시'; return; }
+      if (!im) { msg.textContent = /^hei[cf]$/.test(ext) ? 'HEIC 는 이 기기에서 열리지 않습니다 · JPG 로 저장해 다시 넣어 주세요' : '사진을 열지 못했습니다 · 다른 사진으로 다시 넣어 주세요'; return; }
       if (ext !== 'png') {                                // PNG 는 원본(가는 선이 흐려지지 않게), 나머지는 JPEG 로 — HEIC 변환·위치 정보 제거도 이 한 번으로
         blob = await toBlob(fitCanvas(im, 4096), 'image/jpeg', .95);
         up = 'jpg';
@@ -272,7 +307,7 @@
     }
     if (S.file && S.file.thumb) URL.revokeObjectURL(S.file.thumb);
     S.file = { blob, name: f.name, up, size: blob.size, isImg, thumb, type: up === 'jpg' ? 'image/jpeg' : f.type || 'application/octet-stream' };
-    msg.textContent = '';
+    msg.className = 'st-msg'; msg.textContent = many > 1 ? '한 번에 한 장씩 넣습니다 · 첫 파일만 사용했습니다' : '';
     fileRow();
     pick();
     setView('pick');
@@ -281,9 +316,9 @@
   function fileRow() {
     const r = $('stFileRow');
     $('stWiz').dataset.file = S.file ? '1' : '';        // 폰은 도면을 넣은 뒤에 받을 것(studio.css)
-    if (!S.file) { r.hidden = true; $('stDrop').hidden = false; return; }
-    $('stDrop').hidden = true;
-    r.hidden = false;
+    const fold = (on) => { $('stDropF').classList.toggle('off', on); $('stDropF').inert = on; $('stFileF').classList.toggle('off', !on); $('stFileF').inert = !on; };   // 접히며 바뀐다 — 접히는 쪽은 초점·읽기에서도 뺀다
+    if (!S.file) { fold(false); return; }
+    fold(true);
     r.replaceChildren(S.file.thumb ? h('img', { src: S.file.thumb, alt: '', width: 56, height: 56 }) : h('span', { class: 'ext', text: S.file.up.toUpperCase() }),
       h('span', { class: 'nm' }, [S.file.name, h('small', { text: fmtMB(S.file.size) })]),
       h('button', { type: 'button', class: 'btn-line', text: '바꾸기', onclick: () => { clearFile(); setView('in'); $('stPick').focus(); } }));
@@ -324,7 +359,7 @@
     go.hidden = S.view !== 'pick';
     re.hidden = !again;
     go.disabled = re.disabled = S.busy;
-    const t = S.session ? [LBL[S.opt.brand], LBL[S.opt.style], LBL[S.opt.mood]].join(' · ') : '파일은 그대로';   // 고른 설정이 다음 만들기에 들어간다
+    const t = S.session ? [LBL[S.opt.brand], LBL[S.opt.style], LBL[S.opt.mood]].join(' · ') : (document.documentElement.hasAttribute('data-embed') ? '새 창에서 로그인합니다' : '로그인해도 도면은 남습니다');   // 고른 설정이 다음 만들기에 들어간다
     if (eta.textContent !== t) eta.replaceChildren(h('span', { text: t }));
     go.textContent = S.busy ? '올리는 중…' : S.session ? '만들기' : '카카오 로그인 후 만들기';
     re.textContent = S.busy ? '올리는 중…' : '다시 만들기';
@@ -343,7 +378,7 @@
     try {
       const id = await submitJob(OUT[S.out].tool, params, [{ name: 'in.' + S.file.up, blob: S.file.blob, type: S.file.type }]);
       S.busy = false;
-      S.sent = { id, key: k, f };
+      S.sent = { id, key: k, f, m: OUT[S.out].m.split(' · ')[0] };   // m: '보통 5분' — 이 방문에서 올린 작업만 기준 시간을 말한다(값을 만들지 않는다)
       runView(id, true);
     } catch (e) {
       S.busy = false; bar();
@@ -406,7 +441,7 @@
     delete body.dataset.demo;
     $('stOutH').textContent = '받기';
     const steps = h('ol', { class: 'st-steps', 'aria-hidden': 'true' }, [h('li'), h('li'), h('li')]);   // 접수 · 만드는 중 · 완료 — 뜻은 옆의 상태 글이 말한다
-    const msg = h('p', { class: 'st-msg', role: 'status' });
+    const msg = h('p', { class: 'st-msg', role: 'status' }); rise(msg);
     const tail = h('div', { class: 'st-tail' }, [h('p', { class: 'note', text: '닫아도 됩니다 · 내 작업에 남습니다' })]);
     body.replaceChildren(h('div', { class: 'st-run' }, [steps, msg, tail]));
     $('stSum').replaceChildren();
@@ -416,40 +451,56 @@
     setView('out', push ?? S.view !== 'out');
     history.replaceState({ v: 'out' }, '', '#job-' + id);
     const t0 = Date.now();
-    let last = '', fails = 0, now = -1, told = '';
+    let last = '', fails = 0, now = -1, told = '', tRun = 0;
     const note = (status, extra) => { if (told !== status) { told = status; tell('job', Object.assign({ id, status }, extra)); } };   // 상태가 바뀔 때만 한 번씩
     const paint = (n) => { if (n !== now) { now = n; [...steps.children].forEach((li, i) => { li.dataset.s = i < n ? 'done' : i === n ? 'now' : 'next'; }); } };   // 단계가 바뀔 때만(5초마다 다시 그리면 움직임이 끊긴다)
     const say = (t, err) => { if (t !== last) { last = t; msg.textContent = t; msg.className = err ? 'st-msg err' : 'st-msg'; } };
-    const end = (t, err) => { say(t, err); steps.classList.add('stop'); S.fin = err ? 'fail' : 'ok'; bar(); tail.replaceChildren(); if (err) note('failed'); };
+    const redo = (kind) => kind === 'mine' ? h('button', { type: 'button', class: 'btn-line', text: '내 작업 보기', onclick: myJobs })
+      : S.toolJob && S.toolJob.id === id ? h('button', { type: 'button', class: 'btn-line', text: '사진 다시 고르기', onclick: () => openTool(S.toolJob.tool) })   // 사진 손질로 만든 작업은 그 도구로
+        : h('button', { type: 'button', class: 'btn-line', text: '도면 다시 넣기', onclick: () => { clearFile(); setView('in'); $('stPick').focus(); } });
+    const end = (t, err, kind) => {
+      say(t, err); steps.classList.add('stop'); S.fin = err ? 'fail' : 'ok'; bar();
+      tail.replaceChildren(...(err ? [redo(kind)] : []));  // 실패 뒤에는 다음 행동이 보인다
+      if (err) note('failed');
+      if (document.hidden) document.title = (err ? '(실패) ' : '(완료) ') + (S.title || document.title);   // 숨은 탭에서도 알린다 — 파트너 이름은 그대로
+    };
     paint(0);
+    say('접수 확인 중');
     const tick = async () => {
       let r;
       try { r = await client().rpc('studio_status', { p_id: id }); } catch (e) { r = { error: { message: 'network' } }; }
       if (stale()) return;                               // 그 사이 다른 작업·예시로 넘어갔다 — 낡은 확인은 화면에 쓰지 않는다
       if (r.error) {
-        if (/not_found|login_required/.test(r.error.message || '')) return end(errText(r.error), true);
+        if (lostLogin(r.error)) {                        // 로그인이 풀린 것이지 작업이 실패한 것이 아니다 — 작업은 계속 만들어진다
+          S.session = null; $('stMine').hidden = true; steps.classList.add('stop'); say('로그인이 풀렸습니다 · 작업은 계속 만들어집니다', true); bar();
+          tail.replaceChildren(h('button', { type: 'button', class: 'btn-line', text: '다시 로그인', onclick: (e) => login(false, e.currentTarget) }));
+          return;
+        }
+        if (/not_found/.test(r.error.message || '')) return end(errText(r.error), true, 'mine');
         if (++fails > 1) say('연결 끊김 · 다시 확인 중');
       } else {
         fails = 0;
         const s = r.data;
         if ((s.status === 'running' || s.status === 'done') && !S.scene) { try { await scene(id); } catch (e) {} if (stale()) return; }
+        if (s.status === 'uploading' && Date.now() - t0 > 120000) return end('올리다 멈춘 작업입니다 · 도면을 다시 넣어 주세요', true);   // 올리는 중으로 2분 넘게 있으면 멈춘 것이다 — 곧 시작한다고 약속하지 않는다
         if (s.status === 'uploading' || s.status === 'queued') {
           paint(0); note('queued');
-          say(s.ahead ? `접수됨 · 앞에 ${s.ahead}건` : s.worker_alive ? '접수됨 · 곧 시작' : '접수됨 · 늦어질 수 있음');
+          say(s.status === 'uploading' ? '올리는 중' : s.ahead ? `접수됨 · 앞에 ${s.ahead}건` : s.worker_alive ? '접수됨 · 곧 시작' : '작업 장비 응답이 없습니다 · 켜지면 이어서 시작합니다');
         } else if (s.status === 'running') {
           paint(1); note('running');
-          say(`${S.scene ? '그림 만드는 중' : '만드는 중'} · ${Math.max(1, Math.round((Date.now() - t0) / 60000))}분째`);
+          if (!tRun) tRun = Date.now();                  // 대기가 아니라 만들기 시작한 때부터 센다
+          say(`${S.scene ? '그림 만드는 중' : '만드는 중'} · ${Math.max(1, Math.round((Date.now() - tRun) / 60000))}분째${S.sent && S.sent.id === id && S.sent.m ? ' · ' + S.sent.m : ''}`);
         } else if (s.status === 'failed') { paint(1); return end(s.error_ko || '만들지 못했습니다.', true); }
-        else if (s.status === 'expired') return end('14일 지나 지웠습니다', true);
+        else if (s.status === 'expired') return end('14일 지나 지웠습니다', true);   // 도면을 다시 넣어 새로 만든다
         else if (s.status === 'done') {
           const got = await results(s.outputs || [], stale);
           if (stale()) return;
           paint(3);
           if (!got.empty) note('done', { bom: got.bom, pend: got.pend });
           end(got.empty ? '결과가 비었습니다 · 다시 넣어 주세요' : '완료' + (got.bom && got.pend ? ' · 확인 필요 ' + got.pend : ''), got.empty);
-          if (got.bom || got.pend) tail.replaceChildren(h('button', { type: 'button', class: 'btn-line', text: got.bom ? '물량' : '확인 필요 ' + got.pend,
-            onclick: () => { $('stSum').focus({ preventScroll: true }); $('stSum').scrollIntoView({ behavior: motion(), block: 'start' }); } }));
-          if (document.hidden) document.title = '(완료) 3D 스튜디오';
+          if (!got.empty) tail.replaceChildren(...(got.bom || got.pend ? [h('button', { type: 'button', class: 'btn-line', text: got.bom ? '물량' : '확인 필요 ' + got.pend,
+            onclick: () => { $('stSum').focus({ preventScroll: true }); $('stSum').scrollIntoView({ behavior: motion(), block: 'start' }); } })] : []),
+            h('p', { class: 'note', text: '끝난 지 14일이 지나면 지워집니다 · 필요한 그림은 저장해 두세요' }));
           return;
         }
       }
@@ -481,8 +532,9 @@
     dlg.showModal();
   }
   let tourAt = 0;
-  function tourStep(n) {                                 // 사용법 창 — 한 번에 한 단계(그림·이름·한 문장, 아래 점·[이전][다음])
+  function tourStep(n, dir) {                                 // 사용법 창 — 한 번에 한 단계(그림·이름·한 문장, 아래 점·[이전][다음])
     const ps = [...$('stTour').querySelectorAll('.st-tour-p')];
+    $('stTour').style.setProperty('--dx', String(dir || 0));   // 이동 방향 — 다음 1 · 이전 -1 · 열 때 0
     tourAt = Math.max(0, Math.min(ps.length - 1, n));
     ps.forEach((p, i) => { p.hidden = i !== tourAt; });
     $('stTour').querySelectorAll('.st-tour-dots span').forEach((d, i) => d.classList.toggle('on', i === tourAt));
@@ -491,7 +543,13 @@
     prev.hidden = tourAt === 0;
     $('stTourNext').textContent = tourAt === ps.length - 1 ? '시작하기' : '다음';
   }
-  function openTour(push) { tourStep(0); openSheet($('stTour'), push); }   // 늘 첫 단계부터
+  function warmTour() {                                  // 사용법 그림은 닫힌 창 안의 lazy 라 열린 뒤에야 받는다 — 누르기 전(올려 둔 순간)에 받기 시작한다
+    for (const im of $('stTour').querySelectorAll('img')) {
+      if (im.loading !== 'eager') im.loading = 'eager';
+      if (!im.complete) { im.classList.add('wait'); im.addEventListener('load', () => im.classList.remove('wait'), { once: true }); }
+    }
+  }
+  function openTour(push) { warmTour(); tourStep(0); openSheet($('stTour'), push); }   // 늘 첫 단계부터
   const TOUR_KEY = 'maker_guide_studio_v1';              // 다른 도구의 첫 방문 안내와 같은 이름 규칙(maker_guide_<도구>_v1)
   function tourOnce(hash, back) {                        // 맨 처음 온 방문에만 — 임베드(호스트 화면 안)·주소로 온 방문(작업·도구·예시)·로그인 왕복은 건드리지 않는다
     if (document.documentElement.hasAttribute('data-embed') || hash || back) return;
@@ -509,7 +567,7 @@
     const st = { uploading: '올리는 중', queued: '대기', running: '만드는 중', done: '완료', failed: '실패', expired: '보관 끝' };
     body.replaceChildren(r.error ? h('p', { class: 'st-msg err', text: errText(r.error) })
       : !r.data.length ? h('p', { class: 'empty', text: '아직 작업이 없습니다.' })
-        : h('div', { class: 'st-jobs' }, r.data.map((j) => h('button', { type: 'button', onclick: () => { S.sheet = false; dlg.close(); runView(j.id, false); } }, [   // 창을 연 기록 자리가 그 작업이 된다
+        : h('div', { class: 'st-jobs' }, r.data.map((j) => h('button', { type: 'button', onclick: () => { S.sheet = false; dlg.close(); S.toolJob = j.tool === 'erase' || j.tool === 'cutout' ? { id: j.id, tool: j.tool } : null; runView(j.id, false); } }, [   // 창을 연 기록 자리가 그 작업이 된다
           h('span', { text: `${NAME[j.tool] || '도면'} · ${new Date(j.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` }),
           h('span', { class: 's', text: st[j.status] || j.status })]))));
   }
@@ -525,16 +583,23 @@
       } catch (e) { res(null); }
     });
   }
-  async function login(withFile) {
+  async function login(withFile, btn) {                  // btn: 누른 단추(없으면 [만들기]) — 이동 중 표시와 실패 복구는 그 단추에
     if (document.documentElement.hasAttribute('data-embed')) {   // 카카오 로그인 화면은 iframe 안에서 열리지 않는다 — 같은 파트너 화면을 새 창으로
       window.open(location.origin + '/maker/3d/' + (P.id ? '?partner=' + P.id : ''), '_blank', 'noopener');
-      $('stInMsg').className = 'st-msg'; $('stInMsg').textContent = '새 창에서 로그인해 주세요';
+      $('stInMsg').className = 'st-msg'; $('stInMsg').textContent = '새 창에서 로그인한 뒤, 그 창에서 도면을 다시 넣어 만들어 주세요';
       return;
     }
-    if (withFile && S.file) await idb('readwrite', (s) => s.put({ f: S.file, out: S.out, opt: S.opt, at: Date.now() }, 'p'));
+    if (S.leaving) return;                               // 이동 중 한 번 더 누르면 로그인 창이 둘 열린다
+    S.leaving = true;
+    if (!withFile && S.view === 'out' && S.job) try { localStorage.setItem('ain-job', JSON.stringify({ id: S.job, at: Date.now() })); } catch (e) {}   // 보던 작업으로 돌아오게 — 번호만, 누른 때부터 15분
+    const el = btn || $('stGo'), kids = [...el.childNodes];   // 단추 안(아이콘·글자)을 그대로 보관했다가 되돌린다
+    S.unlock = () => { S.leaving = false; el.replaceChildren(...kids); el.disabled = false; };
+    el.replaceChildren('카카오로 이동 중…'); el.disabled = true;
+    if (withFile && S.file) { await idb('readwrite', (s) => s.put({ f: S.file, out: S.out, opt: S.opt, at: Date.now() }, 'p')); try { localStorage.removeItem('ain-job'); } catch (e) {} }   // 맡긴 도면이 이기도록 작업 번호는 지운다
     if (P.id) try { localStorage.setItem('ain-partner', JSON.stringify({ id: P.id, at: Date.now() })); } catch (e) {}   // 돌아와도 같은 파트너 화면(partner-boot.js 가 읽는다)
     // 돌아오는 주소에는 아무 표시도 붙이지 않는다 — 허용 목록과 글자까지 맞아야 하고, 주소 조각에는 로그인 토큰이 실려 온다
-    client().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/maker/3d/' } });
+    const r = await client().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/maker/3d/' } });
+    if (r && r.error) { S.unlock(); bar(); $('stInMsg').className = 'st-msg err'; $('stInMsg').textContent = '로그인 창을 열지 못했습니다 · 네트워크를 확인하고 다시 눌러 주세요'; }   // 성공하면 페이지가 카카오로 넘어간다
   }
   async function resume() {
     const p = await idb('readonly', (s) => s.get('p'));
@@ -543,7 +608,7 @@
     S.file = { ...p.f, thumb: p.f.isImg ? URL.createObjectURL(p.f.blob) : null };
     S.out = p.out; S.opt = p.opt;
     fileRow(); pick(); setView('pick', false);
-    history.replaceState({ v: 'pick' }, '', location.pathname);   // 결과에서 뒤로 = 받을 것(파일 그대로)
+    history.replaceState({ v: 'pick' }, '', location.pathname + keepQ());   // 결과에서 뒤로 = 받을 것(파일 그대로)
     submit();
   }
 
@@ -554,11 +619,12 @@
     p.replaceChildren(h('button', { type: 'button', class: 'btn-line back', text: '← 돌아가기', onclick: closePanel }),
       h('h3', { text: title }), sub ? h('p', { class: 'sub', text: sub }) : null, ...kids);
     p.scrollIntoView({ behavior: motion(), block: 'start' });
+    const hd = p.querySelector('h3'); hd.tabIndex = -1; hd.focus({ preventScroll: true });   // 키보드·스크린리더는 나머지 도구 단추를 지나지 않고 패널 내용에 닿는다
     return p;
   }
   function closePanel() {                                // 도구 주소만 걷는다(기록 상태·작업 주소는 그대로 — 뒤로가기가 넣기 + 파일 비움이 되지 않게), 초점은 누른 단추로
     gone($('stPanel'), true);
-    if (TOOLS.some((t) => '#' + t.id === location.hash)) history.replaceState(history.state, '', location.pathname);
+    if (TOOLS.some((t) => '#' + t.id === location.hash)) history.replaceState(history.state, '', location.pathname + keepQ());
     $('stTools').scrollIntoView({ behavior: motion(), block: 'center' });
     const b = $('stTools').children[TOOLS.findIndex((t) => t.id === S.tool)];
     if (b) b.focus({ preventScroll: true });
@@ -598,7 +664,7 @@
     });
     const go = h('button', { type: 'button', text: S.session ? '만들기' : '카카오 로그인 후 만들기' });
     go.addEventListener('click', async () => {
-      if (!S.session) return login(false);
+      if (!S.session) return login(false, go);
       if (!ed.img) { msg.className = 'st-msg err'; msg.textContent = '사진을 고르세요'; return; }
       const files = [{ name: 'in.jpg', blob: await toBlob(ed.img, 'image/jpeg', .92), type: 'image/jpeg' }];
       if (t.kind === 'erase') {
@@ -606,12 +672,15 @@
         if (!m.painted) { msg.className = 'st-msg err'; msg.textContent = '지울 곳을 먼저 칠하세요'; return; }
         files.push({ name: 'mask.png', blob: await toBlob(m.canvas, 'image/png'), type: 'image/png' });
       }
-      go.disabled = true; msg.className = 'st-msg'; msg.textContent = '올리는 중…';
-      try { const id = await submitJob(t.id, {}, files); go.disabled = false; msg.textContent = ''; runView(id); }
+      go.disabled = true; msg.className = 'st-msg'; msg.textContent = '올리는 중… 닫지 마세요';
+      S.sending = (S.sending || 0) + 1;                  // 올리는 중에 페이지를 떠나면 작업이 올리는 중에 멈춘다(만들기 바와 따로 센다 — 바가 같이 잠기지 않게)
+      try { const id = await submitJob(t.id, {}, files); go.disabled = false; msg.textContent = ''; S.toolJob = { id, tool: t.id }; runView(id); }
       catch (e) { msg.className = 'st-msg err'; msg.textContent = errText(e); go.disabled = false; }
+      finally { S.sending--; }
     });
     const ex = t.kind === 'erase' ? [['view_reverse.webp', '원본'], ['erase_after.webp', '지운 뒤 — 탁자 위 화병·책']] : [['cutout_before.webp', '원본'], ['cutout_after.webp', '배경 뗀 뒤(투명 PNG)']];
-    panel(t.name, t.m, [h('div', { class: 'st-form' }, [h('label', {}, ['사진', file])]), stage, h('div', { class: 'st-go' }, [go, msg]), out,
+    panel(t.name, t.m, [...(S.session ? [] : [h('div', {}, [h('p', { class: 'st-msg', text: '만들려면 카카오 로그인이 필요합니다 · 로그인하면 처음 화면으로 돌아가니 먼저 로그인해 주세요.' }), h('div', { class: 'st-row' }, [h('button', { type: 'button', class: 'primary', text: '카카오 로그인', onclick: (e) => login(false, e.currentTarget) })])])]),   // 칠한 마스크가 사라진 뒤에야 알리지 않는다
+      h('div', { class: 'st-form' }, [h('label', {}, ['사진', file])]), stage, h('div', { class: 'st-go' }, [go, msg]), out,
       h('div', { class: 'st-out' }, [h('p', { class: 'st-msg' }, [h('span', { class: 'st-tag', text: '예시' }), '합성 렌더']), gallery(ex)])]);
   }
 
@@ -718,14 +787,21 @@
   // ── 시작 ───────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
     const back = /access_token=|[?&]code=/.test(location.hash + location.search);   // 로그인 왕복에서 돌아옴 — 로그인 라이브러리가 주소를 걷기 전에 읽는다
+    let savedJob = 0;                                    // 로그인하러 가기 전에 보던 작업 번호(번호만, 15분) — 돌아오는 주소에는 아무것도 못 싣는다
+    try { const j = JSON.parse(localStorage.getItem('ain-job') || 'null'); if (j && Date.now() - j.at < 15 * 60000) savedJob = +j.id || 0; if (back) localStorage.removeItem('ain-job'); } catch (e) {}
+    for (const id of ['stInMsg', 'stLiveMsg']) rise($(id));   // 안내·오류·모형 글이 바뀔 때 떠오르게
     try { window.ainAuth.init('authSlot'); } catch (e) {}
+    $('authSlot').addEventListener('click', (e) => {     // 파트너·임베드 주소에는 ?partner 가 남아 있다 — 헤더 로그인이 그 쿼리를 돌아올 주소에 싣지 않게(로그인 허용 주소는 글자까지 맞아야 한다)
+      const b = e.target.closest && e.target.closest('#_ain_in');
+      if (b && (keepQ() || (S.view === 'out' && S.job))) { e.preventDefault(); e.stopImmediatePropagation(); login(false, b); }
+    }, true);
     await partner();                                     // 공동 브랜드 — 못 받으면 에인연 화면 그대로
     try { Object.assign(S.opt, JSON.parse(localStorage.getItem('ain-studio-opt') || '{}')); } catch (e) {}
     const pickFrom = (inp) => { inp.value = ''; inp.click(); };
     $('stPick').addEventListener('click', () => pickFrom($('stFile')));
     $('stAlbum').addEventListener('click', () => pickFrom($('stAlbumIn')));
     $('stShoot').addEventListener('click', () => pickFrom($('stCamIn')));
-    for (const id of ['stFile', 'stAlbumIn', 'stCamIn']) $(id).addEventListener('change', (e) => take(e.target.files[0]));
+    for (const id of ['stFile', 'stAlbumIn', 'stCamIn']) $(id).addEventListener('change', (e) => take(e.target.files[0], e.target.files.length));
     $('stGo').addEventListener('click', submit);
     $('stRe').addEventListener('click', submit);
     $('stMine').addEventListener('click', myJobs);
@@ -736,16 +812,17 @@
       dlg.addEventListener('close', () => { if (S.sheet) { S.sheet = false; if (history.state && history.state.sheet) { S.skip = true; history.back(); } } });   // 닫기·Esc — 창을 열 때 쌓은 기록을 걷는다(그 사이 화면이 넘어갔으면 건드리지 않는다)
     }
     $('stHelp').addEventListener('click', () => openTour());
-    $('stTourPrev').addEventListener('click', () => tourStep(tourAt - 1));
-    $('stTourNext').addEventListener('click', () => { if (tourAt < $('stTour').querySelectorAll('.st-tour-p').length - 1) tourStep(tourAt + 1); else $('stTour').close(); });
+    for (const ev of ['pointerenter', 'pointerdown', 'focus']) $('stHelp').addEventListener(ev, warmTour, { once: true });   // 누르기 전에 그림부터
+    $('stTourPrev').addEventListener('click', () => tourStep(tourAt - 1, -1));
+    $('stTourNext').addEventListener('click', () => { if (tourAt < $('stTour').querySelectorAll('.st-tour-p').length - 1) tourStep(tourAt + 1, 1); else $('stTour').close(); });
     $('stTools').replaceChildren(...TOOLS.map((t) => h('button', { type: 'button', text: t.name, onclick: () => openTool(t.id) })));
     const drop = $('stDrop');
     document.addEventListener('dragover', (e) => { e.preventDefault(); if ($('stPanel').hidden) drop.classList.add('over'); });
     document.addEventListener('dragleave', (e) => { if (!e.relatedTarget) drop.classList.remove('over'); });
-    document.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); if ($('stPanel').hidden && e.dataTransfer.files[0]) take(e.dataTransfer.files[0]); });
+    document.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); if ($('stPanel').hidden && e.dataTransfer.files[0]) take(e.dataTransfer.files[0], e.dataTransfer.files.length); });
     document.addEventListener('paste', (e) => {
-      const f = e.clipboardData && e.clipboardData.files[0];
-      if (f && $('stPanel').hidden && !(e.target && e.target.matches && e.target.matches('textarea, input:not([type=radio]):not([type=file]):not([type=range])'))) { e.preventDefault(); take(f); }   // 글자를 받는 칸만 거른다(번호 줄·받을 것을 누른 뒤에도 붙여넣기가 된다)
+      const f = e.clipboardData && e.clipboardData.files[0], fs = e.clipboardData ? e.clipboardData.files.length : 0;
+      if (f && $('stPanel').hidden && !(e.target && e.target.matches && e.target.matches('textarea, input:not([type=radio]):not([type=file]):not([type=range])'))) { e.preventDefault(); take(f, fs); }   // 글자를 받는 칸만 거른다(번호 줄·받을 것을 누른 뒤에도 붙여넣기가 된다)
     });
     window.addEventListener('popstate', (e) => {                // 폰 뒤로가기 = 앞 단계. 넣기로 돌아가면 파일을 비운다(넣기 칸이 다시 보이게)
       if (S.skip) { S.skip = false; return; }                   // 창을 닫으며 걷은 기록
@@ -758,7 +835,8 @@
       if (v === 'in' && S.file) clearFile();
       setView(v, false);
     });
-    window.addEventListener('beforeunload', (e) => { if (S.busy) e.preventDefault(); });   // 올리는 중에 닫으면 작업이 '올리는 중'에 멈춘다
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { if (S.unlock) S.unlock(); S.leaving = false; bar(); } });   // 카카오에서 뒤로 돌아오면(되돌아온 페이지) 로그인 단추를 다시 쓸 수 있게
+    window.addEventListener('beforeunload', (e) => { if (S.busy || S.sending) e.preventDefault(); });   // 올리는 중(만들기·사진 손질)에 닫으면 작업이 올리는 중에 멈춘다   // 올리는 중에 닫으면 작업이 '올리는 중'에 멈춘다
     const hash = location.hash;
     const job = hash.match(/^#job-(\d+)$/);
     if (hash === '#interior') S.out = 'photo';
@@ -773,12 +851,15 @@
     $('stMine').hidden = !S.session;
     window.addEventListener('ain:auth', (e) => { S.session = e.detail && e.detail.session; $('stMine').hidden = !S.session; bar(); });
     if (job) first(); else bar();
-    if (S.view === 'in') history.replaceState({ v: 'in' }, '', location.pathname + (job ? hash : ''));   // 주소는 로그인 확인 뒤에 걷는다 — 돌아온 주소의 조각에 로그인 토큰이 실려 있다(그 사이 도면을 넣었으면 그 기록은 그대로)
-    const title = document.title;
+    if (S.view === 'in') history.replaceState({ v: 'in' }, '', location.pathname + keepQ() + (job ? hash : ''));   // 주소는 로그인 확인 뒤에 걷는다 — 돌아온 주소의 조각에 로그인 토큰이 실려 있다(그 사이 도면을 넣었으면 그 기록은 그대로)
+    const title = S.title = document.title;              // 파트너 이름까지 들어간 제목 — '(완료)' 같은 표시는 돌아와 보면 걷는다
     document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = title; });   // '(완료)' 표시는 돌아와 보면 걷는다
     if (!(back && S.session)) idb('readwrite', (s) => s.delete('p'));   // 이어 올리지 않는 방문 — 맡겨 둔 도면을 기기에 남기지 않는다
+    if (job && !S.session) try { localStorage.setItem('ain-job', JSON.stringify({ id: +job[1], at: Date.now() })); } catch (e) {}   // 로그아웃 상태로 연 작업 주소 — 로그인해서 돌아오면 그 작업으로
     if (job && S.session) runView(+job[1]);
-    else if (back && S.session && (await idb('readonly', (s) => s.get('p')))) resume();   // 파일을 맡겨 두고 로그인하러 갔다 온 방문만
+    else if (job) { $('stInMsg').className = 'st-msg'; $('stInMsg').textContent = document.documentElement.hasAttribute('data-embed') ? '이 작업은 새 창에서 로그인한 뒤 볼 수 있습니다' : '이 작업은 로그인한 뒤에 열립니다 · 위의 카카오 로그인을 눌러 주세요'; }
+    else if (back && S.session && (await idb('readonly', (s) => s.get('p')))) resume();   // 맡겨 둔 도면이 먼저 — 올리려던 도면을 작업 번호가 덮지 않는다
+    else if (back && S.session && savedJob) runView(savedJob);   // 파일을 맡겨 두고 로그인하러 갔다 온 방문만
     else if (hash === '#sample') see();
     else if (TOOLS.some((t) => '#' + t.id === hash)) openTool(hash.slice(1));
     else tourOnce(hash, back);
