@@ -595,13 +595,13 @@
     tool: (a) => { const b = [...$('stTools').children].find((x) => x.textContent === a.v); if (b) b.click(); },
     sum: () => { $('stSum').focus({ preventScroll: true }); $('stSum').scrollIntoView({ behavior: motion(), block: 'start' }); },
     tour: () => openTour(),
-    make: () => { if (!$('stGo').disabled) $('stGo').click(); },
+    make: () => { const go = $('stGo'); if (S.view === 'pick' && !go.hidden && !go.disabled) go.click(); },   // 숨은 단추도 click() 은 먹히므로 만들기 화면에서만
     pickFile: () => $('stPick').click(),                 // 보내기를 누른 직후라 파일 창이 열린다
   };
   function askUI() {
     if (!window.AinAsk) { $('stAsk').hidden = true; return; }   // ask.js 를 못 받았으면 카드를 숨긴다
     const inp = $('stAskIn'), log = $('stAskLog'), chips = $('stAskChips');
-    const ctx = () => ({ hasFile: !!S.file, hasResult: !!$('stSum').children.length, session: !!S.session, rooms: [...$('stLiveNav').children].map((b) => b.textContent) });
+    const ctx = () => ({ hasFile: !!S.file, hasResult: !!$('stSum').children.length, session: !!S.session, canMake: S.view === 'pick' && !S.busy, tools: !noTools(), rooms: [...$('stLiveNav').children].map((b) => b.textContent) });
     let shown = '';
     const fresh = () => {                                // 예시 문장이 그대로면 다시 그리지 않는다(눌러 둔 단추의 초점이 사라지지 않게)
       const list = window.AinAsk.suggest(ctx()), key = list.join('|');
@@ -609,7 +609,7 @@
       shown = key;
       chips.replaceChildren(...list.map((s) => h('button', { type: 'button', class: 'st-chip', text: s, onclick: () => run(s) })));
     };
-    const add = (who, text) => { if (!text) return; log.append(h('li', { class: 'st-ask-' + who, text })); while (log.children.length > 6) log.firstChild.remove(); };
+    const add = (who, text) => { if (!text) return; log.append(h('p', { class: 'st-ask-' + who, text })); while (log.children.length > 6) log.firstChild.remove(); };
     const run = (text) => {
       const t = (text || '').trim();
       if (!t) return;
