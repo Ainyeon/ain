@@ -7,7 +7,7 @@
   }
   if (/^[a-z0-9-]{1,32}$/.test(p)) {
     r.setAttribute('data-partner', p);
-    window.__ptCfg = fetch('/maker/3d/partners/' + p + '.json').then(function (x) { return x.ok ? x.json() : null; }).catch(function () { return null; });   // 스크립트 사슬을 기다리지 않고 지금 받기 시작한다(검증은 studio.js 가 한다)
+    window.__ptCfg = fetch('/maker/3d/partners/' + p + '.json').then(function (x) { return x.ok ? x.json() : x.status === 404 ? null : { fail: true }; }).catch(function () { return { fail: true }; });   // 스크립트 사슬을 기다리지 않고 지금 받기 시작한다(검증은 studio.js 가 한다)
     try {                                                // 지난 방문에 studio.js 가 검증해 둔 색만(#rrggbb 셋) — 첫 그림부터 파트너 색이라 에인연 색이 잠깐 비치지 않는다
       var c = JSON.parse(localStorage.getItem('ain-pt-' + p) || 'null');
       if (c && c.length === 3 && c.every(function (v) { return /^#[0-9a-f]{6}$/i.test(v); })) { r.style.setProperty('--c-accent', c[0]); r.style.setProperty('--c-accent-bg', c[1]); r.style.setProperty('--c-accent-line', c[2]); }

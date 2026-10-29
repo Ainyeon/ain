@@ -117,7 +117,7 @@ assert.ok(/html\[data-embed\] \.page-head > div:first-child/.test(css) && !/html
   assert.ok(/S\.sending/.test(js) && /beforeunload[^\n]*S\.busy \|\| S\.sending/.test(js), '올리는 중(만들기·사진 손질)에는 떠날 때 경고');
   assert.ok(/ain-pt-/.test(read('maker/3d/partner-boot.js')) && /#\[0-9a-f\]\{6\}/i.test(read('maker/3d/partner-boot.js')), '색 캐시는 검증된 #rrggbb 셋만 읽는다');
   assert.ok(/const lostLogin = /.test(js) && /42501/.test(js) && /lostLogin\(r\.error\)/.test(js), '로그인 풀림은 서버가 실제로 내는 거절(42501)로 알아본다 — login_required 문자열만 기다리지 않는다');
-  assert.ok(/setItem\('ain-job'/.test(js.slice(js.indexOf('function runView'), js.indexOf('function runView') + 900)), '작업 화면을 열 때 작업 번호를 저장한다(어느 로그인 단추를 눌러도 돌아온다)');
+  assert.ok(/setItem\('ain-job'/.test(js.slice(js.indexOf('async function login'), js.indexOf('async function login') + 1400)) && !/setItem\('ain-job'/.test(js.slice(js.indexOf('function runView'), js.indexOf('function runView') + 900)), '작업 번호는 로그인 단추를 누른 때 저장한다(화면을 열 때 쓰면 끝난 작업·오래 걸린 작업에서 어긋난다)');
   assert.ok(js.indexOf("s.get('p')))) resume()") > 0 && js.indexOf("s.get('p')))) resume()") < js.indexOf('else if (back && S.session && savedJob)'), '맡겨 둔 도면 복원이 저장된 작업 번호보다 먼저');
   assert.ok(/S\.toolJob/.test(js) && /사진 다시 고르기/.test(js) && /내 작업 보기/.test(js), '실패 뒤 단추는 도면·사진 손질·내 작업을 가려서 보낸다');
   assert.ok(/const off = \(bad\)/.test(js) && /removeProperty\(k\)/.test(js) && /removeItem\('ain-pt-'/.test(js), '파트너 검증이 실패하면 먼저 건 캐시 색과 캐시를 걷는다');

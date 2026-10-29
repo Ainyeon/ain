@@ -102,8 +102,9 @@
       if (bad) try { localStorage.removeItem('ain-pt-' + id); } catch (e) {}
     };
     try {
-      const c = await (window.__ptCfg || fetch('/maker/3d/partners/' + id + '.json').then((r) => (r.ok ? r.json() : null)));   // partner-boot.js 가 이미 받기 시작했다
-      if (!c) return off(true);
+      const c = await (window.__ptCfg || fetch('/maker/3d/partners/' + id + '.json').then((r) => (r.ok ? r.json() : r.status === 404 ? null : { fail: true })));   // partner-boot.js 가 이미 받기 시작했다
+      if (c && c.fail) return off(false);                 // 못 받았다(망·서버 오류) — 색만 걷고 검증된 캐시는 남긴다
+      if (!c) return off(true);                           // 자료가 없다(404) — 캐시도 지운다
       const hex = /^#[0-9a-f]{6}$/i;
       const ok = typeof c.name === 'string' && c.name.length > 0 && c.name.length <= 20 && /^\/maker\/3d\/partners\/[a-z0-9-]+\.svg$/.test(c.logo || '') && /^https:\/\//.test(c.home || '')
         && [c.accent, c.accentBg, c.accentLine].every((x) => hex.test(x)) && contrast(c.accent, '#ffffff') >= 4.5 && contrast(c.accent, c.accentBg) >= 4.5 && contrast(c.accentLine, '#5C5850') >= 4.5;   // 비활성 [만들기] 는 accentLine 면에 보조 글자색   // 글자 대비가 모자란 색은 쓰지 않는다
@@ -435,7 +436,6 @@
     clearTimeout(S.timer);
     const run = S.run = (S.run || 0) + 1, stale = () => S.run !== run || S.job !== id;   // 이 화면의 확인 고리 — 떠났거나 다시 열었으면 앞 고리는 화면에 쓰지 않는다
     S.job = id;
-    try { localStorage.setItem('ain-job', JSON.stringify({ id, at: Date.now() })); } catch (e) {}   // 로그인이 풀려 다시 들어와도 이 작업으로(번호만, 15분 — 어느 로그인 단추를 누르든 같다)
     S.scene = null; S.fin = false;
     const body = $('stOutBody');
     delete body.dataset.demo;
@@ -456,7 +456,7 @@
     const paint = (n) => { if (n !== now) { now = n; [...steps.children].forEach((li, i) => { li.dataset.s = i < n ? 'done' : i === n ? 'now' : 'next'; }); } };   // 단계가 바뀔 때만(5초마다 다시 그리면 움직임이 끊긴다)
     const say = (t, err) => { if (t !== last) { last = t; msg.textContent = t; msg.className = err ? 'st-msg err' : 'st-msg'; } };
     const redo = (kind) => kind === 'mine' ? h('button', { type: 'button', class: 'btn-line', text: '내 작업 보기', onclick: myJobs })
-      : S.toolJob === id ? h('button', { type: 'button', class: 'btn-line', text: '사진 다시 고르기', onclick: () => openTool(S.tool) })   // 사진 손질로 만든 작업은 그 도구로
+      : S.toolJob && S.toolJob.id === id ? h('button', { type: 'button', class: 'btn-line', text: '사진 다시 고르기', onclick: () => openTool(S.toolJob.tool) })   // 사진 손질로 만든 작업은 그 도구로
         : h('button', { type: 'button', class: 'btn-line', text: '도면 다시 넣기', onclick: () => { clearFile(); setView('in'); $('stPick').focus(); } });
     const end = (t, err, kind) => {
       say(t, err); steps.classList.add('stop'); S.fin = err ? 'fail' : 'ok'; bar();
@@ -567,7 +567,7 @@
     const st = { uploading: '올리는 중', queued: '대기', running: '만드는 중', done: '완료', failed: '실패', expired: '보관 끝' };
     body.replaceChildren(r.error ? h('p', { class: 'st-msg err', text: errText(r.error) })
       : !r.data.length ? h('p', { class: 'empty', text: '아직 작업이 없습니다.' })
-        : h('div', { class: 'st-jobs' }, r.data.map((j) => h('button', { type: 'button', onclick: () => { S.sheet = false; dlg.close(); runView(j.id, false); } }, [   // 창을 연 기록 자리가 그 작업이 된다
+        : h('div', { class: 'st-jobs' }, r.data.map((j) => h('button', { type: 'button', onclick: () => { S.sheet = false; dlg.close(); S.toolJob = j.tool === 'erase' || j.tool === 'cutout' ? { id: j.id, tool: j.tool } : null; runView(j.id, false); } }, [   // 창을 연 기록 자리가 그 작업이 된다
           h('span', { text: `${NAME[j.tool] || '도면'} · ${new Date(j.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` }),
           h('span', { class: 's', text: st[j.status] || j.status })]))));
   }
@@ -591,13 +591,15 @@
     }
     if (S.leaving) return;                               // 이동 중 한 번 더 누르면 로그인 창이 둘 열린다
     S.leaving = true;
-    const el = btn || $('stGo'), was = el.textContent;
-    el.textContent = '카카오로 이동 중…'; el.disabled = true;
+    if (!withFile && S.view === 'out' && S.job) try { localStorage.setItem('ain-job', JSON.stringify({ id: S.job, at: Date.now() })); } catch (e) {}   // 보던 작업으로 돌아오게 — 번호만, 누른 때부터 15분
+    const el = btn || $('stGo'), kids = [...el.childNodes];   // 단추 안(아이콘·글자)을 그대로 보관했다가 되돌린다
+    S.unlock = () => { S.leaving = false; el.replaceChildren(...kids); el.disabled = false; };
+    el.replaceChildren('카카오로 이동 중…'); el.disabled = true;
     if (withFile && S.file) { await idb('readwrite', (s) => s.put({ f: S.file, out: S.out, opt: S.opt, at: Date.now() }, 'p')); try { localStorage.removeItem('ain-job'); } catch (e) {} }   // 맡긴 도면이 이기도록 작업 번호는 지운다
     if (P.id) try { localStorage.setItem('ain-partner', JSON.stringify({ id: P.id, at: Date.now() })); } catch (e) {}   // 돌아와도 같은 파트너 화면(partner-boot.js 가 읽는다)
     // 돌아오는 주소에는 아무 표시도 붙이지 않는다 — 허용 목록과 글자까지 맞아야 하고, 주소 조각에는 로그인 토큰이 실려 온다
     const r = await client().auth.signInWithOAuth({ provider: 'kakao', options: { redirectTo: location.origin + '/maker/3d/' } });
-    if (r && r.error) { S.leaving = false; el.textContent = was; el.disabled = false; bar(); $('stInMsg').className = 'st-msg err'; $('stInMsg').textContent = '로그인 창을 열지 못했습니다 · 네트워크를 확인하고 다시 눌러 주세요'; }   // 성공하면 페이지가 카카오로 넘어간다
+    if (r && r.error) { S.unlock(); bar(); $('stInMsg').className = 'st-msg err'; $('stInMsg').textContent = '로그인 창을 열지 못했습니다 · 네트워크를 확인하고 다시 눌러 주세요'; }   // 성공하면 페이지가 카카오로 넘어간다
   }
   async function resume() {
     const p = await idb('readonly', (s) => s.get('p'));
@@ -672,12 +674,12 @@
       }
       go.disabled = true; msg.className = 'st-msg'; msg.textContent = '올리는 중… 닫지 마세요';
       S.sending = (S.sending || 0) + 1;                  // 올리는 중에 페이지를 떠나면 작업이 올리는 중에 멈춘다(만들기 바와 따로 센다 — 바가 같이 잠기지 않게)
-      try { const id = await submitJob(t.id, {}, files); go.disabled = false; msg.textContent = ''; S.toolJob = id; S.tool = t.id; runView(id); }
+      try { const id = await submitJob(t.id, {}, files); go.disabled = false; msg.textContent = ''; S.toolJob = { id, tool: t.id }; runView(id); }
       catch (e) { msg.className = 'st-msg err'; msg.textContent = errText(e); go.disabled = false; }
       finally { S.sending--; }
     });
     const ex = t.kind === 'erase' ? [['view_reverse.webp', '원본'], ['erase_after.webp', '지운 뒤 — 탁자 위 화병·책']] : [['cutout_before.webp', '원본'], ['cutout_after.webp', '배경 뗀 뒤(투명 PNG)']];
-    panel(t.name, t.m, [...(S.session ? [] : [h('div', { class: 'st-go' }, [h('p', { class: 'st-msg', text: '만들려면 카카오 로그인이 필요합니다 · 로그인하면 처음 화면으로 돌아가니 먼저 로그인해 주세요.' }), h('button', { type: 'button', class: 'btn-line', text: '카카오 로그인', onclick: (e) => login(false, e.currentTarget) })])]),   // 칠한 마스크가 사라진 뒤에야 알리지 않는다
+    panel(t.name, t.m, [...(S.session ? [] : [h('div', {}, [h('p', { class: 'st-msg', text: '만들려면 카카오 로그인이 필요합니다 · 로그인하면 처음 화면으로 돌아가니 먼저 로그인해 주세요.' }), h('div', { class: 'st-row' }, [h('button', { type: 'button', class: 'primary', text: '카카오 로그인', onclick: (e) => login(false, e.currentTarget) })])])]),   // 칠한 마스크가 사라진 뒤에야 알리지 않는다
       h('div', { class: 'st-form' }, [h('label', {}, ['사진', file])]), stage, h('div', { class: 'st-go' }, [go, msg]), out,
       h('div', { class: 'st-out' }, [h('p', { class: 'st-msg' }, [h('span', { class: 'st-tag', text: '예시' }), '합성 렌더']), gallery(ex)])]);
   }
@@ -791,7 +793,7 @@
     try { window.ainAuth.init('authSlot'); } catch (e) {}
     $('authSlot').addEventListener('click', (e) => {     // 파트너·임베드 주소에는 ?partner 가 남아 있다 — 헤더 로그인이 그 쿼리를 돌아올 주소에 싣지 않게(로그인 허용 주소는 글자까지 맞아야 한다)
       const b = e.target.closest && e.target.closest('#_ain_in');
-      if (b && keepQ()) { e.preventDefault(); e.stopImmediatePropagation(); login(false, b); }
+      if (b && (keepQ() || (S.view === 'out' && S.job))) { e.preventDefault(); e.stopImmediatePropagation(); login(false, b); }
     }, true);
     await partner();                                     // 공동 브랜드 — 못 받으면 에인연 화면 그대로
     try { Object.assign(S.opt, JSON.parse(localStorage.getItem('ain-studio-opt') || '{}')); } catch (e) {}
@@ -833,7 +835,7 @@
       if (v === 'in' && S.file) clearFile();
       setView(v, false);
     });
-    window.addEventListener('pageshow', (e) => { if (e.persisted) { S.leaving = false; bar(); for (const b of document.querySelectorAll('button:disabled')) if (b.textContent === '카카오로 이동 중…') { b.disabled = false; b.textContent = '카카오 로그인'; } } });   // 카카오에서 뒤로 돌아오면(되돌아온 페이지) 로그인 단추를 다시 쓸 수 있게
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { if (S.unlock) S.unlock(); S.leaving = false; bar(); } });   // 카카오에서 뒤로 돌아오면(되돌아온 페이지) 로그인 단추를 다시 쓸 수 있게
     window.addEventListener('beforeunload', (e) => { if (S.busy || S.sending) e.preventDefault(); });   // 올리는 중(만들기·사진 손질)에 닫으면 작업이 올리는 중에 멈춘다   // 올리는 중에 닫으면 작업이 '올리는 중'에 멈춘다
     const hash = location.hash;
     const job = hash.match(/^#job-(\d+)$/);
