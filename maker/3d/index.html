@@ -18,15 +18,16 @@
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-  <script src="/maker/3d/partner-boot.js?v=1"></script>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <script src="/maker/3d/partner-boot.js?v=2"></script>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
   <link rel="stylesheet" href="/assets/css/components.css?v=30">
   <link rel="stylesheet" href="/maker/maker.css?v=30">
-  <link rel="stylesheet" href="/maker/3d/studio.css?v=10">
+  <link rel="stylesheet" href="/maker/3d/studio.css?v=11">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
   <script defer src="/auth.js?v=30"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
-  <script defer src="/maker/3d/studio.js?v=12"></script>
+  <script defer src="/maker/3d/studio.js?v=13"></script>
 </head>
 <body class="has-tabbar">
   <header class="pt-bar" id="ptBar" hidden>
@@ -62,7 +63,7 @@
       <div class="st-left">
       <section id="stIn" aria-labelledby="stInH">
         <h2 class="st-vh" id="stInH" tabindex="-1">도면 넣기</h2>
-        <div class="st-drop" id="stDrop">
+        <div class="st-fold" id="stDropF"><div class="st-fold-in"><div class="st-drop" id="stDrop">
           <strong>도면 넣기</strong>
           <span class="st-hint">DWG · DXF · PDF · 사진 · 20MB</span>
           <span class="st-hint fine">끌어다 놓기 · 붙여넣기</span>
@@ -75,7 +76,8 @@
           <input class="st-vh" type="file" id="stAlbumIn" accept="image/*" tabindex="-1" aria-hidden="true">
           <input class="st-vh" type="file" id="stCamIn" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
         </div>
-        <div class="st-file" id="stFileRow" hidden></div>
+        </div></div>
+        <div class="st-fold off" id="stFileF" inert><div class="st-fold-in"><div class="st-file" id="stFileRow"></div></div></div>
         <p class="st-msg" id="stInMsg" role="status"></p>
       </section>
 

@@ -51,7 +51,7 @@ assert.ok(vjs.includes("touchAction = 'pan-y'") && vjs.includes('enableZoom: fal
 assert.strictEqual((page.replace(/#[0-9A-F]{6}/gi, '').match(/3D/g) || []).length, 3, "화면 글의 '3D' 는 title·og:title·h1 뿐");
 
 // 공동 브랜드(파트너) · 임베드 — 설정 파일이 런타임 검증(studio.js partner())을 통과하고, 알림은 허용한 사이트에만 간다
-assert.ok(sw.includes("'/maker/3d/partner-boot.js?v=1'") && page.includes('/maker/3d/partner-boot.js?v=1'), 'partner-boot.js 는 페이지와 sw SHELL 에 같은 주소로');
+assert.ok(sw.includes("'/maker/3d/partner-boot.js?v=2'") && page.includes('/maker/3d/partner-boot.js?v=2'), 'partner-boot.js 는 페이지와 sw SHELL 에 같은 주소로');
 assert.ok(/data-partner/.test(read('maker/3d/partner-boot.js')) && !/innerHTML|eval\(/.test(read('maker/3d/partner-boot.js')), 'partner-boot.js 는 속성만 건다');
 assert.ok(!/postMessage\([^)]*,\s*['"]\*['"]\s*\)/.test(js), "임베드 알림을 '*' 로 보내지 않는다(허용한 사이트에만)");
 assert.ok(/html\[data-partner\] \.tnav/.test(css) && /html\[data-embed\] \.page-head/.test(css), '파트너·임베드 화면은 에인연 메뉴를 가린다');
@@ -99,5 +99,21 @@ assert.ok(/id="stHelp"/.test(page) && /<dialog[^>]*id="stTour"/.test(page) && /i
 }
 assert.ok(rules.some(([s, b]) => /html\[data-partner\] \.st-wiz \.action-bar/.test(s) && /html\[data-embed\] \.st-wiz \.action-bar/.test(s) && /bottom:/.test(b)), '파트너·임베드 폰: 만들기 바는 탭바 자리(70px)가 아니라 바닥에 붙는다');
 assert.ok(/html\[data-embed\] \.page-head > div:first-child/.test(css) && !/html\[data-embed\] \.page-head\s*[,{]/.test(css), '임베드는 제목만 가리고 [사용법]은 남긴다');
+
+// 다듬기(2026-10-29) — 움직임 토큰 · 눌림 · 흐름 · 주소 유지가 돌아오지 않게
+{
+  const raw = read('maker/3d/studio.css');
+  assert.ok(/--t-fast:\s*100ms/.test(raw) && /--t-base:\s*200ms/.test(raw) && /--t-slow:\s*350ms/.test(raw) && /--ease:\s*cubic-bezier/.test(raw), '움직임 토큰(--t-fast·--t-base·--t-slow·--ease)이 있다');
+  assert.ok(!/(?<![\w-])\d*\.?\d+m?s\s+(?:ease|linear|cubic)/.test(css.replace(/animation:\s*st-run[^;]*;/g, '')), 'studio.css 전환·애니메이션 시간은 토큰으로(리터럴 .2s ease 등 금지 — 무한 쓸기 1.6s 만 예외)');
+  assert.ok(!/still\(\) \? 0 : 200|\}, 400\)/.test(js), 'studio.js 타이머는 CSS 토큰을 따라간다(200·400 리터럴 금지)');
+  assert.ok(/\.st-th\.kept\s*\{/.test(css) && /\.st-steps\.stop li\[data-s=now\]::after/.test(css) && /::backdrop/.test(css) && /\.st-live-box\[aria-busy=true\]::after/.test(css), '번호 줄 유지·멈춘 막대·창 뒷막·큰 판 로딩 신호 규칙');
+  assert.ok(/:active/.test(css) && /-webkit-tap-highlight-color/.test(css), '눌림(:active) 반응이 있다');
+  assert.ok(!/늦어질 수 있음/.test(js) && !/' — ' \+ e\.message/.test(js) && !/\(완료\) 3D 스튜디오/.test(js), '얼버무린 문구·영어 원문 노출·고정 제목 문자열이 없다');
+  assert.ok(/const keepQ = /.test(js) && (js.match(/keepQ\(\)/g) || []).length >= 4, '다시 쓰는 주소에 파트너·임베드 표시를 남긴다(새로고침에서 호스트 얼굴이 사라지지 않게)');
+  assert.ok(/S\.sending/.test(js) && /beforeunload[^\n]*S\.busy \|\| S\.sending/.test(js), '올리는 중(만들기·사진 손질)에는 떠날 때 경고');
+  assert.ok(/ain-pt-/.test(read('maker/3d/partner-boot.js')) && /#\[0-9a-f\]\{6\}/i.test(read('maker/3d/partner-boot.js')), '색 캐시는 검증된 #rrggbb 셋만 읽는다');
+  const wiz = page.slice(page.indexOf('id="stIn"'), page.indexOf('</section>', page.indexOf('id="stIn"')));
+  assert.ok(/id="stDropF"/.test(wiz) && /id="stFileF"/.test(wiz) && /st-fold-in/.test(wiz), '드롭 칸·파일 줄은 접히는 칸 안에');
+}
 
 console.log('test-studio-live: OK');
