@@ -1,0 +1,7 @@
+{
+  "v": 1,
+  "meta": {
+    "note": "단지 분포 지도·검색용 단지 목록. 실제 단지 자료가 저장소에 들어오면 complexes 를 채운다(지금은 비어 있다). 항목: id(유일), name, addr, lat·lng(WGS84 도), types[{id, name, areaM2(㎡), rooms(방 수), templateId(선택, plan/data/templates.json 의 id)}]. 형식 검사는 maps.js 의 readComplexes."
+  },
+  "complexes": []
+}

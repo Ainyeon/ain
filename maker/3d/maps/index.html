@@ -1,0 +1,91 @@
+<!doctype html>
+<!-- 맵스(도면 검색) — 전체 화면 단지 분포 지도 + 왼쪽 카드(검색·결과·상세·도면 만드는 두 방법). 동작은 maps.js, 모양은 maps.css. -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>도면 검색 | 에인연 스튜디오</title>
+  <meta name="description" content="단지 이름이나 주소로 우리집 도면을 찾습니다. 없으면 직접 그리거나 도면 이미지를 따라 그립니다.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="theme-color" content="#F3F2EF">
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
+  <script src="/maker/3d/partner-boot.js?v=2"></script>
+  <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
+  <link rel="stylesheet" href="/assets/css/components.css?v=30">
+  <link rel="stylesheet" href="/maker/3d/maps/maps.css?v=1">
+  <script type="module" src="/maker/3d/maps/maps.js?v=1"></script>
+</head>
+<body class="mp">
+  <header class="mp-top">
+    <a class="mp-logo" href="../" aria-label="에인연 스튜디오"><img src="/assets/ain-wordmark-v4.svg" alt="" width="61" height="20"></a>
+    <h1 class="mp-title">도면 검색</h1>
+    <a class="mp-btn mp-x" href="../" aria-label="닫기, 스튜디오로 돌아가기"><svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></a>
+  </header>
+
+  <main class="mp-main">
+    <aside class="mp-card" id="mpCard" aria-label="도면 검색" data-open="true">
+      <button type="button" class="mp-handle" id="mpHandle" aria-expanded="true" aria-controls="mpBody" aria-label="목록 접기"><span aria-hidden="true"></span></button>
+      <div class="mp-sch">
+        <div class="mp-field">
+          <svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+          <input id="mpQ" type="text" role="combobox" aria-expanded="false" aria-controls="mpList" aria-autocomplete="list" aria-label="단지 검색" placeholder="단지 이름 또는 주소를 입력해주세요" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" maxlength="60">
+          <button type="button" class="mp-clr" id="mpClr" aria-label="검색어 지우기" hidden><svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+        </div>
+      </div>
+      <p class="mp-note"><svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>타입 평면은 예시이며 실제 세대와 다릅니다. 실측값으로 고쳐 그려 주세요.</span></p>
+      <p class="mp-count" id="mpCount" role="status"></p>
+
+      <div class="mp-body" id="mpBody">
+        <ul class="mp-list" id="mpList" role="listbox" aria-label="검색 결과" hidden></ul>
+
+        <section class="mp-detail" id="mpDetail" aria-labelledby="mpDName" hidden>
+          <button type="button" class="mp-back" id="mpBack"><i aria-hidden="true"></i>목록으로</button>
+          <h2 class="mp-dname" id="mpDName" tabindex="-1"></h2>
+          <p class="mp-daddr" id="mpDAddr"></p>
+          <h3 class="mp-sh">타입 선택</h3>
+          <ul class="mp-types" id="mpTypes"></ul>
+        </section>
+
+        <section class="mp-empty" id="mpEmpty">
+          <h2 class="mp-eh">찾으시는 우리집 도면이 없다면?</h2>
+          <svg class="mp-ill" viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="bg" cx="60" cy="60" r="56"/>
+            <path class="ln" d="M26 34h46v46H26zM26 56h20M58 34v14M46 80V56"/>
+            <circle class="ac" cx="76" cy="74" r="16"/>
+            <path class="ac" d="M88 86l14 14"/>
+          </svg>
+          <p class="mp-et">찾으시는 도면이 없으시다면, 아래 방법으로 원하시는 도면을 만드실 수 있습니다.</p>
+        </section>
+
+        <section class="mp-choices" id="mpChoices" aria-label="도면 만드는 방법">
+          <h3 class="mp-sh" id="mpChoicesH" hidden>원하는 타입이 없다면</h3>
+          <a class="mp-choice" href="../plan/" data-kind="draw">
+            <span class="mp-ci"><svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1-4L16.5 4.5a2.1 2.1 0 013 3L8 19l-4 1zM14 7l3 3"/></svg></span>
+            <span class="mp-ct"><strong>도면 직접 그리기</strong><span>도면 에디터에서 처음부터 벽과 방을 그립니다.</span></span>
+          </a>
+          <a class="mp-choice" href="../plan/?underlay=1" data-kind="trace">
+            <span class="mp-ci"><svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 15l4.5-4.5L13 15l3-3 4 4"/><circle cx="15.5" cy="8.5" r="1.5"/></svg></span>
+            <span class="mp-ct"><strong>도면 따라 그리기</strong><span>가진 도면 이미지를 밑그림으로 올려 따라 그립니다.</span></span>
+          </a>
+        </section>
+      </div>
+
+      <div class="mp-foot"><a class="mp-cta" href="../plan/" data-kind="draw">도면 직접 만들기</a></div>
+    </aside>
+
+    <div class="mp-map" id="mpMap" role="group" tabindex="0" aria-label="단지 분포 지도" aria-describedby="mpMapHint">
+      <canvas id="mpCv" aria-hidden="true"></canvas>
+      <p class="mp-vh" id="mpMapHint">화살표 키로 이동하고 더하기·빼기 키로 확대·축소합니다. 단지는 목록에서 고릅니다.</p>
+      <div class="mp-ctl">
+        <button type="button" class="mp-btn" id="mpLocate" aria-label="내 위치" hidden><svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></button>
+        <div class="mp-zoom">
+          <button type="button" class="mp-btn" id="mpZin" aria-label="지도 확대"><svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+          <button type="button" class="mp-btn" id="mpZout" aria-label="지도 축소"><svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+        </div>
+      </div>
+      <p class="mp-toast" id="mpToast" role="status"></p>
+    </div>
+  </main>
+</body>
+</html>
