@@ -107,7 +107,7 @@
       if (!c) return off(true);                           // 자료가 없다(404) — 캐시도 지운다
       const hex = /^#[0-9a-f]{6}$/i;
       const ok = typeof c.name === 'string' && c.name.length > 0 && c.name.length <= 20 && /^\/maker\/3d\/partners\/[a-z0-9-]+\.svg$/.test(c.logo || '') && /^https:\/\//.test(c.home || '')
-        && [c.accent, c.accentBg, c.accentLine].every((x) => hex.test(x)) && contrast(c.accent, '#ffffff') >= 4.5 && contrast(c.accent, c.accentBg) >= 4.5 && contrast(c.accentLine, '#5C5850') >= 4.5;   // 비활성 [만들기] 는 accentLine 면에 보조 글자색   // 글자 대비가 모자란 색은 쓰지 않는다
+        && [c.accent, c.accentBg, c.accentLine].every((x) => hex.test(x)) && contrast(c.accent, '#ffffff') >= 4.5 && contrast(c.accent, getComputedStyle(root).getPropertyValue('--c-bg').trim()) >= 4.5 && contrast(c.accent, c.accentBg) >= 4.5 && contrast(c.accentLine, '#5C5850') >= 4.5;   // 비활성 [만들기] 는 accentLine 면에 보조 글자색   // 글자 대비가 모자란 색은 쓰지 않는다
       if (!ok) return off(true);
       P.cfg = c; P.id = id;
       root.style.setProperty('--c-accent', c.accent); root.style.setProperty('--c-accent-bg', c.accentBg); root.style.setProperty('--c-accent-line', c.accentLine);

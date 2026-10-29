@@ -52,7 +52,7 @@
   background: var(--c-surface); font-size: var(--fs-3); font-weight: var(--fw-bold); color: var(--c-ink-sub);
   transition: border-color var(--t-base) var(--ease), background-color var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease), translate var(--t-base) var(--ease), scale var(--t-fast) var(--ease); }
 .st-th .b img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.st-th .n, .st-th .ai { position: absolute; min-width: 18px; padding: 0 4px; border-radius: 999px; background: var(--c-surface); font-size: var(--fs-4); font-weight: var(--fw-bold);
+.st-th .n, .st-th .ai { position: absolute; min-width: 18px; padding: 0 4px; border-radius: var(--r-1); background: var(--c-surface); font-size: var(--fs-4); font-weight: var(--fw-bold);
   line-height: 18px; text-align: center; color: var(--c-ink-sub); font-variant-numeric: tabular-nums; }
 .st-th .n { top: 2px; left: 2px; }
 .st-th .ai { right: 2px; bottom: 2px; color: var(--c-accent); background: var(--c-accent-bg); }
@@ -177,7 +177,7 @@
 .st-gal figcaption { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3); font-size: var(--fs-3); color: var(--c-ink-sub); background: var(--c-surface); }
 .st-gal figcaption a { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; font-weight: var(--fw-bold); color: var(--c-accent); }
-.st-tag { display: inline-block; margin-right: var(--sp-1); padding: 2px var(--sp-2); border-radius: 999px; font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--fw-bold);   /* 번호 줄 'AI' 와 같은 크기 */
+.st-tag { display: inline-block; margin-right: var(--sp-1); padding: 2px var(--sp-2); border-radius: var(--r-1); font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--fw-bold);   /* 번호 줄 'AI' 와 같은 크기 */
   color: var(--c-accent); background: var(--c-accent-bg); }
 .st-sumhead { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); margin: var(--sp-5) 0 var(--sp-2); }
 .st-sumhead h3 { margin: 0; }
@@ -198,14 +198,15 @@
 .st-dlg::backdrop { background: color-mix(in srgb, var(--c-ink, black) 40%, transparent); opacity: 0; transition: opacity var(--t-base) var(--ease), overlay var(--t-base) allow-discrete, display var(--t-base) allow-discrete; }
 .st-dlg[open]::backdrop { opacity: 1; }
 @starting-style { .st-dlg[open]::backdrop { opacity: 0; } }   /* 뒷막도 창과 함께 어두워지고 걷힌다 */
-#stJobsBody { min-height: calc(3 * 48px + 2 * var(--sp-2)); }   /* 목록이 올 때 창이 한 번에 커지지 않게 */
+#stJobsBody { min-height: calc(3 * 48px); }   /* 목록이 올 때 창이 한 번에 커지지 않게 */
 .st-dlg header { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-4) var(--sp-4) var(--sp-2); }
 .st-dlg header .st-sh { margin: 0; }
 .st-dlg-in { min-height: 0; padding: var(--sp-2) var(--sp-4) var(--sp-4); overflow-y: auto; overscroll-behavior: contain; }
-.st-jobs { display: grid; gap: var(--sp-2); }
+.st-jobs { display: grid; gap: 0; }
 .st-jobs button { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: 48px; padding: 0 var(--sp-3); text-align: left;
-  border-radius: var(--r-1); border: 1px solid var(--c-line); background: var(--c-surface); font: inherit; font-size: var(--fs-3); color: var(--c-ink); cursor: pointer;
+  border-radius: 0; border: 0; border-top: 1px solid var(--c-line); background: transparent; font: inherit; font-size: var(--fs-3); color: var(--c-ink); cursor: pointer;
   transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease); }
+.st-jobs button:first-child { border-top: 0; }
 .st-jobs .s { color: var(--c-ink-sub); white-space: nowrap; }
 /* 사용법: 창 — 그림 + 이름 + 한 문장, 한 번에 한 단계(셋) · 아래에 점과 [이전][다음] */
 .st-tour-dlg { width: min(calc(100% - 2 * var(--sp-4)), 460px); max-height: min(88svh, 640px); }
@@ -232,25 +233,27 @@
 @media (max-width: 640px) { .st-tour-p p { min-height: calc(var(--lh-3) * 2em); } }   /* 단계마다 문장 줄 수가 달라도 창 높이가 뛰지 않게 */
 /* 말로 시키기 — 입력 카드 + 예시 문장 알약 + 응답 줄(정해진 말을 알아듣는다). 아키스케치 에이전트 화면의 구조만: 카드 하나, 아래에 눌러 보는 예시 */
 .st-ask { padding: var(--sp-4) 24px 0; }
-.st-ask-card { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1); background: var(--c-surface); border: 1px solid var(--c-control); border-radius: var(--r-3);
+.st-ask-card { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1); background: var(--c-surface); border: 1px solid var(--c-control); border-radius: var(--r-2);   /* 안쪽 단추 r-1 6 + 여백 4 = 10 — 같은 중심의 둥글기 */
   transition: border-color var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
 .st-ask-card:focus-within { border-color: var(--c-accent); box-shadow: 0 0 0 1px var(--c-accent); }
 .st-ask-card input { flex: 1; min-width: 0; min-height: 44px; padding: 0 var(--sp-3); border: 0; background: transparent; color: var(--c-ink); font: inherit; font-size: 16px /* iOS 확대 방지 예외 */; }
 .st-ask-card input:focus { outline: none; }
+.st-main input::placeholder { color: var(--c-ink-faint); opacity: 1; }   /* 브라우저 기본(연한 회색)은 대비가 모자란다 */
+.st-main .fineprint { font-size: var(--fs-4); }
 .st-ask-send { min-height: 44px; padding: 0 var(--sp-5); border: 0; border-radius: var(--r-1); background: var(--c-accent); color: var(--c-surface); font: inherit; font-size: var(--fs-3); font-weight: var(--fw-bold); cursor: pointer; }
-.st-ask-chips { display: flex; gap: var(--sp-2); margin: var(--sp-2) -4px 0; padding: 4px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
-.st-chip { flex: none; min-height: 44px; padding: 0 var(--sp-4); border: 1px solid var(--c-line-strong); border-radius: 999px; background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: var(--fs-3); font-weight: var(--fw-semi); cursor: pointer; -webkit-tap-highlight-color: transparent;
+.st-ask-chips { display: flex; gap: var(--sp-2); margin: var(--sp-1) calc(-1 * var(--sp-1)) 0; padding: var(--sp-1); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+.st-chip { flex: none; min-height: 44px; padding: 0 var(--sp-4); border: 1px solid var(--c-line-strong); border-radius: var(--r-1); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: var(--fs-3); font-weight: var(--fw-semi); cursor: pointer; -webkit-tap-highlight-color: transparent;
   transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), scale var(--t-fast) var(--ease); }
 .st-chip:focus-visible, .st-ask-send:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
 .st-ask-log { margin: var(--sp-2) 0 0; display: grid; gap: var(--sp-1); }
 .st-ask-log:empty { display: none; }
 .st-ask-log p { margin: 0; font-size: var(--fs-3); line-height: var(--lh-3); overflow-wrap: anywhere; word-break: keep-all; animation: st-in var(--t-slow) var(--ease-out) backwards; }
-.st-ask-me { justify-self: end; padding: var(--sp-1) var(--sp-3); border: 1px solid var(--c-line); border-radius: 999px; background: var(--c-surface-sub); color: var(--c-ink); }
+.st-ask-me { justify-self: end; padding: var(--sp-1) var(--sp-3); border: 1px solid var(--c-line); border-radius: var(--r-1); background: var(--c-surface-sub); color: var(--c-ink); }
 .st-ask-bot { color: var(--c-ink-sub); }
 html[data-embed] .st-ask { display: none; }   /* 호스트 화면 안에서는 조용히 */
 /* 사진 손질(기존 도구 화면) */
 .st-tools { padding: var(--sp-7) 24px 0; }
-.st-panel { margin-top: var(--sp-4); padding: var(--sp-5); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-3); box-shadow: var(--sh-2); }
+.st-panel { margin-top: var(--sp-4); padding: var(--sp-5) 0 0; border-top: 1px solid var(--c-line); }   /* 상자 대신 선 하나 — 안의 캔버스·사진 상자가 이중 상자가 되지 않게 */
 .st-panel h3 { font-size: var(--fs-1); font-weight: var(--fw-bold); letter-spacing: -0.02em; color: var(--c-ink); }
 .st-panel .sub { margin-top: 4px; font-size: var(--fs-3); color: var(--c-ink-sub); }
 .st-panel .back { margin-bottom: var(--sp-3); }
@@ -289,9 +292,10 @@ html[data-embed] .st-ask { display: none; }   /* 호스트 화면 안에서는 �
 /* 채운 단추도 한 규격 — 글자·모서리는 같고 높이만 44(만들기 바 안은 48) */
 .st-save, .st-go button, .st-row button.primary, .st-bar button { font-size: var(--fs-3); font-weight: var(--fw-bold); border-radius: var(--r-1); }
 .st-save:disabled, .st-go button:disabled, #stGo:disabled { opacity: 1; background: var(--c-accent-line); color: var(--c-ink-sub); cursor: default; }   /* 비활성도 읽히게 — 흰 글자 3.07 → 4.5 이상 */
+@media (hover: hover) { .st-jobs button:hover { border-color: var(--c-line); } }   /* 눌러 볼 때 구분선은 그대로, 배경만 */
 @media (max-width: 768px) {
   .st-wiz, .st-tools, .st-sum, .st-ask { padding-left: 16px; padding-right: 16px; }
-  .st-panel { padding: var(--sp-4); }
+  .st-panel { padding: var(--sp-4) 0 0; }
   .st-canvas[style] { max-width: min(100%, calc(60svh * var(--ar))); margin-inline: auto; }   /* 칠 캔버스 위아래에 페이지를 밀 자리를 남긴다 */
 }
 @media (forced-colors: active) {
