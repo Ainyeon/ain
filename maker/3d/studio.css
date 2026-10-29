@@ -232,6 +232,13 @@
 @media (max-height: 520px) { .st-tour-art { aspect-ratio: 3 / 1; } }   /* 가로로 든 폰 — 그림을 낮춘다(넘치면 본문만 안에서 스크롤) */
 @media (max-width: 640px) { .st-tour-p p { min-height: calc(var(--lh-3) * 2em); } }   /* 단계마다 문장 줄 수가 달라도 창 높이가 뛰지 않게 */
 /* 말로 시키기 — 입력 카드 + 예시 문장 알약 + 응답 줄(정해진 말을 알아듣는다). 아키스케치 에이전트 화면의 구조만: 카드 하나, 아래에 눌러 보는 예시 */
+.st-apps { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-3) 24px 0; }
+.st-apps a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--sp-4); border: 1px solid var(--c-line-strong); border-radius: var(--r-1); background: var(--c-surface); color: var(--c-ink); font-size: var(--fs-3); font-weight: var(--fw-bold); text-decoration: none; -webkit-tap-highlight-color: transparent;
+  transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), scale var(--t-fast) var(--ease); }
+.st-apps a:active { scale: .98; }
+.st-apps a:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+@media (hover: hover) { .st-apps a:hover { border-color: var(--c-control); background: var(--c-surface-sub); } }
+html[data-embed] .st-apps { display: none; }
 .st-ask { padding: var(--sp-4) 24px 0; }
 .st-ask-card { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1); background: var(--c-surface); border: 1px solid var(--c-control); border-radius: var(--r-2);   /* 안쪽 단추 r-1 6 + 여백 4 = 10 — 같은 중심의 둥글기 */
   transition: border-color var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
@@ -294,7 +301,7 @@ html[data-embed] .st-ask { display: none; }   /* 호스트 화면 안에서는 �
 .st-save:disabled, .st-go button:disabled, #stGo:disabled { opacity: 1; background: var(--c-accent-line); color: var(--c-ink-sub); cursor: default; }   /* 비활성도 읽히게 — 흰 글자 3.07 → 4.5 이상 */
 @media (hover: hover) { .st-jobs button:hover { border-color: var(--c-line); } }   /* 눌러 볼 때 구분선은 그대로, 배경만 */
 @media (max-width: 768px) {
-  .st-wiz, .st-tools, .st-sum, .st-ask { padding-left: 16px; padding-right: 16px; }
+  .st-wiz, .st-tools, .st-sum, .st-ask, .st-apps { padding-left: 16px; padding-right: 16px; }
   .st-panel { padding: var(--sp-4) 0 0; }
   .st-canvas[style] { max-width: min(100%, calc(60svh * var(--ar))); margin-inline: auto; }   /* 칠 캔버스 위아래에 페이지를 밀 자리를 남긴다 */
 }

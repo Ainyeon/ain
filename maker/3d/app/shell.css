@@ -1,0 +1,33 @@
+/* 스튜디오 앱 셸 — 토큰만(design-tokens.css). 사이드바 220px · 위 바 56px · 본문. 폰(≤768px)은 사이드바가 아래 탭이 된다. 아이콘 없이 글자 위계와 1px 선으로 */
+:root { --t-fast: 100ms; --t-base: 200ms; --t-slow: 350ms; --ease: cubic-bezier(.645, .045, .355, 1); --ease-out: cubic-bezier(.22, 1, .36, 1); --ap-side: 220px; --ap-top: 56px; }
+body.ap { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: var(--font-sans); font-size: var(--fs-3); line-height: var(--lh-3); word-break: keep-all; }
+.ap-shell { display: grid; grid-template-columns: var(--ap-side) minmax(0, 1fr); min-height: 100dvh; }
+.ap-side { position: sticky; top: 0; align-self: start; height: 100dvh; display: flex; flex-direction: column; gap: var(--sp-5); padding: var(--sp-4) var(--sp-3); background: var(--c-surface); border-right: 1px solid var(--c-line); overflow: hidden auto; }
+.ap-brand { display: flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: 0 var(--sp-2); color: var(--c-ink); text-decoration: none; border-radius: var(--r-1); }
+.ap-brand span { font-size: var(--fs-3); font-weight: var(--fw-semi); color: var(--c-ink-sub); }
+.ap-brand.sm { display: none; padding: 0; }
+.ap-nav { display: grid; gap: var(--sp-4); }
+.ap-group { display: grid; gap: var(--sp-1); }
+.ap-glabel { margin: 0; padding: 0 var(--sp-2); font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-sub); }
+.ap-link { display: flex; align-items: center; min-height: 40px; padding: 0 var(--sp-2); border-radius: var(--r-1); color: var(--c-ink); font-size: var(--fs-3); font-weight: var(--fw-semi); text-decoration: none;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.ap-link[aria-current="page"] { background: var(--c-accent-bg); color: var(--c-accent); font-weight: var(--fw-bold); }
+.ap-foot { margin-top: auto; min-height: 40px; display: flex; align-items: center; padding: 0 var(--sp-2); border-top: 1px solid var(--c-line); color: var(--c-ink-sub); font-size: var(--fs-3); text-decoration: none; }
+.ap-col { min-width: 0; display: flex; flex-direction: column; }
+.ap-top { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); height: var(--ap-top); padding: 0 var(--sp-6); background: var(--c-bg); border-bottom: 1px solid var(--c-line); }
+.ap-auth { display: flex; align-items: center; gap: var(--sp-2); min-height: 44px; }
+.ap-main { flex: 1; min-width: 0; padding: var(--sp-6) var(--sp-6) var(--sp-9); outline: none; }
+.ap-link:focus-visible, .ap-brand:focus-visible, .ap-foot:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+@media (hover: hover) { .ap-link:hover:not([aria-current="page"]) { background: var(--c-surface-sub); } .ap-foot:hover { color: var(--c-ink); } }
+@media (max-width: 768px) {
+  .ap-shell { grid-template-columns: minmax(0, 1fr); }
+  .ap-side { position: fixed; z-index: 10; inset: auto 0 0 0; height: auto; flex-direction: row; gap: 0; padding: 0 var(--sp-2); border-right: 0; border-top: 1px solid var(--c-line); overflow: hidden; }
+  .ap-side > .ap-brand, .ap-side > .ap-foot, .ap-glabel { display: none; }
+  .ap-nav { display: flex; width: 100%; gap: 0; }
+  .ap-group { display: contents; }
+  .ap-link { flex: 1; justify-content: center; min-height: 56px; padding: 0 var(--sp-1); text-align: center; font-size: var(--fs-4); line-height: var(--lh-4); }
+  .ap-brand.sm { display: flex; margin-right: auto; }
+  .ap-top { padding: 0 var(--sp-4); }
+  .ap-main { padding: var(--sp-4) var(--sp-4) 88px; }
+}
+@media (prefers-reduced-motion: reduce) { .ap-link { transition: none; } }
