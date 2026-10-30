@@ -692,5 +692,36 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
     assert.ok(MESH.buildMesh(s.doc).walls.length === 10000);
   }
 
+  { // SEC-1 검증·삭제는 요소 수에 비례하는 시간 — 방 wallIds 수 × 벽 수, 개구부 수 × 벽 수의 제곱이 아니다(옛 코드는 아래 입력에서 3~13초)
+    const N = 20000, best = (fn, n = 3) => { let m = Infinity; for (let k = 0; k < n; k++) { const t = process.hrtime.bigint(); fn(); m = Math.min(m, Number(process.hrtime.bigint() - t) / 1e6); } return m; };   // 컴퓨터가 바쁠 때 흔들리지 않게 여러 번 재서 가장 빠른 값
+    const big = (wallIds = Array(N).fill('W' + N)) => { // 벽 N개, 개구부 N개(모두 마지막 벽), 방 1개(wallIds 가 N개 — 마지막 벽만 가리킨다)
+      const d = M.createDoc(), f = d.floors[0];
+      for (let i = 1; i <= N; i++) f.walls.push({ id: 'W' + i, a: [i * 10, 0], b: [i * 10 + 5, 100], t: 150, kind: 'inner', bulge: 0 });
+      for (let i = 1; i <= N; i++) f.openings.push({ id: 'O' + i, wall: 'W' + N, type: 'window', at: 0.5, width: 100, height: 100, sill: 0 });
+      f.rooms.push({ id: 'R1', name: '큰 방', poly: [[0, 0], [100, 0], [100, 100]], wallIds });
+      return d;
+    };
+    const d = big(), text = J(d);
+    assert.deepStrictEqual(M.validateDoc(d), [], '정상인 큰 도면은 거절하지 않는다');
+    let ms = best(() => M.validateDoc(d)); assert.ok(ms < 1000, `벽·개구부 ${N}개 검증 ${ms.toFixed(0)}ms`);
+    ms = best(() => X.fromDocJSON(text)); assert.ok(ms < 1000, `벽·개구부 ${N}개 불러오기 ${ms.toFixed(0)}ms`);
+    ms = best(() => S.applyCmd(d, { type: 'rename', title: '다른 제목' })); assert.ok(ms < 1000, `벽·개구부 ${N}개에서 명령 한 번 ${ms.toFixed(0)}ms`);
+    { // 삭제: 방이 쓰는 벽 절반(서로 다른 id)을 두고 나머지 절반을 한꺼번에 지운다 — 지울 벽마다 모든 방의 벽 목록을 훑으면 제곱 시간
+      const K = 49000, e = M.createDoc(), f = e.floors[0], half = K / 2;
+      for (let i = 1; i <= K; i++) f.walls.push({ id: 'W' + i, a: [i * 10, 0], b: [i * 10 + 5, 100], t: 150, kind: 'inner', bulge: 0 });
+      f.rooms.push({ id: 'R1', name: '큰 방', poly: [[0, 0], [100, 0], [100, 100]], wallIds: Array.from({ length: half }, (_, i) => 'W' + (half + i + 1)) });
+      const del = { type: 'remove', ids: Array.from({ length: half }, (_, i) => 'W' + (i + 1)) };
+      ms = best(() => S.applyCmd(e, del)); assert.ok(ms < 1000, `벽 ${half}개 삭제 ${ms.toFixed(0)}ms`);
+      const r = S.applyCmd(e, del); assert.deepStrictEqual([cf(r.doc).walls.length, cf(r.doc).rooms.length], [half, 1], '방이 쓰는 벽과 방은 남는다');
+      const r2 = S.applyCmd(e, { type: 'remove', ids: [...del.ids, 'W' + (half + 1)] }); assert.strictEqual(cf(r2.doc).rooms.length, 0, '방이 쓰는 벽을 함께 지우면 방도 지워진다');
+    }
+    // 상한: 방이 가리키는 벽 수가 층의 벽 수보다 많으면 거절, 층의 요소 합계 5만 개 넘으면 검사 없이 바로 거절
+    { const p = M.validateDoc(big(Array(N + 1).fill('W' + N))); assert.ok(p.length === 1 && ko(p[0]) && /벽 목록.*벽 수/.test(p[0]), p.join()); }
+    { const e = M.createDoc(), f = e.floors[0], guide = (i) => ({ id: 'G' + i, a: [0, 0], b: [10, 0] });
+      for (let i = 1; i <= M.FLOOR_MAX_ELEMENTS; i++) f.guides.push(guide(i));
+      assert.deepStrictEqual(M.validateDoc(e), [], '정확히 5만 개는 허용'); f.guides.push(guide(M.FLOOR_MAX_ELEMENTS + 1));
+      const p = M.validateDoc(e); assert.ok(p.length === 1 && ko(p[0]) && /너무 많/.test(p[0]), p.join()); throwsKo(() => X.fromDocJSON(J(e)), /읽지 못/); throwsKo(() => new S.Store(e), /너무 많/); }
+  }
+
   console.log('test-plan-core: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

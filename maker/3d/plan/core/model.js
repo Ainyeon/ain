@@ -70,35 +70,34 @@ const checkAppliance = (i) => !APPLIANCE_CATEGORIES.includes(i.category) ? '가�
   : !inR(i.heightMm, APPLIANCE_LIMITS.heightMin, APPLIANCE_LIMITS.heightMax) ? `가전 높이는 ${APPLIANCE_LIMITS.heightMin}~${APPLIANCE_LIMITS.heightMax} mm 여야 합니다`
   : i.url !== undefined && !(typeof i.url === 'string' && /^https:\/\/\S+$/.test(i.url)) ? '가전 출처 주소는 https 주소여야 합니다' : '';
 
-// 요소 하나의 문제 한 줄(없으면 ''). f = 그 요소가 속한 층
+// 요소 하나의 문제 한 줄(없으면 ''). f = 그 요소가 속한 층, W = 그 층의 벽 id 집합(층마다 한 번만 만든다 — 요소마다 벽을 훑으면 제곱 시간이다)
 const CHECK = {
   walls: (w) => !pt(w.a) || !pt(w.b) ? '벽의 끝점 좌표가 올바르지 않습니다 (±10km 이내의 숫자)'
     : Math.hypot(w.a[0] - w.b[0], w.a[1] - w.b[1]) < 0.5 ? '벽 길이가 0 입니다'
     : !len(w.t) ? '벽 두께는 0 보다 크고 10km 이하여야 합니다'
     : !KIND.walls.includes(w.kind) ? '벽 종류는 inner 또는 exterior 입니다'
     : !co(w.bulge) ? '곡선벽 처짐 값이 올바르지 않습니다 (±10km 이내의 숫자)' : '',
-  rooms: (r, f) => !Array.isArray(r.poly) || r.poly.length < 3 || !r.poly.every(pt) ? '방 모양은 점 3개 이상, 좌표는 ±10km 이내여야 합니다'
+  rooms: (r, f, W) => !Array.isArray(r.poly) || r.poly.length < 3 || !r.poly.every(pt) ? '방 모양은 점 3개 이상, 좌표는 ±10km 이내여야 합니다'
     : areaOf(r.poly) < 1 ? '방의 넓이가 0 입니다'
     : typeof r.name !== 'string' ? '방 이름이 문자열이 아닙니다'
-    : !Array.isArray(r.wallIds) || r.wallIds.some((i) => !f.walls.some((w) => w.id === i)) ? '방이 없는 벽을 가리킵니다' : '',
+    : !Array.isArray(r.wallIds) || r.wallIds.some((i) => !W.has(i)) ? '방이 없는 벽을 가리킵니다'
+    : r.wallIds.length > f.walls.length ? '방의 벽 목록이 층의 벽 수보다 깁니다' : '',
   columns: (c) => !KIND.columns.includes(c.kind) ? '기둥 종류는 rect 또는 round 입니다'
     : !pt(c.c) ? '기둥 위치가 올바르지 않습니다 (±10km 이내의 숫자)'
     : !(len(c.w) && (c.kind === 'round' || len(c.d))) ? '기둥 크기는 0 보다 크고 10km 이하여야 합니다'
     : !num(c.rot) ? '기둥 회전값이 숫자가 아닙니다' : '',
-  openings: (o, f) => {
-    const w = f.walls.find((x) => x.id === o.wall);
-    return !w ? '개구부가 없는 벽을 가리킵니다'
-      : !KIND.openings.includes(o.type) ? '개구부 종류는 door·window·open 입니다'
-      : !(num(o.at) && o.at >= 0 && o.at <= 1) ? '개구부 위치(at)는 0~1 입니다'
-      : o.hinge !== undefined && o.hinge !== 'a' && o.hinge !== 'b' ? '문 경첩 쪽(hinge)은 a 또는 b 입니다'
-      : o.swing !== undefined && o.swing !== 1 && o.swing !== -1 ? '문 열리는 쪽(swing)은 1 또는 -1 입니다'
-      : !(len(o.width) && len(o.height) && nonneg(o.sill)) ? '개구부 폭·높이는 0 보다, 바닥 높이는 0 이상이어야 합니다 (10km 이하)' : '';
-  },
+  openings: (o, f, W) => !W.has(o.wall) ? '개구부가 없는 벽을 가리킵니다'
+    : !KIND.openings.includes(o.type) ? '개구부 종류는 door·window·open 입니다'
+    : !(num(o.at) && o.at >= 0 && o.at <= 1) ? '개구부 위치(at)는 0~1 입니다'
+    : o.hinge !== undefined && o.hinge !== 'a' && o.hinge !== 'b' ? '문 경첩 쪽(hinge)은 a 또는 b 입니다'
+    : o.swing !== undefined && o.swing !== 1 && o.swing !== -1 ? '문 열리는 쪽(swing)은 1 또는 -1 입니다'
+    : !(len(o.width) && len(o.height) && nonneg(o.sill)) ? '개구부 폭·높이는 0 보다, 바닥 높이는 0 이상이어야 합니다 (10km 이하)' : '',
   guides: (g) => !pt(g.a) || !pt(g.b) ? '보조선 좌표가 올바르지 않습니다 (±10km 이내의 숫자)'
     : Math.hypot(g.a[0] - g.b[0], g.a[1] - g.b[1]) < 1 ? '보조선 길이는 1mm 이상이어야 합니다' : '', // addGuide 와 같은 기준
   items: (i) => (i.kind === 'ac' ? checkAc(i) : i.kind === 'appliance' ? checkAppliance(i) : '제품 종류는 ac 또는 appliance 입니다'),
 };
 
+export const FLOOR_MAX_ELEMENTS = 50000; // 한 층의 요소(벽·방·기둥·개구부·보조선·제품) 합계 상한. 이보다 많은 도면은 편집 한 번마다 전체 검증이 느려진다
 export function validateDoc(doc) {
   const P = [], bad = (m) => P.push(m);
   if (!doc || typeof doc !== 'object' || Array.isArray(doc)) return ['도면 데이터가 올바른 형식이 아닙니다'];
@@ -119,9 +118,11 @@ export function validateDoc(doc) {
     if (typeof f.name !== 'string') bad(`${f.id} 층 이름이 문자열이 아닙니다`);
     if (!f.finish || typeof f.finish.wall !== 'string' || typeof f.finish.floor !== 'string') bad(`${f.id} 마감 정보가 올바르지 않습니다`);
     if (COLS.some((c) => !Array.isArray(f[c]))) { bad(`${f.id} 요소 목록이 없습니다`); continue; }
+    if (COLS.reduce((n, c) => n + f[c].length, 0) > FLOOR_MAX_ELEMENTS) { bad(`${f.id} 층 요소가 너무 많습니다 (최대 ${FLOOR_MAX_ELEMENTS}개)`); continue; }
+    const W = new Set(f.walls.map((w) => w?.id));
     for (const c of COLS) for (const e of f[c]) {
       uid(e?.id, `${f.id} 의 ${c}`);
-      const m = e && CHECK[c](e, f);
+      const m = e && CHECK[c](e, f, W);
       if (m !== '') bad(`${e?.id ?? c}: ${m ?? '요소가 비어 있습니다'}`);
     }
   }

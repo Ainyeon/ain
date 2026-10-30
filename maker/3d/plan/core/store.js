@@ -147,8 +147,8 @@ const CMD = {
     for (const r of f.rooms) if (r.wallIds.some((i) => wallDel.has(i)) && (ids.has(r.id) || r.wallIds.some((i) => ids.has(i)))) roomDel.add(r.id); // 벽을 지우면 그 방도(나머지 벽은 둔다)
     const keep = (col, del) => { const k = f[col].filter((e) => { const gone = del(e); if (gone) out.push(e.id); return !gone; }); f[col] = k; };
     keep('rooms', (r) => roomDel.has(r.id));
-    const gone = new Set(); // 실제로 지워진 벽 — 남은 방이 쓰는 공유 벽과 그 개구부는 남긴다
-    keep('walls', (w) => { const g = wallDel.has(w.id) && !f.rooms.some((r) => r.wallIds.includes(w.id)); if (g) gone.add(w.id); return g; });
+    const gone = new Set(), used = new Set(f.rooms.flatMap((r) => r.wallIds)); // 실제로 지워진 벽 — 남은 방이 쓰는(used) 공유 벽과 그 개구부는 남긴다
+    keep('walls', (w) => { const g = wallDel.has(w.id) && !used.has(w.id); if (g) gone.add(w.id); return g; });
     keep('openings', (o) => ids.has(o.id) || gone.has(o.wall));
     for (const col of ['columns', 'guides', 'items']) keep(col, (e) => ids.has(e.id));
     return out.length ? out : null;
