@@ -107,4 +107,13 @@ assert.ok(/\.pl-grid--1 \.pl-fav \{[^}]*top: var\(--sp-1\)/.test(pco) && /\.pl-p
 const smallH = [...pcss.matchAll(/(\.pl-[\w-]+(?:\[[^\]]*\])?)(?:[:\w.-]*)\s*\{[^}]*?(?<![\w-])(?:min-)?height: (\d+)px/g)].filter((m) => Number(m[2]) < 44 && /^\.pl-(fav|btn|chips-tab|tabs-tab|search|sort|est-dl|link|card-main|tpl)/.test(m[1])).map((m) => m[1]);
 for (const c of new Set(smallH)) assert.ok(small.includes(c) || pco.includes(c), `panels.css 에서 44px 미만인 ${c} 가 coarse 규칙에 없다`);
 
+/* ===== 폰 시트 스크롤 · 터치 태블릿 가전 판 ===== */
+assert.ok(/\.ed-panel \{[^}]*max-height: 60dvh/.test(phone) && /\.ed-panel\[data-own\] \{ height: 60dvh; \}/.test(phone), '폰 시트: panels.js 판(data-own)은 시트에 height 가 있어야 안쪽 목록만 스크롤된다(max-height 만이면 height:100% 가 풀려 목록이 내용 높이까지 늘어나 잘린다)');
+assert.ok(/\.pl-root \{[^}]*height: 100%/.test(pcss) && /\.pl-body \{[^}]*flex: 1[^}]*min-height: 0[^}]*overflow-y: auto/.test(pcss), '판은 부모 높이를 채우고 .pl-body 만 스크롤한다(위 규칙과 한 쌍)');
+assert.ok(/\.pl-chips \{[^}]*flex-wrap: nowrap[^}]*overflow-x: auto/.test(pco) && /\.pl-chips-tab \{ flex: none; white-space: nowrap; \}/.test(pco), 'coarse: 칩 줄은 한 줄 가로 스크롤(칩 44px 유지)');
+assert.ok(/\.pl-fgroup \{ flex-direction: row;/.test(pco), 'coarse: 라벨은 칩 줄 왼쪽에 붙는다(분류 한 줄 · 브랜드 한 줄)');
+const tablet = mediaBodies(pcss, /\(pointer: coarse\) and \(min-width: 769px\)/).join(' ');
+assert.ok(/\.pl-filters \{[^}]*position: sticky[^}]*top: calc\(-1 \* var\(--sp-3\)\)[^}]*background: var\(--c-surface\)/.test(tablet), '터치 태블릿: 필터 묶음은 위에 붙는다(스크롤 상자 안쪽 여백만큼 당겨 맨 위에)');
+assert.ok(!/\.pl-filters \{[^}]*position: sticky/.test(baseCss(pcss)) && !/position: sticky/.test(pco), '폰 시트와 마우스 화면에서는 필터를 붙이지 않는다');
+
 console.log('test-plan-layout: OK');

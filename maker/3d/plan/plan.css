@@ -181,6 +181,7 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
   .ed-rb:nth-last-child(2) { margin: 0; border-top: 2px solid transparent; }
   .ed-rb.on { border-top-color: var(--c-accent); }
   .ed-panel { position: fixed; z-index: 20; left: 0; right: 0; bottom: 56px; max-height: 60dvh; border-right: 0; border-top: 1px solid var(--c-line); border-radius: var(--r-3) var(--r-3) 0 0; transition: translate var(--t-base) var(--ease), visibility var(--t-base); }
+  .ed-panel[data-own] { height: 60dvh; }   /* panels.js 의 판은 높이 100% 로 부모를 채운다 — 높이가 정해져 있어야 안쪽 목록만 스크롤된다(max-height 만 있으면 목록이 내용 높이까지 늘어나 잘린다) */
   .ed-app.no-panel .ed-panel { translate: 0 100%; visibility: hidden; }
   .ed-side { position: fixed; z-index: 20; top: var(--ed-top); right: 0; bottom: 56px; width: min(var(--ed-side), 88vw); box-shadow: var(--sh-2); transition: translate var(--t-base) var(--ease), visibility var(--t-base); }
   .ed-app.no-side .ed-side { translate: 100% 0; visibility: hidden; }

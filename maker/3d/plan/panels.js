@@ -61,6 +61,13 @@ export function sortAppliances(items, id = 'name') { const s = APP_SORTS.find((x
 const mmText = (v) => (v === null || v === undefined ? '미확인' : v.toLocaleString('ko-KR'));
 export const dimLine = (w, d, h) => `가로 ${mmText(w)} · 깊이 ${mmText(d)} · 높이 ${mmText(h)} mm`;
 export const fmtApplianceDims = (m) => dimLine(m.widthMm, m.depthMm, m.heightMm);
+// 가전 목록 바닥글 — meta 의 수집일·행 상한·상한에 닿은 파일에서 만든다(상한 때문에 뺀 모델이 skipped 에 적힌 파일과, 상한 행 수에 닿은 파일을 나눠 말한다)
+export function applianceFoot(meta) {
+  const cap = meta.rowCap, label = (file) => `${BRAND_LABEL[meta.files[file].brand]} ${APPLIANCE_LABEL[meta.files[file].category]}`;
+  const cut = cap.skippedByCap.map((x) => label(x.file)), hit = cap.reached.filter((x) => !cut.includes(label(x.file))).map((x) => label(x.file));
+  return [`삼성·LG 공식 페이지에서 모은 ${meta.collectedAt} 기준 목록`, `브랜드·분류마다 최대 ${cap.perFile}행까지 모았습니다`,
+    cut.length > 0 && `상한 때문에 뺀 모델이 있는 분류: ${cut.join(', ')}`, hit.length > 0 && `상한 ${cap.perFile}행에 닿은 분류: ${hit.join(', ')}`].filter(Boolean).join(' · ');
+}
 // ctx.setTool('placeItem', …) 에 넘기는 값 — 놓을 수 없는 행은 null. 크기는 가로·깊이, 높이는 따로(공식 제원 그대로)
 export function applianceOpts(m) {
   return m.placeable ? { kind: 'appliance', category: m.category, brand: m.brand, model: m.model, name: m.name, code: m.model, size: [m.widthMm, m.depthMm], heightMm: m.heightMm, url: m.url } : null;
@@ -157,12 +164,20 @@ function roving(box, sel) {
 }
 
 const emptyNote = (text, ...more) => h('p', { class: 'pl-empty' }, text, ...more);
+// 불러오기 실패 안내 — role=alert 로 낭독된다. 다시 시도가 끝나면 초점이 body 로 사라지지 않게 첫 카드(없으면 다시 시도 단추·선택된 칩)로 옮긴다(그 사이 사용자가 초점을 다른 곳에 뒀으면 건드리지 않는다)
+const failNote = (text, retry) => h('p', { class: 'pl-empty', role: 'alert' }, text + ' ', h('button', { type: 'button', class: 'pl-link', onclick: retry }, '다시 시도'));
+const refocus = (box) => {
+  const a = document.activeElement;
+  if (a && a !== document.body) return;
+  const t = box.querySelector('.pl-card-main') || box.querySelector('.pl-link') || box.querySelector('[role=tab][aria-selected="true"]');
+  if (t) t.focus({ preventScroll: true });
+};
 // 스타일시트가 붙기 전 한 프레임 맨몸으로 보이지 않게 숨겼다가 불러오면 보인다
 const revealWhenStyled = (root, isGone) => { root.style.visibility = 'hidden'; ensureStyles().then(() => { if (!isGone()) root.style.visibility = ''; }); };
 
 /* ---------- 제품·마감재가 함께 쓰는 목록 판 ----------
    cfg: name, title, favKind, tabs[{id,label}], load(), chips(data)→[{id,label}], entries(data)→[], filter(entries,{chip,chip2,query,ids}), sorts?, sort?(list,id), card(entry)→{main,name,extra?}, cols(1|2), searchLabel,
-   placed(data, ctx, api)→{node, refresh?} (마지막 탭, 자료를 못 불러와도 열린다), refresh?(grid, ctx)(문서가 바뀔 때 카드 표시만 고친다), foot?(data)→text, emptyFav, emptyNone,
+   placed(data, ctx, api)→{node, refresh?} (마지막 탭, 자료를 못 불러와도 열린다), refresh?(grid, ctx)(문서가 바뀔 때 카드 표시만 고친다), foot?(data)→text, emptyFav, emptyNone(글자 또는 (data, st)→글자·노드 배열),
    둘째 칩 줄: chip2Label·chips2(data)→[…] (있으면 filter 의 chip2 로 넘어간다) · chipCounts?(entries,{chip2,query,ids})→{칩 id: 개수}(첫 칩 줄 글자에 개수를 적는다)
    limit?: 한 번에 그리는 카드 수(넘으면 '더 보기') · countText?(total, shown) · embedded: 제품 판 안에 들어가는 판(제목 줄이 없다) */
 function browsePanel(container, ctx, cfg) {
@@ -182,11 +197,11 @@ function browsePanel(container, ctx, cfg) {
 
   const status = (node) => body.replaceChildren(node);
   const loadingNote = () => h('p', { class: 'pl-empty', role: 'status' }, '불러오는 중');
-  const fail = () => status(emptyNote('목록을 불러오지 못했습니다 ', h('button', { type: 'button', class: 'pl-link', onclick: start }, '다시 시도')));
-  function start() {
+  const fail = () => status(failNote('목록을 불러오지 못했습니다', () => start(true)));
+  function start(retry) {
     phase = 'loading';
     if (st.tab !== lastTab) status(loadingNote());
-    cfg.load().then((d) => { if (gone) return; data = d; phase = 'ready'; show(); }, () => { if (gone) return; phase = 'fail'; if (st.tab !== lastTab) fail(); });
+    cfg.load().then((d) => { if (gone) return; data = d; phase = 'ready'; show(); if (retry) refocus(body); }, () => { if (gone) return; phase = 'fail'; if (st.tab !== lastTab) { fail(); if (retry) refocus(body); } });
   }
 
   function show() {
@@ -248,7 +263,10 @@ function browsePanel(container, ctx, cfg) {
       shown = Math.min(list.length, page);
       if (cfg.chipCounts) { const n = cfg.chipCounts(entries, { chip2: st.chip2, query: st.q, ids }); for (const c of chipItems) chips.setLabel(c.id, `${c.label} ${(n[c.id] ?? 0).toLocaleString('ko-KR')}`); }
       grid.replaceChildren(...list.slice(0, shown).map(cardOf));
-      if (!list.length) grid.append(h('li', { class: 'pl-empty-row' }, emptyNote(st.tab === 'fav' && !favs.all().size && !st.q && st.chip === 'all' && st.chip2 === 'all' ? cfg.emptyFav : cfg.emptyNone)));
+      if (!list.length) {
+        const none = st.tab === 'fav' && !favs.all().size && !st.q && st.chip === 'all' && st.chip2 === 'all' ? cfg.emptyFav : typeof cfg.emptyNone === 'function' ? cfg.emptyNone(data, st) : cfg.emptyNone;
+        grid.append(h('li', { class: 'pl-empty-row' }, emptyNote(...[].concat(none))));
+      }
       syncMore(); refreshTab();
       if (cfg.refresh) cfg.refresh(grid, ctx);
     }
@@ -264,7 +282,7 @@ function browsePanel(container, ctx, cfg) {
     view = { update, grid };
     update();
     const group = (title, el) => h('div', { class: 'pl-fgroup' }, h('span', { class: 'pl-flabel' }, title), el);
-    return h('div', { class: 'pl-browse' }, h('div', { class: 'pl-tools' }, search, sort), chips2 ? [group(cfg.chipLabel, chips.el), group(cfg.chip2Label, chips2.el)] : chips.el, hint, count, grid, moreBtn, foot);
+    return h('div', { class: 'pl-browse' }, h('div', { class: 'pl-filters' }, h('div', { class: 'pl-tools' }, search, sort), chips2 ? [group(cfg.chipLabel, chips.el), group(cfg.chip2Label, chips2.el)] : chips.el, hint, count), grid, moreBtn, foot);
   }
 
   const unsub = ctx.store.subscribe(() => {
@@ -363,6 +381,9 @@ function applianceCard(m, ctx, api) {
   const src = isHttps(m.url) && h('a', { class: 'pl-src', href: m.url, target: '_blank', rel: 'noopener noreferrer', tabindex: '-1', 'aria-label': `${m.model} 공식 페이지 (새 창)`, 'aria-keyshortcuts': 'O' }, '공식 페이지');
   return { main, name, extra: src };
 }
+// 목록에 없는 모델을 찾을 때 가는 브랜드 공식 사이트 링크 둘(새 창)
+const officialLinks = (meta) => h('span', { class: 'pl-links' }, Object.entries(BRAND_LABEL).filter(([b]) => isHttps(meta.sourceSites[b]))
+  .map(([b, label]) => h('a', { class: 'pl-link', href: meta.sourceSites[b], target: '_blank', rel: 'noopener noreferrer', 'aria-label': `${label} 공식 사이트 (새 창)` }, `${label} 공식 사이트`)));
 function appliancesPanel(host, ctx) {
   return browsePanel(host, ctx, {
     name: 'app', embedded: true, title: '가전', favKind: 'appliance', cols: 1, limit: APP_PAGE,
@@ -374,8 +395,9 @@ function appliancesPanel(host, ctx) {
     searchLabel: '모델명·제품명 검색', hint: '방향키로 고르고 Enter 로 놓습니다 · F 즐겨찾기 · O 공식 페이지',
     card: applianceCard, placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
     countText: (total, shown) => (shown < total ? `${total.toLocaleString('ko-KR')}개 중 ${shown.toLocaleString('ko-KR')}개 표시` : `${total.toLocaleString('ko-KR')}개`),
-    emptyFav: '즐겨찾기한 가전이 없습니다', emptyNone: '찾는 가전이 없습니다',
-    foot: (d) => `삼성·LG 공식 페이지 기준 · 수집일 ${d.meta.collectedAt}`,
+    emptyFav: '즐겨찾기한 가전이 없습니다',
+    emptyNone: (d, st) => (st.tab === 'lib' && st.q.trim() ? ['목록에 없는 모델입니다 · 삼성/LG 공식 페이지에서 크기를 확인해 주세요', officialLinks(d.meta)] : '찾는 가전이 없습니다'),
+    foot: (d) => applianceFoot(d.meta),
   });
 }
 
@@ -464,9 +486,9 @@ function templatesPanel(container, ctx) {
   container.replaceChildren(root);
   revealWhenStyled(root, () => gone);
 
-  function start() {
+  function start(retry) {
     body.replaceChildren(h('p', { class: 'pl-empty', role: 'status' }, '불러오는 중'));
-    loadTemplates().then((d) => { if (gone) return; data = d; build(); }, () => { if (!gone) body.replaceChildren(emptyNote('템플릿을 불러오지 못했습니다 ', h('button', { type: 'button', class: 'pl-link', onclick: start }, '다시 시도'))); });
+    loadTemplates().then((d) => { if (gone) return; data = d; build(); if (retry) refocus(body); }, () => { if (!gone) { body.replaceChildren(failNote('템플릿을 불러오지 못했습니다', () => start(true))); if (retry) refocus(body); } });
   }
   function build() {
     const count = h('p', { class: 'pl-count', 'aria-live': 'polite' }), list = h('ul', { class: 'pl-list pl-list--tpl', 'aria-label': '템플릿' });

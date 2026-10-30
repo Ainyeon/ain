@@ -1,4 +1,4 @@
-// 플래너 '가전' 통합 시험 — data/appliance-catalog.json(raw 수집 파일 24개와 전수 대조) · core(kind:'appliance' 검증·되돌리기·반전·회전·hitTest·3D 상자·엔진 JSON 미포함) ·
+// 플래너 '가전' 통합 시험 — data/appliance-catalog.json(raw 수집 파일 24개와 전수 대조 — 이중 등재·세트 상품 거르기 포함) · core(kind:'appliance' 검증·되돌리기·반전·회전·hitTest·3D 상자·엔진 JSON 미포함) ·
 // 배치 도구(placeItem 가전 경로) · 견적 집계/CSV(손으로 센 값) · 패널 순수 함수(필터·검색·정렬·분류별 개수) · 3D 정점 자료.
 // 실행: node tools/test-plan-appliance.js   변이 시험용: PLAN_DIR(plan 폴더 사본)·APPLIANCE_SPECS_DIR(raw 가 든 appliance-specs 폴더) 환경변수
 'use strict';
@@ -53,14 +53,17 @@ function parseCsv(text) {
   const catText = read('data/appliance-catalog.json');
   assert.ok(/^\{\n  "meta"/.test(catText), 'meta 가 파일 맨 앞');
   const cat = JSON.parse(catText), items = cat.items, M = cat.meta;
-  const ROW_KEYS = ['id', 'brand', 'category', 'model', 'modelCodes', 'name', 'series', 'capacityText', 'widthMm', 'heightMm', 'depthMm', 'dimsRaw', 'extraDims', 'weightText', 'url', 'collectedAt', 'discontinued', 'placeable', 'whyNot'];
+  const ROW_KEYS = ['id', 'brand', 'category', 'model', 'modelCodes', 'name', 'series', 'capacityText', 'widthMm', 'heightMm', 'depthMm', 'dimsRaw', 'extraDims', 'weightText', 'url', 'collectedAt', 'discontinued', 'discontinuedBasis', 'placeable', 'whyNot'];
   const AX = [['widthMm', '가로'], ['heightMm', '높이'], ['depthMm', '깊이']];
   const okNum = (v) => typeof v === 'number' && Number.isFinite(v) && v >= 50 && v <= 5000;
-  const wantPlaceable = (r) => AX.every(([k]) => okNum(r[k]));
-  assert.strictEqual(items.length, 1295, '행 수 합계(raw 를 새로 받으면 의도한 변경인지 보고 고친다)');
-  assert.strictEqual(M.counts.rows, items.length);
+  const isSet = (name) => name.replace(/\([^)]*\)/g, '').includes('+') || /\(\s*\d+\s*,\s*\d+\s*\+\s*\d+\s*㎡\s*\)/.test(name);   // 세트 상품 = 괄호 밖 '+' 또는 큐브 공기청정기 2대 조합 표기 '(합계, 모듈+모듈㎡)' (그 밖의 괄호 안 '+' 는 사양 표기: LCD+다이얼)
+  const SET_WHY = '세트 상품이라 공식 치수가 본체 한 대분만 적혀 있어 놓지 않습니다 · 구성품을 따로 놓아 주세요';
+  const wantPlaceable = (r) => AX.every(([k]) => okNum(r[k])) && !isSet(r.name);
+  const RAW_ROWS = 2028, DEDUP_PAIRS = 19, ROWS = RAW_ROWS - DEDUP_PAIRS;   // 이중 등재 19쌍(삼성 세탁기·워시타워)을 걸러낸 행 수
+  assert.strictEqual(items.length, ROWS, '행 수 합계(raw 를 새로 받으면 의도한 변경인지 보고 고친다)');
+  assert.strictEqual(M.counts.rows, items.length); assert.strictEqual(M.counts.rawRows, RAW_ROWS);
   const byCat = Object.fromEntries(SPEC_CATS.map((c) => [c, items.filter((r) => r.category === c).length]));
-  assert.strictEqual(Object.values(byCat).reduce((a, b) => a + b, 0), 1295, '분류별 행 수 합');
+  assert.strictEqual(Object.values(byCat).reduce((a, b) => a + b, 0), ROWS, '분류별 행 수 합');
   for (const c of SPEC_CATS) { assert.ok(byCat[c] > 0, c + ' 행 있음'); assert.strictEqual(M.counts.byCategory[c].total, byCat[c], c + ' meta 개수'); for (const b of BRANDS) assert.strictEqual(M.counts.byCategory[c][b], items.filter((r) => r.category === c && r.brand === b).length, `${c} ${b}`); }
   assert.deepStrictEqual(M.categories.map((c) => c.id), SPEC_CATS, 'meta 분류 순서');
   for (const c of M.categories) { assert.strictEqual(c.short, APPLIANCE_LABEL[c.id], c.id + ' 짧은 이름이 코드와 같다'); assert.ok(c.name.startsWith(c.short), c.id); }
@@ -77,6 +80,7 @@ function parseCsv(text) {
     for (const [k] of AX) assert.ok(r[k] === null || (typeof r[k] === 'number' && Number.isFinite(r[k])), `${r.id} ${k} 숫자 또는 null`);
     assert.strictEqual(r.placeable, wantPlaceable(r), `${r.id} placeable 규칙(가로·높이·깊이 모두 유한한 양수이고 50~5000)`);
     if (r.placeable) assert.strictEqual(r.whyNot, null, r.id + ' 놓을 수 있으면 whyNot 없음');
+    else if (AX.every(([k]) => okNum(r[k]))) { np++; assert.ok(isSet(r.name), r.id + ' 치수가 되는데 못 놓는 행은 세트 상품뿐'); assert.strictEqual(r.whyNot, SET_WHY, r.id + ' 세트 상품 이유 문구'); }
     else {
       np++;
       assert.ok(typeof r.whyNot === 'string' && KO.test(r.whyNot) && !/\n/.test(r.whyNot), `${r.id} whyNot 한국어 한 줄`);
@@ -87,46 +91,87 @@ function parseCsv(text) {
     }
     assert.ok(/^https:\/\/(www\.samsung\.com|www\.lge\.co\.kr|www\.lge\.com)\//.test(r.url), `${r.id} 출처는 삼성·LG 공식 도메인`);
     assert.ok((r.brand === 'samsung') === /samsung\.com/.test(r.url), `${r.id} 브랜드와 출처 도메인이 맞다`);
-    assert.strictEqual(r.collectedAt, M.collectedAt); assert.strictEqual(typeof r.discontinued, 'boolean'); assert.ok(Array.isArray(r.modelCodes) && r.modelCodes.includes(r.model), r.id + ' 모델 코드 목록에 대표 모델이 있다');
+    assert.strictEqual(r.collectedAt, M.collectedAt); assert.ok(r.discontinued === true || r.discontinued === false || r.discontinued === null, r.id + ' discontinued 는 true/false/null');
+    assert.ok(r.discontinuedBasis === null || (typeof r.discontinuedBasis === 'string' && r.discontinuedBasis.length > 0), r.id + ' discontinuedBasis 는 글자 또는 null');
+    if (r.discontinued === null) assert.ok(/판정 불가/.test(r.discontinuedBasis), r.id + ' 단종 판정 불가 이유가 행에 있다');
+    if (r.brand === 'lg') assert.strictEqual(r.discontinuedBasis, null, r.id + ' LG raw 에는 행별 기준 칸이 없다');
+    else assert.ok(typeof r.discontinuedBasis === 'string', r.id + ' 삼성 행은 단종 기준을 적는다');
+    if (r.brand === 'lg') assert.ok(typeof r.discontinued === 'boolean', r.id + ' LG 는 판정 불가 없음'); assert.ok(Array.isArray(r.modelCodes) && (r.modelCodes.includes(r.model) || r.modelCodes.some((c) => r.model.startsWith(c + '.'))), r.id + ' 모델 코드 목록에 대표 모델이 있다(같은 코드의 판매 접미 구분 .BKOR 은 코드 + 점)');
     assert.ok(Array.isArray(r.extraDims) && typeof r.name === 'string' && r.name.length > 0 && typeof r.model === 'string' && r.model.length > 0, r.id);
   }
   assert.strictEqual(M.counts.placeable + M.counts.notPlaceable, items.length); assert.strictEqual(M.counts.notPlaceable, np); assert.strictEqual(M.counts.placeable, items.filter((r) => r.placeable).length);
   assert.ok(np > 0 && np < items.length * 0.2, `놓을 수 없는 행 ${np}`);
+  { const sets = items.filter((r) => isSet(r.name));                      // 세트 상품 규칙: 이름 기준 한 가지, 치수 이유가 있으면 그것이 먼저
+    assert.ok(sets.length > 0 && sets.every((r) => !r.placeable), '괄호 밖 + 가 있는 행은 모두 놓을 수 없다');
+    assert.ok(items.every((r) => isSet(r.name) || r.placeable === AX.every(([k]) => okNum(r[k]))), '세트가 아닌 행은 이 규칙으로 바뀌지 않는다(치수 규칙 그대로)');
+    assert.ok(items.some((r) => r.name.includes('+') && !isSet(r.name) && r.placeable && /LCD\+다이얼/.test(r.name)), '괄호 안 + (LCD+다이얼) 는 사양 표기라 놓을 수 있다');
+    const cubes = items.filter((r) => r.category === 'airpurifier' && /\(\s*\d+\s*,\s*\d+\s*\+\s*\d+\s*㎡\s*\)/.test(r.name));
+    assert.ok(cubes.length >= 15 && cubes.every((r) => !r.placeable && r.whyNot === SET_WHY), '큐브 공기청정기 2대 조합(106·123·94㎡ 등)은 한 대분 치수라 놓지 않는다: ' + cubes.length + '행');
+    assert.ok(items.some((r) => r.category === 'airpurifier' && /큐브/.test(r.name) && !/\+/.test(r.name) && r.placeable), '큐브 단품(한 대)은 놓을 수 있다');
+    for (const m of ['FH25GSGX', 'FH25ESEF', 'FH11EAX']) assert.ok(items.some((r) => r.model === m && r.category === 'washtower' && r.whyNot === SET_WHY), '워시콤보 세트 ' + m);
+    assert.ok(['RG19ENX-AKOR2', 'RG20VNF', 'RD20GNG-KG'].every((m) => items.some((r) => r.model === m && r.category === 'dryer' && r.whyNot === SET_WHY)), '건조기 세트 · 스태킹키트');
+    assert.strictEqual(M.sets.rows, sets.length); assert.deepStrictEqual(M.sets.byCategory, Object.fromEntries(SPEC_CATS.filter((c) => sets.some((r) => r.category === c)).map((c) => [c, sets.filter((r) => r.category === c).length])));
+    assert.strictEqual(M.counts.notPlaceableBy['세트 상품'], items.filter((r) => r.whyNot === SET_WHY).length); }
   assert.ok(items.some((r) => !r.placeable && /후면핸들/.test(r.whyNot)) && items.some((r) => !r.placeable && r.whyNot.startsWith('치수 미확인')), '후면핸들 포함·미포함 / 치수 미확인 이유');
-  assert.strictEqual(M.counts.discontinued, items.filter((r) => r.discontinued).length);
+  { const dc = (b, v) => items.filter((r) => (!b || r.brand === b) && r.discontinued === v).length;   // 단종 true/false/null 브랜드별
+    for (const [b, k] of [['samsung', 'samsung'], ['lg', 'lg'], [null, 'total']]) assert.deepStrictEqual(M.counts.discontinued[k], { true: dc(b, true), false: dc(b, false), null: dc(b, null) }, '단종 수 ' + k);
+    assert.ok(/상품 정보 확인만 가능/.test(M.discontinuedBasis.samsung) && /판정 불가/.test(M.discontinuedBasis.samsung), '삼성 단종 기준 표기');
+    assert.ok(/단종 제품입니다/.test(M.discontinuedBasis.lg) && /색상 옵션 한 곳만/.test(M.discontinuedBasis.lg), 'LG 단종 기준 표기');
+    assert.ok(M.counts.discontinued.samsung.null > 0 && M.counts.discontinued.lg.null === 0, '삼성에만 판정 불가가 있다'); }
   // meta: 파일별 수치·한계
   assert.strictEqual(Object.keys(M.files).length, 24, '파일 24개');
   for (const b of BRANDS) for (const c of SPEC_CATS) {
     const f = M.files[`${b}-${c}.json`];
-    assert.ok(f, `${b}-${c} meta`); assert.strictEqual(f.rows, items.filter((r) => r.brand === b && r.category === c).length, `${b}-${c} 행 수`);
+    assert.ok(f, `${b}-${c} meta`); assert.strictEqual(f.rowsInCatalog, items.filter((r) => r.brand === b && r.category === c).length, `${b}-${c} 카탈로그 행 수`); assert.ok(f.rowsInCatalog <= f.rows && f.rows <= M.rowCap.perFile, `${b}-${c} 행 수는 raw 이하·상한 이하`);
     assert.ok(/^[0-9a-f]{64}$/.test(f.sha256) && f.collectedAt === M.collectedAt && Number.isInteger(f.skipped) && Number.isInteger(f.verifyLog), `${b}-${c} 형식`);
     assert.ok(typeof f.coverage === 'string' && f.coverage.length > 50 && typeof f.labelConvention === 'string' && f.labelConvention.length > 50, `${b}-${c} 한계(coverage·labelConvention)를 옮겼다`);
   }
   assert.ok(Array.isArray(M.limits) && M.limits.length >= 6 && M.limits.some((l) => /후면핸들/.test(l)) && M.limits.some((l) => /스탠드 포함/.test(l)) && M.limits.some((l) => /번들/.test(l)), '한계 요약(번들·후면핸들·TV 스탠드)');
   assert.ok(/각각 50~5000 mm/.test(M.placeable) && /widthMm=가로, heightMm=세로\(높이\), depthMm=깊이/.test(M.dims));
-  assert.ok(catText.length < 1.2e6, `카탈로그 크기 ${catText.length}`);
+  assert.ok(catText.length < 2.0e6, `카탈로그 크기 ${catText.length}`);
+  assert.ok(/각각 50~5000 mm/.test(M.placeable) && /세트 상품이 아니면 true/.test(M.placeable), 'placeable 설명에 세트 상품');
 
   // 1-a. raw 수집 파일 24개와 전수 대조 (독립 구현: 파이썬 생성기와 다른 코드)
   let rawChecked = false;
   const rawDir = path.join(SPECS, 'raw');
   if (fs.existsSync(path.join(rawDir, 'samsung-refrigerator.json'))) {
     rawChecked = true;
-    const BRAND_OF = { 삼성전자: 'samsung', samsung: 'samsung', LG전자: 'lg', lg: 'lg' }, want = [];
+    const BRAND_OF = { 삼성전자: 'samsung', samsung: 'samsung', LG전자: 'lg', lg: 'lg' }; let want = []; const capSkips = {};
     for (const c of SPEC_CATS) for (const b of BRANDS) {
       const fname = `${b}-${c}.json`, buf = fs.readFileSync(path.join(rawDir, fname)), raw = JSON.parse(buf.toString('utf8'));
       assert.strictEqual(crypto.createHash('sha256').update(buf).digest('hex'), M.files[fname].sha256, `${fname} 이 카탈로그를 만든 뒤 바뀌었다 — python3 tools/build-appliance-catalog.py 를 다시 돌린다`);
       assert.strictEqual(BRAND_OF[raw.brand], b, fname + ' brand'); assert.strictEqual(raw.category, c);
       assert.strictEqual(M.files[fname].rows, raw.items.length); assert.strictEqual(M.files[fname].skipped, raw.skipped.length); assert.strictEqual(M.files[fname].verifyLog, raw.verifyLog.length);
+      capSkips[fname] = raw.skipped.filter((x) => x.reason.includes('상한')).length; assert.strictEqual(M.files[fname].skippedByRowCap, capSkips[fname], fname + ' 상한 때문에 뺀 수');
       assert.strictEqual(M.files[fname].coverage, raw.meta.coverage, fname + ' coverage 원문 그대로'); assert.strictEqual(M.files[fname].labelConvention, raw.meta.labelConvention, fname + ' labelConvention 원문 그대로');
       for (const k of Object.keys(raw.meta)) if (!['method', 'installTexts'].includes(k)) assert.deepStrictEqual(M.files[fname][k], raw.meta[k], `${fname} meta.${k}`);
       for (const it of raw.items) want.push({ b, c, it });
     }
-    assert.strictEqual(items.length, want.length, 'raw 행 수 합계');
-    assert.deepStrictEqual(ids, want.map(({ b, c, it }) => `${b}-${c}-${it.model}`), '행 순서·구성(분류 순서 → 삼성·LG → raw 순서)');
+    assert.strictEqual(want.length, RAW_ROWS, 'raw 행 수 합계(걸러내기 전)');
+    // 이중 등재: 같은 (브랜드, 모델, 주소) 가 여러 분류에 있으면 워시타워·워시콤보 분류만 남는다(독립 구현)
+    { const grp = new Map(); for (const w of want) { const k = [w.b, w.it.model, w.it.url].join('|'); (grp.get(k) || grp.set(k, []).get(k)).push(w); }
+      const drop = new Set(), pairs = [];
+      for (const g of grp.values()) if (g.length > 1) {
+        assert.deepStrictEqual(g.map((w) => w.c).sort(), ['washer', 'washtower'], '이중 등재는 세탁기·워시타워 두 분류뿐: ' + g[0].it.model);
+        const gone = g.find((w) => w.c === 'washer'); drop.add(gone); pairs.push({ brand: gone.b, model: gone.it.model, kept: 'washtower', dropped: ['washer'] });
+      }
+      want = want.filter((w) => !drop.has(w));
+      const diffUrl = new Map(); for (const w of want) { const k = w.b + '|' + w.it.model; diffUrl.set(k, (diffUrl.get(k) || 0) + 1); }
+      assert.deepStrictEqual([...diffUrl.values()].filter((n) => n > 1), [], '걸러낸 뒤 같은 (브랜드, 모델) 이 둘 이상 남지 않는다(주소가 다른 경우도 지금 raw 에는 없다)');
+      assert.strictEqual(pairs.length, DEDUP_PAIRS, '이중 등재 19쌍');
+      assert.deepStrictEqual(M.dedup.list, pairs, 'meta.dedup 목록 = 독립 계산(세탁기 쪽 raw 순서)');
+      assert.deepStrictEqual([M.dedup.pairs, M.dedup.keptCategory, M.dedup.droppedCategory, M.dedup.sameModelDifferentUrl, M.dedup.priority], [19, { washtower: 19 }, { washer: 19 }, [], ['washtower', 'washer']], 'meta.dedup 요약');
+      assert.ok(/워시타워·워시콤보 분류를 세탁기 분류보다 우선/.test(M.dedup.rule));
+      for (const p of pairs) { assert.ok(items.some((r) => r.id === `${p.brand}-washtower-${p.model}`), p.model + ' 워시타워 쪽이 남는다'); assert.ok(!items.some((r) => r.id === `${p.brand}-washer-${p.model}`), p.model + ' 세탁기 쪽은 없다'); } }
+    assert.deepStrictEqual(M.rowCap, { perFile: 250, reached: Object.entries(M.files).filter(([, f]) => f.rows === 250).map(([file, f]) => ({ file, rows: f.rows })), skippedByCap: Object.entries(capSkips).filter(([, n]) => n > 0).map(([file, skipped]) => ({ file, skipped })) }, 'meta.rowCap = 파일별 수치');
+    assert.deepStrictEqual(M.rowCap.reached.map((x) => x.file).sort(), ['lg-aircon.json', 'samsung-refrigerator.json', 'samsung-tv.json'], '상한 250 에 닿은 파일 셋');
+    assert.strictEqual(items.length, want.length, '걸러낸 raw 행 수 = 카탈로그 행 수');
+    assert.deepStrictEqual(ids, want.map(({ b, c, it }) => `${b}-${c}-${it.model}`), '행 순서·구성(분류 순서 → 삼성·LG → raw 순서, 이중 등재 걸러냄)');
     items.forEach((r, i) => {
       const { b, c, it } = want[i];
       assert.strictEqual(r.brand, b); assert.strictEqual(r.category, c);
       for (const k of ['model', 'name', 'series', 'capacityText', 'dimsRaw', 'weightText', 'url', 'collectedAt', 'discontinued']) assert.strictEqual(r[k], it[k], `${r.id} ${k} 가 raw 와 같다`);
+      assert.strictEqual(r.discontinuedBasis, it.discontinuedBasis ?? null, r.id + ' discontinuedBasis 가 raw 와 같다(없으면 null)');
       for (const k of ['widthMm', 'heightMm', 'depthMm']) assert.strictEqual(r[k], it[k], `${r.id} ${k} 가 raw 와 같다(채우거나 바꾼 값 없음)`);
       assert.deepStrictEqual(r.modelCodes, it.modelCodes, r.id + ' modelCodes'); assert.deepStrictEqual(r.extraDims, it.extraDims, r.id + ' extraDims');
       assert.ok(!('notes' in r), r.id + ' notes 전문은 뺀다');
@@ -285,7 +330,7 @@ function parseCsv(text) {
 
   /* ===== 6. 패널 순수 함수: 필터·검색·정렬·개수 ===== */
   const cnt = (f) => items.filter(f).length;
-  assert.strictEqual(P.filterAppliances(items).length, 1295);
+  assert.strictEqual(P.filterAppliances(items).length, ROWS);
   for (const c of SPEC_CATS) assert.deepStrictEqual(P.filterAppliances(items, { category: c }).map((r) => r.id), items.filter((r) => r.category === c).map((r) => r.id), c + ' 분류 필터');
   assert.strictEqual(P.filterAppliances(items, { brand: 'lg' }).length, cnt((r) => r.brand === 'lg')); assert.strictEqual(P.filterAppliances(items, { brand: 'samsung', category: 'tv' }).length, cnt((r) => r.brand === 'samsung' && r.category === 'tv'));
   assert.ok(P.filterAppliances(items, { brand: 'lg' }).every((r) => r.brand === 'lg') && P.filterAppliances(items, { category: 'dryer' }).every((r) => r.category === 'dryer'));
@@ -302,8 +347,8 @@ function parseCsv(text) {
   assert.strictEqual(P.filterAppliances(items, { category: 'tv', query: 'rm90h64p2w' }).length, 0, '분류와 검색이 함께 걸린다');
   assert.deepStrictEqual(P.filterAppliances(items, { ids: new Set([ids[0], ids[7]]) }).map((r) => r.id), [ids[0], ids[7]], '즐겨찾기 id 만');
   const cc = P.categoryCounts(items);
-  assert.strictEqual(cc.all, 1295); for (const c of SPEC_CATS) assert.strictEqual(cc[c], byCat[c], c + ' 분류별 개수'); assert.strictEqual(SPEC_CATS.reduce((s, c) => s + cc[c], 0), cc.all);
-  { const lg = P.categoryCounts(items, { brand: 'lg' }); assert.strictEqual(lg.all, 734); assert.strictEqual(lg.refrigerator, 72); assert.strictEqual(lg.dryer, 20, '브랜드 칩은 분류 개수에 반영된다');
+  assert.strictEqual(cc.all, ROWS); for (const c of SPEC_CATS) assert.strictEqual(cc[c], byCat[c], c + ' 분류별 개수'); assert.strictEqual(SPEC_CATS.reduce((s, c) => s + cc[c], 0), cc.all);
+  { const lg = P.categoryCounts(items, { brand: 'lg' }); assert.strictEqual(lg.all, 976); assert.strictEqual(lg.refrigerator, 72); assert.strictEqual(lg.dryer, 20, '브랜드 칩은 분류 개수에 반영된다');
     const q = P.categoryCounts(items, { query: 'rm90h64p2w' }); assert.strictEqual(q.all, 1); assert.strictEqual(q.refrigerator, 1); assert.strictEqual(q.tv, 0, '검색은 분류 개수에 반영된다');
     const f = P.categoryCounts(items, { ids: new Set([ids[0]]) }); assert.strictEqual(f.all, 1); assert.strictEqual(f[items[0].category], 1); }
   // 정렬
@@ -323,6 +368,22 @@ function parseCsv(text) {
   // 표시 글자
   assert.strictEqual(P.dimLine(912, 923, 1853), '가로 912 · 깊이 923 · 높이 1,853 mm'); assert.strictEqual(P.dimLine(912, null, 1853), '가로 912 · 깊이 미확인 · 높이 1,853 mm'); assert.strictEqual(P.fmtApplianceDims(sample), '가로 912 · 깊이 683 · 높이 1,853 mm');
   assert.strictEqual(P.fmtApplianceDims({ widthMm: 1437.1, depthMm: 302, heightMm: 890 }), '가로 1,437.1 · 깊이 302 · 높이 890 mm', '소수 그대로');
+
+  // 바닥글: meta 의 수집일·행 상한·상한에 닿은 파일에서 만든다
+  assert.strictEqual(P.applianceFoot(M), '삼성·LG 공식 페이지에서 모은 2026-10-30 기준 목록 · 브랜드·분류마다 최대 250행까지 모았습니다 · 상한 때문에 뺀 모델이 있는 분류: 삼성 냉장고, 삼성 TV · 상한 250행에 닿은 분류: LG 에어컨');
+  { const meta = (reached, cut) => ({ collectedAt: '2027-01-02', files: M.files, rowCap: { perFile: 100, reached: reached.map((file) => ({ file, rows: 100 })), skippedByCap: cut.map((file) => ({ file, skipped: 3 })) } });
+    assert.strictEqual(P.applianceFoot(meta([], [])), '삼성·LG 공식 페이지에서 모은 2027-01-02 기준 목록 · 브랜드·분류마다 최대 100행까지 모았습니다', '상한에 닿은 파일이 없으면 상한 수치만 말한다');
+    assert.strictEqual(P.applianceFoot(meta(['lg-tv.json'], [])), '삼성·LG 공식 페이지에서 모은 2027-01-02 기준 목록 · 브랜드·분류마다 최대 100행까지 모았습니다 · 상한 100행에 닿은 분류: LG TV');
+    assert.ok(P.applianceFoot(meta(['lg-tv.json', 'samsung-dryer.json'], ['lg-tv.json'])).endsWith('상한 때문에 뺀 모델이 있는 분류: LG TV · 상한 100행에 닿은 분류: 삼성 건조기'), '뺀 모델이 있으면 닿음에서 겹쳐 세지 않는다'); }
+  // 화면 코드(DOM 은 브라우저에서 본다): 목록에 없는 모델 안내 · 공식 사이트 링크 둘 · 불러오기 실패 낭독 · 다시 시도 뒤 초점
+  { const pj = code('panels.js');
+    assert.ok(/목록에 없는 모델입니다 · 삼성\/LG 공식 페이지에서 크기를 확인해 주세요/.test(pj) && /officialLinks\(d\.meta\)/.test(pj) && /meta\.sourceSites\[b\]/.test(pj), '검색 0건: 안내 문구 + 공식 사이트 링크');
+    assert.ok(/st\.tab === 'lib' && st\.q\.trim\(\)/.test(pj), '안내는 가전 라이브러리 탭의 검색 결과가 0 일 때');
+    assert.ok(/role: 'alert'/.test(pj) && /failNote\('목록을 불러오지 못했습니다'/.test(pj) && /failNote\('템플릿을 불러오지 못했습니다'/.test(pj), '불러오기 실패는 role=alert 로 낭독');
+    const n = (re) => (pj.match(re) || []).length;
+    assert.strictEqual(n(/, \(\) => start\(true\)\)/g), 2, '다시 시도 단추(제품·템플릿)는 retry 표시를 달아 다시 불러온다');
+    assert.strictEqual(n(/if \(retry\) refocus\(body\)/g), 4, '다시 시도가 끝나면(성공·다시 실패, 제품·템플릿) 초점을 옮긴다');
+    assert.ok(/\.pl-card-main/.test(pj.slice(pj.indexOf('const refocus'))), '초점은 첫 카드로'); }
 
   /* ===== 7. 3D 정점 자료: 가전은 밑면 없는 상자, 에어컨 조각과 섞이지 않는다 ===== */
   { const D = V3.meshData(MESH.buildMesh(mixed.doc)), none = V3.meshData(MESH.buildMesh((() => { const s = mk(); s.exec({ type: 'addItem', kind: 'ac', model: '1way', brand: 'samsung', c: [3000, 2000], size: [1198, 500] }); return s.doc; })()));

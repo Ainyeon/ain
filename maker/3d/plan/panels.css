@@ -5,7 +5,7 @@
 :where(.pl-root, .pl-est) :is(button, input, select) { font: inherit; color: inherit; }   /* where — 아래 클래스 규칙이 색을 정한다 */
 :where(.pl-root, .pl-est) button { cursor: pointer; }
 .pl-root :focus-visible, .pl-est :focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; border-radius: var(--r-1); }
-.pl-root .pl-card-main:focus-visible, .pl-root .pl-tabs-tab:focus-visible, .pl-root .pl-seg-tab:focus-visible { outline-offset: -2px; }   /* 스크롤 상자 안쪽 가장자리에서 잘리지 않게 안으로 */
+.pl-root .pl-card-main:focus-visible, .pl-root .pl-tabs-tab:focus-visible, .pl-root .pl-seg-tab:focus-visible, .pl-root .pl-chips-tab:focus-visible { outline-offset: -2px; }   /* 스크롤 상자 안쪽 가장자리에서 잘리지 않게 안으로 */
 
 /* 제목 줄 */
 .pl-head { flex: none; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--c-line); }
@@ -29,6 +29,7 @@
 
 .pl-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--sp-3) var(--sp-3) var(--sp-5); }
 .pl-browse { display: flex; flex-direction: column; gap: var(--sp-2); }
+.pl-filters { display: flex; flex-direction: column; gap: var(--sp-2); }   /* 검색·정렬·칩·안내·개수 — 터치에서는 위에 붙어 목록만 스크롤된다(아래 pointer: coarse) */
 
 /* 검색·정렬 */
 .pl-tools { display: flex; gap: var(--sp-2); }
@@ -52,6 +53,7 @@
 .pl-empty { margin: var(--sp-5) 0; text-align: center; color: var(--c-ink-sub); }
 .pl-empty-row { grid-column: 1 / -1; list-style: none; }
 .pl-link { padding: 0; border: 0; background: none; color: var(--c-accent); text-decoration: underline; text-underline-offset: 2px; }
+.pl-links { display: flex; justify-content: center; gap: var(--sp-4); margin-top: var(--sp-2); }   /* 목록에 없는 모델 안내 아래 공식 사이트 링크 둘 */
 
 /* 카드 목록 */
 .pl-grid, .pl-list { list-style: none; margin: 0; padding: 0; }
@@ -143,8 +145,15 @@
 .pl-est-dl { min-height: 40px; padding: 0 var(--sp-4); background: var(--c-accent); border: 1px solid var(--c-accent); border-radius: var(--r-1); color: var(--c-surface); font-weight: var(--fw-semi); }
 .pl-est-dl:hover { background: var(--c-ink); border-color: var(--c-ink); }
 
-/* 터치(손가락): 판 안의 눌리는 것은 전부 44px 이상 — plan.css 의 .ed-* 규칙과 같은 값. 즐겨찾기는 카드 오른쪽 위에 얹히므로 카드 윗줄을 그만큼 비운다 */
+/* 터치(손가락): 판 안의 눌리는 것은 전부 44px 이상 — plan.css 의 .ed-* 규칙과 같은 값. 즐겨찾기는 카드 오른쪽 위에 얹히므로 카드 윗줄을 그만큼 비운다.
+   칩 줄은 한 줄 가로 스크롤(칩 44px 그대로)이고 라벨은 칩 줄 왼쪽에 붙는다. 태블릿 폭(769px~)에서는 필터 묶음이 위에 붙어 스크롤과 함께 올라가지 않는다(아래 목록만 스크롤). 폰 시트(≤768px)는 목록 칸이 작아 필터를 붙이지 않는다 */
 @media (pointer: coarse) {
+  .pl-chips { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .pl-chips-tab { flex: none; white-space: nowrap; }
+  .pl-fgroup { flex-direction: row; align-items: center; gap: var(--sp-2); }
+  .pl-fgroup .pl-flabel { flex: none; }
+  .pl-fgroup .pl-chips { flex: 1; min-width: 0; }
+
   .pl-tabs-tab, .pl-chips-tab, .pl-seg-tab, .pl-fav, .pl-btn, .pl-more, .pl-link, .pl-search, .pl-sort, .pl-est-dl { min-height: 44px; }
   .pl-tabs-tab, .pl-chips-tab, .pl-fav, .pl-btn { min-width: 44px; }
   .pl-link { display: inline-flex; align-items: center; }
@@ -152,6 +161,10 @@
   .pl-app { padding-bottom: 44px; }
   .pl-grid--1 .pl-fav { top: var(--sp-1); right: var(--sp-1); }
   .pl-prod-type { min-height: 40px; }
+}
+
+@media (pointer: coarse) and (min-width: 769px) {   /* sticky 는 스크롤 상자의 안쪽 여백만큼 안에서 멈추므로 여백(--sp-3)만큼 위로 당겨 맨 위에 붙인다 */
+  .pl-filters { position: sticky; top: calc(-1 * var(--sp-3)); z-index: 1; margin: calc(-1 * var(--sp-3)) calc(-1 * var(--sp-3)) 0; padding: var(--sp-3) var(--sp-3) var(--sp-2); background: var(--c-surface); border-bottom: 1px solid var(--c-line); }
 }
 
 @media (prefers-reduced-motion: reduce) { .pl-root *, .pl-est * { transition: none !important; } }
