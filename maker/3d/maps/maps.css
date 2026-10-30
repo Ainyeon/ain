@@ -123,4 +123,17 @@ a.mp-type:hover { border-color: var(--c-control); background: var(--c-surface-su
   .mp-et { margin-bottom: var(--sp-4); }
 }
 @media (max-width: 720px) and (max-height: 640px) { .mp-ill { display: none; } }
-@media (prefers-reduced-motion: reduce) { .mp-btn, .mp-field, .mp-list li, .mp-type, .mp-choice, .mp-cta, .mp-toast { transition: none; } }
+/* 바탕 지도 저작권 표기 · 주소 검색(단지 검색 결과가 없을 때) */
+.mp-credit { position: absolute; right: var(--sp-2); bottom: var(--sp-1); z-index: 1; padding: 0 var(--sp-1); font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-sub); background: var(--c-surface); border-radius: var(--r-1); }
+.mp-credit[hidden], .mp-geo[hidden], .mp-places[hidden] { display: none; }
+.mp-credit:hover { color: var(--c-ink); text-decoration: underline; }
+.mp-geo { display: grid; gap: var(--sp-2); margin: 0 0 var(--sp-5); text-align: left; }
+.mp-geogo, .mp-place { display: block; width: 100%; padding: var(--sp-3); font: inherit; font-size: var(--fs-3); line-height: var(--lh-3); text-align: left; color: var(--c-ink); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-1); cursor: pointer; transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+.mp-geogo { font-weight: var(--fw-semi); border-color: var(--c-accent-line); }
+.mp-geogo:hover:not(:disabled), .mp-place:hover { border-color: var(--c-control); background: var(--c-surface-sub); }
+.mp-geogo:disabled { color: var(--c-ink-faint); cursor: default; }
+.mp-geogo[aria-busy="true"] { color: var(--c-accent); }
+.mp-place[aria-pressed="true"] { border-color: var(--c-accent); }
+.mp-places { display: grid; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
+.mp-geonote { margin: 0; font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-faint); }
+@media (prefers-reduced-motion: reduce) { .mp-btn, .mp-field, .mp-list li, .mp-type, .mp-choice, .mp-cta, .mp-toast, .mp-geogo, .mp-place { transition: none; } }

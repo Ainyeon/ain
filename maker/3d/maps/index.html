@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>도면 검색 | 에인연 스튜디오</title>
   <meta name="description" content="단지 이름이나 주소로 우리집 도면을 찾습니다. 없으면 직접 그리거나 도면 이미지를 따라 그립니다.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tile.openstreetmap.org; connect-src 'self' https://nominatim.openstreetmap.org; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
   <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
@@ -56,6 +56,11 @@
             <path class="ac" d="M88 86l14 14"/>
           </svg>
           <p class="mp-et">찾으시는 도면이 없으시다면, 아래 방법으로 원하시는 도면을 만드실 수 있습니다.</p>
+          <div class="mp-geo" id="mpGeo" hidden>
+            <button type="button" class="mp-geogo" id="mpGeoGo"></button>
+            <ul class="mp-places" id="mpPlaces" aria-label="주소 검색 결과" hidden></ul>
+            <p class="mp-geonote">주소 검색은 입력한 글을 OpenStreetMap 에 보냅니다.</p>
+          </div>
         </section>
 
         <section class="mp-choices" id="mpChoices" aria-label="도면 만드는 방법">
@@ -84,6 +89,7 @@
           <button type="button" class="mp-btn" id="mpZout" aria-label="지도 축소"><svg class="mp-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
         </div>
       </div>
+      <a class="mp-credit" id="mpCredit" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" hidden></a>
       <p class="mp-toast" id="mpToast" role="status"></p>
     </div>
   </main>

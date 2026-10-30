@@ -149,5 +149,33 @@ const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[
   assert.strictEqual(planUrl('trace', '?partner=baramdaero'), '../plan/?underlay=1&partner=baramdaero'); assert.strictEqual(planUrl('template', '?embed=1', 't1'), '../plan/?template=t1&embed=1');
   assert.strictEqual(typeMeta({ areaM2: 84.9712, rooms: 3 }), '84.97㎡ · 방 3'); assert.strictEqual(typeMeta({ areaM2: 59, rooms: 0 }), '59㎡ · 방 0');
 
+  // ── 바탕 지도(OpenStreetMap 타일) · 주소 검색(Nominatim) ──
+  { const { BASEMAP, tileUrl, visibleTiles, placesUrl, readPlaces, distKm, nearComplexes } = M, origin = (u) => new URL(u.replace(/\{\w\}/g, '0')).origin;
+    assert.strictEqual(tileUrl(BASEMAP.tiles, 15, 27940, 12688), 'https://tile.openstreetmap.org/15/27940/12688.png');
+    const v = { lat: 37.5663, lng: 126.9779, zoom: 15, w: 800, h: 600 }, ts = visibleTiles(v), n = 2 ** 15;   // 서울시청 · 줌 15
+    const tx = Math.floor((v.lng + 180) / 360 * n), sn = Math.sin(v.lat * Math.PI / 180), ty = Math.floor((0.5 - Math.log((1 + sn) / (1 - sn)) / (4 * Math.PI)) * n);   // OSM 슬리피 타일 공식(독립 계산)
+    const c = ts.find((t) => t.x === tx && t.y === ty); assert.ok(c, '화면 가운데 점이 든 타일이 있다'); assert.ok(c.sx <= 400 && 400 < c.sx + c.s && c.sy <= 300 && 300 < c.sy + c.s, '그 타일이 화면 가운데를 덮는다');
+    for (const [x, y] of [[0, 0], [799, 0], [0, 599], [799, 599]]) assert.ok(ts.some((t) => x >= t.sx && x < t.sx + t.s && y >= t.sy && y < t.sy + t.s), `화면 모서리 ${x},${y} 가 타일에 덮인다`);
+    const t0 = ts[0], p0 = project(Math.atan(Math.sinh(Math.PI * (1 - 2 * t0.y / n))) * 180 / Math.PI, t0.x / n * 360 - 180, v); near(p0.x, t0.sx, 1e-6, '타일 왼쪽 위 x = project()'); near(p0.y, t0.sy, 1e-6, '타일 왼쪽 위 y = project()');
+    assert.ok(ts.every((t) => t.z === 15 && t.s === 256) && new Set(ts.map((t) => t.x + ',' + t.y)).size === ts.length, '정수 줌: 256px · 중복 없음');
+    const f = visibleTiles({ ...v, zoom: 15.4 }); assert.strictEqual(f[0].z, 15); near(f[0].s, 256 * 2 ** 0.4, 1e-9, '소수 줌은 타일을 늘려 그린다'); const g = visibleTiles({ ...v, zoom: 15.6 }); assert.strictEqual(g[0].z, 16, '타일 줌은 반올림(15.6 → 16)'); near(g[0].s, 256 * 2 ** -0.4, 1e-9, '반올림해 위 줌을 쓰면 줄여 그린다');
+    assert.ok(visibleTiles({ lat: 0, lng: -179.9, zoom: 3, w: 2000, h: 600 }).every((t) => t.x >= 0 && t.x < 8 && t.y >= 0 && t.y < 8), '세계 가장자리 밖 타일은 뺀다');
+    assert.ok(visibleTiles({ lat: 37, lng: 127, zoom: 19.4, w: 400, h: 400 }).every((t) => t.z === 19), '타일 줌 상한 19');
+    assert.strictEqual(placesUrl(BASEMAP.geocode, ' 서울 시청 '), BASEMAP.geocode + '?format=jsonv2&limit=5&countrycodes=kr&accept-language=ko&q=' + encodeURIComponent('서울 시청')); assert.ok(placesUrl(BASEMAP.geocode, 'a'.repeat(200)).endsWith('q=' + 'a'.repeat(80)), '검색어는 80자까지');
+    assert.deepStrictEqual(readPlaces([{ lat: '37.5666', lon: '126.9784', display_name: ' 서울특별시청 ' }, { lat: 'x', lon: '1', display_name: '좌표 아님' }, { lat: '95', lon: '1', display_name: '범위 밖' }, { lat: '1', lon: '1' }, null, 5]), [{ name: '서울특별시청', lat: 37.5666, lng: 126.9784 }], '모양이 다른 항목은 뺀다');
+    assert.deepStrictEqual(readPlaces({}), []); assert.deepStrictEqual(readPlaces(null), []); assert.strictEqual(readPlaces(Array.from({ length: 9 }, (_, i) => ({ lat: '1', lon: '1', display_name: 'n' + i }))).length, 5, '최대 5건'); assert.strictEqual(readPlaces([{ lat: '1', lon: '1', display_name: '가'.repeat(300) }])[0].name.length, 120);
+    near(distKm(37.5663, 126.9779, 35.1796, 129.0756), 325, 6, '서울시청–부산 약 325km'); assert.strictEqual(distKm(37, 127, 37, 127), 0);
+    const cs = [{ id: 'far', lat: 35.18, lng: 129.07 }, { id: 'b', lat: 37.5700, lng: 126.9800 }, { id: 'a', lat: 37.5665, lng: 126.9780 }];
+    assert.deepStrictEqual(nearComplexes(cs, 37.5663, 126.9779, 2).map((x) => x.id), ['a', 'b'], '반경 2km 안, 가까운 순'); assert.deepStrictEqual(nearComplexes(cs, 0, 0, 2), []);
+    // 정적: 바깥으로 나가는 주소는 이 셋뿐이고 CSP 가 정확히 그 둘만 연다
+    const html = fs.readFileSync(path.join(__dirname, '..', 'maker/3d/maps/index.html'), 'utf8'), js = fs.readFileSync(path.join(__dirname, '..', 'maker/3d/maps/maps.js'), 'utf8');
+    const allowed = new Set([origin(BASEMAP.tiles), origin(BASEMAP.geocode), origin(BASEMAP.creditUrl)]);
+    for (const u of js.match(/https:\/\/[^\s'"`)]+/g) || []) assert.ok(allowed.has(new URL(u.replace(/\{\w\}/g, '0')).origin), '허용 밖 외부 주소: ' + u);
+    assert.ok(html.includes(`img-src 'self' data: blob: ${origin(BASEMAP.tiles)};`) && html.includes(`connect-src 'self' ${origin(BASEMAP.geocode)};`) && /script-src 'self';/.test(html), 'CSP: 이미지 = 타일 서버만, 연결 = 주소 검색 서버만, 스크립트는 그대로');
+    assert.ok(/id="mpCredit"[^>]*rel="noopener noreferrer"/.test(html) && html.includes(BASEMAP.creditUrl) && ['mpGeo', 'mpGeoGo', 'mpPlaces'].every((id) => html.includes(`id="${id}"`)) && html.includes('주소 검색은 입력한 글을 OpenStreetMap 에 보냅니다.'), '저작권 표기 · 주소 검색 칸 · 보내는 곳 고지');
+    const onQuery = js.slice(js.indexOf('function onQuery()'), js.indexOf("el.q.addEventListener('input'")); assert.ok(onQuery.length > 50 && !/geoSearch/.test(onQuery), '글자를 칠 때마다 주소 검색을 부르지 않는다(누르거나 Enter 일 때만)');
+    assert.ok(/el\.credit\.style\.bottom = Math\.max\(px\('--sp-1'\), inset\.b\)/.test(js), '저작권 표기가 폰 시트에 가리지 않는다');
+    assert.strictEqual((js.match(/geoSearch/g) || []).length, 3, 'geoSearch 는 정의 + Enter + 단추 클릭 셋뿐'); }
+
   console.log('test-maps: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

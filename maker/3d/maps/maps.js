@@ -1,6 +1,6 @@
 // 맵스(도면 검색) — 단지 분포 지도 · 검색 · 핀 · 상세 · 타입 선택. 위쪽은 순수 함수(검색·투영·라벨 배치·히트·형식 검사: node 로 테스트), 아래 boot() 가 DOM 을 붙인다.
-// 바탕 지도: 외부 지도 타일·키는 쓰지 않는다(비용·키 없음). 단지 위경도를 웹 메르카토르로 캔버스에 직접 그린다(경위선 격자 + 축척 막대).
-// 바탕 지도(타일) 연결은 이번 범위 밖이다 — 화면 글에는 적지 않고 이 주석과 보고서에만 둔다. 단지 자료는 data/complexes.json.
+// 바탕 지도: 웹 메르카토르 캔버스. 기본은 OpenStreetMap 래스터 타일(키·비용 없음, BASEMAP) — 개발 단계 기본값이다. 서비스에 올릴 때는 제공자 약관(타일 사용 정책·사용량)을 보고 BASEMAP 한 곳만 바꾼다(null 이면 경위선 격자만 그린다).
+// 주소 검색(Nominatim)은 입력창에서 사용자가 직접 누를 때만 한 번 부른다(글자마다 부르지 않는다). 단지 자료는 data/complexes.json.
 
 const TILE = 256, MIN_Z = 3, MAX_Z = 19, LAT_MAX = 85.0511287798;
 export const DEFAULT_VIEW = { lat: 36.5, lng: 127.8, zoom: 7 };   // 자료가 없을 때 처음 보는 곳(한반도 전체)
@@ -36,6 +36,35 @@ export function fitView(pts, w, h, inset = {}, margin = 40) {   // 점들이 가
   const z = Math.min(sx > 0 ? Math.log2(aw / sx) : 20, sy > 0 ? Math.log2(ah / sy) : 20, 16);
   return centerOn({ w, h }, fromWorld(0, (wy(la0, 0) + wy(la1, 0)) / 2, 0).lat, (ln0 + ln1) / 2, z, i);
 }
+
+// ── 바탕 지도(래스터 타일) · 주소 검색 ───────────────────────────────────────
+export const BASEMAP = Object.freeze({ tiles: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxZ: 19, geocode: 'https://nominatim.openstreetmap.org/search', credit: '© OpenStreetMap 기여자', creditUrl: 'https://www.openstreetmap.org/copyright' });
+export const tileUrl = (tpl, z, x, y) => tpl.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+// 화면에 보이는 타일. 타일 줌 z = 반올림한 줌, 화면 크기 s = 256·2^(줌-z). [{z,x,y,sx,sy,s}] — (sx,sy) 는 타일 왼쪽 위의 화면 좌표(css px). 세계 가장자리 밖은 뺀다.
+export function visibleTiles(v, maxZ = 19) {
+  const z = clamp(Math.round(v.zoom), 0, maxZ), s = TILE * 2 ** (v.zoom - z), n = 2 ** z, x0 = wx(v.lng, v.zoom) - v.w / 2, y0 = wy(v.lat, v.zoom) - v.h / 2, out = [];
+  for (let ty = Math.max(0, Math.floor(y0 / s)); ty <= Math.min(n - 1, Math.floor((y0 + v.h) / s)); ty++)
+    for (let tx = Math.max(0, Math.floor(x0 / s)); tx <= Math.min(n - 1, Math.floor((x0 + v.w) / s)); tx++) out.push({ z, x: tx, y: ty, sx: tx * s - x0, sy: ty * s - y0, s });
+  return out;
+}
+// 주소 검색 주소(Nominatim): 한국 안, 최대 5건, 한국어. 검색어는 앞뒤 공백을 떼고 80자까지.
+export const placesUrl = (base, q) => base + '?format=jsonv2&limit=5&countrycodes=kr&accept-language=ko&q=' + encodeURIComponent(String(q).trim().slice(0, 80));
+// Nominatim 응답 → [{name, lat, lng}] (최대 5). 모양이 다르거나 좌표가 범위 밖인 항목은 뺀다.
+export function readPlaces(json) {
+  if (!Array.isArray(json)) return [];
+  const out = [];
+  for (const it of json) {
+    if (!it || typeof it !== 'object') continue;
+    const lat = Number(it.lat), lng = Number(it.lon), name = typeof it.display_name === 'string' ? it.display_name.trim().slice(0, 120) : '';
+    if (name && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) out.push({ name, lat, lng });
+    if (out.length === 5) break;
+  }
+  return out;
+}
+
+// 두 좌표 사이 거리(km, 구면). 근처 단지 = 반경 km 안, 가까운 순.
+export const distKm = (lat1, lng1, lat2, lng2) => { const r = Math.PI / 180, a = Math.sin((lat2 - lat1) * r / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin((lng2 - lng1) * r / 2) ** 2; return 12742 * Math.asin(Math.min(1, Math.sqrt(a))); };
+export const nearComplexes = (list, lat, lng, km) => list.map((c) => [distKm(lat, lng, c.lat, c.lng), c]).filter((x) => x[0] <= km).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
 
 // ── 축척 막대 · 경위선 격자 ─────────────────────────────────────────────────
 export const metersPerPx = (lat, zoom) => 156543.03392804097 * Math.cos(lat * Math.PI / 180) / 2 ** zoom;
@@ -138,7 +167,7 @@ export const typeLinks = (c, ctx = '') => c.types.map((t) => ({ id: t.id, name: 
 // ═══ 화면 ═══════════════════════════════════════════════════════════════
 function boot() {
   const $ = (id) => document.getElementById(id), root = document.documentElement, qs = location.search;
-  const el = Object.fromEntries(['map', 'cv', 'card', 'q', 'clr', 'count', 'list', 'detail', 'empty', 'choices', 'choicesH', 'toast', 'locate', 'handle', 'dName', 'dAddr', 'types', 'back', 'zin', 'zout'].map((k) => [k, $('mp' + k[0].toUpperCase() + k.slice(1))]));
+  const el = Object.fromEntries(['map', 'cv', 'card', 'q', 'clr', 'count', 'list', 'detail', 'empty', 'choices', 'choicesH', 'toast', 'locate', 'handle', 'dName', 'dAddr', 'types', 'back', 'zin', 'zout', 'geo', 'geoGo', 'places', 'credit'].map((k) => [k, $('mp' + k[0].toUpperCase() + k.slice(1))]));
   const ctx = el.cv.getContext('2d'), reduce = matchMedia('(prefers-reduced-motion: reduce)');
   const tok = (n) => getComputedStyle(root).getPropertyValue(n).trim(), px = (n) => parseFloat(tok(n)) || 0;
   const h = (tag, props, ...kids) => {
@@ -148,7 +177,8 @@ function boot() {
     return e;
   };
 
-  let list = [], byId = new Map(), results = [], match = null, q = '', sel = null, act = -1, hover = null, me = null, loadErr = false;
+  let list = [], byId = new Map(), results = [], match = null, q = '', sel = null, act = -1, hover = null, me = null, loadErr = false, places = [], place = null, geoBusy = false, geoCtl = null, moving = false;
+  const tiles = new Map();   // 타일 캐시 '줌/x/y' → {img, ok}. 300개를 넘으면 오래된 100개를 버린다
   let view = { ...DEFAULT_VIEW, w: 1, h: 1 }, inset = { l: 0, t: 0, r: 0, b: 0 }, dpr = 1, anim = 0, raf = 0, fitTimer = 0, toastTimer = 0;
   const schedule = () => { raf = raf || requestAnimationFrame(draw); };
   const vc = () => ({ x: inset.l + (view.w - inset.l - inset.r) / 2, y: inset.t + (view.h - inset.t - inset.b) / 2 });   // 카드가 가리지 않은 영역의 가운데
@@ -160,9 +190,11 @@ function boot() {
     cancelAnimationFrame(anim);
     const a = { ...view }, t0 = performance.now();
     if (reduce.matches || !ms) { view = { ...view, lat: t.lat, lng: t.lng, zoom: t.zoom }; schedule(); return; }
+    moving = true;   // 날아가는 동안에는 새 타일을 받지 않는다(도착한 뒤 한 번에)
     const step = (now) => {
       const k = Math.min(1, (now - t0) / ms), e = k < 0.5 ? 4 * k ** 3 : 1 - (2 - 2 * k) ** 3 / 2;   // easeInOutCubic(= --ease 와 같은 결)
       view = { ...view, lat: a.lat + (t.lat - a.lat) * e, lng: a.lng + (t.lng - a.lng) * e, zoom: a.zoom + (t.zoom - a.zoom) * e };
+      if (k >= 1) moving = false;
       draw();
       if (k < 1) anim = requestAnimationFrame(step);
     };
@@ -183,29 +215,52 @@ function boot() {
     }
     return out.sort((a, b) => a.rank - b.rank || a.y - b.y);
   }
+  // 바탕 지도 타일. 아직 못 받은 타일은 받아 둔 한 단계 위 타일의 한 칸을 늘려 임시로 보여 준다.
+  function tileFor(t) {
+    const k = t.z + '/' + t.x + '/' + t.y;
+    let e = tiles.get(k);
+    if (!e && !moving) {
+      if (tiles.size > 300) for (const key of [...tiles.keys()].slice(0, 100)) tiles.delete(key);
+      const img = new Image(); e = { img, ok: false }; tiles.set(k, e);
+      img.decoding = 'async'; img.onload = () => { e.ok = true; schedule(); }; img.onerror = () => { tiles.delete(k); };
+      img.src = tileUrl(BASEMAP.tiles, t.z, t.x, t.y);
+    }
+    return e && e.ok ? e : null;
+  }
+  function drawTiles() {
+    for (const t of visibleTiles(view, BASEMAP.maxZ)) {
+      const e = tileFor(t);
+      const x = Math.floor(t.sx), y = Math.floor(t.sy), d = Math.ceil(t.s) + 1;   // 정수 칸 + 1px 겹침 — 타일 사이 실선(이음새)을 막는다
+      if (e) { ctx.drawImage(e.img, x, y, d, d); continue; }
+      const par = t.z > 0 && tiles.get((t.z - 1) + '/' + (t.x >> 1) + '/' + (t.y >> 1));
+      if (par && par.ok) ctx.drawImage(par.img, (t.x & 1) * TILE / 2, (t.y & 1) * TILE / 2, TILE / 2, TILE / 2, x, y, d, d);
+    }
+  }
   function draw() {
     raf = 0;
     const { w, h: ht } = view, C = Object.fromEntries(['bg', 'line', 'line-strong', 'ink', 'ink-faint', 'surface', 'accent'].map((n) => [n, tok('--c-' + n)]));
     const fs = px('--fs-4'), r1 = px('--r-1'), fam = tok('--font-sans');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = C.bg; ctx.fillRect(0, 0, w, ht);
-    // 경위선 격자 + 눈금 글
+    if (BASEMAP) drawTiles();
+    // 경위선 격자 + 눈금 글(바탕 지도가 있으면 지도가 대신한다)
     const step = gridStep(view.zoom), nw = unproject(0, 0, view), se = unproject(w, ht, view);
     const dec = (v, pos, neg) => fmtDeg(v, step, pos, neg);
     ctx.lineWidth = 1; ctx.strokeStyle = C['line-strong']; ctx.fillStyle = C['ink-faint']; ctx.font = fs + 'px ' + fam; ctx.textBaseline = 'alphabetic';
     const sbY = ht - inset.b - 34;   // 축척 막대 자리(격자 글과 겹치지 않게 비운다)
-    for (let g = Math.ceil(nw.lng / step); g * step <= se.lng; g++) {
+    for (let g = Math.ceil(nw.lng / step); !BASEMAP && g * step <= se.lng; g++) {
       const x = Math.round(project(view.lat, g * step, view).x) + 0.5;
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, ht); ctx.stroke();
       ctx.textAlign = 'left'; ctx.fillText(dec(g * step, 'E', 'W'), x + 4, ht - inset.b - 8);
     }
-    for (let g = Math.ceil(se.lat / step); g * step <= nw.lat; g++) {
+    for (let g = Math.ceil(se.lat / step); !BASEMAP && g * step <= nw.lat; g++) {
       const y = Math.round(project(g * step, view.lng, view).y) + 0.5;
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
       if (y - 4 < sbY - 8 - fs - 4 || y - 4 - fs > sbY + 6) { ctx.textAlign = 'left'; ctx.fillText(dec(g * step, 'N', 'S'), inset.l + 8, y - 4); }
     }
     // 축척 막대
     const mpp = metersPerPx(view.lat, view.zoom), L = niceLen(mpp * 120), bw = L / mpp, bx = inset.l + 12;
+    if (BASEMAP) { ctx.globalAlpha = 0.85; ctx.fillStyle = C.surface; ctx.fillRect(bx - 6, sbY - 6 - fs - 8, bw + 12, fs + 20); ctx.globalAlpha = 1; }   // 지도 위에서도 읽히게 바탕
     ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(bx, sbY - 4); ctx.lineTo(bx, sbY); ctx.lineTo(bx + bw, sbY); ctx.lineTo(bx + bw, sbY - 4); ctx.stroke();
     ctx.fillStyle = C.ink; ctx.textAlign = 'left'; ctx.fillText(fmtLen(L), bx, sbY - 8);
     // 내 위치
@@ -225,6 +280,7 @@ function boot() {
     };
     const K = [1, 1, 1.12, 1.25];
     for (const p of pins) drawPin(p.x, p.y, K[p.rank], p.rank === 3 ? C.ink : C.accent, p.rank === 0 ? 0.3 : 1);
+    if (place) { const p = project(place.lat, place.lng, view); drawPin(p.x, p.y, 1.12, C.ink, 1); }   // 주소 검색으로 찾은 자리
     // 라벨 — 선택 > 가리킴 > 나머지, 겹치면 숨김
     if (fam + fs !== font) { font = fam + fs; fcache = new Map(); }
     ctx.font = fs + 'px ' + fam;
@@ -249,6 +305,7 @@ function boot() {
   function measure() {   // 카드·시트가 지도를 가린 만큼(inset). 카드가 가로를 다 채우면 아래 시트, 아니면 왼쪽 카드
     const r = el.map.getBoundingClientRect(), a = el.card.getBoundingClientRect(), gap = px('--sp-2');
     inset = a.width >= r.width - 2 ? { l: 0, t: 0, r: 0, b: r.bottom - a.top + gap } : { l: a.right - r.left + gap, t: 0, r: 0, b: 0 };
+    el.credit.style.bottom = Math.max(px('--sp-1'), inset.b) + 'px';   // 폰: 아래 시트 위로 올린다(저작권 표기는 항상 보여야 한다)
   }
   function resize() {
     const r = el.map.getBoundingClientRect();
@@ -341,7 +398,10 @@ function boot() {
     el.detail.hidden = !c; el.list.hidden = !hasList; el.empty.hidden = !!c || hasList; el.choices.hidden = hasList; el.choicesH.hidden = !c;
     el.q.setAttribute('aria-expanded', String(hasList)); el.clr.hidden = !el.q.value;
     el.count.hidden = !!c;
-    el.count.textContent = loadErr ? '단지 목록을 불러오지 못했습니다.' : !list.length ? '등록된 단지가 아직 없습니다.' : !q.trim() ? '단지 ' + list.length + '곳' : results.length ? '검색 결과 ' + results.length + '곳' + (results.length > CAP ? ' 중 ' + CAP + '곳 표시' : '') : '‘' + q.trim().slice(0, 30) + '’ 검색 결과가 없습니다.';
+    const geoOn = !c && !hasList && !!q.trim() && !!(BASEMAP && BASEMAP.geocode);   // 단지 검색 결과가 없을 때만 주소 검색을 권한다
+    el.geo.hidden = !geoOn;
+    if (geoOn) { el.geoGo.textContent = '‘' + q.trim().slice(0, 30) + '’ 주소로 지도에서 찾기'; el.geoGo.disabled = geoBusy; }
+    el.count.textContent = loadErr ? '단지 목록을 불러오지 못했습니다.' : place ? (results.length ? '이 위치 근처 단지 ' + results.length + '곳' : '이 위치 근처에 등록된 단지가 없습니다.') : !list.length ? '등록된 단지가 아직 없습니다.' : !q.trim() ? '단지 ' + list.length + '곳' : results.length ? '검색 결과 ' + results.length + '곳' + (results.length > CAP ? ' 중 ' + CAP + '곳 표시' : '') : '‘' + q.trim().slice(0, 30) + '’ 검색 결과가 없습니다.';
     if (c) {
       el.dName.textContent = c.name; el.dAddr.textContent = c.addr;
       const ts = typeLinks(c, qs);
@@ -358,7 +418,31 @@ function boot() {
     el.dName.focus({ preventScroll: true });
   }
   function back() { sel = null; render(); sync(); el.q.focus(); }
+  function renderPlaces() {
+    el.places.hidden = !places.length;
+    el.places.replaceChildren(...places.map((p) => h('li', null, h('button', { type: 'button', class: 'mp-place', 'aria-pressed': String(p === place), onclick: () => pickPlace(p) }, p.name))));
+  }
+  function pickPlace(p) {   // 주소 검색 결과 하나로 지도를 옮긴다. 반경 2km 안 단지가 있으면 목록으로 보여 준다
+    place = p; results = nearComplexes(list, p.lat, p.lng, 2); match = results.length ? new Set(results.map((c) => c.id)) : null;
+    renderList(); renderPlaces(); render(); measure();
+    flyTo(centerOn(view, p.lat, p.lng, 16, inset));
+  }
+  async function geoSearch() {   // 사용자가 누를 때 한 번만(글자마다 부르지 않는다)
+    const text = q.trim(); if (!text || geoBusy || !BASEMAP || !BASEMAP.geocode) return;
+    geoBusy = true; el.geoGo.disabled = true; el.geoGo.setAttribute('aria-busy', 'true');
+    geoCtl = new AbortController(); const to = setTimeout(() => geoCtl.abort(), 8000);
+    try {
+      const r = await fetch(placesUrl(BASEMAP.geocode, text), { signal: geoCtl.signal });
+      if (!r.ok) throw new Error(String(r.status));
+      const found = readPlaces(await r.json());
+      if (q.trim() !== text) return;   // 기다리는 사이 검색어가 바뀌었다
+      places = found; renderPlaces();
+      if (found.length) pickPlace(found[0]); else showMsg('주소를 찾지 못했습니다. 동·도로명까지 적어 주세요.');
+    } catch (e) { showMsg('주소 검색에 연결하지 못했습니다. 잠시 뒤 다시 눌러 주세요.'); }
+    finally { clearTimeout(to); geoBusy = false; el.geoGo.removeAttribute('aria-busy'); render(); }
+  }
   function onQuery() {
+    if (place || places.length) { place = null; places = []; renderPlaces(); }
     q = el.q.value; sel = null; results = search(list, q); match = q.trim() ? new Set(results.map((c) => c.id)) : null;
     renderList(); render(); sync(); setOpen(true);
     clearTimeout(fitTimer);
@@ -370,8 +454,9 @@ function boot() {
     if (e.isComposing || e.keyCode === 229) return;   // 한글 조합 중 Enter·화살표는 글자 확정용
     const n = results.length;
     if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && n && !sel) { e.preventDefault(); setAct(clamp(act < 0 ? (e.key === 'ArrowDown' ? 0 : n - 1) : act + (e.key === 'ArrowDown' ? 1 : -1), 0, Math.min(n, CAP) - 1)); }
-    else if (e.key === 'Enter') { e.preventDefault(); const c = results[act >= 0 ? act : q.trim() ? 0 : -1]; if (c && !sel) select(c.id); }
+    else if (e.key === 'Enter') { e.preventDefault(); const c = results[act >= 0 ? act : q.trim() ? 0 : -1]; if (c && !sel) select(c.id); else if (!c && !sel && q.trim()) geoSearch(); }
   });
+  el.geoGo.addEventListener('click', geoSearch);
   el.clr.addEventListener('click', () => { el.q.value = ''; onQuery(); el.q.focus(); });
   el.back.addEventListener('click', back);
   document.addEventListener('keydown', (e) => {
@@ -382,6 +467,7 @@ function boot() {
   });
 
   // ── 시작 ──
+  if (BASEMAP) { el.credit.textContent = BASEMAP.credit; el.credit.href = BASEMAP.creditUrl; el.credit.hidden = false; }
   planLinks(); resize();
   fetch('data/complexes.json', { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status))))).then((d) => {
     const r = readComplexes(d);
