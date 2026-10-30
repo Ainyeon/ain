@@ -31,7 +31,7 @@ python3 tools/build-appliance-catalog.py --check; python3 tools/build-ac-catalog
 | 지도 제공자 | 지금은 OSM 개발용 기본값. 대량·상업 사용은 자체 타일 서버나 유료 제공자 권장, 화면 위치가 외부로 나가는 점 개인정보 안내 필요. 교체는 `maps.js` 의 `BASEMAP` 한 곳 |
 | iOS 시뮬레이터 | App Store 에서 Xcode 설치 후 `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer` (비밀번호가 필요해 대신 못 한다) |
 | 삼성 단종 248행 | 삼성닷컴 판매 페이지가 없고 지원 페이지만 있는 모델(냉장고 133·공기청정기 101 등). 지원 페이지(냉장고·공기청정기·에어컨 3곳 + 비즈니스 인덕션 1곳)를 열어 봤으나 매뉴얼·스펙뿐 판매·단종 표기가 없어 공식 출처로는 판정 불가 → 지금은 '단종 표시' 없이 둠(배치엔 영향 없음) |
-| 올리기 | 예상 비용을 먼저 보고한 뒤 승인 |
+| 올리기 | **예상 비용 산출 완료(추가 0원)** — 호스팅은 GitHub Pages(ainyeon.com)라 추가 요금이 없고, `.github/workflows` 가 없어 PR 이 자동 실행·과금을 일으키지 않는다. 전송량은 플래너 첫 로드가 gzip ≈0.25MB(+ 기존 three.js), 가전 탭을 처음 열 때만 +0.13MB 라 Pages 소프트 한도(월 100GB)로 10만 회 넘게 받는다. 유료 호출 없음(플래너는 브라우저 저장만, 맵스는 OSM 무료, 로그인은 기존 Supabase). 남은 건 비용이 아니라 병합 시점 판단(OSM 정책·위치 개인정보 안내). 승인되면 PR 까지만 만들고 병합은 따로 |
 
 ## ④ 올리기 전 체크리스트
 

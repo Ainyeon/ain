@@ -172,6 +172,7 @@ const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[
     const allowed = new Set([origin(BASEMAP.tiles), origin(BASEMAP.geocode), origin(BASEMAP.creditUrl)]);
     for (const u of js.match(/https:\/\/[^\s'"`)]+/g) || []) assert.ok(allowed.has(new URL(u.replace(/\{\w\}/g, '0')).origin), '허용 밖 외부 주소: ' + u);
     assert.ok(html.includes(`img-src 'self' data: blob: ${origin(BASEMAP.tiles)};`) && html.includes(`connect-src 'self' ${origin(BASEMAP.geocode)};`) && /script-src 'self';/.test(html), 'CSP: 이미지 = 타일 서버만, 연결 = 주소 검색 서버만, 스크립트는 그대로');
+    assert.ok(/<meta name="robots" content="noindex">/.test(html), '자료가 비어 있는 동안 색인하지 않는다');
     assert.ok(/id="mpCredit"[^>]*rel="noopener noreferrer"/.test(html) && html.includes(BASEMAP.creditUrl) && ['mpGeo', 'mpGeoGo', 'mpPlaces'].every((id) => html.includes(`id="${id}"`)) && html.includes('주소 검색은 입력한 글을 OpenStreetMap 에 보냅니다.'), '저작권 표기 · 주소 검색 칸 · 보내는 곳 고지');
     const onQuery = js.slice(js.indexOf('function onQuery()'), js.indexOf("el.q.addEventListener('input'")); assert.ok(onQuery.length > 50 && !/geoSearch/.test(onQuery), '글자를 칠 때마다 주소 검색을 부르지 않는다(누르거나 Enter 일 때만)');
     assert.ok(/el\.credit\.style\.bottom = Math\.max\(px\('--sp-1'\), inset\.b\)/.test(js), '저작권 표기가 폰 시트에 가리지 않는다');
