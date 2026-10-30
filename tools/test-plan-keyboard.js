@@ -218,5 +218,26 @@ const imp = (f) => import(pathToFileURL(path.join(DIR, f)).href);
   assert.ok(/<canvas id="plCanvas" tabindex="0" role="application" aria-label="[^"]*방향키[^"]*Enter[^"]*"/.test(html), '캔버스 이름에 키보드 사용법'); assert.ok(/id="plView3d" hidden tabindex="-1"/.test(html), '3D 화면을 눌러도 초점이 그 안에 남아 2·3·4 가 계속 된다');
   for (const f of ['tools.js', 'view2d.js', 'app.js']) assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML/.test(strip(rd(f))), f + ': innerHTML 금지');
 
+  /* ===== 4. 손가락(터치): 선택 도구에서 한 손가락으로 빈 곳을 끌면 화면이 움직인다 ===== */
+  { const room = (store) => { store.exec({ type: 'addRoomRect', a: [0, 0], b: [4000, 3000], name: '거실' }); store.exec({ type: 'addItem', kind: 'ac', model: '1way', brand: 'samsung', c: [2000, 1500], rot: 0, capacityKw: 2.3, code: 'AC023CN1DBC1', size: [1200, 500] }); };
+    const touch = (o = {}) => ({ pointerType: 'touch', ...o });
+    const dragTo = (t, x0, y0, x1, y1, o) => { t.fire('pointerdown', x0, y0, o); for (let i = 1; i <= 6; i++) t.fire('pointermove', x0 + (x1 - x0) * i / 6, y0 + (y1 - y0) * i / 6, o); t.fire('pointerup', x1, y1, o); };
+    // 빈 곳(방 밖) 끌기 = 화면 이동, 선택 안 건드림(끌기 동안), 범위 선택 없음
+    { const t = mk({}, room); dragTo(t, 600, 500, 650, 540, touch()); assert.ok(t.log.pans.length >= 1, '손가락 한 개로 빈 곳을 끌면 화면이 움직인다'); assert.deepStrictEqual(t.log.pans.reduce((a, p) => [a[0] + p[0], a[1] + p[1]], [0, 0]).map(Math.round), [50 - Math.round(0), 40].map((v, i) => v), '끈 만큼 옮긴다(손가락이 슬롭을 넘은 첫 움직임부터)'); }
+    { const t = mk({}, room); t.sel.set(['I1']); t.tap(700, 500, touch()); assert.strictEqual(t.sel.size, 0, '가볍게 누르면(안 끌면) 선택이 풀린다'); assert.strictEqual(t.log.pans.length, 0, '누르기만으로는 화면이 안 움직인다'); }
+    { const t = mk({}, room); t.fire('pointerdown', 700, 500, touch()); t.fire('pointermove', 702, 501, touch()); t.fire('pointerup', 702, 501, touch()); assert.strictEqual(t.log.pans.length, 0, '손가락 떨림(슬롭 안)은 화면을 흔들지 않는다'); }
+    // 도형 위에서는 기존대로 옮긴다
+    { const t = mk({}, room); const before = JSON.stringify(t.flr().items[0].c); dragTo(t, 200, 150, 250, 150, touch()); assert.strictEqual(t.log.pans.length, 0, '도형 위 끌기는 화면 이동이 아니다'); assert.notStrictEqual(JSON.stringify(t.flr().items[0].c), before, '도형을 옮긴다'); assert.ok(t.store.canUndo, '실행 취소 가능'); }
+    // [그룹화]를 켜면 빈 곳 끌기 = 범위 선택, 마우스는 언제나 범위 선택
+    { const t = mk({ multi: true }, room); dragTo(t, 450, 50, 150, 280, touch()); assert.strictEqual(t.log.pans.length, 0, '그룹화 중에는 화면이 안 움직인다'); assert.ok(t.sel.has('I1'), '범위 안의 제품이 골라진다'); }
+    { const t = mk({}, room); dragTo(t, 450, 50, 150, 280); assert.strictEqual(t.log.pans.length, 0, '마우스는 빈 곳 끌기 = 범위 선택'); assert.ok(t.sel.has('I1'), '마우스 범위 선택'); }
+    // 그리기 도구에서는 한 손가락이 화면을 끌지 않는다(점을 찍는다)
+    { const t = mk({}, room); t.tools.setTool('wall'); t.tap(600, 500, touch()); assert.ok(t.tools.op && t.tools.op.a, '벽 그리기: 터치로 시작점을 찍는다'); assert.strictEqual(t.log.pans.length, 0); }
+    // 둘째 손가락이 닿으면 화면 이동은 접고 확대·이동 제스처로 넘어간다
+    { const t = mk({}, room); t.fire('pointerdown', 600, 500, touch()); t.fire('pointerdown', 660, 500, touch({ pointerId: 2 })); t.fire('pointermove', 600, 560, touch()); t.fire('pointerup', 600, 560, touch()); t.fire('pointerup', 660, 500, touch({ pointerId: 2 })); assert.strictEqual(t.log.pans.length, 0, '두 손가락은 panBy 가 아니라 set(확대·이동 제스처)'); assert.strictEqual(t.sel.size, 0); }
+    // 안내문: 손가락이면 화면이 움직인다고, 마우스면 한꺼번에 고른다고
+    { const t = mk({}, room); t.fire('pointerdown', 700, 500, touch()); t.fire('pointerup', 700, 500, touch()); assert.ok(/화면이 움직입니다/.test(t.log.hint[1]) && /두 손가락/.test(t.log.hint[1]), '손가락 안내: ' + t.log.hint[1]); t.fire('pointerdown', 700, 500); t.fire('pointerup', 700, 500); assert.ok(/한꺼번에 고릅니다/.test(t.log.hint[1]), '마우스 안내로 돌아간다'); const g = mk({ multi: true }, room); g.tools.hint(); assert.ok(/한꺼번에 고르고/.test(g.log.hint[1]), '그룹화 안내'); }
+    const tl = strip(rd('tools.js')); assert.ok(/e\.pointerType === 'touch' && tool === 'select' && !state\.multi && blankAt\(px\)/.test(tl), '터치 빈 곳 이동 분기(정적)'); }
+
   console.log('test-plan-keyboard: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

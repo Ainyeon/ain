@@ -351,7 +351,7 @@ function mountDraw(body) {
 }
 function rowTool(id) {
   if (id === 'underlay') return pickImage();
-  if (id === 'multi') { state.multi = !state.multi; syncDraw(); return say(state.multi ? '여러 개 고르기를 켰습니다' : '여러 개 고르기를 껐습니다'); }
+  if (id === 'multi') { state.multi = !state.multi; syncDraw(); tools.hint(); return say(state.multi ? '여러 개 고르기를 켰습니다' : '여러 개 고르기를 껐습니다'); }
   if (ui.setTool(id, id === 'opening' ? { type: openingType } : {})) toCanvas();
 }
 function rowAction(a) {
