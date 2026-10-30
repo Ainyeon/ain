@@ -27,7 +27,7 @@ python3 tools/build-appliance-catalog.py --check; python3 tools/build-ac-catalog
 
 | 항목 | 필요한 것 |
 |---|---|
-| 단지 자료 | `maps/data/complexes.json`(`{v:1, complexes:[…]}`, 형식은 `maps.js` readComplexes). 공공데이터 키 또는 직접 입력. OSM 에서 긁어 담으면 ODbL(출처·동일조건) 의무가 생긴다 |
+| 단지 자료 | `maps/data/complexes.json`(`{v:1, complexes:[…]}`, 형식은 `maps.js` readComplexes). 공공데이터 키 또는 직접 입력. OSM 에서 긁어 담으면 ODbL(출처·동일조건) 의무가 생긴다. **이미 찾아 본 것:** `~/repos/personal/ain-automation/output/raw_complexes.csv`(입주레이더, 9,519행)는 단지명·시도·모집공고일뿐 좌표·주소·타입이 없고, 단지명은 회원 전용 정책(`supabase/06_close_complexes.sql`)이라 공개 정적 JSON 에 쓰지 않았다 |
 | 지도 제공자 | 지금은 OSM 개발용 기본값. 대량·상업 사용은 자체 타일 서버나 유료 제공자 권장, 화면 위치가 외부로 나가는 점 개인정보 안내 필요. 교체는 `maps.js` 의 `BASEMAP` 한 곳 |
 | iOS 시뮬레이터 | App Store 에서 Xcode 설치 후 `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer` (비밀번호가 필요해 대신 못 한다) |
 | 삼성 단종 248행 | 삼성닷컴 판매 페이지가 없고 지원 페이지만 있는 모델(냉장고 133·공기청정기 101 등). 크롤링 없이는 판정 불가 → 지금은 '단종 표시' 없이 둠(배치엔 영향 없음) |
