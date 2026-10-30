@@ -83,8 +83,8 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
   assert.ok(/\.ed-app\.no-side \.ed-side \{ translate: 100% 0; visibility: hidden; \}/.test(css), '폰: 오른쪽 패널은 접힘');
   assert.ok(/\[hidden\] \{ display: none !important; \}/.test(css), 'hidden 속성 존중');
   assert.deepStrictEqual([...css.matchAll(/(?<![\w-])\.pl-[\w-]+/g)].map((m) => m[0]), ['.pl-head'], 'panels.css 의 pl- 클래스와 겹치지 않는다(이 편집기는 ed- 접두) — 폰 시트에서 판의 제목 줄을 감추는 한 곳만 예외');
-  // 칸 크기: 위 56 · 줄 72 · 패널 280 · 오른쪽 268
-  assert.ok(/--ed-top: 56px; --ed-rail: 72px; --ed-panel: 280px; --ed-side: 268px/.test(css), '캡처 치수');
+  // 칸 크기: 위 56 · 줄 72 · 패널 280 · 오른쪽 268 (관찰한 화면에서 수치만 참고했다)
+  assert.ok(/--ed-top: 56px; --ed-rail: 72px; --ed-panel: 280px; --ed-side: 268px/.test(css), '칸 크기(참고한 수치)');
 
   /* ===== 6. 코드 약속: 동적 import · 저장소 · 주소 · 키 ===== */
   const app = strip(rd('app.js'));
@@ -101,7 +101,7 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
   const G = await import(pathToFileURL(path.join(DIR, 'core/geom.js')).href);
   const Mo = await import(pathToFileURL(path.join(DIR, 'core/model.js')).href);
 
-  /* ===== 7. 단축키 표(캡처 그대로) ===== */
+  /* ===== 7. 단축키 표 — 구역·행 이름과 단축키는 관찰한 기능 이름과 같은 글자다(기능 어휘). 색·치수·모션은 수치만 참고했다 ===== */
   const rows = T.TOOL_ROWS.flatMap((g) => g.rows.map((r) => ({ ...r, group: g.group })));
   const byId = Object.fromEntries(rows.filter((r) => r.id).map((r) => [r.id, r]));
   assert.deepStrictEqual(T.TOOL_ROWS.map((g) => g.group), ['특수 기능', '방 만들기', '구조물 그리기', '보조선 그리기', '도면 반전', '도면 회전', '일반'], '구역 순서');
@@ -136,6 +136,9 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
     assert.ok((pn.match(/labelFromText\(/g) || []).length >= 3 && /const spaced = /.test(pn), '시스템에어컨·가전·템플릿 카드는 labelFromText + spaced');
     assert.ok(!/'aria-label': \[`\$\{BRAND_LABEL/.test(pn) && !/'aria-label': `\$\{name\}, \$\{MODEL_LABEL/.test(pn) && !/'aria-label': `\$\{t\.name\}, 실면적/.test(pn), '카드 이름을 보이는 글자와 다른 순서로 손으로 짜지 않는다');
     assert.ok(/data-lbl/.test(pn) && /적용 중`/.test(pn), '마감 견본은 적용 중일 때 이름에 적용 중을 넣는다'); assert.ok(/<h1 class="ed-vh">[^<]+<\/h1>/.test(html), '플래너 h1(화면 밖 글자)'); }
+  { const app = rd('app.js');   // WebKit(Safari): 단추를 눌러도 초점이 단추로 안 간다 → 3D 로 들어가면 3D 화면으로, 나오면 캔버스로 초점을 옮겨 보기·도구 글쇠가 먹는다
+    assert.ok(/\$\('plView3d'\)\.focus\(\{ preventScroll: true \}\)/.test(app), '3D 진입 뒤 3D 화면 초점');
+    assert.ok(/function exit3d\(\)[\s\S]*?\$\('plCanvas'\)\.focus\(\{ preventScroll: true \}\)/.test(app), '3D 에서 나오면 캔버스 초점(열린 대화상자가 없을 때)'); }
   assert.deepStrictEqual(M.gridSteps(0.1), { minor: 100, major: 1000 }, '기본 격자 100/1000mm');
   assert.deepStrictEqual(M.gridSteps(0.01), { minor: 1000, major: 10000 }, '멀리서는 간격이 넓어진다');
   assert.deepStrictEqual(M.gridSteps(2), { minor: 100, major: 1000 }, '가까이서도 100/1000');
@@ -261,6 +264,39 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
     has(/narrow\.addEventListener\('change', onMode\); mid\.addEventListener\('change', onMode\)/, '창 폭이 바뀌면(회전·확대) 패널 상태를 정리'); has(/setPanel\(!narrow\.matches\); setSide\(!mid\.matches\)/, '폰: 시트 닫음 · 1023px 이하: 오른쪽 패널 접음 · 데스크톱: 둘 다 연다'); has(/if \(narrow\.matches\) setPanel\(false\);\s*if \(mid\.matches\) setSide\(false\);/, '시작할 때도 같은 규칙');
     has(/state\.touch = narrow\.matches \|\| coarse\.matches;/, '폰·터치 화면 판정'); has(/class: 'ed-b', id: 'plEndTool', text: '끝내기'[^\n]*ui\.setTool\('select'\)/, '[끝내기] 단추 = 선택 도구로'); has(/endBtn\.hidden = !\(state\.touch && tools && tools\.tool !== 'select'\)/, '[끝내기] 단추는 터치 화면에서 도구를 연 동안만');
     has(/async function openTemplate\(id\) \{[^}]*await confirmDiscard\('템플릿으로 시작하면'\)/, '템플릿 시작도 저장 안 한 변경 확인창을 거친다'); }
+
+  /* ===== 13. 접근성 2단계: 메뉴 초점 복귀 · 문 경첩 알림 · 폰 시트 초점 · 개구부 종류 바꾸기 ===== */
+  { const code = app, has = (re, m) => assert.ok(re.test(code), '코드: ' + m);
+    // A11Y-04 — 메뉴 항목이 창(showModal)을 열기 전에 메뉴를 닫고 [메뉴]에 초점을 둔다(capture). bubble 로 두면 창이 먼저 열려 focus() 가 무시되고 초점이 body 로 사라진다
+    has(/menu\.addEventListener\('click', \(e\) => \{ if \(e\.target\.closest\('button'\)\) \{ closeMenu\(\); if \(\$\('plMore'\)\.offsetParent !== null\) \$\('plMore'\)\.focus\(\{ preventScroll: true \}\); \} \}, true\);/, '메뉴 항목 click 은 capture 로 먼저 메뉴를 닫고 [메뉴]에 초점');
+    // A11Y-06 — 경첩·열리는 쪽: 누르면 결과를 낭독하고 속성 패널에 현재 값을 글로 둔다
+    has(/const HINGE_NAME = \{ a: '시작점 쪽', b: '끝점 쪽' \}, SWING_NAME = \{ 1: '시작→끝 기준 오른쪽', \[-1\]: '시작→끝 기준 왼쪽' \};/, '경첩·열리는 쪽 이름');
+    has(/if \(up\(p\)\) say\(said\(p\)\);/, '경첩·열리는 쪽 단추는 결과를 낭독'); has(/`경첩을 \$\{HINGE_NAME\[p\.hinge\]\}으로 옮겼습니다`/, '경첩 낭독 문구'); has(/`열리는 쪽을 \$\{SWING_NAME\[p\.swing\]\}으로 바꿨습니다`/, '열리는 쪽 낭독 문구');
+    has(/add\(ro\('경첩', [^\n]*HINGE_NAME[^\n]*add\(ro\('열리는 쪽', [^\n]*SWING_NAME[^\n]*add\(doorSwingRow\(cur, up\)\)/, '속성 패널에 경첩·열리는 쪽 읽기 행(문이 아니면 없음)');
+    // A11Y-07 — 폰 시트: 접히면 안에 있던 초점은 그 판의 줄 단추로, 줄 단추로 열면 초점이 시트로(DOM 순서가 줄 뒤라서), 템플릿을 고르면 캔버스로. 서랍도 같은 규칙
+    has(/if \(!open && rb && \$\('plPanel'\)\.contains\(document\.activeElement\)\) rb\.focus\(\{ preventScroll: true \}\);/, '시트가 접히면 초점을 줄 단추로');
+    has(/if \(!open && \$\('plSide'\)\.contains\(document\.activeElement\)\) \$\('plSideToggle'\)\.focus\(\{ preventScroll: true \}\);/, '서랍이 접히면 초점을 서랍 단추로');
+    has(/const focusSheet = \(\) => requestAnimationFrame\(\(\) => requestAnimationFrame\(\(\) => \$\('plPanel'\)\.focus\(\{ preventScroll: true \}\)\)\);/, '시트는 보이기 시작한 뒤에(두 프레임 뒤) 초점');
+    has(/if \(b\.dataset\.panel !== panelName\) openPanel\(b\.dataset\.panel\);\s*if \(narrow\.matches\) focusSheet\(\);/, '폰에서 줄 단추로 시트를 열면 초점을 시트로');
+    has(/setUrl\(\{ template: id \}\); if \(narrow\.matches\) \{ setPanel\(false\); toCanvas\(\); \}/, '폰에서 템플릿을 고르면 시트를 닫고 초점을 캔버스로');
+    assert.ok(/<aside class="ed-panel" id="plPanel"[^>]*tabindex="-1"/.test(rd('index.html')), '시트(#plPanel)는 tabindex=-1 — 코드로 초점을 줄 수 있다');
+    // F9 — 개구부 종류를 바꾸면 기본값 그대로인 폭·높이·바닥 높이만 새 종류의 기본값으로(고친 값은 둔다). app.js 의 순수 함수를 잘라 실제 DEFAULTS·Store 로 돌린다
+    has(/\(v\) => setOpeningType\(cur, up, v\)/, '속성 패널 종류 선택은 setOpeningType');
+    const src = rd('app.js'), m = src.match(/const openDefaults = [^\n]*\nfunction openingTypePatch\(e, type\) \{[\s\S]*?\n\}\n/);
+    assert.ok(m, 'openDefaults·openingTypePatch 를 찾는다');
+    const patchOf = new Function('DEFAULTS', m[0] + '; return openingTypePatch;')(Mo.DEFAULTS), D = Mo.DEFAULTS;
+    const fresh = (kind, over = {}) => { const s = new Store(Mo.createDoc()); s.exec({ type: 'addRoomRect', a: [0, 0], b: [6000, 5000] }); s.exec({ type: 'addOpening', wall: 'W1', at: 0.5, kind }); const id = Mo.curFloor(s.doc).openings[0].id; if (Object.keys(over).length) s.exec({ type: 'update', id, patch: over }); return { s, id, o: () => Mo.curFloor(s.doc).openings[0] }; };
+    const swap = (t, type) => { t.s.exec({ type: 'update', id: t.id, patch: patchOf(t.o(), type) }); return t.o(); };
+    const dims = (o) => [o.type, o.width, o.height, o.sill];
+    assert.deepStrictEqual(dims(swap(fresh('window'), 'door')), ['door', D.doorW, D.doorH, 0], '창(기본값) → 문: 900×2100, 바닥에서 0');
+    assert.deepStrictEqual(dims(swap(fresh('door'), 'window')), ['window', D.winW, D.winH, D.winSill], '문(기본값) → 창: 1200×1200, 바닥에서 900');
+    assert.deepStrictEqual(dims(swap(fresh('door'), 'open')), ['open', D.doorW, D.doorH, 0], '문 → 개방: 같은 기본값');
+    assert.deepStrictEqual(dims(swap(fresh('window'), 'open')), ['open', D.doorW, D.doorH, 0], '창 → 개방: 문과 같은 기본값');
+    assert.deepStrictEqual(dims(swap(fresh('window', { width: 1800 }), 'door')), ['door', 1800, D.doorH, 0], '사용자가 고친 폭(1800)은 둔다');
+    assert.deepStrictEqual(dims(swap(fresh('window', { height: 1500 }), 'door')), ['door', D.doorW, 1500, 0], '사용자가 고친 높이(1500)는 둔다');
+    assert.deepStrictEqual(dims(swap(fresh('window', { sill: 600 }), 'door')), ['door', D.doorW, D.doorH, 600], '사용자가 고친 바닥 높이(600)는 둔다');
+    { const t = fresh('window'); swap(t, 'door'); assert.deepStrictEqual(dims(swap(t, 'window')), ['window', D.winW, D.winH, D.winSill], '창 → 문 → 창은 처음 값으로'); }
+    assert.deepStrictEqual(patchOf(fresh('door').o(), 'window'), { type: 'window', width: D.winW, height: D.winH, sill: D.winSill }, '패치 모양'); }
 
   console.log('test-plan-ui: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

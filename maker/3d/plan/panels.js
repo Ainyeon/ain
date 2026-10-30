@@ -230,7 +230,7 @@ function browsePanel(container, ctx, cfg) {
     const chips = tablist(cfg.chipLabel, chipItems, st.chip, (id) => { st.chip = id; update(); }, 'pl-chips');
     const chips2 = cfg.chips2 && tablist(cfg.chip2Label, [{ id: 'all', label: '전체' }, ...cfg.chips2(data)], st.chip2, (id) => { st.chip2 = id; update(); }, 'pl-chips');
     const count = h('p', { class: 'pl-count', 'aria-live': 'polite' });
-    const hint = h('p', { class: 'pl-hint' }, cfg.hint);
+    const hint = h('p', { class: 'pl-hint' }, cfg.hint, cfg.hintKeys && h('span', { class: 'pl-kb' }, ` · ${cfg.hintKeys}`)); // hintKeys = 키보드 화면에서만 보이는 뒤 문구(폰·터치에서는 감춘다)
     const grid = h('ul', { class: 'pl-grid pl-grid--' + cfg.cols, 'aria-label': cfg.title });
     const moreBtn = h('button', { type: 'button', class: 'pl-more', onclick: showMore });
     const foot = cfg.foot && h('p', { class: 'pl-foot' }, cfg.foot(data));
@@ -356,7 +356,7 @@ function systemAcPanel(host, ctx) {
     load: loadCatalog, entries: (d) => d.models, chipLabel: '에어컨 형식',
     chips: () => MODEL_ORDER.map((id) => ({ id, label: MODEL_LABEL[id] })),
     filter: (e, o) => filterModels(e, { type: o.chip, query: o.query, ids: o.ids }), sorts: MODEL_SORTS, sort: sortModels,
-    searchLabel: '모델명·시리즈 검색', hint: '방향키로 고르고 Enter 로 놓습니다 · F 즐겨찾기',
+    searchLabel: '모델명·시리즈 검색', hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기',
     card: productCard, placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
     emptyFav: '즐겨찾기한 에어컨이 없습니다', emptyNone: '찾는 에어컨이 없습니다',
     foot: (d) => `제원은 제조사 웹 카탈로그를 옮긴 값입니다 · 수집 ${d.meta.readme.checked} · 빈 칸은 미확인`,
@@ -397,7 +397,7 @@ function appliancesPanel(host, ctx) {
     chipLabel: '분류', chips: (d) => d.meta.categories.map((c) => ({ id: c.id, label: c.short })), chipCounts: (e, o) => categoryCounts(e, { brand: o.chip2, query: o.query, ids: o.ids }),
     chip2Label: '브랜드', chips2: () => [{ id: 'samsung', label: BRAND_LABEL.samsung }, { id: 'lg', label: BRAND_LABEL.lg }],
     filter: (e, o) => filterAppliances(e, { category: o.chip, brand: o.chip2, query: o.query, ids: o.ids }), sorts: APP_SORTS, sort: sortAppliances,
-    searchLabel: '모델명·제품명 검색', hint: '방향키로 고르고 Enter 로 놓습니다 · F 즐겨찾기 · O 공식 페이지',
+    searchLabel: '모델명·제품명 검색', hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기 · O 공식 페이지',
     card: applianceCard, placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
     countText: (total, shown) => (shown < total ? `${total.toLocaleString('ko-KR')}개 중 ${shown.toLocaleString('ko-KR')}개 표시` : `${total.toLocaleString('ko-KR')}개`),
     emptyFav: '즐겨찾기한 가전이 없습니다',
@@ -461,7 +461,7 @@ function materialsPanel(container, ctx) {
     tabs: [{ id: 'lib', label: '마감재' }, { id: 'fav', label: '즐겨찾기' }, { id: 'placed', label: '배치된 마감재' }],
     load: loadFinishes, entries: (d) => d.finishes, chipLabel: '마감 분류', chips: (d) => d.chips.map((c) => ({ id: c.id, label: c.name })),
     filter: (e, o) => filterFinishes(e, { chip: o.chip, query: o.query, ids: o.ids }),
-    searchLabel: '마감재 이름 검색', hint: '누르면 현재 층 벽·바닥에 적용됩니다 · F 즐겨찾기',
+    searchLabel: '마감재 이름 검색', hint: '누르면 현재 층 벽·바닥에 적용됩니다', hintKeys: 'F 즐겨찾기',
     card: finishCard, refresh: markApplied, placed: placedFinishes,
     emptyFav: '즐겨찾기한 마감재가 없습니다', emptyNone: '찾는 마감재가 없습니다',
   });

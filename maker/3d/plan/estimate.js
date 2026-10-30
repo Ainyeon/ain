@@ -97,7 +97,7 @@ export function downloadCsv(est) {
 const td = (v, cls) => h('td', { class: cls }, String(v));
 function table(caption, head, rows, foot, numFrom) {
   const cls = (i) => (i >= numFrom ? 'num' : '');
-  return h('div', { class: 'pl-est-wrap' }, h('table', {}, h('caption', { class: 'pl-vh' }, caption),
+  return h('div', { class: 'pl-est-wrap', tabindex: '0', role: 'region', 'aria-label': caption }, h('table', {}, h('caption', { class: 'pl-vh' }, caption),   // 폰 폭에서 가로로 넘치는 표는 키보드로 밀 수 있어야 한다 — WebKit 은 넘치는 상자를 스스로 초점 대상으로 치지 않는다
     h('thead', {}, h('tr', {}, head.map((c, i) => h('th', { scope: 'col', class: cls(i) }, c)))),
     h('tbody', {}, rows.map((r) => h('tr', {}, r.map((c, i) => td(c, cls(i)))))),
     h('tfoot', {}, h('tr', {}, foot.map((c, i) => (i === 0 ? h('th', { scope: 'row' }, c) : td(c, cls(i))))))));

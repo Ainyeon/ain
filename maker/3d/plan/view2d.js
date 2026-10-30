@@ -114,6 +114,11 @@ export function drawPill(ctx, C, text, x, y, { color } = {}) { // 라벨 알약 
   ctx.fillStyle = color || C.ink; ctx.fillText(text, x, y + 0.5);
   ctx.restore();
 }
+export function drawCrosshair(ctx, C, x, y, r = 10) { // 키보드 커서 십자 — 어떤 바탕에서도 보이게 밝은 선 위에 강조색 선을 한 번 더 긋는다
+  ctx.save(); ctx.lineCap = 'round';
+  for (const [color, w] of [[C.surface, 4], [C.accent, 2]]) { ctx.strokeStyle = color; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x - r, y); ctx.lineTo(x + r, y); ctx.moveTo(x, y - r); ctx.lineTo(x, y + r); ctx.stroke(); }
+  ctx.restore();
+}
 export function readTheme() { // 캔버스 색은 토큰(CSS 변수)에서 읽는다
   const cs = getComputedStyle(document.documentElement), g = (n) => cs.getPropertyValue(n).trim(), bs = getComputedStyle(document.body);
   return { bg: g('--c-surface-sub'), surface: g('--c-surface'), ink: g('--c-ink'), sub: g('--c-ink-sub'), faint: g('--c-ink-faint'), line: g('--c-line'), strong: g('--c-line-strong'), control: g('--c-control'), accent: g('--c-accent'), accentBg: g('--c-accent-bg'), accentLine: g('--c-accent-line'), up: g('--c-up'), font: bs.fontFamily, fs3: parseFloat(g('--fs-3')) || 13, fs4: parseFloat(g('--fs-4')) || 11.5, fw: g('--fw-semi') || '600', r1: parseFloat(g('--r-1')) || 6 };

@@ -83,11 +83,11 @@
 .pl-flag { margin-top: var(--sp-1); padding: 0 var(--sp-1); font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--fw-semi); color: var(--c-up); background: var(--c-up-bg); border-radius: var(--r-1); }
 
 /* 가전 카드 — 에어컨 카드(.pl-prod-*)와 같은 틀에 제품명·용량·출처 링크를 더한다 */
-.pl-app { padding-bottom: var(--sp-5); }   /* 오른쪽 아래 '공식 페이지' 링크 자리 */
+.pl-app { padding-bottom: var(--sp-7); }   /* 오른쪽 아래 '공식 페이지' 링크(24px + 아래 4px) 자리 */
 .pl-app-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pl-app-cap { max-width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .pl-why { font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-sub); }
-.pl-src { position: absolute; right: var(--sp-3); bottom: var(--sp-2); font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-accent); text-decoration: underline; text-underline-offset: 2px; }
+.pl-src { position: absolute; right: var(--sp-3); bottom: var(--sp-1); display: inline-flex; align-items: center; min-height: 24px; font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-accent); text-decoration: underline; text-underline-offset: 2px; }   /* 24px 높이 = 누르는 자리 최소 크기(마우스 화면 포함) */
 .pl-more { width: 100%; min-height: 36px; margin-top: var(--sp-2); background: var(--c-surface); border: 1px solid var(--c-line-strong); border-radius: var(--r-1); font-size: var(--fs-3); font-weight: var(--fw-semi); color: var(--c-ink); transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
 .pl-more:hover { border-color: var(--c-control); background: var(--c-surface-sub); }
 .pl-more[hidden] { display: none; }
@@ -166,5 +166,7 @@
 @media (pointer: coarse) and (min-width: 769px) {   /* sticky 는 스크롤 상자의 안쪽 여백만큼 안에서 멈추므로 여백(--sp-3)만큼 위로 당겨 맨 위에 붙인다 */
   .pl-filters { position: sticky; top: calc(-1 * var(--sp-3)); z-index: 1; margin: calc(-1 * var(--sp-3)) calc(-1 * var(--sp-3)) 0; padding: var(--sp-3) var(--sp-3) var(--sp-2); background: var(--c-surface); border-bottom: 1px solid var(--c-line); }
 }
+
+@media (pointer: coarse), (max-width: 768px) { .pl-kb { display: none; } }   /* 키보드 안내 — plan.css 의 state.touch(폰 폭 또는 터치)와 같은 조건 */
 
 @media (prefers-reduced-motion: reduce) { .pl-root *, .pl-est * { transition: none !important; } }

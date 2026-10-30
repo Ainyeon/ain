@@ -117,4 +117,17 @@ const tablet = mediaBodies(pcss, /\(pointer: coarse\) and \(min-width: 769px\)/)
 assert.ok(/\.pl-filters \{[^}]*position: sticky[^}]*top: calc\(-1 \* var\(--sp-3\)\)[^}]*background: var\(--c-surface\)/.test(tablet), '터치 태블릿: 필터 묶음은 위에 붙는다(스크롤 상자 안쪽 여백만큼 당겨 맨 위에)');
 assert.ok(!/\.pl-filters \{[^}]*position: sticky/.test(baseCss(pcss)) && !/position: sticky/.test(pco), '폰 시트와 마우스 화면에서는 필터를 붙이지 않는다');
 
+/* ===== 접근성 2단계: 줄 단추 초점 링 · 320px 위 바 · 시트 초점 · 가전 링크 크기 · 터치 아닌 곳의 키보드 안내 ===== */
+assert.ok(/\.ed-rb:focus-visible \{ outline-offset: -2px; \}/.test(base), '왼쪽 줄 단추의 초점 링은 단추 안쪽 — 바깥 링은 overflow 줄에 잘려 첫 단추에는 아무것도 안 보인다');
+assert.ok(/\.ed-panel:focus \{ outline: none; \}/.test(base) && /id="plPanel"[^>]*tabindex="-1"/.test(html), '폰: 줄 단추로 연 시트로 초점을 코드로 옮기므로 시트는 tabindex=-1 이고 시트 테두리에는 링이 없다');
+{ const tiny = mediaBodies(css, /\(max-width: 359px\)/).join(' ');
+  assert.ok(/\.ed-top \{ gap: var\(--sp-1\); \}/.test(tiny) && /\.ed-hist \.ed-b \{ padding: 0 var\(--sp-1\); \}/.test(tiny), '320px 폰: 위 바 칸 사이·실행 취소 단추 여백을 한 단계 줄인다(341px → 313px, 저장 단추가 화면 안)');
+  assert.ok(css.indexOf('@media (max-width: 359px)') > css.indexOf('@media (max-width: 768px)'), '359px 규칙은 768px 폰 규칙 뒤에 — 같은 특이도라 뒤에 있어야 이긴다'); }
+{ const tok = fs.readFileSync(path.join(__dirname, '..', 'assets/css/design-tokens.css'), 'utf8'), sp = (n) => Number((tok.match(new RegExp(`--sp-${n}:\\s*(\\d+)px`)) || [])[1]);
+  const src = (pcss.match(/(?<![\w-])\.pl-src \{([^}]*)\}/) || [])[1] || '', minH = Number((src.match(/min-height: (\d+)px/) || [])[1]), bottom = sp((src.match(/bottom: var\(--sp-(\d)\)/) || [])[1]);
+  assert.ok(minH >= 24 && /display: inline-flex/.test(src), '가전 카드 [공식 페이지] 링크는 마우스 화면에서도 24px 이상(WCAG 2.5.8) — 글줄 높이(16.7px)로 두지 않는다');
+  const pad = sp((pcss.match(/\.pl-app \{ padding-bottom: var\(--sp-(\d)\)/) || [])[1]);
+  assert.ok(pad >= bottom + minH, `카드 아래 여백(${pad}px)이 링크 자리(아래 ${bottom}px + 높이 ${minH}px)를 비운다 — 링크가 카드 글을 덮지 않는다`); }
+assert.ok(/@media \(pointer: coarse\), \(max-width: 768px\) \{ \.pl-kb \{ display: none; \} \}/.test(pcss), '키보드 안내(.pl-kb)는 폰 폭·터치에서 감춘다 — plan.css 의 state.touch 와 같은 조건');
+
 console.log('test-plan-layout: OK');

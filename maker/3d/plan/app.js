@@ -1,5 +1,5 @@
 // 2D 도면 편집기 — 화면 조립·저장/불러오기/내보내기·층과 상세 설정·선택 속성·밑그림·패널(panels.js)·3D(view3d.js) 연결·키보드. 그리기는 view2d.js, 도구는 tools.js, 미니맵은 minimap.js
-import { createDoc, curFloor, COLS, APPLIANCE_LABEL } from './core/model.js';
+import { createDoc, curFloor, COLS, APPLIANCE_LABEL, DEFAULTS } from './core/model.js';
 import { Store } from './core/store.js';
 import { toDocJSON, fromDocJSON } from './core/export.js';
 import { roomAreaM2, bounds, wallLen, dist } from './core/geom.js';
@@ -93,9 +93,11 @@ const ui = {
   hint: (name, text) => { $('plHintName').textContent = name; $('plHintText').textContent = text; if (endBtn) endBtn.hidden = !(state.touch && tools && tools.tool !== 'select'); },
   setTool(name, o) {
     if (state.mode === '3d') exit3d();
+    const was = tools.tool, wasType = openingType;
     if (!tools.setTool(name, o || {})) return false;
     if (name === 'opening') openingType = (o && o.type) || openingType;
     syncDraw(); if (narrow.matches) setPanel(false);
+    if (name !== was || openingType !== wasType) say(`${$('plHintName').textContent} 도구 · ${$('plHintText').textContent}`); // 도구가 바뀌면 이름과 쓰는 법을 읽는다
     return true;
   },
   async renameRoom(id) {
@@ -146,7 +148,7 @@ async function newDoc() {
 async function openTemplate(id) { // 템플릿 카드 — 저장 안 한 변경은 다른 시작 경로와 같은 확인창을 거친다
   if (!(await confirmDiscard('템플릿으로 시작하면'))) return;
   try { replaceDoc(await loadTemplate(id), null); } catch (e) { return toast(e.message, 'err'); }
-  setUrl({ template: id }); if (narrow.matches) setPanel(false);
+  setUrl({ template: id }); if (narrow.matches) { setPanel(false); toCanvas(); }
 }
 async function importFile(file) {
   if (file.size > 25e6) return toast('파일이 너무 큽니다 · 25MB 이하만 불러옵니다', 'err');
@@ -264,7 +266,7 @@ function propsBuild() {
     if (first.col === 'walls') { add(ro('길이', (e) => fmtLen(wallLen(e), state.unit))); add(num('두께', 'mm', (e) => e.t, (v) => up({ t: v }), { min: 10 })); add(pick('종류', [['inner', '내벽'], ['exterior', '외벽']], (e) => e.kind, (v) => up({ kind: v }))); add(num('곡선 처짐', 'mm', (e) => e.bulge, (v) => up({ bulge: v }))); }
     else if (first.col === 'rooms') { add(txt('이름', (e) => e.name, (v) => up({ name: v }))); add(ro('실면적', (e) => fmtArea(roomAreaM2(store.doc, e), state.unit))); }
     else if (first.col === 'columns') { const rect = first.el.kind === 'rect'; add(num(rect ? '가로' : '지름', 'mm', (e) => e.w, (v) => up(rect ? { w: v } : { w: v, d: v }), { min: 10 })); if (rect) add(num('세로', 'mm', (e) => e.d, (v) => up({ d: v }), { min: 10 })); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 15 })); }
-    else if (first.col === 'openings') { add(pick('종류', Object.entries(OPENING_NAMES), (e) => e.type, (v) => up({ type: v }))); add(num('폭', 'mm', (e) => e.width, (v) => up({ width: v }), { min: 100 })); add(num('높이', 'mm', (e) => e.height, (v) => up({ height: v }), { min: 100 })); add(num('바닥에서', 'mm', (e) => e.sill, (v) => up({ sill: v }), { min: 0 })); add(doorSwingRow(cur, up)); }
+    else if (first.col === 'openings') { add(pick('종류', Object.entries(OPENING_NAMES), (e) => e.type, (v) => setOpeningType(cur, up, v))); add(num('폭', 'mm', (e) => e.width, (v) => up({ width: v }), { min: 100 })); add(num('높이', 'mm', (e) => e.height, (v) => up({ height: v }), { min: 100 })); add(num('바닥에서', 'mm', (e) => e.sill, (v) => up({ sill: v }), { min: 0 })); add(ro('경첩', (e) => (e.type === 'door' ? HINGE_NAME[e.hinge === 'b' ? 'b' : 'a'] : '없음'))); add(ro('열리는 쪽', (e) => (e.type === 'door' ? SWING_NAME[e.swing === -1 ? -1 : 1] : '없음'))); add(doorSwingRow(cur, up)); }
     else if (isApp) { // 가전: 크기는 공식 제원 값이라 고치지 않는다(읽기 전용), 돌리기만
       add(ro('분류', (e) => APPLIANCE_LABEL[e.category] ?? e.category)); add(ro('모델', (e) => e.code || e.model)); add(ro('제품명', (e) => e.name || '미확인'));
       add(ro('크기', (e) => `가로 ${e.size[0].toLocaleString('ko-KR')} · 깊이 ${e.size[1].toLocaleString('ko-KR')} · 높이 ${e.heightMm.toLocaleString('ko-KR')} mm`)); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 }));
@@ -274,10 +276,22 @@ function propsBuild() {
   kids.push(h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: ids.length > 1 ? '선택한 것 지우기' : '지우기', onclick: delSel })]));
   box.replaceChildren(...kids); propFields.forEach((f2) => f2.sync());
 }
-// 문 여닫이: 경첩을 반대 문틀로 · 열리는 쪽을 반대편으로 — 문이 아닌 개구부에서는 눌리지 않는다
+// 개구부 종류를 바꾸면 폭·높이·바닥 높이도 새 종류의 기본값으로 — 이전 종류의 기본값 그대로인 칸만(사용자가 고친 값은 둔다). 문·개방은 같은 기본값
+const openDefaults = (t) => (t === 'window' ? { width: DEFAULTS.winW, height: DEFAULTS.winH, sill: DEFAULTS.winSill } : { width: DEFAULTS.doorW, height: DEFAULTS.doorH, sill: 0 });
+function openingTypePatch(e, type) {
+  const from = openDefaults(e.type), to = openDefaults(type), patch = { type };
+  for (const k of ['width', 'height', 'sill']) if (e[k] === from[k]) patch[k] = to[k];
+  return patch;
+}
+function setOpeningType(cur, up, type) {
+  const e = cur(); if (!e || e.type === type) return;
+  if (up(openingTypePatch(e, type))) { const n = cur(); say(`종류를 ${OPENING_NAMES[type]}으로 바꿨습니다 · 폭 ${n.width} · 높이 ${n.height} · 바닥에서 ${n.sill} mm`); }
+}
+// 문 여닫이: 경첩을 반대 문틀로 · 열리는 쪽을 반대편으로 — 문이 아닌 개구부에서는 눌리지 않는다. 결과는 읽기 행(경첩·열리는 쪽)과 낭독으로 알린다. 오른쪽·왼쪽은 벽을 시작점에서 끝점으로 볼 때(swing 1 = +법선 = 오른쪽)
+const HINGE_NAME = { a: '시작점 쪽', b: '끝점 쪽' }, SWING_NAME = { 1: '시작→끝 기준 오른쪽', [-1]: '시작→끝 기준 왼쪽' };
 function doorSwingRow(cur, up) {
-  const bt = (text, patch) => h('button', { type: 'button', class: 'ed-b', text, onclick: () => { const e = cur(); if (e) up(patch(e)); } });
-  const b1 = bt('경첩 반대쪽으로', (e) => ({ hinge: e.hinge === 'b' ? 'a' : 'b' })), b2 = bt('반대편으로 열기', (e) => ({ swing: e.swing === -1 ? 1 : -1 }));
+  const bt = (text, patch, said) => h('button', { type: 'button', class: 'ed-b', text, onclick: () => { const e = cur(); if (!e) return; const p = patch(e); if (up(p)) say(said(p)); } });
+  const b1 = bt('경첩 반대쪽으로', (e) => ({ hinge: e.hinge === 'b' ? 'a' : 'b' }), (p) => `경첩을 ${HINGE_NAME[p.hinge]}으로 옮겼습니다`), b2 = bt('반대편으로 열기', (e) => ({ swing: e.swing === -1 ? 1 : -1 }), (p) => `열리는 쪽을 ${SWING_NAME[p.swing]}으로 바꿨습니다`);
   return { el: h('div', { class: 'ed-btns' }, [b1, b2]), sync() { const e = cur(); b1.disabled = b2.disabled = !e || e.type !== 'door'; } };
 }
 function delSel() { if (sel.size && run({ type: 'remove', ids: [...sel.ids] })) { sel.prune(store.doc); say('지웠습니다'); } }
@@ -300,15 +314,19 @@ function underlayUI(d) { // 밑그림이 있을 때만: 투명도·축척·이�
 /* ---------- 왼쪽: 줄·패널 ---------- */
 let panelName = null, panelHandle = null, panelTok = 0, panelsMod = null, drawRows = null, panelOpen = true;
 const getPanels = () => (panelsMod ||= import('./panels.js').catch((e) => { panelsMod = null; throw e; }));
-const ctx = { get store() { return store; }, exec: run, setTool: (n, o) => ui.setTool(n, o), toast, openDialog, openTemplate }; // exec = 잠금을 지키는 문서 명령 — 패널은 store.exec 를 직접 부르지 않는다
+const focusSheet = () => requestAnimationFrame(() => requestAnimationFrame(() => $('plPanel').focus({ preventScroll: true }))); // 시트가 보이기 시작한 뒤에(visibility 전환이 시작되는 프레임까지는 숨은 상태라 초점이 안 간다)
+const toCanvas = () => $('plCanvas').focus({ preventScroll: true }); // 패널에서 도구를 고르면 초점이 캔버스로 — 키보드로 바로 그리기·놓기를 이어 가고, 단추에 초점이 안 가는 브라우저에서도 단축키가 이어진다
+const ctx = { get store() { return store; }, exec: run, setTool: (n, o) => { const ok = ui.setTool(n, o); if (ok) toCanvas(); return ok; }, toast, openDialog, openTemplate }; // exec = 잠금을 지키는 문서 명령 — 패널은 store.exec 를 직접 부르지 않는다
 function setPanel(open) {
   if (open && narrow.matches) setSide(false); // 폰: 시트와 서랍은 하나만 연다
   panelOpen = open; $('plApp').classList.toggle('no-panel', !open);
+  const rb = $('plRail').querySelector(`[data-panel="${panelName}"]`); if (!open && rb && $('plPanel').contains(document.activeElement)) rb.focus({ preventScroll: true }); // 시트가 접히면 안에 있던 초점은 그 판을 연 줄 단추로(도구·템플릿을 고른 때는 곧 캔버스로 다시 옮긴다)
   const b = $('plPanelToggle'); b.textContent = open ? '‹' : '›'; b.setAttribute('aria-expanded', String(open)); b.setAttribute('aria-label', open ? '왼쪽 패널 접기' : '왼쪽 패널 펴기');
 }
 function setSide(open) {
   if (open && narrow.matches) setPanel(false);
   $('plApp').classList.toggle('no-side', !open);
+  if (!open && $('plSide').contains(document.activeElement)) $('plSideToggle').focus({ preventScroll: true }); // 서랍이 접히면 안에 있던 초점은 서랍 단추로
   const b = $('plSideToggle'); b.textContent = open ? '›' : '‹'; b.setAttribute('aria-expanded', String(open)); b.setAttribute('aria-label', open ? '오른쪽 패널 접기' : '오른쪽 패널 펴기');
 }
 function syncDraw() {
@@ -324,7 +342,7 @@ function mountDraw(body) {
     const b = h('button', { type: 'button', class: 'ed-row', 'data-tool': r.id, 'aria-pressed': 'false', onclick: () => rowTool(r.id) }, [h('span', { text: r.label }), key]);
     if (r.id !== 'underlay') rows.set(r.id, b);
     if (r.id !== 'opening') return [b];
-    const seg = h('div', { class: 'ed-sub', role: 'group', 'aria-label': '개구부 종류' }, Object.entries(OPENING_NAMES).map(([type, label]) => { const s = h('button', { type: 'button', class: 'ed-sb', 'data-type': type, text: label, 'aria-pressed': 'false', onclick: () => ui.setTool('opening', { type }) }); sub.push(s); return s; }));
+    const seg = h('div', { class: 'ed-sub', role: 'group', 'aria-label': '개구부 종류' }, Object.entries(OPENING_NAMES).map(([type, label]) => { const s = h('button', { type: 'button', class: 'ed-sb', 'data-type': type, text: label, 'aria-pressed': 'false', onclick: () => { if (ui.setTool('opening', { type })) toCanvas(); } }); sub.push(s); return s; }));
     return [b, seg];
   };
   body.replaceChildren(...TOOL_ROWS.flatMap((g) => [h('h3', { class: 'ed-sh', text: g.group }), ...g.rows.flatMap(mk)]));
@@ -334,7 +352,7 @@ function mountDraw(body) {
 function rowTool(id) {
   if (id === 'underlay') return pickImage();
   if (id === 'multi') { state.multi = !state.multi; syncDraw(); return say(state.multi ? '여러 개 고르기를 켰습니다' : '여러 개 고르기를 껐습니다'); }
-  ui.setTool(id, id === 'opening' ? { type: openingType } : {});
+  if (ui.setTool(id, id === 'opening' ? { type: openingType } : {})) toCanvas();
 }
 function rowAction(a) {
   if (a === 'underlay') return pickImage();
@@ -387,12 +405,14 @@ async function enter3d(which = 'iso') {
   state.mode = '3d'; $('plApp').classList.add('is3d'); $('plViews').hidden = false;
   v3.setWallAlpha(state.wallAlpha); v3.setFloorAlpha(state.floorAlpha); set3dView(which); v3.resize && v3.resize();
   sel.clear(); schedule();
+  $('plView3d').focus({ preventScroll: true });   // Safari 는 단추를 눌러도 초점이 단추로 안 가 2·3·4 보기 글쇠가 안 먹었다 — 3D 화면으로 초점을 옮긴다
 }
 function set3dView(which) { if (!v3) return; v3.setView(which); for (const b of $('plViews').querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === which)); }
 function exit3d() {
   if (state.mode !== '3d') return;
   if (v3) v3.hide(); $('plView3d').hidden = true; $('plViews').hidden = true; $('plApp').classList.remove('is3d'); state.mode = '2d';
   view.resize(); schedule();
+  if (!document.querySelector('dialog[open]')) $('plCanvas').focus({ preventScroll: true });   // 3D 화면이 숨겨지며 초점이 사라지지 않게(Safari 에서는 단추 초점도 없다). 대화상자가 열려 있으면 건드리지 않는다
 }
 
 /* ---------- 배선 ---------- */
@@ -407,7 +427,7 @@ function wire() {
   const menu = $('plMenu'), closeMenu = () => { menu.classList.remove('open'); $('plMore').setAttribute('aria-expanded', 'false'); };
   $('plMore').onclick = () => { const on = menu.classList.toggle('open'); $('plMore').setAttribute('aria-expanded', String(on)); };
   document.addEventListener('pointerdown', (e) => { if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== $('plMore')) closeMenu(); });
-  menu.addEventListener('click', (e) => { if (e.target.closest('button')) { closeMenu(); if ($('plMore').offsetParent !== null) $('plMore').focus({ preventScroll: true }); } });   // 항목이 연 창을 닫으면 초점이 메뉴 단추로 돌아온다
+  menu.addEventListener('click', (e) => { if (e.target.closest('button')) { closeMenu(); if ($('plMore').offsetParent !== null) $('plMore').focus({ preventScroll: true }); } }, true);   // capture — 항목이 창(showModal)을 열기 전에 메뉴를 닫고 초점을 [메뉴]에 둬야 창이 닫힐 때 초점이 [메뉴]로 돌아온다
   $('plRename').onclick = async () => { const v = await ask({ title: '도면 이름', label: '이름', value: store.doc.title }); if (v) run({ type: 'rename', title: v }); };
   $('plEstimate').onclick = async () => { try { (await import('./estimate.js')).openEstimate(ctx); } catch (e) { errDialog('견적 물량표를 열지 못했습니다', 'estimate.js 를 불러오거나 실행하지 못했습니다', e); } };
   $('plExport').onclick = () => { download(`ain-도면-${safe(store.doc.title)}.json`, new Blob([toDocJSON(store.doc)], { type: 'application/json' })); toast('도면 파일을 내려받았습니다'); };
@@ -421,6 +441,7 @@ function wire() {
     const b = e.target.closest('[data-panel]'); if (!b) return;
     if (b.dataset.panel === panelName && panelOpen) { if (narrow.matches) setPanel(false); return; }
     setPanel(true); if (b.dataset.panel !== panelName) openPanel(b.dataset.panel);
+    if (narrow.matches) focusSheet(); // 폰의 시트는 DOM 에서 줄 뒤라 Tab 으로는 줄 단추를 다 지나야 닿는다 — 열면 초점을 시트로
   });
   $('plPanelClose').onclick = () => setPanel(false);
   $('plPanelToggle').onclick = () => setPanel(!panelOpen);
@@ -456,6 +477,8 @@ function wire() {
   new ResizeObserver(() => { if (v3 && state.mode === '3d' && v3.resize) v3.resize(); }).observe($('plView3d'));
   window.addEventListener('beforeunload', (e) => { if (!leaving && unsaved()) { e.preventDefault(); e.returnValue = ''; } });
 }
+// 한 글자 단축키(도구 글쇠·[ ]·+ −·3D 보기 2 3 4)는 그것이 속한 곳에 초점이 있을 때만 듣는다 — 다른 단추·창에서 쓴 글자가 도구를 바꾸지 않게(WCAG 2.1.4)
+const scoped = (t) => !!(t && t.closest && t.closest(state.mode === '3d' ? '#plView3d, #plViews, #plMode3d, #plPanel' : panelName === 'draw' ? '#plCanvas, #plPanel' : '#plCanvas'));
 const typing = (t) => !!t && t.nodeType === 1 && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !(t.type === 'range' || t.type === 'checkbox'));
 function onKey(e) {
   if (document.querySelector('dialog[open]')) return;
@@ -472,13 +495,13 @@ function onKey(e) {
   if (e.code === 'Escape' && $('plMenu').classList.contains('open')) { $('plMenu').classList.remove('open'); $('plMore').setAttribute('aria-expanded', 'false'); $('plMore').focus({ preventScroll: true }); return; }
   if (state.mode === '3d') { // 3D: 2·3·4 = 보기, ESC = 2D 로, 도구 글쇠 = 2D 로 돌아가 그 도구
     const v = { Digit2: 'plan', Digit3: 'iso', Digit4: 'free', Numpad2: 'plan', Numpad3: 'iso', Numpad4: 'free' }[e.code];
-    if (v) { set3dView(v); e.preventDefault(); } else if (e.code === 'Escape') exit3d(); else if (e.code.startsWith('Key') && tools.key(e)) e.preventDefault();
+    if (v && scoped(e.target)) { set3dView(v); e.preventDefault(); } else if (e.code === 'Escape') exit3d(); else if (e.code.startsWith('Key') && tools.key(e, scoped(e.target))) e.preventDefault();
     return;
   }
-  if (e.code === 'Space' && onCanvas) { e.preventDefault(); tools.setSpace(true); return; }
-  if (!mod && (e.code === 'Equal' || e.code === 'NumpadAdd')) { e.preventDefault(); view.zoomCenter(1.25); return; }
-  if (!mod && (e.code === 'Minus' || e.code === 'NumpadSubtract')) { e.preventDefault(); view.zoomCenter(0.8); return; }
-  if (tools.key(e)) e.preventDefault();
+  if (e.code === 'Space' && onCanvas) { e.preventDefault(); if (!tools.key(e)) tools.setSpace(true); return; } // 키보드 커서가 보이면 Space 는 누르기, 아니면 화면 끌기
+  if (!mod && (e.code === 'Equal' || e.code === 'NumpadAdd') && scoped(e.target)) { e.preventDefault(); view.zoomCenter(1.25); return; }
+  if (!mod && (e.code === 'Minus' || e.code === 'NumpadSubtract') && scoped(e.target)) { e.preventDefault(); view.zoomCenter(0.8); return; }
+  if (tools.key(e, scoped(e.target))) e.preventDefault();
 }
 function onKeyUp(e) { if (e.key === 'Shift') tools.setShift(false); if (e.code === 'Space') tools.setSpace(false); }
 

@@ -1,12 +1,12 @@
-// 2D 편집 도구 — 도구 표·단축키와 포인터 상태기계(선택·벽·곡선벽·방·삭제·기둥·개구부·보조선·측정·제품 놓기·밑그림 축척). import 해도 DOM 을 건드리지 않는다
-import { DEFAULTS, curFloor } from './core/model.js';
+// 2D 편집 도구 — 도구 표·단축키와 포인터 상태기계(선택·벽·곡선벽·방·삭제·기둥·개구부·보조선·측정·제품 놓기·밑그림 축척)와 키보드 커서(방향키로 옮기고 Enter 로 누른다). import 해도 DOM 을 건드리지 않는다
+import { DEFAULTS, curFloor, COORD_MAX } from './core/model.js';
 import { snapPoint, hitTest, dist, wallPointAt, wallPoints, wallLen, nearestWall, nearestOnWall, rectPoly, circlePoly, pointInPoly, polyCentroid, segSegIntersect } from './core/geom.js';
-import { SCALE, toMm, snapStep, drawPill, angleDeg, fmtArea } from './view2d.js';
+import { SCALE, toMm, toPx as vpPx, snapStep, drawPill, drawCrosshair, angleDeg, fmtArea } from './view2d.js';
 
 export const PX = Object.freeze({ snap: 12, hit: 8, drag: 4, handle: 9 }); // 허용 거리(화면 px)
 export const NAMES = { select: '선택', wall: '벽 그리기', arc: '곡선벽 그리기', room: '방 그리기', delete: '삭제', colRect: '사각 기둥 그리기', colRound: '원형 기둥 그리기', opening: '개구부 그리기', guide: '보조선 그리기', measure: '측정', placeItem: '제품 놓기', calibrate: '밑그림 축척 맞추기', moveUnderlay: '밑그림 이동' };
 export const OPENING_NAMES = { door: '문', window: '창', open: '개방' };
-// 도면 그리기 패널의 행 — 캡처 그대로(이름·단축키). key 가 없으면 단축키 없음
+// 도면 그리기 패널의 행 — 구역·행 이름과 단축키는 REA 관찰에서 본 기능 이름과 같은 글자다(기능 어휘). 색·치수·모션은 수치만 참고했다. key 가 없으면 단축키 없음
 export const TOOL_ROWS = [
   { group: '특수 기능', rows: [{ id: 'underlay', label: '도면 이미지 업로드', action: 'underlay' }, { id: 'maps', label: '도면 검색', href: '../maps/' }] },
   { group: '방 만들기', rows: [{ id: 'wall', label: '벽 그리기', key: 'L' }, { id: 'arc', label: '곡선벽 그리기', key: 'A' }, { id: 'room', label: '방 그리기', key: 'F' }, { id: 'delete', label: '삭제', key: 'D' }] },
@@ -56,12 +56,51 @@ export function handlesOf(sel1) {
 export const bulgeOf = (a, b, p) => { const L = dist(a, b) || 1, n = [-(b[1] - a[1]) / L, (b[0] - a[0]) / L], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; return R10((p[0] - m[0]) * n[0] + (p[1] - m[1]) * n[1]); }; // arcFrom3 와 같은 부호(진행 방향 오른쪽 +)
 const withoutIds = (doc, ex) => ({ ...doc, floors: doc.floors.map((f, i) => (i === doc.cur ? { ...f, walls: f.walls.filter((w) => !ex.has(w.id)), guides: f.guides.filter((g) => !ex.has(g.id)) } : f)) });
 
+/* ---------- 키보드 커서: 순수 계산 (화면 vp = {scale, ox, oy, w, h}) ---------- */
+export const KB = Object.freeze({ big: 10, margin: 24 }); // big = Shift+방향키로 가는 칸 수 · margin = 커서가 화면 가장자리에서 떨어져 있어야 하는 거리(px)
+export const KB_DIRS = Object.freeze({ ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] });
+export const KB_TOOLS = Object.freeze(['wall', 'arc', 'room', 'delete', 'colRect', 'colRound', 'opening', 'guide', 'measure', 'placeItem', 'calibrate']); // 키보드 커서로 점을 찍는 도구 — 고르기는 따로(Enter 로 커서 자리의 요소를 고른다)
+const KB_SET = new Set(KB_TOOLS);
+const snapTo = (p, s) => [Math.round(p[0] / s) * s + 0, Math.round(p[1] / s) * s + 0]; // + 0 : -0 을 0 으로
+const coord = (v) => clamp(v, -COORD_MAX, COORD_MAX); // 도면 좌표 상한(core 가 거절하는 값)을 넘지 않게
+export function kbMove(mm, key, big, step) { // 방향키 한 번 = 스냅 한 칸(Shift 면 10칸). 칸에서 벗어난 자리는 가까운 칸에 맞춘 뒤 간다
+  const d = KB_DIRS[key]; if (!d) return null;
+  const n = (big ? KB.big : 1) * step, [x, y] = snapTo(mm, step);
+  return [coord(x + d[0] * n), coord(y + d[1] * n)];
+}
+export function kbStart(vp, last, step) { // 처음 커서 자리 — 마지막 포인터 자리가 화면 안이면 거기, 아니면 보이는 영역 가운데
+  const m = KB.margin, q = last && vpPx(vp, last), inside = !!q && q[0] >= m && q[0] <= vp.w - m && q[1] >= m && q[1] <= vp.h - m;
+  return snapTo(inside ? last : toMm(vp, [vp.w / 2, vp.h / 2]), step);
+}
+export function kbScroll(vp, mm) { // 커서가 가장자리 여백 밖이면 화면을 얼마나(px) 밀어야 안으로 들어오는가
+  const q = vpPx(vp, mm), m = Math.min(KB.margin, vp.w / 4, vp.h / 4), f = (v, max) => (v < m ? m - v : v > max - m ? max - m - v : 0);
+  return [f(q[0], vp.w) + 0, f(q[1], vp.h) + 0];
+}
+export const kbText = (mm) => `${Math.round(mm[0]).toLocaleString('ko-KR')}, ${Math.round(mm[1]).toLocaleString('ko-KR')} mm`;
+export function stepId(ids, cur, dir) { // [ ] 로 요소를 하나씩 훑을 때 다음 id. 고른 것이 없으면 처음(] ) 또는 끝([ ), 끝에서는 반대쪽 끝으로 돈다
+  if (!ids.length) return null;
+  const i = ids.indexOf(cur);
+  return i < 0 ? (dir > 0 ? ids[0] : ids[ids.length - 1]) : ids[(i + (dir > 0 ? 1 : -1) + ids.length) % ids.length];
+}
+export function describeEl(doc, id) { // 낭독용 이름 — "벽 W3 · 3,200 mm"
+  const f = findEl(doc, id); if (!f) return '';
+  const { col, el } = f, mm = (v) => `${Math.round(v).toLocaleString('ko-KR')} mm`;
+  if (col === 'walls') return `${el.bulge ? '곡선벽' : '벽'} ${id} · ${mm(wallLen(el))}`;
+  if (col === 'rooms') return `방 ${el.name}`;
+  if (col === 'columns') return `${el.kind === 'round' ? '원형' : '사각'} 기둥 ${id}`;
+  if (col === 'openings') return `${OPENING_NAMES[el.type] || '개구부'} ${id}`;
+  if (col === 'guides') return `보조선 ${id} · ${mm(dist(el.a, el.b))}`;
+  return `${el.kind === 'appliance' ? '가전' : '에어컨'} ${el.code || el.model}`;
+}
+
 /* ---------- 도구 상태기계 ---------- */
 export function createTools({ store, view, sel, ui, state }) {
   let tool = 'select', opts = {}, op = null, drag = null, cur = null, dn = null, space = false, pan = null, gest = null, rot = 0;
+  let kc = null, focused = false, lastMm = null, said = false, sayT = 0; // kc = 키보드 커서 {mm} · focused = 캔버스에 초점 · lastMm = 마지막 포인터 자리 · said = 이번 누르기에서 처리기가 낭독했는가 · sayT = 커서 낭독을 모으는 타이머
   const pts = new Map(), doc = () => store.doc, fl = () => curFloor(store.doc), vp = () => view.vp, T = (px) => px / vp().scale;
   const run = (cmd) => { try { return store.exec(cmd); } catch (err) { ui.toast(err.message, 'err'); return null; } };
-  const hint = () => ui.hint(NAMES[tool] + (tool === 'opening' ? ` · ${OPENING_NAMES[opts.type || 'door']}` : ''), H[tool].hint());
+  const say = (m) => { said = true; ui.say(m); };
+  const hint = () => ui.hint(NAMES[tool] + (tool === 'opening' ? ` · ${OPENING_NAMES[opts.type || 'door']}` : ''), H[tool].hint() + kbTip());
   const redraw = () => { hint(); view.requestDraw(); };
   const single = () => (sel.size === 1 ? findEl(doc(), [...sel.ids][0]) : null);
   const snap = (c, from, ex) => snapPoint(ex ? withoutIds(doc(), ex) : doc(), c.mm, { gridMm: snapStep(vp().scale), tolMm: T(PX.snap), from, ortho: !!(from && c.shift) });
@@ -69,6 +108,50 @@ export function createTools({ store, view, sel, ui, state }) {
   const abort = () => { if (drag && drag.started) store.cancel(); drag = null; };
   const end = () => { op = null; redraw(); };
   const kb = (key, touch) => (state.touch ? touch : key); // 안내문 — 키보드가 없는 화면(폰·태블릿)은 키 대신 누르는 동작을 말한다
+
+  /* ---------- 키보드 커서 — 포인터 대신 점을 가리킨다. 누르기는 마우스와 같은 down/up 처리기를 지나므로 스냅·검증·실행 취소가 그대로다 ---------- */
+  const kbTip = () => (state.touch ? '' : tool === 'select' ? (sel.size ? ' · 방향키로도 옮깁니다 · [ ] 로 다른 것을 고릅니다' : ' · 방향키로 옮기고 Enter 로 고릅니다 · [ ] 로 하나씩 훑습니다') : KB_SET.has(tool) ? ' · 방향키로 옮기고 Enter 로 누릅니다 (Shift+방향키는 10칸)' : '');
+  const kbStepMm = () => snapStep(vp().scale);
+  const kbCtx = (mm, shift) => ({ e: null, px: view.toPx(mm), mm, shift: !!shift, dn, moved: false, isDrag: false });
+  const kbTool = () => KB_SET.has(tool) || (tool === 'select' && !sel.size); // 방향키·Enter 가 커서를 움직이는 도구 — 고른 것이 있으면 방향키는 그것을 옮긴다
+  const kbShown = () => !!kc && focused && kbTool();
+  const kbUnder = () => (tool === 'select' || tool === 'delete' ? hitTest(doc(), kc.mm, T(PX.hit)) : null);
+  function kbSayLater() { // 커서 낭독은 모았다가 한 번만 — 키를 누르고 있는 동안 계속 읽지 않는다
+    clearTimeout(sayT);
+    sayT = setTimeout(() => { if (!kc) return; const hit = kbUnder(); ui.say(`커서 ${kbText(kc.mm)}${hit ? ' · ' + describeEl(doc(), hit.id) : ''}`); }, 250);
+  }
+  function kbPlace(mm) { kc = { mm }; cur = kbCtx(mm, false); H[tool].move(cur); view.requestDraw(); } // 미리보기·가리키기는 마우스가 그 자리로 움직인 것과 같다
+  function kbWake(speak) { if (!kc) kbPlace(kbStart(vp(), lastMm, kbStepMm())); else view.requestDraw(); if (speak) kbSayLater(); }
+  function kbGo(mm) { const [dx, dy] = kbScroll(vp(), mm); if (dx || dy) view.panBy(dx, dy); kbPlace(mm); kbSayLater(); } // 화면 가장자리를 넘으면 화면이 따라온다
+  function kbPress(shift) { // 누르기 = 같은 자리에서 pointerdown → pointerup. 끌기형 도구도 두 번 누르기로 끝나는 길이 있어 그 길을 그대로 쓴다
+    clearTimeout(sayT); said = false;
+    const before = op ? JSON.stringify(op) : '', d = kbCtx(kc.mm, shift);
+    cur = d; dn = d; H[tool].down(d);
+    const u = kbCtx(kc.mm, shift); u.dn = d; dn = null; cur = u; H[tool].up(u);
+    view.requestDraw(); hint();
+    if (said) return; // 처리기가 결과를 이미 읽었다
+    if (tool === 'select') return ui.say(sel.size === 1 ? `${describeEl(doc(), [...sel.ids][0])} 선택` : sel.size ? `${sel.size}개를 골랐습니다` : '고른 것이 없습니다');
+    if (op && JSON.stringify(op) !== before) ui.say(`점을 찍었습니다 · ${kbText(kc.mm)}`);
+    else if (before && !op) ui.say('그리기를 마쳤습니다');
+  }
+  function stepSel(dir) { // [ ] — 모든 요소를 차례로 하나씩 고르고 이름을 읽는다. 속성 패널은 선택이 바뀌면 app 이 만든다
+    const ids = allIds(fl());
+    if (!ids.length) return ui.say('고를 것이 없습니다');
+    const id = stepId(ids, sel.size === 1 ? [...sel.ids][0] : null, dir);
+    sel.set([id]);
+    const en = view.entry && view.entry(id), b = en && en.box;
+    if (b) { const c = [(b[0] + b[2]) / 2, (b[1] + b[3]) / 2]; if (kbScroll(vp(), c).some(Boolean)) view.centerOn(c); if (kc) kbPlace(c); } // 화면 밖의 요소는 가운데로 가져오고 커서도 그 자리로
+    hint(); ui.say(`${describeEl(doc(), id)} · ${ids.indexOf(id) + 1}/${ids.length}`);
+  }
+  function kbKey(e) { // 캔버스에 초점이 있을 때: 방향키 = 커서 이동, Enter·Space = 누르기. 먹었으면 true
+    if (!kbTool()) return false;
+    const k = e.key, arrow = !!KB_DIRS[k], space = e.code === 'Space';
+    if (!arrow && k !== 'Enter' && !space) return false;
+    if (!kc) { if (space || (k === 'Enter' && op)) return false; kbWake(true); return true; } // 커서가 안 보이면 첫 키는 커서부터 보인다 · 진행 중인 작업이 있으면 Enter 는 예전처럼 마감, Space 는 예전처럼 화면 끌기
+    if (arrow) kbGo(kbMove(kc.mm, k, e.shiftKey, kbStepMm()));
+    else if (!e.repeat) kbPress(e.shiftKey); // 누르고 있어도 한 번만
+    return true;
+  }
   const sameWall = (w, q) => !!w && dist(w.a, q.a) < 1 && dist(w.b, q.b) < 1;
   // 실행 취소·다시 실행이 문서를 바꾸면 이어 그리던 벽도 문서에 남은 벽까지만 인정한다 — 되돌린 벽의 끝점에서 이어 그리지 않는다
   store.subscribe((e) => {
@@ -134,7 +217,7 @@ export function createTools({ store, view, sel, ui, state }) {
       up(c) {
         const d = drag; drag = null; if (!d) return;
         if (d.kind === 'marquee') { if (dist(d.a, d.b) * vp().scale >= PX.drag) { const ids = idsInRect(doc(), d.a, d.b); sel.set(d.add ? [...new Set([...sel.ids, ...ids])] : ids); } return; }
-        if (d.started) { if (d.failed) { store.cancel(); ui.toast('그 자리에는 놓을 수 없습니다 · 원래대로 되돌렸습니다', 'err'); } else { store.commit(); ui.say('이동했습니다'); } return; }
+        if (d.started) { if (d.failed) { store.cancel(); ui.toast('그 자리에는 놓을 수 없습니다 · 원래대로 되돌렸습니다', 'err'); } else { store.commit(); say('이동했습니다'); } return; }
         if (d.kind === 'move' && sel.size > 1 && !c.shift && !state.multi) sel.set([d.hit]); // 눌렀다 뗐을 뿐이면 그것 하나로
       },
       dbl(c) { const hit = hitTest(doc(), c.mm, T(PX.hit)); if (hit && hit.kind === 'room') ui.renameRoom(hit.id); },
@@ -148,14 +231,14 @@ export function createTools({ store, view, sel, ui, state }) {
     wall: {
       hint: () => (op ? `끝점을 누르세요 · ${kb('더블클릭·ESC 로 끝냅니다 · Shift 를 누르면 직교', '같은 자리를 두 번 누르거나 [끝내기]를 누르면 끝납니다')}` : '시작점을 누르세요 · 끌어서 한 번에 그릴 수도 있습니다'),
       up(c) {
-        if (!op && c.isDrag) { const a = snap(c.dn).p, b = snap(c, a).p; if (dist(a, b) >= 1) { const ids = run({ type: 'addWall', a, b }); if (ids) { op = { a: b, first: a, n: 1, chain: [{ id: ids[0], a, b }] }; ui.say('벽을 추가했습니다'); } } return redraw(); } // 끌어서 한 번에
+        if (!op && c.isDrag) { const a = snap(c.dn).p, b = snap(c, a).p; if (dist(a, b) >= 1) { const ids = run({ type: 'addWall', a, b }); if (ids) { op = { a: b, first: a, n: 1, chain: [{ id: ids[0], a, b }] }; say('벽을 추가했습니다'); } } return redraw(); } // 끌어서 한 번에
         const p = snap(c, op && op.a).p;
         if (!op) { op = { a: p, first: p, n: 0, chain: [] }; return redraw(); }
         if (dist(op.a, p) < 1) return end(); // 같은 자리를 또 누르면(더블클릭) 끝
         const ids = run({ type: 'addWall', a: op.a, b: p });
         if (!ids) return redraw();
         op.chain = [...op.chain.slice(0, op.n), { id: ids[0], a: op.a, b: p }]; op.n = op.chain.length; // 되돌린 뒤 이어 그리면 되돌린 벽의 기록은 버린다
-        ui.say(`벽을 추가했습니다 · ${Math.round(dist(op.a, p)).toLocaleString('ko-KR')} mm`);
+        say(`벽을 추가했습니다 · ${Math.round(dist(op.a, p)).toLocaleString('ko-KR')} mm`);
         if (op.n >= 3 && dist(p, op.first) < 1) return end(); // 처음 점으로 돌아와 닫힘
         op.a = p; redraw();
       },
@@ -164,7 +247,7 @@ export function createTools({ store, view, sel, ui, state }) {
     arc: {
       hint: () => (!op ? '곡선벽의 시작점을 누르세요' : !op.b ? '끝점을 누르세요' : `처짐 점을 눌러 곡선을 정하세요 · ${kb('ESC 로 취소', '취소하려면 [끝내기]를 누르세요')}`),
       up(c) {
-        if (op && op.b) { const bulge = bulgeOf(op.a, op.b, c.mm); if (!bulge) { ui.toast('처짐이 0 입니다 · 현에서 떨어진 곳을 누르세요', 'err'); return; } if (run({ type: 'addWall', a: op.a, b: op.b, bulge })) ui.say('곡선벽을 추가했습니다'); return end(); }
+        if (op && op.b) { const bulge = bulgeOf(op.a, op.b, c.mm); if (!bulge) { ui.toast('처짐이 0 입니다 · 현에서 떨어진 곳을 누르세요', 'err'); return; } if (run({ type: 'addWall', a: op.a, b: op.b, bulge })) say('곡선벽을 추가했습니다'); return end(); }
         const p = snap(c, op && op.a).p;
         if (!op) op = { a: p }; else if (dist(op.a, p) < 1) return end(); else op.b = p;
         redraw();
@@ -176,7 +259,7 @@ export function createTools({ store, view, sel, ui, state }) {
       },
     },
     room: {
-      hint: () => (!op ? `두 모서리를 끌어 방을 그립니다${kb(' · Shift 를 누르고 누르면 다각형', '')}` : op.mode === 'rect' ? `반대쪽 모서리를 누르세요 · ${kb('ESC 로 취소', '취소하려면 [끝내기]를 누르세요')}` : `점을 차례로 누르고, 첫 점을 눌러 닫습니다${kb(' · Enter 로도 닫습니다', '')}`),
+      hint: () => (!op ? `두 모서리를 끌어 방을 그립니다${kb(' · Shift 를 누르고 누르면 다각형', '')}` : op.mode === 'rect' ? `반대쪽 모서리를 누르세요 · ${kb('ESC 로 취소', '취소하려면 [끝내기]를 누르세요')}` : `점을 차례로 누르고, 첫 점을 눌러 닫습니다${kc ? '' : kb(' · Enter 로도 닫습니다', '')}`),
       up(c) {
         const last = op && op.mode === 'poly' ? op.pts.at(-1) : null;
         if (!op) {
@@ -199,7 +282,7 @@ export function createTools({ store, view, sel, ui, state }) {
     delete: {
       hint: () => '지울 것을 누르세요 · 방을 지우면 방의 벽도 함께 지워집니다',
       move(c) { const hit = hitTest(doc(), c.mm, T(PX.hit)); view.hover = hit ? { id: hit.id, danger: true } : null; ui.cursor(hit ? 'pointer' : 'default'); },
-      up(c) { const hit = hitTest(doc(), c.mm, T(PX.hit)); if (!hit) return; if (run({ type: 'remove', ids: [hit.id] })) { view.hover = null; sel.prune(doc()); ui.say('지웠습니다'); } },
+      up(c) { const hit = hitTest(doc(), c.mm, T(PX.hit)); if (!hit) return; if (run({ type: 'remove', ids: [hit.id] })) { view.hover = null; sel.prune(doc()); say('지웠습니다'); } },
       overlay() {},
     },
     colRect: colTool('rect'),
@@ -207,7 +290,7 @@ export function createTools({ store, view, sel, ui, state }) {
     opening: {
       hint: () => `벽에 갖다 대면 ${OPENING_NAMES[opts.type || 'door']}이 붙습니다 · 누르면 놓입니다`,
       move(c) { const o = openingCand(c.mm); ui.cursor(o ? 'copy' : 'default'); },
-      up(c) { const o = openingCand(c.mm); if (!o) return ui.toast('벽 위에서 누르세요', 'err'); if (!o.ok) return ui.toast('벽이 개구부보다 짧습니다', 'err'); const ids = run({ type: 'addOpening', wall: o.wall.id, at: o.at, kind: opts.type || 'door' }); if (ids) { sel.set(ids); ui.say(`${OPENING_NAMES[opts.type || 'door']}을 붙였습니다`); } },
+      up(c) { const o = openingCand(c.mm); if (!o) return ui.toast('벽 위에서 누르세요', 'err'); if (!o.ok) return ui.toast('벽이 개구부보다 짧습니다', 'err'); const ids = run({ type: 'addOpening', wall: o.wall.id, at: o.at, kind: opts.type || 'door' }); if (ids) { sel.set(ids); say(`${OPENING_NAMES[opts.type || 'door']}을 붙였습니다`); } },
       overlay(g) {
         if (!cur) return; const o = openingCand(cur.mm); if (!o) return;
         const { p, tan } = wallPointAt(o.wall, o.at), n = [-tan[1], tan[0]], W = o.width / 2, T2 = o.wall.t / 2 + 30;
@@ -218,11 +301,11 @@ export function createTools({ store, view, sel, ui, state }) {
     guide: {
       hint: () => (op ? `끝점을 누르세요 · ${kb('ESC 로 취소', '취소하려면 [끝내기]를 누르세요')}` : '시작점을 누르세요 · 끌어서 그릴 수도 있습니다'),
       up(c) {
-        if (!op && c.isDrag) { const a = snap(c.dn).p, b = snap(c, a).p; if (run({ type: 'addGuide', a, b })) ui.say('보조선을 추가했습니다'); return redraw(); }
+        if (!op && c.isDrag) { const a = snap(c.dn).p, b = snap(c, a).p; if (run({ type: 'addGuide', a, b })) say('보조선을 추가했습니다'); return redraw(); }
         const p = snap(c, op && op.a).p;
         if (!op) { op = { a: p }; return redraw(); }
         if (dist(op.a, p) < 1) return end();
-        if (run({ type: 'addGuide', a: op.a, b: p })) ui.say('보조선을 추가했습니다');
+        if (run({ type: 'addGuide', a: op.a, b: p })) say('보조선을 추가했습니다');
         end();
       },
       overlay(g) { if (!cur) return; const s = snap(cur, op && op.a); if (op) { seg(g, op.a, s.p, { dash: [6, 4] }); lenLabel(g, op.a, s.p); } mark(g, s); },
@@ -231,7 +314,7 @@ export function createTools({ store, view, sel, ui, state }) {
       hint: () => (!op ? '재기 시작할 점을 누르세요 · 저장되지 않습니다' : op.done ? `다시 누르면 새로 잽니다 · ${kb('ESC 로 지웁니다', '[끝내기]를 누르면 지웁니다')}` : '끝점을 누르세요'),
       up(c) {
         const p = snap(c, op && !op.done ? op.a : null).p;
-        if (!op || op.done) op = { a: p }; else if (dist(op.a, p) < 1) return end(); else { op.b = p; op.done = true; ui.say(`거리 ${Math.round(dist(op.a, p)).toLocaleString('ko-KR')} mm`); }
+        if (!op || op.done) op = { a: p }; else if (dist(op.a, p) < 1) return end(); else { op.b = p; op.done = true; say(`거리 ${Math.round(dist(op.a, p)).toLocaleString('ko-KR')} mm`); }
         redraw();
       },
       overlay(g) {
@@ -249,7 +332,7 @@ export function createTools({ store, view, sel, ui, state }) {
         const ids = run(opts.kind === 'appliance' // 가전: 패널이 공식 제원의 크기·높이를 실어 보낸다(없으면 core 가 거절한다). 그 밖은 시스템에어컨
           ? { type: 'addItem', kind: 'appliance', category: opts.category, brand: opts.brand, model: opts.model, name: opts.name || '', c: p, rot, size: opts.size, heightMm: opts.heightMm, code: opts.code || opts.model, url: opts.url }
           : { type: 'addItem', kind: 'ac', model: opts.model, brand: opts.brand, c: p, rot, capacityKw: opts.capacityKw ?? null, code: opts.code || '', size: opts.size });
-        if (ids) ui.say(`${opts.code || opts.model} 을 놓았습니다`);
+        if (ids) say(`${opts.code || opts.model} 을 놓았습니다`);
       },
       overlay(g) {
         if (!cur || !opts.size) return; const p = snap(cur).p, ok = fl().rooms.some((r) => pointInPoly(r.poly, p));
@@ -281,7 +364,7 @@ export function createTools({ store, view, sel, ui, state }) {
   function colTool(kind) {
     return {
       hint: () => `${kind === 'rect' ? '사각' : '원형'} 기둥을 놓을 자리를 누르세요 · ${kb('ESC 로 끝냅니다', '끝내려면 [끝내기]를 누르세요')}`,
-      up(c) { const p = snap(c).p; if (fl().columns.some((q) => dist(q.c, p) < 1)) return; if (run({ type: 'addColumn', kind, c: p })) ui.say('기둥을 놓았습니다'); }, // 같은 자리에 또 누르면(더블클릭) 기둥이 겹치므로 무시
+      up(c) { const p = snap(c).p; if (fl().columns.some((q) => dist(q.c, p) < 1)) return; if (run({ type: 'addColumn', kind, c: p })) say('기둥을 놓았습니다'); }, // 같은 자리에 또 누르면(더블클릭) 기둥이 겹치므로 무시
       overlay(g) { if (!cur) return; const s = snap(cur), W = DEFAULTS.colW; polyOverlay(g, kind === 'round' ? circlePoly(s.p, W / 2, 24) : rectPoly(s.p, W, W, 0)); mark(g, s); },
     };
   }
@@ -292,12 +375,12 @@ export function createTools({ store, view, sel, ui, state }) {
   }
   function finishRect(a, b) {
     if (Math.abs(a[0] - b[0]) < 300 || Math.abs(a[1] - b[1]) < 300) return ui.toast('방이 너무 작습니다 · 300 mm 이상으로 그려 주세요', 'err');
-    if (run({ type: 'addRoomRect', a, b })) ui.say('방을 만들었습니다');
+    if (run({ type: 'addRoomRect', a, b })) say('방을 만들었습니다');
   }
   function closePoly() {
     if (!op || op.pts.length < 3) return;
     const pts = op.pts; op = null;
-    if (run({ type: 'addRoomPoly', poly: pts })) ui.say('방을 만들었습니다');
+    if (run({ type: 'addRoomPoly', poly: pts })) say('방을 만들었습니다');
     redraw();
   }
 
@@ -320,7 +403,7 @@ export function createTools({ store, view, sel, ui, state }) {
   function attach(canvas) {
     const local = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     canvas.addEventListener('pointerdown', (e) => {
-      const px = local(e); pts.set(e.pointerId, px); try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 포인터가 이미 끝났으면 무시 */ } canvas.focus({ preventScroll: true });
+      const px = local(e); pts.set(e.pointerId, px); kc = null; lastMm = view.toMm(px); try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 포인터가 이미 끝났으면 무시 */ } canvas.focus({ preventScroll: true }); // 포인터를 쓰면 키보드 커서는 물러난다
       if (pts.size >= 2) return beginGesture();
       if (e.pointerType === 'mouse' && e.button === 1) { e.preventDefault(); pan = px; return ui.cursor('grabbing'); }
       if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -328,7 +411,7 @@ export function createTools({ store, view, sel, ui, state }) {
       dn = ctxOf(e, px); cur = dn; H[tool].down(dn); view.requestDraw();
     });
     canvas.addEventListener('pointermove', (e) => {
-      const px = local(e); if (pts.has(e.pointerId)) pts.set(e.pointerId, px);
+      const px = local(e); if (pts.has(e.pointerId)) pts.set(e.pointerId, px); kc = null; lastMm = view.toMm(px);
       if (gest) return moveGesture();
       if (pan) { view.panBy(px[0] - pan[0], px[1] - pan[1]); pan = px; return; }
       const c = ctxOf(e, px); cur = c; H[tool].move(c); view.requestDraw();
@@ -346,6 +429,9 @@ export function createTools({ store, view, sel, ui, state }) {
     canvas.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !pts.size) { cur = null; view.hover = null; view.requestDraw(); } });
     canvas.addEventListener('dblclick', (e) => { if (H[tool].dbl) H[tool].dbl(ctxOf(e, local(e))); });
     canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); escape(); }); // 오른쪽 단추 = ESC
+    const byKeyboard = () => { try { return canvas.matches(':focus-visible'); } catch (err) { return false; } }; // 마우스로 초점을 준 것이 아니면 키보드 커서를 바로 보인다
+    canvas.addEventListener('focus', () => { focused = true; if (byKeyboard()) kbWake(false); else view.requestDraw(); });
+    canvas.addEventListener('blur', () => { focused = false; view.requestDraw(); });
   }
 
   /* ---------- 키 ---------- */
@@ -355,16 +441,20 @@ export function createTools({ store, view, sel, ui, state }) {
     if (tool !== 'select') return ui.setTool('select');
     sel.clear();
   }
-  function key(e) { // 먹었으면 true. 입력칸 초점일 때는 app 이 이 함수를 부르지 않는다
+  function key(e, inScope = true) { // 먹었으면 true. 입력칸 초점일 때는 app 이 이 함수를 부르지 않는다. inScope = 캔버스·도구 패널에 초점이 있다 — 한 글자 단축키(글쇠·[ ])는 그때만 듣는다(WCAG 2.1.4)
     if (e.ctrlKey || e.metaKey || e.altKey) return false;
-    const k = e.key, code = e.code || '', onCanvas = e.target === document.body || (e.target && e.target.id === 'plCanvas');
+    const k = e.key, code = e.code || '', isCanvas = !!e.target && e.target.id === 'plCanvas', onCanvas = isCanvas || (typeof document !== 'undefined' && e.target === document.body);
     if (code === 'Escape') { escape(); return true; }
     const t = code.startsWith('Key') ? SHORTCUTS[code.slice(3)] : null;
-    if (t) { ui.setTool(t); return true; }
-    if ((k === '[' || k === ']') && tool === 'placeItem') { rot = (rot + (k === ']' ? 90 : -90) + 360) % 360; redraw(); return true; }
+    if (t) { if (!inScope) return false; ui.setTool(t); return true; }
+    if ((k === '[' || k === ']') && inScope) {
+      if (tool === 'placeItem') { rot = (rot + (k === ']' ? 90 : -90) + 360) % 360; redraw(); return true; }
+      if (tool === 'select' && isCanvas) { stepSel(k === ']' ? 1 : -1); return true; }
+    }
     if (!onCanvas) return false;
+    if (isCanvas && kbKey(e)) return true;
     if (k === 'Enter') { if (tool === 'room' && op && op.mode === 'poly') closePoly(); else if (op) end(); return true; }
-    if ((k === 'Delete' || k === 'Backspace') && tool === 'select') { if (state.locked) ui.toast('잠금 상태입니다', 'err'); else if (sel.size && run({ type: 'remove', ids: [...sel.ids] })) { sel.prune(doc()); ui.say('지웠습니다'); } return true; }
+    if ((k === 'Delete' || k === 'Backspace') && tool === 'select') { if (state.locked) ui.toast('잠금 상태입니다', 'err'); else if (sel.size && run({ type: 'remove', ids: [...sel.ids] })) { sel.prune(doc()); say('지웠습니다'); } return true; }
     if (k.startsWith('Arrow') && sel.size && tool === 'select' && !state.locked) { const s = e.shiftKey ? 500 : snapStep(vp().scale); run({ type: 'move', ids: [...sel.ids], dx: k === 'ArrowLeft' ? -s : k === 'ArrowRight' ? s : 0, dy: k === 'ArrowUp' ? -s : k === 'ArrowDown' ? s : 0 }); return true; }
     return false;
   }
@@ -381,7 +471,13 @@ export function createTools({ store, view, sel, ui, state }) {
       if (name !== 'select') sel.clear();
       ui.cursor(name === 'select' ? 'default' : 'crosshair'); redraw(); return true;
     },
-    overlay: (g) => H[tool].overlay(g),
+    overlay(g) {
+      H[tool].overlay(g);
+      if (!kbShown()) return;
+      const q = g.toPx(kc.mm); drawCrosshair(g.ctx, g.C, q[0], q[1]);
+      drawPill(g.ctx, g.C, `${g.fmt(kc.mm[0])} · ${g.fmt(kc.mm[1])}`, q[0], q[1] > g.vp.h - 44 ? q[1] - 24 : q[1] + 24, { color: g.C.accent });
+    },
+    get kb() { return kc && { mm: [...kc.mm] }; },
     abort() { abort(); op = null; },
   };
 }

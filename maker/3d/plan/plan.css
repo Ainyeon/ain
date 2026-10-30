@@ -47,8 +47,10 @@ button, input, select { font: inherit; color: inherit; }
 .ed-rb { display: grid; place-items: center; flex: none; width: 100%; height: 56px; padding: 0 var(--sp-1); border: 0; border-left: 2px solid transparent; background: transparent; color: var(--c-ink-sub); font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--fw-semi); text-align: center; cursor: pointer; transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
 .ed-rb:nth-last-child(2) { margin-top: var(--sp-4); border-top: 1px solid var(--c-line); }   /* 설계형 라이브러리부터는 한 줄 띄워 묶는다 */
 .ed-rb.on { border-left-color: var(--c-accent); background: var(--c-accent-bg); color: var(--c-accent); font-weight: var(--fw-bold); }
+.ed-rb:focus-visible { outline-offset: -2px; }   /* 줄이 overflow 상자라 바깥 링은 잘린다(첫 단추는 위가 잘리고 아래는 다음 단추에 가려진다) — 링을 단추 안쪽에 */
 @media (hover: hover) { .ed-rb:not(.on):hover { background: var(--c-surface-sub); color: var(--c-ink); } }
 .ed-panel { grid-area: panel; display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--c-line); background: var(--c-surface); overflow: hidden; }
+.ed-panel:focus { outline: none; }   /* 폰: 줄 단추로 시트를 열면 초점이 시트 자체로 온다 — 안의 단추마다 링이 있으니 시트 테두리에는 링을 두지 않는다 */
 .ed-ph { display: flex; align-items: center; justify-content: space-between; flex: none; height: 44px; padding: 0 var(--sp-3); border-bottom: 1px solid var(--c-line); }
 .ed-ph h2 { margin: 0; font-size: var(--fs-2); font-weight: var(--fw-bold); }
 .ed-pb { flex: 1; min-height: 0; padding: var(--sp-2) var(--sp-3) var(--sp-5); overflow: hidden auto; overscroll-behavior: contain; }
@@ -203,5 +205,9 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
   .ed-panel[data-own] .ed-ph { display: flex; }   /* 시트에는 닫기 단추가 필요하다 */
   .ed-panel[data-own] .pl-head { display: none; }   /* 시트 머리와 겹치는 판의 제목 줄은 감춘다 */
   .ed-toasts { bottom: calc(var(--sp-9) + var(--sp-9)); }
+}
+@media (max-width: 359px) {   /* 320px 폰: 위 바 가로줄이 341px 이라 단추 안쪽 여백과 칸 사이를 한 단계씩 줄여 저장 단추가 화면 안에 든다 */
+  .ed-top { gap: var(--sp-1); }
+  .ed-hist .ed-b { padding: 0 var(--sp-1); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

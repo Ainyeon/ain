@@ -49,14 +49,14 @@
       <button type="button" class="ed-rb" data-panel="resources">리소스 관리</button>
     </nav>
 
-    <aside class="ed-panel" id="plPanel" aria-labelledby="plPanelTitle">
+    <aside class="ed-panel" id="plPanel" aria-labelledby="plPanelTitle" tabindex="-1">
       <div class="ed-ph"><h2 id="plPanelTitle">도면 그리기</h2><button type="button" class="ed-x ed-small-only" id="plPanelClose" aria-label="패널 닫기">×</button></div>
       <div class="ed-pb" id="plPanelBody"></div>
     </aside>
 
     <main class="ed-stage" id="plStage">
-      <canvas id="plCanvas" tabindex="0" role="application" aria-label="도면 캔버스 · 도구 단축키는 왼쪽 패널에 있습니다"></canvas>
-      <div class="ed-3d" id="plView3d" hidden></div>
+      <canvas id="plCanvas" tabindex="0" role="application" aria-label="도면 캔버스 · 방향키로 커서를 옮기고 Enter 로 누릅니다 · 도구 단축키는 왼쪽 패널에 있습니다"></canvas>
+      <div class="ed-3d" id="plView3d" hidden tabindex="-1"></div>
       <div class="ed-hint" id="plHint"><strong id="plHintName">선택</strong><span id="plHintText"></span></div>
       <button type="button" class="ed-edge l" id="plPanelToggle" aria-label="왼쪽 패널 접기" aria-expanded="true" aria-controls="plPanel">‹</button>
       <button type="button" class="ed-edge r" id="plSideToggle" aria-label="오른쪽 패널 접기" aria-expanded="true" aria-controls="plSide">›</button>
