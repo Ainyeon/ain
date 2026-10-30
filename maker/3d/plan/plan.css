@@ -201,7 +201,8 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
   .ed-app.no-side .ed-props { visibility: visible; }
   .ed-hide-small { display: none; }
   .ed-hint { max-width: calc(100% - var(--sp-4)); }
-  .ed-hint { flex-wrap: wrap; gap: 0 var(--sp-2); }
+  .ed-hint { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0 var(--sp-2); padding: var(--sp-1) var(--sp-2); }   /* 폰: 이름 · 글(두 줄까지) · [끝내기] 를 한 줄 막대로 — 화면의 5분의 1 을 먹던 카드를 줄인다 */
+  .ed-hint span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
   .ed-panel[data-own] .ed-ph { display: flex; }   /* 시트에는 닫기 단추가 필요하다 */
   .ed-panel[data-own] .pl-head { display: none; }   /* 시트 머리와 겹치는 판의 제목 줄은 감춘다 */
   .ed-toasts { bottom: calc(var(--sp-9) + var(--sp-9)); }

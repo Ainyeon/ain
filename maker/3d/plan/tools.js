@@ -96,6 +96,7 @@ export function describeEl(doc, id) { // 낭독용 이름 — "벽 W3 · 3,200 m
 /* ---------- 도구 상태기계 ---------- */
 export function createTools({ store, view, sel, ui, state }) {
   let tool = 'select', opts = {}, op = null, drag = null, cur = null, dn = null, space = false, pan = null, gest = null, rot = 0;
+  let tapPan = null, fingers = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches; // tapPan = 손가락 한 개로 빈 곳을 끄는 중 {px, moved} · fingers = 마지막 포인터가 손가락(안내문이 손가락 기준으로 말한다)
   let kc = null, focused = false, lastMm = null, said = false, sayT = 0; // kc = 키보드 커서 {mm} · focused = 캔버스에 초점 · lastMm = 마지막 포인터 자리 · said = 이번 누르기에서 처리기가 낭독했는가 · sayT = 커서 낭독을 모으는 타이머
   const pts = new Map(), doc = () => store.doc, fl = () => curFloor(store.doc), vp = () => view.vp, T = (px) => px / vp().scale;
   const run = (cmd) => { try { return store.exec(cmd); } catch (err) { ui.toast(err.message, 'err'); return null; } };
@@ -104,6 +105,7 @@ export function createTools({ store, view, sel, ui, state }) {
   const redraw = () => { hint(); view.requestDraw(); };
   const single = () => (sel.size === 1 ? findEl(doc(), [...sel.ids][0]) : null);
   const snap = (c, from, ex) => snapPoint(ex ? withoutIds(doc(), ex) : doc(), c.mm, { gridMm: snapStep(vp().scale), tolMm: T(PX.snap), from, ortho: !!(from && c.shift) });
+  const blankAt = (px) => { const one = single(); if (one && !state.locked && hitHandle(one, px)) return false; return !hitTest(doc(), view.toMm(px), T(PX.hit)); }; // 고른 것의 핸들이나 도형 위가 아닌 빈 곳
   const hitHandle = (one, px) => handlesOf(one).find((h) => { const q = view.toPx(h.p); return Math.hypot(q[0] - px[0], q[1] - px[1]) <= PX.handle; }) || null;
   const abort = () => { if (drag && drag.started) store.cancel(); drag = null; };
   const end = () => { op = null; redraw(); };
@@ -178,7 +180,7 @@ export function createTools({ store, view, sel, ui, state }) {
   /* 도구별 처리: down/move/up(포인터), hint(안내), overlay(미리보기) */
   const H = {
     select: {
-      hint: () => (state.locked ? '잠금 상태입니다 · 고르기만 할 수 있습니다' : sel.size ? `끌어서 옮깁니다 · 끝점 핸들을 끌어 길이를 고칩니다 · ${kb('Delete 로 지웁니다', '오른쪽 패널의 [지우기]로 지웁니다')}` : '도형을 눌러 고르고, 빈 곳을 끌어 한꺼번에 고릅니다 · 방은 두 번 눌러 이름을 바꿉니다'),
+      hint: () => (state.locked ? '잠금 상태입니다 · 고르기만 할 수 있습니다' : sel.size ? `끌어서 옮깁니다 · 끝점 핸들을 끌어 길이를 고칩니다 · ${kb('Delete 로 지웁니다', '오른쪽 패널의 [지우기]로 지웁니다')}` : state.multi ? '빈 곳을 끌어 한꺼번에 고르고, 도형을 눌러 더하거나 뺍니다' : fingers ? '도형을 눌러 고르고, 빈 곳을 끌면 화면이 움직입니다 · 두 손가락으로 확대·축소합니다' : '도형을 눌러 고르고, 빈 곳을 끌어 한꺼번에 고릅니다 · 방은 두 번 눌러 이름을 바꿉니다'),
       down(c) {
         const one = single(), multi = c.shift || state.multi;
         if (one && !state.locked) { const hd = hitHandle(one, c.px); if (hd) { const ex = new Set([one.id]), joined = []; if (one.col === 'walls' && hd.k !== 'bulge') for (const w of fl().walls) if (w.id !== one.id) for (const k of ['a', 'b']) if (dist(w[k], hd.p) < 1) { joined.push({ id: w.id, k }); ex.add(w.id); } drag = { kind: 'handle', one, k: hd.k, joined, ex, started: false, failed: false }; return; } }
@@ -403,23 +405,25 @@ export function createTools({ store, view, sel, ui, state }) {
   function attach(canvas) {
     const local = (e) => { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
     canvas.addEventListener('pointerdown', (e) => {
+      { const f = e.pointerType === 'touch'; if (f !== fingers) { fingers = f; hint(); } }
       const px = local(e); pts.set(e.pointerId, px); kc = null; lastMm = view.toMm(px); try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* 포인터가 이미 끝났으면 무시 */ } canvas.focus({ preventScroll: true }); // 포인터를 쓰면 키보드 커서는 물러난다
-      if (pts.size >= 2) return beginGesture();
+      if (pts.size >= 2) { pan = null; tapPan = null; return beginGesture(); }
       if (e.pointerType === 'mouse' && e.button === 1) { e.preventDefault(); pan = px; return ui.cursor('grabbing'); }
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       if (space) { pan = px; return ui.cursor('grabbing'); }
+      if (e.pointerType === 'touch' && tool === 'select' && !state.multi && blankAt(px)) { pan = px; tapPan = { px, moved: false }; return; } // 손가락 한 개로 빈 곳을 끌면 화면이 움직인다(전에는 두 손가락뿐이었다). 가볍게 누르면 선택을 푼다. 여러 개 고르기는 [그룹화]
       dn = ctxOf(e, px); cur = dn; H[tool].down(dn); view.requestDraw();
     });
     canvas.addEventListener('pointermove', (e) => {
       const px = local(e); if (pts.has(e.pointerId)) pts.set(e.pointerId, px); kc = null; lastMm = view.toMm(px);
       if (gest) return moveGesture();
-      if (pan) { view.panBy(px[0] - pan[0], px[1] - pan[1]); pan = px; return; }
+      if (pan) { if (tapPan && !tapPan.moved) { if (Math.hypot(px[0] - tapPan.px[0], px[1] - tapPan.px[1]) <= PX.drag * 2) return; tapPan.moved = true; } view.panBy(px[0] - pan[0], px[1] - pan[1]); pan = px; return; }
       const c = ctxOf(e, px); cur = c; H[tool].move(c); view.requestDraw();
     });
     const up = (e) => {
       const px = local(e); pts.delete(e.pointerId);
       if (gest) { if (!pts.size) gest = null; return; }
-      if (pan) { pan = null; return ui.cursor(space ? 'grab' : 'default'); }
+      if (pan) { const tp = tapPan; pan = null; tapPan = null; if (tp && !tp.moved && e.type !== 'pointercancel') { sel.clear(); view.requestDraw(); } return ui.cursor(space ? 'grab' : 'default'); }
       if (!dn) return;
       const c = ctxOf(e, px); cur = c; const was = dn; dn = null; c.dn = was;
       if (e.type === 'pointercancel') { abort(); return view.requestDraw(); }

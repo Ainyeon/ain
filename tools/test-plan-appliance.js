@@ -345,6 +345,16 @@ function parseCsv(text) {
 
   /* ===== 6. 패널 순수 함수: 필터·검색·정렬·개수 ===== */
   const cnt = (f) => items.filter(f).length;
+  { // 판매 상태 필터: 기본 목록은 판매 중으로 확인된 것(discontinued === false)만, '단종·미확인 포함'이면 전부. 즐겨찾기 탭은 필터를 적용하지 않는다(정적)
+    const onSale = items.filter((r) => r.discontinued === false);
+    assert.deepStrictEqual(P.filterAppliances(items, { sale: 'sale' }).map((r) => r.id), onSale.map((r) => r.id), 'sale = discontinued false 만'); assert.ok(onSale.length > 0 && onSale.length < items.length, '판매 중 ' + onSale.length + ' / 전체 ' + items.length);
+    assert.strictEqual(P.filterAppliances(items, { sale: 'all' }).length, ROWS, "sale 'all' = 전부"); assert.strictEqual(P.filterAppliances(items).length, ROWS, 'sale 기본값(함수) = 전부 — 화면 기본(판매 중)은 패널 설정이 정한다');
+    const gone = items.find((r) => r.discontinued === true), unk = items.find((r) => r.discontinued === null);
+    assert.ok(gone && unk, '단종 true · 미확인 null 행이 있다'); for (const r of [gone, unk]) { assert.strictEqual(P.filterAppliances(items, { query: r.model, sale: 'sale' }).filter((x) => x.id === r.id).length, 0, r.model + ' 판매 중 보기에서는 안 나온다'); assert.strictEqual(P.filterAppliances(items, { query: r.model, sale: 'all' }).filter((x) => x.id === r.id).length, 1, r.model + ' 포함 보기에서는 나온다'); }
+    const cs = P.categoryCounts(items, { sale: 'sale' }); assert.strictEqual(cs.all, onSale.length, '분류 칩 합계도 판매 중 기준'); assert.strictEqual(P.categoryCounts(items, { sale: 'all' }).all, ROWS);
+    for (const c of SPEC_CATS) assert.strictEqual(cs[c], onSale.filter((r) => r.category === c).length, c + ' 칩 개수');
+    assert.deepStrictEqual(P.filterAppliances(items, { brand: 'samsung', sale: 'sale' }).map((r) => r.discontinued), P.filterAppliances(items, { brand: 'samsung', sale: 'sale' }).map(() => false), '브랜드와 같이 써도 판매 중만');
+    const pj = read('panels.js'); assert.ok(/chip3Default: 'sale'/.test(pj) && /chips3: \[\{ id: 'sale', label: '판매 중' \}, \{ id: 'all', label: '단종·미확인 포함' \}\]/.test(pj), '가전 패널 기본 = 판매 중, 토글 [단종·미확인 포함]'); assert.ok(/const chip3 = st\.tab === 'fav' \? 'all' : st\.chip3/.test(pj), '즐겨찾기 탭은 판매 필터를 적용하지 않는다'); }
   assert.strictEqual(P.filterAppliances(items).length, ROWS);
   for (const c of SPEC_CATS) assert.deepStrictEqual(P.filterAppliances(items, { category: c }).map((r) => r.id), items.filter((r) => r.category === c).map((r) => r.id), c + ' 분류 필터');
   assert.strictEqual(P.filterAppliances(items, { brand: 'lg' }).length, cnt((r) => r.brand === 'lg')); assert.strictEqual(P.filterAppliances(items, { brand: 'samsung', category: 'tv' }).length, cnt((r) => r.brand === 'samsung' && r.category === 'tv'));

@@ -43,15 +43,16 @@ export function filterTemplates(list, { size = 'all', layout = 'all' } = {}) { r
 /* ---------- 가전 (순수) — data/appliance-catalog.json 의 행 ---------- */
 const hay = new WeakMap(); // 행마다 검색용 글자(모델명·모델 코드들·제품명, 공백·대소문자 없앰)를 한 번만 만든다
 const hayOf = (m) => { let v = hay.get(m); if (v === undefined) hay.set(m, (v = norm([m.model, ...(m.modelCodes || []), m.name].join(' ')))); return v; };
-export function filterAppliances(items, { category = 'all', brand = 'all', query = '', ids = null } = {}) {
+// sale: 'sale' = 삼성닷컴·LG 에서 판매 중으로 확인된 것(discontinued === false)만, 'all' = 단종·판매 페이지 없음(미확인)까지
+export function filterAppliances(items, { category = 'all', brand = 'all', query = '', ids = null, sale = 'all' } = {}) {
   const q = norm(query);
-  return items.filter((m) => (category === 'all' || m.category === category) && (brand === 'all' || m.brand === brand) && (!ids || ids.has(m.id)) && (!q || hayOf(m).includes(q)));
+  return items.filter((m) => (category === 'all' || m.category === category) && (brand === 'all' || m.brand === brand) && (sale !== 'sale' || m.discontinued === false) && (!ids || ids.has(m.id)) && (!q || hayOf(m).includes(q)));
 }
 // 분류 칩에 적는 개수 — 분류 말고 나머지 조건(브랜드·검색·즐겨찾기)을 적용한 결과의 분류별 수. all = 합계
-export function categoryCounts(items, { brand = 'all', query = '', ids = null } = {}) {
+export function categoryCounts(items, { brand = 'all', query = '', ids = null, sale = 'all' } = {}) {
   const out = { all: 0 };
   for (const c of APPLIANCE_CATEGORIES) out[c] = 0;
-  for (const m of filterAppliances(items, { brand, query, ids })) { out.all++; if (m.category in out) out[m.category]++; }
+  for (const m of filterAppliances(items, { brand, query, ids, sale })) { out.all++; if (m.category in out) out[m.category]++; }
   return out;
 }
 const byName = (a, b) => a.name.localeCompare(b.name, 'ko', { numeric: true }) || a.model.localeCompare(b.model, 'ko', { numeric: true }) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -184,7 +185,7 @@ const revealWhenStyled = (root, isGone) => { root.style.visibility = 'hidden'; e
    둘째 칩 줄: chip2Label·chips2(data)→[…] (있으면 filter 의 chip2 로 넘어간다) · chipCounts?(entries,{chip2,query,ids})→{칩 id: 개수}(첫 칩 줄 글자에 개수를 적는다)
    limit?: 한 번에 그리는 카드 수(넘으면 '더 보기') · countText?(total, shown) · embedded: 제품 판 안에 들어가는 판(제목 줄이 없다) */
 function browsePanel(container, ctx, cfg) {
-  const st = { tab: 'lib', chip: 'all', chip2: 'all', q: '', sort: cfg.sorts ? cfg.sorts[0].id : '' };
+  const st = { tab: 'lib', chip: 'all', chip2: 'all', chip3: cfg.chip3Default || 'all', q: '', sort: cfg.sorts ? cfg.sorts[0].id : '' };
   const favs = createFavs(cfg.favKind), lastTab = cfg.tabs[cfg.tabs.length - 1].id, page = cfg.limit || Infinity;
   let data = null, phase = 'loading', view = null, placedView = null, gone = false;
   const toast = (m) => ctx.toast && ctx.toast(m);
@@ -229,6 +230,7 @@ function browsePanel(container, ctx, cfg) {
     if (sort) { sort.value = st.sort; sort.addEventListener('change', () => { st.sort = sort.value; update(); }); sort.addEventListener('keydown', (e) => e.stopPropagation()); }
     const chips = tablist(cfg.chipLabel, chipItems, st.chip, (id) => { st.chip = id; update(); }, 'pl-chips');
     const chips2 = cfg.chips2 && tablist(cfg.chip2Label, [{ id: 'all', label: '전체' }, ...cfg.chips2(data)], st.chip2, (id) => { st.chip2 = id; update(); }, 'pl-chips');
+    const chips3 = cfg.chips3 && tablist(cfg.chip3Label, cfg.chips3, st.chip3, (id) => { st.chip3 = id; update(); }, 'pl-chips'); // 셋째 줄(가전: 판매 중 / 단종·미확인 포함)
     const count = h('p', { class: 'pl-count', 'aria-live': 'polite' });
     const hint = h('p', { class: 'pl-hint' }, cfg.hint, cfg.hintKeys && h('span', { class: 'pl-kb' }, ` · ${cfg.hintKeys}`)); // hintKeys = 키보드 화면에서만 보이는 뒤 문구(폰·터치에서는 감춘다)
     const grid = h('ul', { class: 'pl-grid pl-grid--' + cfg.cols, 'aria-label': cfg.title });
@@ -261,10 +263,11 @@ function browsePanel(container, ctx, cfg) {
     }
     function update() { // 조건이 바뀌었다 — 처음 한 쪽부터 다시 그린다
       const ids = st.tab === 'fav' ? favs.all() : null;
-      list = cfg.filter(entries, { chip: st.chip, chip2: st.chip2, query: st.q, ids });
+      const chip3 = st.tab === 'fav' ? 'all' : st.chip3;   // 즐겨찾기는 판매 여부와 상관없이 다 보인다
+      list = cfg.filter(entries, { chip: st.chip, chip2: st.chip2, chip3, query: st.q, ids });
       if (cfg.sorts) list = cfg.sort(list, st.sort);
       shown = Math.min(list.length, page);
-      if (cfg.chipCounts) { const n = cfg.chipCounts(entries, { chip2: st.chip2, query: st.q, ids }); for (const c of chipItems) chips.setLabel(c.id, `${c.label} ${(n[c.id] ?? 0).toLocaleString('ko-KR')}`); }
+      if (cfg.chipCounts) { const n = cfg.chipCounts(entries, { chip2: st.chip2, chip3, query: st.q, ids }); for (const c of chipItems) chips.setLabel(c.id, `${c.label} ${(n[c.id] ?? 0).toLocaleString('ko-KR')}`); }
       grid.replaceChildren(...list.slice(0, shown).map(cardOf));
       if (!list.length) {
         const none = st.tab === 'fav' && !favs.all().size && !st.q && st.chip === 'all' && st.chip2 === 'all' ? cfg.emptyFav : typeof cfg.emptyNone === 'function' ? cfg.emptyNone(data, st) : cfg.emptyNone;
@@ -285,7 +288,7 @@ function browsePanel(container, ctx, cfg) {
     view = { update, grid };
     update();
     const group = (title, el) => h('div', { class: 'pl-fgroup' }, h('span', { class: 'pl-flabel' }, title), el);
-    return h('div', { class: 'pl-browse' }, h('div', { class: 'pl-filters' }, h('div', { class: 'pl-tools' }, search, sort), chips2 ? [group(cfg.chipLabel, chips.el), group(cfg.chip2Label, chips2.el)] : chips.el, hint, count), grid, moreBtn, foot);
+    return h('div', { class: 'pl-browse' }, h('div', { class: 'pl-filters' }, h('div', { class: 'pl-tools' }, search, sort), chips2 ? [group(cfg.chipLabel, chips.el), group(cfg.chip2Label, chips2.el), chips3 && group(cfg.chip3Label, chips3.el)] : chips.el, hint, count), grid, moreBtn, foot);
   }
 
   const unsub = ctx.store.subscribe(() => {
@@ -394,14 +397,15 @@ function appliancesPanel(host, ctx) {
     name: 'app', embedded: true, title: '가전', favKind: 'appliance', cols: 1, limit: APP_PAGE,
     tabs: [{ id: 'lib', label: '가전 라이브러리' }, { id: 'fav', label: '즐겨찾기' }, { id: 'placed', label: '배치된 제품' }],
     load: loadApplianceCatalog, entries: (d) => d.items,
-    chipLabel: '분류', chips: (d) => d.meta.categories.map((c) => ({ id: c.id, label: c.short })), chipCounts: (e, o) => categoryCounts(e, { brand: o.chip2, query: o.query, ids: o.ids }),
+    chipLabel: '분류', chips: (d) => d.meta.categories.map((c) => ({ id: c.id, label: c.short })), chipCounts: (e, o) => categoryCounts(e, { brand: o.chip2, sale: o.chip3, query: o.query, ids: o.ids }),
     chip2Label: '브랜드', chips2: () => [{ id: 'samsung', label: BRAND_LABEL.samsung }, { id: 'lg', label: BRAND_LABEL.lg }],
-    filter: (e, o) => filterAppliances(e, { category: o.chip, brand: o.chip2, query: o.query, ids: o.ids }), sorts: APP_SORTS, sort: sortAppliances,
+    chip3Label: '판매', chips3: [{ id: 'sale', label: '판매 중' }, { id: 'all', label: '단종·미확인 포함' }], chip3Default: 'sale',   // 기본은 판매 중으로 확인된 것만(단종·삼성닷컴 판매 페이지 없음은 [단종·미확인 포함])
+    filter: (e, o) => filterAppliances(e, { category: o.chip, brand: o.chip2, sale: o.chip3, query: o.query, ids: o.ids }), sorts: APP_SORTS, sort: sortAppliances,
     searchLabel: '모델명·제품명 검색', hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기 · O 공식 페이지',
     card: applianceCard, placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
     countText: (total, shown) => (shown < total ? `${total.toLocaleString('ko-KR')}개 중 ${shown.toLocaleString('ko-KR')}개 표시` : `${total.toLocaleString('ko-KR')}개`),
     emptyFav: '즐겨찾기한 가전이 없습니다',
-    emptyNone: (d, st) => (st.tab === 'lib' && st.q.trim() ? ['목록에 없는 모델입니다 · 삼성/LG 공식 페이지에서 크기를 확인해 주세요', officialLinks(d.meta)] : '찾는 가전이 없습니다'),
+    emptyNone: (d, st) => (st.tab === 'lib' && st.q.trim() ? [st.chip3 === 'sale' ? '판매 중인 제품에 없습니다 · [단종·미확인 포함]을 눌러 다시 찾아 보세요' : '목록에 없는 모델입니다 · 삼성/LG 공식 페이지에서 크기를 확인해 주세요', officialLinks(d.meta)] : '찾는 가전이 없습니다'),
     foot: (d) => applianceFoot(d.meta),
   });
 }
