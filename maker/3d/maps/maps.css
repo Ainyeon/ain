@@ -47,6 +47,9 @@ a.mp-x { margin-left: auto; width: 36px; height: 36px; }
 .mp-clr { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; background: none; border: 0; border-radius: var(--r-1); color: var(--c-ink-sub); cursor: pointer; }
 .mp-clr:hover { background: var(--c-line); color: var(--c-ink); }
 .mp-clr[hidden] { display: none; }
+.mp-privacy { margin: var(--sp-2) 0 0; font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-sub); }
+.mp-privacy span { white-space: nowrap; }   /* '내 위치'가 줄 끝에서 갈라지지 않게 */
+.mp-count:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
 .mp-note { flex: none; display: flex; align-items: flex-start; gap: var(--sp-2); margin: var(--sp-3) var(--sp-3) var(--sp-3); padding: var(--sp-2) var(--sp-3); background: var(--c-surface-sub); border: 1px solid var(--c-line); border-radius: var(--r-1); font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-sub); }
 .mp-note .mp-i { width: 16px; height: 16px; margin-top: 1px; color: var(--c-ink-sub); }
 .mp-count { flex: none; margin: 0; padding: 0 var(--sp-4) var(--sp-2); font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-faint); }
@@ -130,10 +133,12 @@ a.mp-type:hover { border-color: var(--c-control); background: var(--c-surface-su
 .mp-geo { display: grid; gap: var(--sp-2); margin: 0 0 var(--sp-5); text-align: left; }
 .mp-geogo, .mp-place { display: block; width: 100%; padding: var(--sp-3); font: inherit; font-size: var(--fs-3); line-height: var(--lh-3); text-align: left; color: var(--c-ink); background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-1); cursor: pointer; transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
 .mp-geogo { font-weight: var(--fw-semi); border-color: var(--c-accent-line); }
-.mp-geogo:hover:not(:disabled), .mp-place:hover { border-color: var(--c-control); background: var(--c-surface-sub); }
-.mp-geogo:disabled { color: var(--c-ink-faint); cursor: default; }
+.mp-geogo:hover:not([aria-disabled="true"]), .mp-place:hover { border-color: var(--c-control); background: var(--c-surface-sub); }
+.mp-geogo[aria-disabled="true"] { color: var(--c-ink-faint); cursor: default; }
 .mp-geogo[aria-busy="true"] { color: var(--c-accent); }
 .mp-place[aria-pressed="true"] { border-color: var(--c-accent); }
 .mp-places { display: grid; gap: var(--sp-1); margin: 0; padding: 0; list-style: none; }
 .mp-geonote { margin: 0; font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-faint); }
+/* 터치: 시트 손잡이·검색어 지우기·목록으로도 44px (손잡이의 보이는 막대는 그대로, 눌리는 영역만 늘린다). 지우기 단추가 들어가도록 입력칸도 키운다 */
+@media (pointer: coarse) { .mp-handle { height: 44px; } .mp-field { height: 48px; } .mp-clr { width: 44px; height: 44px; } .mp-back { height: 44px; } }
 @media (prefers-reduced-motion: reduce) { .mp-btn, .mp-field, .mp-list li, .mp-type, .mp-choice, .mp-cta, .mp-toast, .mp-geogo, .mp-place { transition: none; } }

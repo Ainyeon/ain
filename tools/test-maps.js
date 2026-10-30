@@ -144,8 +144,8 @@ const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[
     const k = layoutLabels([{ id: 'k', x: 100, y: 100, w, h, k: 1.25 }]).get('k'); assert.strictEqual(k.y, 100 + 3, '커진 핀도 끝점 아래'); }
 
   // ── 플래너 링크 ──
-  assert.strictEqual(planUrl('draw'), '../plan/'); assert.strictEqual(planUrl('trace'), '../plan/?underlay=1'); assert.strictEqual(planUrl('template', '', 'abc'), '../plan/?template=abc');
-  assert.strictEqual(planUrl('draw', '?partner=baramdaero&embed=1&x=1&q=2'), '../plan/?partner=baramdaero&embed=1', '공동 브랜드·임베드만 이어 붙인다(다른 값은 버림)');
+  assert.strictEqual(planUrl('draw'), '../plan/?new=1', '직접 그리기 = 빈 도면(?new=1 이 없으면 플래너가 마지막 저장 도면을 연다)'); assert.strictEqual(planUrl('trace'), '../plan/?underlay=1'); assert.strictEqual(planUrl('template', '', 'abc'), '../plan/?template=abc');
+  assert.strictEqual(planUrl('draw', '?partner=baramdaero&embed=1&x=1&q=2'), '../plan/?new=1&partner=baramdaero&embed=1', '공동 브랜드·임베드만 이어 붙인다(다른 값은 버림)');
   assert.strictEqual(planUrl('trace', '?partner=baramdaero'), '../plan/?underlay=1&partner=baramdaero'); assert.strictEqual(planUrl('template', '?embed=1', 't1'), '../plan/?template=t1&embed=1');
   assert.strictEqual(typeMeta({ areaM2: 84.9712, rooms: 3 }), '84.97㎡ · 방 3'); assert.strictEqual(typeMeta({ areaM2: 59, rooms: 0 }), '59㎡ · 방 0');
 
@@ -177,6 +177,57 @@ const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[
     const onQuery = js.slice(js.indexOf('function onQuery()'), js.indexOf("el.q.addEventListener('input'")); assert.ok(onQuery.length > 50 && !/geoSearch/.test(onQuery), '글자를 칠 때마다 주소 검색을 부르지 않는다(누르거나 Enter 일 때만)');
     assert.ok(/el\.credit\.style\.bottom = Math\.max\(px\('--sp-1'\), inset\.b\)/.test(js), '저작권 표기가 폰 시트에 가리지 않는다');
     assert.strictEqual((js.match(/geoSearch/g) || []).length, 3, 'geoSearch 는 정의 + Enter + 단추 클릭 셋뿐'); }
+
+  // ── 올리기 전 점검 반영: 비행 중단 · 타일 재시도 · 주소 검색 재시작/초점 · 고지 · 터치 크기 · 서비스워커 ──
+  { const { TILE_RETRY_MS, tileRetryable } = M;
+    const html = fs.readFileSync(path.join(__dirname, '..', 'maker/3d/maps/index.html'), 'utf8'), js = fs.readFileSync(path.join(__dirname, '..', 'maker/3d/maps/maps.js'), 'utf8'), css = fs.readFileSync(path.join(__dirname, '..', 'maker/3d/maps/maps.css'), 'utf8');
+    // F1·F5: 비행을 끊는 곳은 모두 stopFly 한 곳을 지난다 — anim 취소와 moving 되돌리기, 예약된 맞춤 비행 취소를 함께 한다
+    const sf = js.slice(js.indexOf('function stopFly()'), js.indexOf('function flyTo('));
+    assert.ok(/clearTimeout\(fitTimer\)/.test(sf) && /cancelAnimationFrame\(anim\)/.test(sf) && /moving = false/.test(sf), 'stopFly = 맞춤 타이머 취소 + anim 취소 + moving=false');
+    assert.strictEqual((js.match(/cancelAnimationFrame\(anim\)/g) || []).length, 1, 'anim 은 stopFly 안에서만 취소한다(moving 이 true 로 남지 않게)');
+    assert.strictEqual((js.match(/stopFly\(\);/g) || []).length, 4, 'flyTo · pointerdown · wheel · 방향키가 stopFly 를 부른다');
+    // F3: 실패한 타일은 실패 시각을 남기고 일정 시간 다시 부르지 않는다
+    assert.ok(TILE_RETRY_MS >= 10000 && TILE_RETRY_MS <= 30000, '재시도 간격 10~30초');
+    assert.strictEqual(tileRetryable(undefined, 1e9), false); assert.strictEqual(tileRetryable({ ok: true, failedAt: 0 }, 1e9), false, '받은 타일'); assert.strictEqual(tileRetryable({ ok: false }, 1e9), false, '아직 받는 중');
+    assert.strictEqual(tileRetryable({ ok: false, failedAt: 1000 }, 1000 + TILE_RETRY_MS - 1), false, '실패 직후에는 다시 부르지 않는다'); assert.strictEqual(tileRetryable({ ok: false, failedAt: 1000 }, 1000 + TILE_RETRY_MS), true, '간격이 지나면 다시');
+    assert.ok(/img\.onerror = \(\) => \{ e\.failedAt = /.test(js) && !/onerror[^;]*tiles\.delete/.test(js), '실패한 타일을 지우지 않고 실패 시각을 남긴다');
+    assert.ok(/tiles\.size > 300/.test(js), '300개 초과 정리 규칙은 그대로');
+    // F6·A11Y-05: 검색 중 다시 누르면 이전 요청을 접고 새로 시작, 누른 단추는 disabled 로 초점을 잃지 않는다
+    const gs = js.slice(js.indexOf('async function geoSearch()'), js.indexOf('function onQuery()'));
+    assert.ok(/geoCtl\.abort\(\)/.test(gs) && /ctl !== geoCtl/.test(gs) && /geoBusy && text === geoText/.test(gs), '이전 요청 취소 + 이어받은 검색 구분 + 같은 검색어 중복 누름 무시');
+    assert.ok(!/geoGo\.disabled/.test(js) && /aria-disabled/.test(gs) && /aria-busy/.test(gs), 'disabled 대신 aria-disabled + aria-busy');
+    assert.ok(/주소를 찾는 중입니다/.test(gs) && /if \(had\) \(.*\.focus\(/.test(gs) && /document\.activeElement === el\.geoGo/.test(gs), '진행 안내 + 단추를 눌렀을 때만 끝난 뒤 초점을 옮긴다');
+    assert.ok(/id="mpCount"[^>]*tabindex="-1"/.test(html), '상태 줄은 초점을 받을 수 있다(폰: 단추가 숨겨질 때)');
+    assert.ok(/\.mp-geogo\[aria-disabled="true"\]/.test(css) && !/\.mp-geogo:disabled/.test(css), 'CSS 도 aria-disabled 기준');
+    // S3: 지도 카드에 항상 보이는 전달 고지(주소 검색 고지 .mp-geonote 와 별개)
+    { const m = html.match(/<p class="mp-privacy" id="mpPrivacy">(.*?)<\/p>/), t = m && m[1].replace(/<[^>]+>/g, ''); assert.ok(m && /OpenStreetMap/.test(t) && /보는 구역/.test(t) && /내 위치/.test(t) && /전달/.test(t), '지도 이미지·보는 구역·내 위치가 OpenStreetMap 으로 전달된다는 고지');
+      assert.ok(html.indexOf('id="mpPrivacy"') > html.indexOf('class="mp-sch"') && html.indexOf('id="mpPrivacy"') < html.indexOf('class="mp-note"'), '검색칸 아래, 접힌 시트에서도 보이는 자리(.mp-sch 안)');
+      assert.ok(!/mp-privacy[^{]*\{[^}]*display:\s*none/.test(css) && !/data-open="false"[^{]*mp-privacy/.test(css), '고지는 어떤 상태에서도 숨기지 않는다');
+      assert.ok(html.includes('주소 검색은 입력한 글을 OpenStreetMap 에 보냅니다.'), '주소 검색 고지는 그대로'); }
+    // F2: 정적 href 도 같은 값
+    assert.strictEqual((html.match(/href="\.\.\/plan\/\?new=1" data-kind="draw"/g) || []).length, 2, '도면 직접 그리기·만들기 정적 href 둘 다 ?new=1');
+    // A11Y-12: 터치(pointer: coarse)에서 손잡이·지우기·목록으로 44px
+    { const coarse = css.split('\n').filter((l) => l.startsWith('@media (pointer: coarse)')).join(' ');
+      for (const sel of ['mp-handle', 'mp-clr', 'mp-back']) assert.ok(new RegExp('\\.' + sel + ' \\{[^}]*44px').test(coarse), sel + ' 터치 44px'); }
+
+    // D4/F8: 서비스워커 — 단지·플래너 자료 JSON 은 네트워크 우선(실패하면 캐시), 다른 정적 자산은 캐시 우선 그대로
+    const vm = require('vm'), swSrc = fs.readFileSync(path.join(__dirname, '..', 'sw.js'), 'utf8');
+    const swRun = async (url, net) => {
+      const handlers = {}, calls = [], cache = { put: () => Promise.resolve() };
+      vm.runInNewContext(swSrc, { URL, Request: class {}, Response: class {}, self: { addEventListener: (t, f) => { handlers[t] = f; } }, location: { origin: 'https://ain.test' },
+        caches: { open: () => Promise.resolve(cache), match: () => { calls.push('cache'); return Promise.resolve('STALE'); }, keys: () => Promise.resolve([]) },
+        fetch: () => { calls.push('net'); return net(); } });
+      let out; handlers.fetch({ request: { method: 'GET', url: 'https://ain.test' + url, mode: 'cors' }, respondWith: (p) => { out = p; } });
+      return { res: await out, calls };
+    };
+    const fresh = () => Promise.resolve({ ok: true, clone: () => ({}), tag: 'FRESH' }), down = () => Promise.reject(new Error('offline'));
+    for (const u of ['/maker/3d/maps/data/complexes.json', '/maker/3d/plan/data/templates.json', '/maker/3d/plan/data/appliance-catalog.json?x=1', '/maker/3d/plan/core/model.js', '/maker/3d/plan/panels.js', '/maker/3d/plan/plan.css', '/maker/3d/plan/app.js?v=1', '/maker/3d/maps/maps.js?v=1', '/maker/3d/projects/projects.js', '/maker/3d/app/shell.js']) {
+      assert.strictEqual((await swRun(u, fresh)).res.tag, 'FRESH', u + ' 네트워크 우선(캐시에 낡은 본이 있어도 새 본)');
+      assert.strictEqual((await swRun(u, down)).res, 'STALE', u + ' 네트워크가 막히면 캐시');
+    }
+    for (const u of ['/maker/3d/studio.js?v=14', '/maker/3d/maps/data/other.txt', '/maker/3d/view/viewer.js', '/maker/3d/index.html']) assert.strictEqual((await swRun(u, fresh)).res, 'STALE', u + ' 캐시 우선은 그대로');
+    assert.ok(/ain-v35'/.test(swSrc), 'VERSION 은 이번에 올리지 않는다(배포 때 판단)');
+  }
 
   console.log('test-maps: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

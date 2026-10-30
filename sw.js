@@ -67,6 +67,9 @@ const DATA_PATH = '/rest/v1/';
 // 공개 읽기 전용만. v_posts·saved_items·notice_complexes 같은 회원 전용 응답은 넣지 않는다
 // (기기에 남으면 로그아웃 뒤에도 다른 사람이 볼 수 있다).
 const DATA_ALLOW = ['v_ticker_metals', 'v_stat_movein', 'v_stat_gov', 'v_gov_list', 'move_in_teaser', 'news_items', 'prices'];
+// 맵스·플래너·내 프로젝트·앱 셸의 자료와 모듈(주소에 ?v= 가 없는 하위 파일이 많다): 네트워크 우선, 실패하면 캐시. 캐시 우선이면 새로 올린 뒤 재방문 첫 로드가
+// 새 진입 파일(app.js?v=N)에 옛 하위 모듈이 섞이거나 옛 자료(complexes.json)를 쓴다(maps.js 의 cache:'no-cache' 도 무시된다).
+const FRESH_APP = /^\/maker\/3d\/(?:maps|plan|projects|app)\/.+\.(?:json|js|css)$/;
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -126,6 +129,21 @@ self.addEventListener('fetch', (e) => {
           return res;
         })
         .catch(() => caches.match(url.href, { cacheName: DATA_CACHE }))
+    );
+    return;
+  }
+
+  if (url.origin === location.origin && FRESH_APP.test(url.pathname)) {
+    e.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(SHELL_CACHE).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
     );
     return;
   }

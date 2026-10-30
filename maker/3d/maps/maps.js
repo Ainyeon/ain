@@ -39,6 +39,8 @@ export function fitView(pts, w, h, inset = {}, margin = 40) {   // 점들이 가
 
 // ── 바탕 지도(래스터 타일) · 주소 검색 ───────────────────────────────────────
 export const BASEMAP = Object.freeze({ tiles: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', maxZ: 19, geocode: 'https://nominatim.openstreetmap.org/search', credit: '© OpenStreetMap 기여자', creditUrl: 'https://www.openstreetmap.org/copyright' });
+export const TILE_RETRY_MS = 20000;   // 실패한 타일은 이만큼 지나야 다시 요청한다(끌 때마다 다시 부르는 폭주를 막는다)
+export const tileRetryable = (e, now) => !!e && !e.ok && e.failedAt != null && now - e.failedAt >= TILE_RETRY_MS;
 export const tileUrl = (tpl, z, x, y) => tpl.replace('{z}', z).replace('{x}', x).replace('{y}', y);
 // 화면에 보이는 타일. 타일 줌 z = 반올림한 줌, 화면 크기 s = 256·2^(줌-z). [{z,x,y,sx,sy,s}] — (sx,sy) 는 타일 왼쪽 위의 화면 좌표(css px). 세계 가장자리 밖은 뺀다.
 export function visibleTiles(v, maxZ = 19) {
@@ -150,9 +152,10 @@ export function readComplexes(data) {
   });
   return { list, problems };
 }
-// 플래너로 가는 주소. kind: 'draw'(빈 도면) · 'trace'(밑그림 업로드로 시작) · 'template'(id). ctx = 현재 주소의 ?…, 공동 브랜드(partner)·임베드(embed)는 이어 붙인다.
+// 플래너로 가는 주소. kind: 'draw'(빈 도면, ?new=1) · 'trace'(밑그림 업로드로 시작) · 'template'(id). ctx = 현재 주소의 ?…, 공동 브랜드(partner)·임베드(embed)는 이어 붙인다.
 export function planUrl(kind, ctx = '', id = '') {
   const p = new URLSearchParams(), c = new URLSearchParams(ctx);
+  if (kind === 'draw') p.set('new', '1');   // 플래너는 ?new 가 없으면 마지막 저장 도면을 연다 — '처음부터'는 빈 도면이어야 한다
   if (kind === 'trace') p.set('underlay', '1');
   if (kind === 'template') p.set('template', id);
   for (const k of ['partner', 'embed']) if (c.get(k)) p.set(k, c.get(k));
@@ -177,8 +180,8 @@ function boot() {
     return e;
   };
 
-  let list = [], byId = new Map(), results = [], match = null, q = '', sel = null, act = -1, hover = null, me = null, loadErr = false, places = [], place = null, geoBusy = false, geoCtl = null, moving = false;
-  const tiles = new Map();   // 타일 캐시 '줌/x/y' → {img, ok}. 300개를 넘으면 오래된 100개를 버린다
+  let list = [], byId = new Map(), results = [], match = null, q = '', sel = null, act = -1, hover = null, me = null, loadErr = false, places = [], place = null, geoBusy = false, geoCtl = null, geoText = '', moving = false;
+  const tiles = new Map();   // 타일 캐시 '줌/x/y' → {img, ok, failedAt?}. 300개를 넘으면 오래된 100개를 버린다
   let view = { ...DEFAULT_VIEW, w: 1, h: 1 }, inset = { l: 0, t: 0, r: 0, b: 0 }, dpr = 1, anim = 0, raf = 0, fitTimer = 0, toastTimer = 0;
   const schedule = () => { raf = raf || requestAnimationFrame(draw); };
   const vc = () => ({ x: inset.l + (view.w - inset.l - inset.r) / 2, y: inset.t + (view.h - inset.t - inset.b) / 2 });   // 카드가 가리지 않은 영역의 가운데
@@ -186,8 +189,12 @@ function boot() {
   const showMsg = (m) => { el.toast.textContent = m; el.toast.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.toast.classList.remove('on'), 5000); };
 
   // ── 움직임 ──
+  function stopFly() {   // 날아가는 중이거나 예약된 맞춤 비행을 접는다. moving 도 함께 되돌려야 타일을 다시 받는다
+    clearTimeout(fitTimer); cancelAnimationFrame(anim);
+    if (moving) { moving = false; schedule(); }
+  }
   function flyTo(t, ms = px('--t-slow')) {
-    cancelAnimationFrame(anim);
+    stopFly();
     const a = { ...view }, t0 = performance.now();
     if (reduce.matches || !ms) { view = { ...view, lat: t.lat, lng: t.lng, zoom: t.zoom }; schedule(); return; }
     moving = true;   // 날아가는 동안에는 새 타일을 받지 않는다(도착한 뒤 한 번에)
@@ -219,10 +226,11 @@ function boot() {
   function tileFor(t) {
     const k = t.z + '/' + t.x + '/' + t.y;
     let e = tiles.get(k);
+    if (tileRetryable(e, performance.now())) { tiles.delete(k); e = undefined; }
     if (!e && !moving) {
       if (tiles.size > 300) for (const key of [...tiles.keys()].slice(0, 100)) tiles.delete(key);
       const img = new Image(); e = { img, ok: false }; tiles.set(k, e);
-      img.decoding = 'async'; img.onload = () => { e.ok = true; schedule(); }; img.onerror = () => { tiles.delete(k); };
+      img.decoding = 'async'; img.onload = () => { e.ok = true; schedule(); }; img.onerror = () => { e.failedAt = performance.now(); };   // 지우지 않고 실패 시각을 남긴다
       img.src = tileUrl(BASEMAP.tiles, t.z, t.x, t.y);
     }
     return e && e.ok ? e : null;
@@ -321,7 +329,7 @@ function boot() {
   const ptrs = new Map(); let g = null;
   const hoverAt = (p) => { const id = hitPin(visiblePins(), p.x, p.y); el.cv.classList.toggle('hit', !!id); if (id !== hover) { hover = id; markHover(); schedule(); } };
   el.cv.addEventListener('pointerdown', (e) => {
-    cancelAnimationFrame(anim); el.cv.setPointerCapture(e.pointerId);
+    stopFly(); el.cv.setPointerCapture(e.pointerId);
     const p = rel(e); ptrs.set(e.pointerId, p); g = g || { moved: false, x: p.x, y: p.y, pd: 0, mx: 0, my: 0 };
     if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; g.moved = true; g.pd = Math.hypot(a.x - b.x, a.y - b.y); g.mx = (a.x + b.x) / 2; g.my = (a.y + b.y) / 2; }
   });
@@ -346,7 +354,7 @@ function boot() {
   el.cv.addEventListener('pointerup', up); el.cv.addEventListener('pointercancel', up);
   el.cv.addEventListener('pointerleave', (e) => { if (e.pointerType === 'mouse' && !ptrs.size) { el.cv.classList.remove('hit'); if (hover) { hover = null; markHover(); schedule(); } } });
   el.cv.addEventListener('wheel', (e) => {
-    e.preventDefault(); cancelAnimationFrame(anim);
+    e.preventDefault(); stopFly();
     const p = rel(e), dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
     view = zoomAt(view, view.zoom - dy * (e.ctrlKey ? 0.01 : 0.003), p.x, p.y); schedule();   // ctrl+휠 = 트랙패드 핀치(변화량이 작아 배로)
   }, { passive: false });
@@ -354,7 +362,7 @@ function boot() {
   el.map.addEventListener('keydown', (e) => {
     if (e.target !== el.map || e.metaKey || e.ctrlKey || e.altKey) return;
     const s = e.shiftKey ? 240 : 80, d = { ArrowLeft: [s, 0], ArrowRight: [-s, 0], ArrowUp: [0, s], ArrowDown: [0, -s] }[e.key];
-    if (d) { e.preventDefault(); cancelAnimationFrame(anim); view = panBy(view, d[0], d[1]); schedule(); }
+    if (d) { e.preventDefault(); stopFly(); view = panBy(view, d[0], d[1]); schedule(); }
     else if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomBy(1); }
     else if (e.key === '-' || e.key === '_') { e.preventDefault(); zoomBy(-1); }
     else if (e.key === 'Home' || e.key === '0') { e.preventDefault(); fitAll(); }
@@ -400,7 +408,7 @@ function boot() {
     el.count.hidden = !!c;
     const geoOn = !c && !hasList && !!q.trim() && !!(BASEMAP && BASEMAP.geocode);   // 단지 검색 결과가 없을 때만 주소 검색을 권한다
     el.geo.hidden = !geoOn;
-    if (geoOn) { el.geoGo.textContent = '‘' + q.trim().slice(0, 30) + '’ 주소로 지도에서 찾기'; el.geoGo.disabled = geoBusy; }
+    if (geoOn) { el.geoGo.textContent = '‘' + q.trim().slice(0, 30) + '’ 주소로 지도에서 찾기'; if (geoBusy && q.trim() === geoText) el.geoGo.setAttribute('aria-disabled', 'true'); else el.geoGo.removeAttribute('aria-disabled'); }
     el.count.textContent = loadErr ? '단지 목록을 불러오지 못했습니다.' : place ? (results.length ? '이 위치 근처 단지 ' + results.length + '곳' : '이 위치 근처에 등록된 단지가 없습니다.') : !list.length ? '등록된 단지가 아직 없습니다.' : !q.trim() ? '단지 ' + list.length + '곳' : results.length ? '검색 결과 ' + results.length + '곳' + (results.length > CAP ? ' 중 ' + CAP + '곳 표시' : '') : '‘' + q.trim().slice(0, 30) + '’ 검색 결과가 없습니다.';
     if (c) {
       el.dName.textContent = c.name; el.dAddr.textContent = c.addr;
@@ -427,19 +435,30 @@ function boot() {
     renderList(); renderPlaces(); render(); measure();
     flyTo(centerOn(view, p.lat, p.lng, 16, inset));
   }
-  async function geoSearch() {   // 사용자가 누를 때 한 번만(글자마다 부르지 않는다)
-    const text = q.trim(); if (!text || geoBusy || !BASEMAP || !BASEMAP.geocode) return;
-    geoBusy = true; el.geoGo.disabled = true; el.geoGo.setAttribute('aria-busy', 'true');
-    geoCtl = new AbortController(); const to = setTimeout(() => geoCtl.abort(), 8000);
+  async function geoSearch() {   // 사용자가 누를 때 한 번만(글자마다 부르지 않는다). 검색 중에 다른 검색어로 다시 누르면 이전 요청을 접고 새로 시작한다
+    const text = q.trim(); if (!text || !BASEMAP || !BASEMAP.geocode || (geoBusy && text === geoText)) return;
+    if (geoCtl) geoCtl.abort();
+    const ctl = geoCtl = new AbortController(), to = setTimeout(() => ctl.abort(), 8000);
+    geoBusy = true; geoText = text;
+    el.geoGo.setAttribute('aria-disabled', 'true'); el.geoGo.setAttribute('aria-busy', 'true');   // disabled 를 쓰면 누른 단추가 초점을 잃는다
+    el.count.textContent = '‘' + text.slice(0, 30) + '’ 주소를 찾는 중입니다.';
     try {
-      const r = await fetch(placesUrl(BASEMAP.geocode, text), { signal: geoCtl.signal });
+      const r = await fetch(placesUrl(BASEMAP.geocode, text), { signal: ctl.signal });
       if (!r.ok) throw new Error(String(r.status));
       const found = readPlaces(await r.json());
-      if (q.trim() !== text) return;   // 기다리는 사이 검색어가 바뀌었다
+      if (ctl !== geoCtl || q.trim() !== text) return;   // 새 검색이 이어받았거나, 기다리는 사이 검색어가 바뀌었다
       places = found; renderPlaces();
       if (found.length) pickPlace(found[0]); else showMsg('주소를 찾지 못했습니다. 동·도로명까지 적어 주세요.');
-    } catch (e) { showMsg('주소 검색에 연결하지 못했습니다. 잠시 뒤 다시 눌러 주세요.'); }
-    finally { clearTimeout(to); geoBusy = false; el.geoGo.removeAttribute('aria-busy'); render(); }
+    } catch (e) { if (ctl === geoCtl) showMsg('주소 검색에 연결하지 못했습니다. 잠시 뒤 다시 눌러 주세요.'); }
+    finally {
+      clearTimeout(to);
+      if (ctl === geoCtl) {   // 이어받은 새 검색이 있으면 끝내지 않는다
+        geoCtl = null; geoBusy = false; el.geoGo.removeAttribute('aria-busy');
+        const had = document.activeElement === el.geoGo;   // render() 가 단추를 숨기기 전에 잰다
+        render();
+        if (had) (el.geo.hidden ? (matchMedia('(pointer: fine)').matches ? el.q : el.count) : el.places.querySelector('button') || el.geoGo).focus({ preventScroll: true });   // 첫 결과 → 입력창(단추가 숨겨질 때) · 폰은 상태 줄
+      }
+    }
   }
   function onQuery() {
     if (place || places.length) { place = null; places = []; renderPlaces(); }
