@@ -1,7 +1,7 @@
 // 2D 캔버스 — 화면(px)↔도면(mm) 변환·팬줌(순수 함수)과 격자·밑그림·벽·방·개구부·기둥·제품(시스템에어컨·가전) 그리기(필요할 때만 rAF). import 해도 DOM 을 건드리지 않는다
 import { curFloor, APPLIANCE_LABEL } from './core/model.js';
 import { roomOutlineWithArcs, jointsOf, wallSlice, wallLen, wallPointAt, wallPoints, polyCentroid, polyArea, rectPoly, circlePoly, roomAreaM2 } from './core/geom.js';
-import { findLabelSpot, swingPoly, rectInsidePoly } from './labels.js';
+import { findLabelSpot, swingPoly, swingSigns, rectInsidePoly } from './labels.js';
 
 /* ---------- 순수: 화면 변환 (scale = px/mm 하나) ---------- */
 export const SCALE = Object.freeze({ min: 0.004, max: 2, start: 0.1 });
@@ -158,10 +158,10 @@ export function createView2D(canvas, { store, getState, getSel }) {
     for (const s of [-W, W]) { const a = at(s, -T), b = at(s, T); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); } // 문틀·창틀
     if (o.type === 'window') for (const t of [-T, 0, T]) { const a = at(-W, t), b = at(W, t); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); }
     ctx.stroke();
-    if (o.type === 'door') { // 경첩은 a 쪽 문틀, 문짝은 벽의 +법선 쪽으로 90° 열린 모양
-      const hg = at(-W, 0), tip = at(-W, o.width);
+    if (o.type === 'door') { // 경첩 문틀(기본 a 쪽)에서 문짝이 열린 쪽(기본 +법선)으로 90° 열린 모양
+      const { hs, sg } = swingSigns(o), hg = at(hs * W, 0), tip = at(hs * W, sg * o.width), t = [-hs * tan[0], -hs * tan[1]];
       ctx.lineWidth = px * 1.5; ctx.beginPath(); ctx.moveTo(hg[0], hg[1]); ctx.lineTo(tip[0], tip[1]); ctx.stroke();
-      ctx.lineWidth = px; ctx.beginPath(); ctx.arc(hg[0], hg[1], o.width, Math.atan2(n[1], n[0]), Math.atan2(tan[1], tan[0]), true); ctx.stroke();
+      ctx.lineWidth = px; ctx.beginPath(); ctx.arc(hg[0], hg[1], o.width, Math.atan2(sg * n[1], sg * n[0]), Math.atan2(t[1], t[0]), hs * sg === -1); ctx.stroke();  // 닫힌 문짝→열린 문짝의 돌아가는 방향은 (경첩, 열림) 부호 곱이 −1 일 때 원래 방향
     }
   }
   function wallLabel(e, st) { // 선택한 벽의 길이 라벨 — 벽 한가운데 옆

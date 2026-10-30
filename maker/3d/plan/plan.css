@@ -159,8 +159,10 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
   .ed-menu.open { display: flex; }
   .ed-menu .ed-b { justify-content: flex-start; min-height: 44px; }
 }
-@media (min-width: 769px) and (max-width: 1023px) {
+@media (min-width: 769px) and (max-width: 1279px) {   /* 작은 노트북·아이패드 가로(1024)까지 양쪽 패널을 좁혀 캔버스를 넓힌다(1024px 에서 404 → 504px) */
   :root { --ed-panel: 240px; --ed-side: 224px; }
+}
+@media (min-width: 769px) and (max-width: 1023px) {
   .ed-top { padding-right: var(--sp-2); }
   .ed-hist .ed-b { padding: 0 var(--sp-2); }
   .ed-title { flex-basis: 160px; }

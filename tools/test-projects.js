@@ -19,6 +19,8 @@ const root = path.join(__dirname, '..'), read = (p) => fs.readFileSync(path.join
     assert.ok(!/#[0-9a-fA-F]{3,8}\b/.test(css) && !/rgba?\(/.test(css) && !/gradient/.test(css) && !/999px/.test(css) && !/\b\d+m?s\b/.test(css.replace(/animation-delay: calc\(var\(--i, 0\) \* 30ms\)/g, '')), f + ': 토큰만');
     assert.ok(/prefers-reduced-motion/.test(css), f + ': 동작 줄이기');
   }
+  // Firefox: 새 프로젝트 카드(.pj-new)는 열이 내용(입력칸 size=20 고유 폭)에 밀려 넓어지지 않게 minmax(0, 1fr) 한 줄이어야 한다(Firefox 156 에서 입력칸이 카드를 넘쳤다)
+  assert.ok(/\.pj-new \{[^}]*grid-template-columns: minmax\(0, 1fr\)/.test(read('maker/3d/projects/projects.css')), '.pj-new 열 폭 고정');
   const html = read('maker/3d/projects/index.html');
   assert.ok(/script-src 'self' https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/supabase-js@2\.117\.2\//.test(html) && !/script-src[^;]*unsafe-inline/.test(html), 'CSP: 인라인 스크립트 없음');
   assert.ok(/<meta name="robots" content="noindex">/.test(html) && /<h1|id="app"/.test(html), '개인 목록은 색인하지 않는다');

@@ -288,6 +288,17 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
     assert.deepStrictEqual(s.exec({ type: 'move', ids: ['I1'], dx: 0, dy: 0 }), [], '0 이동은 변화 없음'); assert.deepStrictEqual(s.exec({ type: 'move', ids: ['Z1'], dx: 5, dy: 5 }), []);
     assert.strictEqual(w('W12').a[0], 4000, '건드리지 않은 벽'); throwsKo(() => s.exec({ type: 'move', ids: ['I1'], dx: 'a', dy: 1 }), /거리/);
   }
+  { // 문 경첩 쪽(hinge)·열리는 쪽(swing): update 로 바꾸고, 잘못된 값은 거절하며, 거울 반전은 경첩 쪽도 뒤집는다(두 번이면 그대로)
+    const s = new S.Store(); s.exec({ type: 'addRoomRect', a: [0, 0], b: [5000, 4000] });
+    const [door] = s.exec({ type: 'addOpening', wall: 'W1', at: 0.5, kind: 'door' }), [win] = s.exec({ type: 'addOpening', wall: 'W3', at: 0.5, kind: 'window' }), op = (id) => cf(s.doc).openings.find((o) => o.id === id);
+    assert.ok(!('hinge' in op(door)) && !('swing' in op(door)), '기본은 키가 없다(a · +법선)');
+    s.exec({ type: 'update', id: door, patch: { hinge: 'b' } }); assert.strictEqual(op(door).hinge, 'b'); s.exec({ type: 'update', id: door, patch: { swing: -1 } }); assert.strictEqual(op(door).swing, -1);
+    assert.deepStrictEqual(M.validateDoc(s.doc), []); s.undo(); s.undo(); assert.ok(!('hinge' in op(door)) && !('swing' in op(door)), '되돌리기');
+    for (const patch of [{ hinge: 'c' }, { hinge: 1 }, { swing: 0 }, { swing: 'x' }, { swing: 2 }]) { const d = M.cloneDoc(s.doc); Object.assign(cf(d).openings.find((o) => o.id === door), patch); assert.ok(M.validateDoc(d).some((m) => /경첩|열리는 쪽/.test(m)), '거절: ' + JSON.stringify(patch)); }
+    const orig = JSON.stringify(s.doc); s.exec({ type: 'mirror', axis: 'x' }); assert.strictEqual(op(door).hinge, 'b', '반전하면 경첩이 반대 문틀로'); assert.ok(!('hinge' in op(win)), '창에는 경첩이 생기지 않는다');
+    s.exec({ type: 'mirror', axis: 'x' }); assert.strictEqual(JSON.stringify(s.doc), orig, '두 번 반전하면 그대로(기본 a 는 키 없음)');
+    s.exec({ type: 'update', id: door, patch: { hinge: 'b', swing: -1 } }); s.exec({ type: 'mirror', axis: 'y' }); assert.deepStrictEqual([op(door).hinge, op(door).swing], [undefined, -1], 'b → a(키 없음) · 열리는 쪽은 그대로');
+  }
   { // mirror · rotate
     const s = fixture(), orig = J(s.doc), b0 = G.bounds(s.doc), sx = b0.x0 + b0.x1, sy = b0.y0 + b0.y1;
     s.exec({ type: 'mirror', axis: 'x' }); const f = cf(s.doc);

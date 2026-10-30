@@ -49,7 +49,7 @@
 .pj-menu { position: absolute; right: var(--sp-2); bottom: calc(100% - var(--sp-2)); z-index: 3; min-width: 140px; display: grid; padding: var(--sp-1); border: 1px solid var(--c-line-strong); border-radius: var(--r-2); background: var(--c-surface); box-shadow: var(--sh-2); }
 .pj-menu button { min-height: 40px; padding: 0 var(--sp-3); border: 0; border-radius: var(--r-1); background: transparent; color: var(--c-ink); font: inherit; font-size: var(--fs-3); text-align: left; cursor: pointer; }
 .pj-menu button.danger, .pj-menu button.danger:hover { color: var(--c-up); }
-.pj-new { grid-template-rows: none; align-content: start; gap: var(--sp-3); padding: var(--sp-4); border-style: dashed; border-color: var(--c-control); }
+.pj-new { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; align-content: start; gap: var(--sp-3); padding: var(--sp-4); border-style: dashed; border-color: var(--c-control); }
 .pj-new h3 { margin: 0; font-size: var(--fs-2); line-height: var(--lh-2); font-weight: var(--fw-bold); }
 .pj-new p { margin: 0; color: var(--c-ink-sub); }
 .pj-new .row { display: flex; flex-wrap: wrap; gap: var(--sp-2); }

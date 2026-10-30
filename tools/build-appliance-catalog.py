@@ -3,6 +3,7 @@
 행의 값(치수·원문·출처)은 raw 그대로다 — 환산·반올림·추정·채우기 없음, null 은 미확인. 이 스크립트가 더하는 것은 id·brand 표기·placeable·whyNot 과, 아래 두 가지 거르기뿐이다.
   - 이중 등재: 같은 (브랜드, 모델) 이 같은 주소로 두 분류에 있으면 한 행만 남긴다(DEDUP_FIRST 순서의 앞 분류). raw 는 건드리지 않는다.
   - 세트 상품: 제품명에 괄호 밖 '+' 가 있거나 큐브 공기청정기 2대 조합 표기 '(합계, 모듈+모듈㎡)' 이면 공식 치수가 한 대분이라 놓지 않는다(placeable false).
+  - 값을 정하는 규칙 둘(dimsBasis 에 이유를 적는다 — 원문에 있는 숫자만 고른다, 만들어 내지 않는다): 냉장고 깊이가 '후면핸들 포함 / 미포함' 두 값이면 포함 값(실제로 차지하는 깊이), LG TV 의 스탠드 포함 크기에 높이가 'a/b' 로 두 값이면 큰 값.
 카탈로그가 커서 행의 notes 전문은 뺀다(raw 에 있다). dimsRaw·extraDims·url 은 남긴다.
 실행: python3 tools/build-appliance-catalog.py [--check]   (--check: 파일을 쓰지 않고 지금 파일과 같은지만 본다)
 raw 위치: 환경변수 APPLIANCE_SPECS_DIR (기본 ~/repos/personal/hvac3d-lab/appliance-specs)
@@ -24,7 +25,7 @@ CATEGORIES = [
     ('cooking', '조리가전', '조리가전'), ('water', '정수기', '정수기'),
 ]
 AXES = (('widthMm', '가로'), ('heightMm', '높이'), ('depthMm', '깊이'))
-MIN_MM, MAX_MM = 50, 5000
+MIN_MM, MAX_MM = 5, 5000   # 5mm 아래는 단위·쪽 읽기 오류로 본다(초슬림 TV 9.95mm·인덕션 높이 40mm 는 실제 값)
 ROW_KEYS = ['model', 'modelCodes', 'name', 'category', 'series', 'capacityText', 'dimsRaw', 'widthMm', 'heightMm', 'depthMm', 'extraDims', 'weightText', 'notes', 'url', 'collectedAt', 'discontinued']
 OPT_KEYS = {'discontinuedBasis'}   # 삼성 raw 만 행마다 단종 판정 기준을 적는다(LG 는 없음 → 카탈로그에서 null)
 ROW_CAP = 250   # raw 가 (브랜드×분류) 파일마다 두는 행 상한 — raw coverage 의 '총 250행 상한'
@@ -55,6 +56,37 @@ MODULES = re.compile(r'\(\s*\d+\s*,\s*\d+\s*\+\s*\d+\s*㎡\s*\)')   # 큐브 공
 def is_set(name):
     """세트 상품 = 제품명에서 괄호 안을 뺀 글자에 '+' 가 있거나, 큐브 공기청정기의 '(합계, 모듈+모듈㎡)' 2대 조합 표기. 그 밖의 괄호 안 '+' 는 사양 표기다(예: (71.1mm LCD+다이얼))"""
     return '+' in re.sub(r'\([^)]*\)', '', name) or bool(MODULES.search(name))
+
+
+NUM = r'(\d[\d,]*(?:\.\d+)?)'
+TRIPLE = NUM + r'\s*[×xX]\s*' + NUM + r'\s*[×xX]\s*' + NUM
+# '포함' 값이 따로 적힌 크기: '후면핸들 포함 : W × H × D' · '판넬포함) W x H x D mm' · 'W x H x D (손잡이 포함)' — 라벨이 숫자 앞이거나 뒤
+INCLUDED = [(re.compile(r'후면핸들\s*포함\s*[):]?\s*' + TRIPLE + r'\s*mm'), '후면핸들 포함'), (re.compile(r'판넬\s*포함\s*[):]?\s*' + TRIPLE + r'\s*mm'), '판넬 포함'),
+            (re.compile(TRIPLE + r'\s*\(손잡이\s*포함\)'), '손잡이 포함')]
+TV_SLASH = re.compile(r'WxHxD, mm\)\s*' + NUM + r'\s*x\s*' + NUM + r'\s*/\s*' + NUM + r'\s*x\s*' + NUM + r'\s*$')
+
+
+def num(s):
+    return float(s.replace(',', ''))
+
+
+def resolve(it):
+    """raw 행에서 비어 있는 치수를, 같은 행 원문(extraDims·dimsRaw)에 적힌 숫자로 정한다. (가로, 높이, 깊이, 이유) — 정하지 못하면 raw 값 그대로, 이유 None.
+    raw 에 값이 이미 있는 축과 원문이 어긋나면 정하지 않는다."""
+    w, h, d = it['widthMm'], it['heightMm'], it['depthMm']
+    texts = [t for t in [it['dimsRaw']] + list(it['extraDims']) if t]
+    if it['category'] != 'tv':   # 포함 값 규칙: 이미 있는 축은 같아야 하고, 비어 있는 축(들)만 채운다. 표기가 둘 이상 맞으면 정하지 않는다
+        found = {(i, tuple(num(m.group(k)) for k in (1, 2, 3))) for t in texts for i, (rx, _) in enumerate(INCLUDED) for m in [rx.search(t)] if m}   # 같은 표기가 dimsRaw·extraDims 양쪽에 있어도 한 번
+        if len(found) == 1:
+            i, v = next(iter(found))
+            if all(x is None or x == y for x, y in zip((w, h, d), v)) and any(x is None for x in (w, h, d)):
+                return v[0], v[1], v[2], f'크기는 {INCLUDED[i][1]} 값입니다(미포함 값은 크기 원문에 있습니다)'
+    if it['category'] == 'tv' and h is None and it['dimsRaw']:
+        m = TV_SLASH.search(it['dimsRaw'].strip())
+        if m and all(x is None or x == num(y) for x, y in ((w, m.group(1)), (d, m.group(4)))):
+            a, b = num(m.group(2)), num(m.group(3))
+            return num(m.group(1)), max(a, b), num(m.group(4)), f'높이는 스탠드 두 값({fmt(a)}/{fmt(b)}) 중 큰 값입니다'
+    return w, h, d, None
 
 
 def dims_ok(it):
@@ -123,11 +155,13 @@ def load_raw():
             while rid in ids:   # 한 파일 안에서 같은 모델이 또 나오면 id 에 ~2 를 붙여 걸러내지 않는다(같은 주소면 dedup 이 멈춘다, 다른 주소면 meta.dedup.sameModelDifferentUrl 에 남는다)
                 rid += '~2'
             ids.add(rid)
+            eff = dict(it)
+            eff['widthMm'], eff['heightMm'], eff['depthMm'], basis_dims = resolve(it)
             row = {'id': rid, 'brand': brand, 'category': cat, 'model': it['model'], 'modelCodes': it['modelCodes'], 'name': it['name'], 'series': it['series'], 'capacityText': it['capacityText'],
-                   'widthMm': it['widthMm'], 'heightMm': it['heightMm'], 'depthMm': it['depthMm'], 'dimsRaw': it['dimsRaw'], 'extraDims': it['extraDims'], 'weightText': it['weightText'],
+                   'widthMm': eff['widthMm'], 'heightMm': eff['heightMm'], 'depthMm': eff['depthMm'], 'dimsBasis': basis_dims, 'dimsRaw': it['dimsRaw'], 'extraDims': it['extraDims'], 'weightText': it['weightText'],
                    'url': it['url'], 'collectedAt': it['collectedAt'], 'discontinued': it['discontinued'], 'discontinuedBasis': basis}
-            row['placeable'] = placeable(it)
-            row['whyNot'] = why_not(it)
+            row['placeable'] = placeable(eff)
+            row['whyNot'] = why_not(eff)
             rows.append(row)
         keep = {k: v for k, v in d['meta'].items() if k not in DROP_META}
         per_file[fname] = {'brand': brand, 'category': cat, 'sourcePage': d['sourceSiteUrl'], 'collectedAt': d['collectedAt'], 'sha256': hashlib.sha256(data).hexdigest(),
@@ -168,7 +202,7 @@ def dedup(rows, per_file):
 
 
 def why_kind(w):
-    return ('세트 상품' if w == SET_WHY else '치수 미확인(크기 줄 없음)' if w.startswith('치수 미확인') else '크기가 50~5000 mm 밖' if '놓을 수 있는 크기는' in w
+    return ('세트 상품' if w == SET_WHY else '치수 미확인(크기 줄 없음)' if w.startswith('치수 미확인') else '크기가 5~5000 mm 밖' if '놓을 수 있는 크기는' in w
             else '값이 하나로 적혀 있지 않아 정하지 않음')
 
 
@@ -183,21 +217,23 @@ def build():
     for c in by_cat:
         by_cat[c]['total'] = by_cat[c]['samsung'] + by_cat[c]['lg']
     not_ok = [r for r in rows if not r['placeable']]
-    kinds = {k: 0 for k in ('치수 미확인(크기 줄 없음)', '값이 하나로 적혀 있지 않아 정하지 않음', '크기가 50~5000 mm 밖', '세트 상품')}
+    kinds = {k: 0 for k in ('치수 미확인(크기 줄 없음)', '값이 하나로 적혀 있지 않아 정하지 않음', '크기가 5~5000 mm 밖', '세트 상품')}
     for r in not_ok:
         kinds[why_kind(r['whyNot'])] += 1
     sets = [r for r in rows if is_set(r['name'])]
     reached = [f for f, v in per_file.items() if v['rows'] == ROW_CAP]
     cut = [f for f, v in per_file.items() if v['skippedByRowCap']]
     handle = sum(1 for r in not_ok if r['whyNot'].startswith('깊이가 두 값(후면핸들'))
+    basis_tv = sum(1 for r in rows if r['dimsBasis'] and r['dimsBasis'].startswith('높이는 스탠드'))
     disc = {b: {k: sum(1 for r in rows if r['brand'] == b and r['discontinued'] is v) for k, v in (('true', True), ('false', False), ('null', None))} for b in BRANDS}
     disc['total'] = {k: disc['samsung'][k] + disc['lg'][k] for k in ('true', 'false', 'null')}
     meta = {
-        'about': '삼성·LG 공식 페이지에 적힌 가전 제품 크기. 치수·원문·출처는 수집 파일(raw) 그대로이고 환산·반올림·추정으로 채운 값이 없다. null 은 미확인. 행의 notes 전문은 용량 때문에 뺐다(raw 에 있다).',
+        'about': '삼성·LG 공식 페이지에 적힌 가전 제품 크기. 치수·원문·출처는 수집 파일(raw)의 숫자이고 환산·반올림·추정으로 만든 값이 없다. raw 에서 비어 있던 칸을 같은 행 원문의 숫자로 정한 행은 dimsBasis 에 이유가 있다. null 은 미확인. 행의 notes 전문은 용량 때문에 뺐다(raw 에 있다).',
         'collectedAt': collected,
         'sourceSites': dict(SITES),
         'categories': [{'id': c, 'name': n, 'short': s} for c, n, s in CATEGORIES],
         'dims': 'widthMm=가로, heightMm=세로(높이), depthMm=깊이, 단위 mm. 값은 공식 페이지 원문(dimsRaw)의 숫자를 라벨 순서대로 읽은 것이고, 라벨 순서가 달라 바로잡은 행은 raw 파일 meta 에 적혀 있다.',
+        'dimsBasis': "raw 의 치수 칸이 비어 있어도 같은 행 원문에 숫자가 하나로 정해지면 그 값을 쓰고 이유를 적는다. 후면핸들 포함·미포함 두 깊이는 포함 값, 스탠드 높이 'a/b' 두 값은 큰 값. 그 밖에는 null.",
         'placeable': f"가로·높이·깊이가 모두 유한한 양수이고 각각 {MIN_MM}~{MAX_MM} mm 이며 세트 상품이 아니면 true. 아니면 false 이고 whyNot 에 이유 한 줄. 놓을 수 없는 행도 목록에는 남는다.",
         'counts': {'rows': len(rows), 'rawRows': raw_rows, 'placeable': len(rows) - len(not_ok), 'notPlaceable': len(not_ok), 'notPlaceableBy': kinds, 'discontinued': disc, 'byCategory': by_cat,
                    'byBrand': {b: sum(1 for r in rows if r['brand'] == b) for b in BRANDS}},
@@ -225,7 +261,8 @@ def build():
         'limits': [
             '번들(여러 제품을 묶은 상품)은 파일마다 다르게 처리했다. 어떻게 처리했는지는 files 의 coverage 와 raw 의 skipped 에 있다.',
             f"(브랜드×분류) 파일마다 행 상한 {ROW_CAP} 이 있다. 상한에 닿은 파일: {', '.join(reached)}. 상한 때문에 뺀 모델이 skipped 에 적힌 파일: {', '.join(cut)}. 어떤 모델이 빠졌는지는 파일별 coverage·skipped 에 있다.",
-            f'깊이를 후면핸들 포함·미포함 두 값으로 병기한 냉장고는 depthMm 이 null 이라 놓을 수 없다({handle}행). 가로·높이는 원문 숫자 그대로 남아 있다.',
+            f"깊이를 후면핸들 포함·미포함 두 값으로 병기한 냉장고는 포함 값을 깊이로 쓴다(미포함 값은 extraDims 원문, 행의 dimsBasis 에 이유). 가로·높이가 raw 와 달라 정하지 못한 {handle}행은 놓을 수 없다.",
+            f"LG TV 의 스탠드 포함 크기에 높이가 'a/b' 두 값으로 적힌 {basis_tv}행은 큰 값을 높이로 쓴다(dimsBasis 에 두 값).",
             'TV 의 치수(dimsRaw·widthMm·heightMm·depthMm)는 스탠드 포함 줄 기준이다(스탠드 포함 줄이 없는 모델만 스탠드 제외 줄). 스탠드 제외·스탠드 크기·VESA 는 extraDims 에 원문으로 있다.',
             '2in1(멀티) 에어컨은 스탠드 실내기 크기가 대표 치수이고 벽걸이 실내기·실외기 크기는 extraDims 에 있다.',
             '크기 칸에 값이 둘 이상이거나 숫자 하나로 읽히지 않는 표기(슬래시 두 값, 상하·좌우 두 설치 형태, 괄호 안 다른 값)는 해당 축을 null 로 두었다.',

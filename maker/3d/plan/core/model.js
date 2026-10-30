@@ -5,7 +5,7 @@ export const BRANDS = ['samsung', 'lg'];
 // 가전(kind:'appliance') — 분류 12가지와 평면도·칩에 쓰는 짧은 이름. data/appliance-catalog.json 의 meta.categories 와 같다(시험이 대조한다)
 export const APPLIANCE_CATEGORIES = ['refrigerator', 'kimchi', 'washer', 'dryer', 'washtower', 'dishwasher', 'styler', 'airpurifier', 'aircon', 'tv', 'cooking', 'water'];
 export const APPLIANCE_LABEL = { refrigerator: '냉장고', kimchi: '김치냉장고', washer: '세탁기', dryer: '건조기', washtower: '워시타워·워시콤보', dishwasher: '식기세척기', styler: '의류관리기', airpurifier: '공기청정기', aircon: '에어컨', tv: 'TV', cooking: '조리가전', water: '정수기' };
-export const APPLIANCE_LIMITS = Object.freeze({ footMin: 50, footMax: 5000, heightMin: 50, heightMax: 4000 }); // 놓을 수 있는 가전 크기(mm): 평면 가로·깊이, 높이
+export const APPLIANCE_LIMITS = Object.freeze({ footMin: 5, footMax: 5000, heightMin: 5, heightMax: 4000 }); // 놓을 수 있는 가전 크기(mm): 평면 가로·깊이, 높이
 export const AC_PANEL_MM = 35, AC_BODY_MM = 140; // 엔진 공간 JSON 규약(size_mm[2], body_h_mm)
 export const PREFIX = { walls: 'W', rooms: 'R', columns: 'C', openings: 'O', guides: 'G', items: 'I' };
 export const COLS = Object.keys(PREFIX);
@@ -90,6 +90,8 @@ const CHECK = {
     return !w ? '개구부가 없는 벽을 가리킵니다'
       : !KIND.openings.includes(o.type) ? '개구부 종류는 door·window·open 입니다'
       : !(num(o.at) && o.at >= 0 && o.at <= 1) ? '개구부 위치(at)는 0~1 입니다'
+      : o.hinge !== undefined && o.hinge !== 'a' && o.hinge !== 'b' ? '문 경첩 쪽(hinge)은 a 또는 b 입니다'
+      : o.swing !== undefined && o.swing !== 1 && o.swing !== -1 ? '문 열리는 쪽(swing)은 1 또는 -1 입니다'
       : !(len(o.width) && len(o.height) && nonneg(o.sill)) ? '개구부 폭·높이는 0 보다, 바닥 높이는 0 이상이어야 합니다 (10km 이하)' : '';
   },
   guides: (g) => !pt(g.a) || !pt(g.b) ? '보조선 좌표가 올바르지 않습니다 (±10km 이내의 숫자)'

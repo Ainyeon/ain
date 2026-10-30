@@ -9,6 +9,15 @@ const assert = require('assert');
   assert.deepStrictEqual(sw[0], [1050, 3000], '경첩은 문 중심에서 벽 방향 반대로 반 폭'); assert.strictEqual(sw.length, 10);
   assert.ok(Math.abs(sw[1][0] - 1950) < 1e-9 && Math.abs(sw[1][1] - 3000) < 1e-9, '호의 한 끝은 벽을 따라(닫힌 문짝)'); assert.ok(Math.abs(sw[9][0] - 1050) < 1e-9 && Math.abs(sw[9][1] - 2100) < 1e-9, '다른 끝은 법선 쪽(열린 문짝)');
   assert.ok(sw.every((p) => Math.hypot(p[0] - 1050, p[1] - 3000) <= 900 + 1e-9), '모든 점이 반지름 안');
+  // 경첩 쪽(hinge)·열리는 쪽(swing): 기본 a·+법선 은 위와 같고, b 는 반대 문틀에서 닫힌 문짝이 a 쪽을 향하며, swing -1 은 반대편으로 열린다
+  { const { swingSigns } = await import('../maker/3d/plan/labels.js'), at = (el) => swingPoly({ ...door, el: { width: 900, ...el } }), near = (p, q) => Math.abs(p[0] - q[0]) < 1e-9 && Math.abs(p[1] - q[1]) < 1e-9;
+    assert.deepStrictEqual([swingSigns({}), swingSigns({ hinge: 'a', swing: 1 }), swingSigns({ hinge: 'b', swing: -1 })], [{ hs: -1, sg: 1 }, { hs: -1, sg: 1 }, { hs: 1, sg: -1 }], '기본 = a · +법선');
+    assert.deepStrictEqual(at({ hinge: 'a', swing: 1 }), sw, '명시한 기본값 = 기본');
+    const b = at({ hinge: 'b' }), m = at({ swing: -1 }), bm = at({ hinge: 'b', swing: -1 });
+    assert.ok(near(b[0], [1950, 3000]) && near(b[1], [1050, 3000]) && near(b[9], [1950, 2100]), 'hinge b: 경첩 (1950,3000), 닫힌 문짝은 a 쪽 문틀로, 열린 끝은 (1950,2100)');
+    assert.ok(near(m[0], [1050, 3000]) && near(m[1], [1950, 3000]) && near(m[9], [1050, 3900]), 'swing -1: 같은 경첩, 반대편(y 아래)으로 열림');
+    assert.ok(near(bm[0], [1950, 3000]) && near(bm[1], [1050, 3000]) && near(bm[9], [1950, 3900]), '둘 다 반대');
+    for (const el of [{ hinge: 'b' }, { swing: -1 }, { hinge: 'b', swing: -1 }]) assert.ok(at(el).every((p, i, a) => Math.hypot(p[0] - a[0][0], p[1] - a[0][1]) <= 900 + 1e-9), '호는 항상 경첩에서 문 폭 안'); }
   // 겹침 판정
   assert.ok(polyHitsRect(sw, [1100, 2500, 1300, 2800]) && !polyHitsRect(sw, [100, 100, 300, 300]), '호 안/밖');
   assert.ok(polyHitsRect(sq(0, 0, 100, 100), [-50, -50, 200, 200]), '큰 상자가 작은 다각형을 덮음'); assert.ok(polyHitsRect(sq(0, 0, 1000, 1000), [400, 400, 600, 600]), '상자가 다각형 안에 있음');

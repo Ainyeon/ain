@@ -365,7 +365,7 @@ const isHttps = (u) => typeof u === 'string' && /^https:\/\/\S+$/.test(u);
 function applianceCard(m, ctx, api) {
   const opts = applianceOpts(m), cat = APPLIANCE_LABEL[m.category] ?? m.category, dims = fmtApplianceDims(m), name = `${BRAND_LABEL[m.brand]} ${m.model}`;
   const main = h('button', { type: 'button', class: 'pl-prod pl-app', 'aria-disabled': opts ? null : 'true',
-    'aria-label': [name, cat, m.name, dims, m.capacityText, m.discontinued && '단종 표시', opts ? '캔버스에 놓기' : `놓을 수 없음, ${m.whyNot}`].filter(Boolean).join(', '),
+    'aria-label': [name, cat, m.name, dims, m.dimsBasis, m.capacityText, m.discontinued && '단종 표시', opts ? '캔버스에 놓기' : `놓을 수 없음, ${m.whyNot}`].filter(Boolean).join(', '),
     onclick: () => {
       if (!opts) { api.toast(`${m.model} · ${m.whyNot}`); return; } // 눌러도 알림만
       ctx.setTool('placeItem', opts);
@@ -377,6 +377,7 @@ function applianceCard(m, ctx, api) {
     h('span', { class: 'pl-prod-dim' }, dims),
     m.capacityText && h('span', { class: 'pl-prod-dim pl-app-cap', title: m.capacityText }, m.capacityText),
     m.discontinued && h('span', { class: 'pl-flag' }, '단종 표시'),
+    m.dimsBasis && h('span', { class: 'pl-why' }, m.dimsBasis),
     !opts && h('span', { class: 'pl-why' }, m.whyNot));
   const src = isHttps(m.url) && h('a', { class: 'pl-src', href: m.url, target: '_blank', rel: 'noopener noreferrer', tabindex: '-1', 'aria-label': `${m.model} 공식 페이지 (새 창)`, 'aria-keyshortcuts': 'O' }, '공식 페이지');
   return { main, name, extra: src };

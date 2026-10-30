@@ -21,10 +21,12 @@ export function rectInsidePoly(poly, r) {
   for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; for (const [c, d] of re) if (cross(a, b, c, d)) return false; }
   return true;
 }
-// 문이 열리는 부채꼴: 경첩(벽 a 쪽 문틀)에서 반지름=문 폭, 벽 방향(tan)과 법선(n) 사이 90°. op = { p(문 중심), tan, n, el:{width} }
+// 경첩 쪽·열리는 쪽: el.hinge 'a'(기본)=벽 a 쪽 문틀 · 'b'=b 쪽, el.swing 1(기본)=벽의 +법선 쪽 · -1=반대쪽. 부호로 돌려 쓴다: hs=경첩이 중심에서 놓인 방향(−1 은 a 쪽), sg=열리는 법선 방향
+export const swingSigns = (el) => ({ hs: el.hinge === 'b' ? 1 : -1, sg: el.swing === -1 ? -1 : 1 });
+// 문이 열리는 부채꼴: 경첩 문틀에서 반지름=문 폭, 닫힌 문짝 방향(경첩에서 반대 문틀 쪽)과 열린 방향(sg·법선) 사이 90°. op = { p(문 중심), tan, n, el:{width, hinge?, swing?} }
 export function swingPoly(op, steps = 8) {
-  const W = op.el.width / 2, r = op.el.width, hx = op.p[0] - op.tan[0] * W, hy = op.p[1] - op.tan[1] * W, pts = [[hx, hy]];
-  for (let i = 0; i <= steps; i++) { const f = (i / steps) * (Math.PI / 2), c = Math.cos(f) * r, s = Math.sin(f) * r; pts.push([hx + op.tan[0] * c + op.n[0] * s, hy + op.tan[1] * c + op.n[1] * s]); }
+  const { hs, sg } = swingSigns(op.el), W = op.el.width / 2, r = op.el.width, hx = op.p[0] + hs * op.tan[0] * W, hy = op.p[1] + hs * op.tan[1] * W, tx = -hs * op.tan[0], ty = -hs * op.tan[1], nx = sg * op.n[0], ny = sg * op.n[1], pts = [[hx, hy]];
+  for (let i = 0; i <= steps; i++) { const f = (i / steps) * (Math.PI / 2), c = Math.cos(f) * r, s = Math.sin(f) * r; pts.push([hx + tx * c + nx * s, hy + ty * c + ny * s]); }
   return pts;
 }
 

@@ -49,9 +49,10 @@ assert.ok(collapse.length === 1 && collapse[0] >= 991, `위 바 메뉴 접기 �
 const mid = mediaBodies(css, /\(max-width: 1023px\)/).join(' ');
 assert.ok(/\.ed-more \{ display: inline-flex; \}/.test(mid), '중간 폭: [메뉴] 단추가 보인다');
 assert.ok(/\.ed-menu \{[^}]*position: absolute[^}]*display: none/.test(mid) && /\.ed-menu\.open \{ display: flex; \}/.test(mid), '중간 폭: 메뉴 항목은 접혀 열 때만 뜬다');
-const narrow = mediaBodies(css, /\(min-width: 769px\) and \(max-width: 1023px\)/).join(' ');
-const px = (re) => Number((narrow.match(re) || [])[1]);
-assert.ok(px(/--ed-panel: (\d+)px/) < 280 && px(/--ed-side: (\d+)px/) < 268, '중간 폭: 패널 칸을 좁힌다(캔버스를 지킨다)');
+const narrow = mediaBodies(css, /\(min-width: 769px\) and \(max-width: 1023px\)/).join(' '), cols = mediaBodies(css, /\(min-width: 769px\) and \(max-width: 1279px\)/).join(' ');
+const px = (re) => Number((cols.match(re) || [])[1]);
+assert.ok(px(/--ed-panel: (\d+)px/) < 280 && px(/--ed-side: (\d+)px/) < 268, '중간 폭(1279px 까지, 작은 노트북 1024 포함): 패널 칸을 좁힌다(캔버스를 지킨다)');
+{ const rail = Number((css.match(/--ed-rail: (\d+)px/) || [])[1]), canvas = 1024 - rail - px(/--ed-panel: (\d+)px/) - px(/--ed-side: (\d+)px/); assert.ok(canvas >= 480, '1024px 에서 캔버스 480px 이상: ' + canvas); }
 assert.ok(!/\.ed-ss, |, \.ed-ss \{[^}]*display: none/.test(mid) && !/\.ed-big-only[^{]*\{[^}]*display: none/.test(mid + narrow), '중간 폭에서도 저장 상태·나가기는 감추지 않는다');
 assert.ok(/\.ed-ss \{[^}]*max-width: \d+em[^}]*overflow: hidden[^}]*text-overflow: ellipsis/.test(base), '긴 저장 상태 글이 저장·나가기를 밀어내지 않는다');
 assert.ok(!/\.ed-title \{[^}]*min-width: (1\d\d|[2-9]\d\d)px/.test(base), '제목 칸 최소 폭이 위 바를 밀지 않는다(96px)');

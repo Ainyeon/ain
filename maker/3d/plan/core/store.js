@@ -90,7 +90,11 @@ function transformFloor(f, fn, rotFn, flip) { // 현재 층 전체 변환(mirror
     if ((col === 'columns' || col === 'items') && rotFn) r.rot = rotFn(e.rot);
     return r;
   });
-  if (flip) f.openings = f.openings.map((o) => ({ ...o, at: flipAt(o.at) }));
+  if (flip) f.openings = f.openings.map((o) => { // 거울상은 경첩도 반대 문틀에 — 벽 a↔b 를 바꿨으니 같은 물리 위치를 지키려면 쪽이 바뀐다(기본 'a' 는 키를 두지 않아 두 번 반전하면 그대로)
+    const r = { ...o, at: flipAt(o.at) };
+    if (o.type === 'door') { if (o.hinge === 'b') delete r.hinge; else r.hinge = 'b'; }
+    return r;
+  });
 }
 
 const CMD = {
