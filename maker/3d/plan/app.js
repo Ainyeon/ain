@@ -490,6 +490,10 @@ async function boot() {
   sel = new Selection(() => { propsBuild(); if (view) view.requestDraw(); });
   const canvas = $('plCanvas');
   view = createView2D(canvas, { store, getState: () => state, getSel: () => sel });
+  view.insetRight = () => { // 폰: 화면 조절 단추가 캔버스 오른쪽에 세로로 붙는다(폭 < 높이) — 맞춤이 그 뒤로 도면을 숨기지 않게 그만큼 비운다. 데스크톱은 아래 가로 막대라 0
+    const c = canvas.getBoundingClientRect(), z = document.querySelector('.ed-ctl.r')?.getBoundingClientRect();
+    return z && z.width > 0 && z.height > z.width && z.left > c.left + c.width * 0.6 ? Math.max(0, c.right - z.left + 8) : 0;
+  };
   tools = createTools({ store, view, sel, ui, state });
   view.overlay = (g) => tools.overlay(g); tools.attach(canvas);
   mini = createMinimap($('plMini'), { store, view }); view.onChange = (vp) => { mini.draw(); canvas.dataset.scale = vp.scale.toFixed(4); }; // data-scale = px/mm (화면 확인용 표시)

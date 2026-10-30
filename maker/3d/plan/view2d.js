@@ -18,11 +18,11 @@ export function viewRect(vp, padPx = 0) { // 보이는 도면 범위(mm)
   const [x0, y0] = toMm(vp, [-padPx, -padPx]), [x1, y1] = toMm(vp, [vp.w + padPx, vp.h + padPx]);
   return { x0, y0, x1, y1 };
 }
-export function fitVP(vp, b, padPx = 56) { // 경계 상자 b 가 화면에 꽉 차게. 비었으면 처음 화면
+export function fitVP(vp, b, padPx = 56, insetR = 0) { // 경계 상자 b 가 화면에 꽉 차게. 비었으면 처음 화면. insetR: 오른쪽에 떠 있는 단추 묶음 폭(px) — 그만큼 오른쪽을 더 비운다
   if (!b) return newVP(vp.w, vp.h);
-  const bw = Math.max(b.x1 - b.x0, 500), bh = Math.max(b.y1 - b.y0, 500), pad = Math.min(padPx, vp.w / 4, vp.h / 4);
-  const k = clamp(Math.min((vp.w - 2 * pad) / bw, (vp.h - 2 * pad) / bh), SCALE.min, SCALE.max);
-  return { ...vp, scale: k, ox: vp.w / 2 - ((b.x0 + b.x1) / 2) * k, oy: vp.h / 2 - ((b.y0 + b.y1) / 2) * k };
+  const bw = Math.max(b.x1 - b.x0, 500), bh = Math.max(b.y1 - b.y0, 500), pad = Math.min(padPx, vp.w / 4, vp.h / 4), padR = Math.max(pad, Math.min(insetR, vp.w / 3));
+  const k = clamp(Math.min((vp.w - pad - padR) / bw, (vp.h - 2 * pad) / bh), SCALE.min, SCALE.max);
+  return { ...vp, scale: k, ox: pad + (vp.w - pad - padR) / 2 - ((b.x0 + b.x1) / 2) * k, oy: vp.h / 2 - ((b.y0 + b.y1) / 2) * k };
 }
 const GRID = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
 export function gridSteps(scale, minPx = 9) { // 가는 격자(기본 100mm)와 굵은 격자(10배, 기본 1000mm)
@@ -284,7 +284,7 @@ export function createView2D(canvas, { store, getState, getSel }) {
     resize, requestDraw, set,
     refreshTheme() { C = readTheme(); requestDraw(); },
     zoomAt: (s, f) => set(zoomAt(vp, s, f)), zoomCenter: (f) => set(zoomAt(vp, [vp.w / 2, vp.h / 2], f)), panBy: (dx, dy) => set(panBy(vp, dx, dy)),
-    fit(b) { set(fitVP(vp, b)); }, centerOn(p) { set({ ...vp, ox: vp.w / 2 - p[0] * vp.scale, oy: vp.h / 2 - p[1] * vp.scale }); },
+    fit(b) { set(fitVP(vp, b, undefined, view.insetRight ? view.insetRight() : 0)); }, centerOn(p) { set({ ...vp, ox: vp.w / 2 - p[0] * vp.scale, oy: vp.h / 2 - p[1] * vp.scale }); },
     toMm: (s) => toMm(vp, s), toPx: (p) => toPx(vp, p),
     entry: (id) => floorCache(curFloor(store.doc)).by.get(id) || null,
   });

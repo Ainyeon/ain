@@ -112,6 +112,9 @@ export function h(tag, props = {}, ...kids) {
   for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(String(c)));
   return el;
 }
+// 제품 카드 단추: 칸 사이에 공백을 두어(flex 안의 공백 글자는 그려지지 않는다) 보이는 글자가 붙어 읽히지 않게 하고, 이름은 보이는 글자 그대로 + 동작으로 만든다(접근성: 보이는 글자가 이름에 들어 있어야 한다)
+const spaced = (...kids) => kids.flat().filter((c) => c != null && c !== false).flatMap((c, i) => (i ? [' ', c] : [c]));
+const labelFromText = (btn, action) => { btn.setAttribute('aria-label', `${btn.textContent.replace(/\s+/g, ' ').trim()}, ${action}`); return btn; };
 const SVGNS = 'http://www.w3.org/2000/svg';
 const sv = (tag, attrs = {}) => { const el = document.createElementNS(SVGNS, tag); for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v); return el; };
 let uidN = 0;
@@ -307,18 +310,19 @@ const roomNameAt = (f, p) => f.rooms.find((r) => pointInPoly(r.poly, p))?.name ?
 function productCard(m, ctx, api) {
   const pl = placement(m), dims = [m.panelMm && `판넬 ${fmtDims(m.panelMm)}`, m.bodyMm && `본체 ${fmtDims(m.bodyMm)}`].filter(Boolean);
   const name = `${BRAND_LABEL[m.brand]} ${m.code}`;
-  const main = h('button', { type: 'button', class: 'pl-prod', 'aria-disabled': pl ? null : 'true', 'aria-label': `${name}, ${MODEL_LABEL[m.type]}, 냉방 ${kwText(m)}, ${pl ? '캔버스에 놓기' : '치수 미확인이라 놓을 수 없음'}`,
+  const main = h('button', { type: 'button', class: 'pl-prod', 'aria-disabled': pl ? null : 'true',
     onclick: () => {
       if (!pl) { api.toast(`${m.code} · 제원표에 치수가 없어 놓을 수 없습니다`); return; }
       ctx.setTool('placeItem', placeOpts(m));
       api.toast(`${m.code} · 캔버스를 눌러 놓으세요`);
     } },
-    h('span', { class: 'pl-prod-type' }, `${BRAND_LABEL[m.brand]} · ${MODEL_LABEL[m.type]}`),
-    h('span', { class: 'pl-prod-row' }, h('span', { class: 'pl-prod-code' }, m.code), h('span', { class: 'pl-prod-kw' }, kwText(m))),
-    h('span', { class: 'pl-prod-series' }, m.series ?? ''),
-    h('span', { class: 'pl-prod-dim' }, dims.length ? dims.join(' · ') : '치수 미확인'),
-    m.currentUncertain && h('span', { class: 'pl-flag' }, '현행 불확실'),
-    !pl && h('span', { class: 'pl-flag' }, '놓을 수 없음'));
+    ...spaced(h('span', { class: 'pl-prod-type' }, `${BRAND_LABEL[m.brand]} · ${MODEL_LABEL[m.type]}`),
+      h('span', { class: 'pl-prod-row' }, ...spaced(h('span', { class: 'pl-prod-code' }, m.code), h('span', { class: 'pl-prod-kw' }, kwText(m)))),
+      h('span', { class: 'pl-prod-series' }, m.series ?? ''),
+      h('span', { class: 'pl-prod-dim' }, dims.length ? dims.join(' · ') : '치수 미확인'),
+      m.currentUncertain && h('span', { class: 'pl-flag' }, '현행 불확실'),
+      !pl && h('span', { class: 'pl-flag' }, '놓을 수 없음')));
+  labelFromText(main, pl ? '캔버스에 놓기' : '치수 미확인이라 놓을 수 없음');
   return { main, name };
 }
 
@@ -365,20 +369,20 @@ const isHttps = (u) => typeof u === 'string' && /^https:\/\/\S+$/.test(u);
 function applianceCard(m, ctx, api) {
   const opts = applianceOpts(m), cat = APPLIANCE_LABEL[m.category] ?? m.category, dims = fmtApplianceDims(m), name = `${BRAND_LABEL[m.brand]} ${m.model}`;
   const main = h('button', { type: 'button', class: 'pl-prod pl-app', 'aria-disabled': opts ? null : 'true',
-    'aria-label': [name, cat, m.name, dims, m.dimsBasis, m.capacityText, m.discontinued && '단종 표시', opts ? '캔버스에 놓기' : `놓을 수 없음, ${m.whyNot}`].filter(Boolean).join(', '),
     onclick: () => {
       if (!opts) { api.toast(`${m.model} · ${m.whyNot}`); return; } // 눌러도 알림만
       ctx.setTool('placeItem', opts);
       api.toast(`${m.model} · 캔버스를 눌러 놓으세요`);
     } },
-    h('span', { class: 'pl-prod-type' }, `${BRAND_LABEL[m.brand]} · ${cat}`),
-    h('span', { class: 'pl-prod-row' }, h('span', { class: 'pl-prod-code' }, m.model)),
-    h('span', { class: 'pl-prod-series pl-app-name', title: m.name }, m.name),
-    h('span', { class: 'pl-prod-dim' }, dims),
-    m.capacityText && h('span', { class: 'pl-prod-dim pl-app-cap', title: m.capacityText }, m.capacityText),
-    m.discontinued && h('span', { class: 'pl-flag' }, '단종 표시'),
-    m.dimsBasis && h('span', { class: 'pl-why' }, m.dimsBasis),
-    !opts && h('span', { class: 'pl-why' }, m.whyNot));
+    ...spaced(h('span', { class: 'pl-prod-type' }, `${BRAND_LABEL[m.brand]} · ${cat}`),
+      h('span', { class: 'pl-prod-row' }, h('span', { class: 'pl-prod-code' }, m.model)),
+      h('span', { class: 'pl-prod-series pl-app-name', title: m.name }, m.name),
+      h('span', { class: 'pl-prod-dim' }, dims),
+      m.capacityText && h('span', { class: 'pl-prod-dim pl-app-cap', title: m.capacityText }, m.capacityText),
+      m.discontinued && h('span', { class: 'pl-flag' }, '단종 표시'),
+      m.dimsBasis && h('span', { class: 'pl-why' }, m.dimsBasis),
+      !opts && h('span', { class: 'pl-why' }, m.whyNot)));
+  labelFromText(main, opts ? '캔버스에 놓기' : '놓을 수 없음');
   const src = isHttps(m.url) && h('a', { class: 'pl-src', href: m.url, target: '_blank', rel: 'noopener noreferrer', tabindex: '-1', 'aria-label': `${m.model} 공식 페이지 (새 창)`, 'aria-keyshortcuts': 'O' }, '공식 페이지');
   return { main, name, extra: src };
 }
@@ -425,14 +429,14 @@ function finishCard(f, ctx, api) {
   const name = `${TARGET_LABEL[f.target]} ${f.name}`;
   const sw = h('span', { class: 'pl-sw', 'aria-hidden': 'true' });
   sw.style.background = f.sw; // 색 견본은 자료(finishes.json)의 값
-  const main = h('button', { type: 'button', class: 'pl-fin', 'aria-label': `${name} 적용`, 'data-target': f.target,
+  const main = h('button', { type: 'button', class: 'pl-fin', 'aria-label': `${f.name} ${TARGET_LABEL[f.target]}, 적용`, 'data-lbl': `${f.name} ${TARGET_LABEL[f.target]}`, 'data-target': f.target,   // 이름 = 보이는 글자(견본 이름 · 대상) 그대로 + 동작. 적용 중이면 보이는 글자에 '적용 중' 이 붙으므로 markApplied 가 이름도 같이 바꾼다
     onclick: () => { if (applyFinish(ctx, f)) api.toast(`${curFloor(ctx.store.doc).name} ${TARGET_LABEL[f.target]} 마감 · ${f.name}`); } },
-    sw, h('span', { class: 'pl-fin-name' }, f.name), h('span', { class: 'pl-fin-sub' }, TARGET_LABEL[f.target], h('span', { class: 'pl-on' }, '적용 중')));
+    sw, h('span', { class: 'pl-fin-name' }, f.name), ' ', h('span', { class: 'pl-fin-sub' }, TARGET_LABEL[f.target], ' ', h('span', { class: 'pl-on' }, '적용 중')));
   return { main, name };
 }
 function markApplied(grid, ctx) {
   const fin = curFloor(ctx.store.doc).finish;
-  for (const b of grid.querySelectorAll('.pl-fin')) { const on = fin[b.dataset.target] === b.dataset.id; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', on); }
+  for (const b of grid.querySelectorAll('.pl-fin')) { const on = fin[b.dataset.target] === b.dataset.id; b.classList.toggle('is-on', on); b.setAttribute('aria-pressed', on); b.setAttribute('aria-label', on ? `${b.dataset.lbl} 적용 중` : `${b.dataset.lbl}, 적용`); }
 }
 function placedFinishes(data, ctx) {
   const node = h('div', { class: 'pl-browse' }), by = new Map(data.finishes.map((f) => [f.id, f])), list = h('ul', { class: 'pl-list', 'aria-label': '배치된 마감재' }), head = h('p', { class: 'pl-count' });
@@ -499,8 +503,8 @@ function templatesPanel(container, ctx) {
       const l = filterTemplates(data.templates, st);
       count.textContent = `${l.length}개`;
       list.replaceChildren(...l.map((t) => h('li', { class: 'pl-card pl-card--tpl' },
-        h('button', { type: 'button', class: 'pl-card-main pl-tpl', 'data-id': t.id, 'aria-label': `${t.name}, 실면적 ${t.areaM2.toFixed(2)}제곱미터, 이 템플릿으로 새 도면 시작`, onclick: () => (ctx.openTemplate || startTemplate)(t.id) },
-          planThumb(t.doc), h('span', { class: 'pl-tpl-name' }, t.name), h('span', { class: 'pl-tags' }, t.tags.map((x) => h('span', { class: 'pl-tag' }, x))), h('span', { class: 'pl-tpl-area' }, `${t.areaM2.toFixed(2)}㎡`)))));
+        labelFromText(h('button', { type: 'button', class: 'pl-card-main pl-tpl', 'data-id': t.id, onclick: () => (ctx.openTemplate || startTemplate)(t.id) },
+          planThumb(t.doc), ...spaced(h('span', { class: 'pl-tpl-name' }, t.name), h('span', { class: 'pl-tags' }, ...spaced(t.tags.map((x) => h('span', { class: 'pl-tag' }, x)))), h('span', { class: 'pl-tpl-area' }, `${t.areaM2.toFixed(2)}㎡`))), '이 템플릿으로 새 도면 시작'))));
       if (!l.length) list.append(h('li', { class: 'pl-empty-row' }, emptyNote('조건에 맞는 템플릿이 없습니다')));
       refreshTab();
     }

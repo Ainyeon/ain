@@ -129,6 +129,13 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
   const fit = M.fitVP(vp, { x0: 0, y0: 0, x1: 8000, y1: 4000 }), a0 = M.toPx(fit, [0, 0]), a1 = M.toPx(fit, [8000, 4000]);
   assert.ok(a0[0] >= 0 && a0[1] >= 0 && a1[0] <= vp.w && a1[1] <= vp.h, '맞춤은 화면 안'); near((a0[0] + a1[0]) / 2, vp.w / 2, 1e-6, '맞춤 가운데'); near((a0[1] + a1[1]) / 2, vp.h / 2, 1e-6);
   assert.deepStrictEqual([fit.w, fit.h], [800, 600]); assert.deepStrictEqual(M.fitVP(vp, null).scale, M.SCALE.start, '빈 도면은 처음 화면');
+  { const fitR = M.fitVP(vp, { x0: 0, y0: 0, x1: 8000, y1: 4000 }, undefined, 100), r1 = M.toPx(fitR, [8000, 4000]), r0 = M.toPx(fitR, [0, 0]);   // 오른쪽 단추 묶음 100px 을 비운다
+    assert.ok(r1[0] <= vp.w - 100 + 1e-6 && r0[0] >= 0, '도면이 오른쪽 100px 안쪽으로 들어온다'); near((r0[0] + r1[0]) / 2, 56 + (vp.w - 56 - 100) / 2, 1e-6, '비운 자리를 뺀 가운데');
+    assert.deepStrictEqual(M.fitVP(vp, { x0: 0, y0: 0, x1: 8000, y1: 4000 }, undefined, 0), fit, '단추 묶음이 없으면(0) 기존 맞춤과 같다'); assert.deepStrictEqual(M.fitVP(vp, { x0: 0, y0: 0, x1: 8000, y1: 4000 }, undefined, 10), fit, '기본 여백보다 작으면 그대로'); }
+  { const pn = rd('panels.js'), html = rd('index.html');   // 접근성(axe label-content-name-mismatch · page-has-heading-one): 제품·템플릿 카드의 이름은 화면에 보이는 글자에서 만들고(칸 사이 공백 포함), 마감 견본은 적용 중일 때 이름도 바꾸며, 플래너에는 h1 이 있다
+    assert.ok((pn.match(/labelFromText\(/g) || []).length >= 3 && /const spaced = /.test(pn), '시스템에어컨·가전·템플릿 카드는 labelFromText + spaced');
+    assert.ok(!/'aria-label': \[`\$\{BRAND_LABEL/.test(pn) && !/'aria-label': `\$\{name\}, \$\{MODEL_LABEL/.test(pn) && !/'aria-label': `\$\{t\.name\}, 실면적/.test(pn), '카드 이름을 보이는 글자와 다른 순서로 손으로 짜지 않는다');
+    assert.ok(/data-lbl/.test(pn) && /적용 중`/.test(pn), '마감 견본은 적용 중일 때 이름에 적용 중을 넣는다'); assert.ok(/<h1 class="ed-vh">[^<]+<\/h1>/.test(html), '플래너 h1(화면 밖 글자)'); }
   assert.deepStrictEqual(M.gridSteps(0.1), { minor: 100, major: 1000 }, '기본 격자 100/1000mm');
   assert.deepStrictEqual(M.gridSteps(0.01), { minor: 1000, major: 10000 }, '멀리서는 간격이 넓어진다');
   assert.deepStrictEqual(M.gridSteps(2), { minor: 100, major: 1000 }, '가까이서도 100/1000');
