@@ -2,7 +2,7 @@
   "meta": {
     "about": "삼성·LG 천장형 시스템에어컨 실내기 제원. 값은 CSV 원문 그대로이고 빈칸은 null(미확인). 추정·환산·반올림 없음.",
     "source": {
-      "dir": "Obsidian/Personal/reference/hvac-specs",
+      "dir": "에인연 제원 폴더",
       "files": [
         "data/samsung.csv",
         "data/lg.csv"

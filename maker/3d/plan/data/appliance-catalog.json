@@ -392,7 +392,7 @@
       "discontinued 는 raw 의 값 그대로다(true 820행 · false 941행 · null 248행). 기준은 discontinuedBasis 에 있고 null 은 판정 불가이며 카드에 단종 표시를 달지 않는다."
     ],
     "source": {
-      "dir": "hvac3d-lab/appliance-specs/raw",
+      "dir": "에인연 가전 제원 수집 폴더(raw)",
       "builder": "tools/build-appliance-catalog.py",
       "omittedMeta": {
         "method": "수집 과정 설명(raw 에 있다)",

@@ -268,9 +268,12 @@ def build():
             '크기 칸에 값이 둘 이상이거나 숫자 하나로 읽히지 않는 표기(슬래시 두 값, 상하·좌우 두 설치 형태, 괄호 안 다른 값)는 해당 축을 null 로 두었다.',
             f"discontinued 는 raw 의 값 그대로다(true {disc['total']['true']}행 · false {disc['total']['false']}행 · null {disc['total']['null']}행). 기준은 discontinuedBasis 에 있고 null 은 판정 불가이며 카드에 단종 표시를 달지 않는다.",
         ],
-        'source': {'dir': 'hvac3d-lab/appliance-specs/raw', 'builder': 'tools/build-appliance-catalog.py', 'omittedMeta': DROP_META},
+        'source': {'dir': '에인연 가전 제원 수집 폴더(raw)', 'builder': 'tools/build-appliance-catalog.py', 'omittedMeta': DROP_META},
         'files': per_file,
     }
+    leak = re.search(r'/Users/|/home/|Mobile Documents|CloudDocs|Obsidian|~/|hvac3d-lab', json.dumps(meta, ensure_ascii=False))   # meta 는 공개 사이트로 나간다 — 로컬 경로·작업 저장소 이름이 섞이면 멈춘다
+    if leak:
+        die(f'meta 에 로컬 경로가 섞였습니다: {leak.group(0)!r} (출처는 사람이 읽는 이름만 적는다)')
     return meta, rows
 
 

@@ -58,6 +58,22 @@ const r2 = (v) => Math.round(v * 100) / 100;
   assert.ok(!/#[0-9a-fA-F]{6}\b/.test(read('data/ac-catalog.json') + read('data/templates.json')), 'hex 색은 finishes.json 에만');
   for (const [n, fn] of Object.entries({ mountPanel: P.mountPanel, openEstimate: E.openEstimate, buildEstimate: E.buildEstimate, toCsv: E.toCsv, loadTemplates: P.loadTemplates })) assert.strictEqual(typeof fn, 'function', n);
 
+  { // 접근성: 제품 판 안내문은 실제 동작대로 + 키보드 문구는 따로(폰·터치에서 감춘다) · 가로로 넘치는 견적 표 상자는 키보드 초점을 받는다
+    const pn = read('panels.js'), est = read('estimate.js');
+    assert.ok(!/방향키로 고르고 Enter 로 놓습니다/.test(pn), '옛 안내문(카드에서 Enter 는 놓지 않고 도구만 켠다)이 남지 않는다');
+    assert.strictEqual((pn.match(/hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기/g) || []).length, 2, '시스템에어컨·가전 판: 카드를 고른 뒤 캔버스를 눌러 놓는다 + 키보드 문구');
+    assert.ok(/hint: '누르면 현재 층 벽·바닥에 적용됩니다', hintKeys: 'F 즐겨찾기'/.test(pn), '마감재 판도 F 즐겨찾기는 키보드 문구');
+    assert.ok(/h\('p', \{ class: 'pl-hint' \}, cfg\.hint, cfg\.hintKeys && h\('span', \{ class: 'pl-kb' \}, ` · \$\{cfg\.hintKeys\}`\)\)/.test(pn), '키보드 문구는 .pl-kb 안(폰·터치에서 감춘다)');
+    const mk = (tag) => ({ nodeType: 1, tag, attrs: {}, kids: [], className: '', setAttribute(k, v) { this.attrs[k] = v; }, addEventListener() {}, append(...c) { this.kids.push(...c); } });
+    globalThis.document = { createElement: mk, createTextNode: (t) => ({ nodeType: 3, text: String(t) }) };
+    try {
+      const tree = E.renderEstimate(E.buildEstimate(JSON.parse(read('data/templates.json')).templates[0].doc)), wraps = [], walk = (n) => { if (n.tag) { if (n.className === 'pl-est-wrap') wraps.push(n); n.kids.forEach(walk); } };
+      walk(tree);
+      assert.ok(wraps.length >= 2, '표 상자가 둘 이상');
+      for (const w of wraps) { const cap = w.kids[0].kids.find((k) => k.tag === 'caption').kids[0].text; assert.deepStrictEqual({ tabindex: w.attrs.tabindex, role: w.attrs.role, label: w.attrs['aria-label'] }, { tabindex: '0', role: 'region', label: cap }, `표 상자(${cap}) — tabindex 0 · region · 캡션 이름`); }
+    } finally { delete globalThis.document; }
+    assert.ok(/class: 'pl-est-wrap', tabindex: '0', role: 'region', 'aria-label': caption/.test(est), 'estimate.js: 표 상자 초점·이름'); }
+
   /* ===== 1. 카탈로그 ===== */
   const cat = JSON.parse(read('data/ac-catalog.json'));
   assert.strictEqual(Object.keys(cat)[0], 'meta', 'meta 가 맨 위');
@@ -68,6 +84,9 @@ const r2 = (v) => Math.round(v * 100) / 100;
   assert.strictEqual(new Set(ids).size, ids.length, 'id 유일');
   for (const k of ['source', 'readme', 'included', 'excluded', 'columns']) assert.ok(cat.meta[k], 'meta.' + k);
   assert.ok(cat.meta.readme.reliability.length >= 3 && cat.meta.readme.rules.length >= 3 && /^\d{4}-\d{2}-\d{2}$/.test(cat.meta.readme.checked), 'README 신뢰도·규칙·수집일이 meta 에');
+  // 이 파일은 공개 사이트로 나간다 — 출처는 사람이 읽는 이름만, 로컬 경로·볼트 이름은 싣지 않는다
+  assert.strictEqual(cat.meta.source.dir, '에인연 제원 폴더');
+  assert.ok(!/\/Users\/|\/home\/|Mobile Documents|CloudDocs|Obsidian|~\//.test(JSON.stringify(cat.meta)), 'meta 에 로컬 경로·볼트 이름이 없다');
   assert.ok(/실외기/.test(cat.meta.excluded) && /세트/.test(cat.meta.excluded), '제외 이유를 meta 에');
   for (const m of models) {
     assert.ok(MODELS.includes(m.type), m.id + ' type');

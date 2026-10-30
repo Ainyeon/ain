@@ -87,7 +87,7 @@ def build():
         die(f'4way 본체 가로 {bodies} — 미니 4Way 기준({MINI_4WAY_MAX_BODY_W_MM})으로 가를 수 없는 값이 있습니다')
     meta = {
         'about': '삼성·LG 천장형 시스템에어컨 실내기 제원. 값은 CSV 원문 그대로이고 빈칸은 null(미확인). 추정·환산·반올림 없음.',
-        'source': {'dir': 'Obsidian/Personal/reference/hvac-specs', 'files': ['data/samsung.csv', 'data/lg.csv'], 'sha256': hashes, 'builder': 'tools/build-ac-catalog.py'},
+        'source': {'dir': '에인연 제원 폴더', 'files': ['data/samsung.csv', 'data/lg.csv'], 'sha256': hashes, 'builder': 'tools/build-ac-catalog.py'},
         'counts': {'models': len(models), 'byFile': counts, 'byType': {t: sum(1 for m in models if m['type'] == t) for t in ('1way', '2way', '4way', 'mini4way', '360')}},
         'readme': readme_blocks(),
         'included': '천장형 실내기만: CSV unit_type=실내기 이고 form 이 1way·2way·4way·360 인 행. 형식(type)은 form 그대로이고, 4way 중 본체 가로가 %dmm 미만이면 mini4way(삼성 미니·인테리어 4Way 575×250×575).' % MINI_4WAY_MAX_BODY_W_MM,
@@ -99,6 +99,9 @@ def build():
             'currentUncertain': 'CSV note 에 "현행 불확실"이 적힌 행',
         },
     }
+    leak = re.search(r'/Users/|/home/|Mobile Documents|CloudDocs|Obsidian|~/', json.dumps(meta, ensure_ascii=False))   # meta 는 공개 사이트로 나간다 — 로컬 경로·볼트 이름이 섞이면 멈춘다
+    if leak:
+        die(f'meta 에 로컬 경로가 섞였습니다: {leak.group(0)!r} (출처는 사람이 읽는 이름만 적는다)')
     return {'meta': meta, 'models': models}
 
 
