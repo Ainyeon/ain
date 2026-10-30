@@ -59,7 +59,8 @@
   var num = function (n) { var m = /(\d+)$/.exec(n); return m ? +m[1] : 0; };
   var uniq = function (a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); };
   var hitsOf = function (table, t) { var o = []; for (var i = 0; i < table.length; i++) { var m = table[i][1].exec(t); if (m) o.push({ k: table[i][0], e: m.index + m[0].length }); } return o; };
-  var negNear = function (t, e) { return NEGW.test(t.slice(e, e + 5)); };   // 낱말 바로 뒤 5글자(조사·'안 할래'·'빼줘')만 — 멀리 있는 다른 절은 보지 않는다
+  var NOTNEG = /안(?=방|내|쪽|에|으로|의|팎)/g;   // 안방·안내·안쪽·안에·안으로·안의·안팎의 '안' 은 부정이 아니다('안 해'·'안 돼'·'안 좋아'는 그대로 부정)
+  var negNear = function (t, e) { return NEGW.test(t.slice(e, e + 7).replace(NOTNEG, '_').slice(0, 5)); };   // 낱말 바로 뒤 5글자(조사·'안 할래'·'빼줘')만 — 멀리 있는 다른 절은 보지 않는다. 5글자 끝의 '안' 뒤 낱말까지 보려고 7글자를 자른다
 
   function parse(text, ctx) {
     ctx = ctx || {};
