@@ -68,6 +68,9 @@ for (const f of partners) {
   assert.ok(/^https:\/\//.test(c.home), id + ': home 은 https');
   for (const k of ['accent', 'accentBg', 'accentLine']) assert.ok(/^#[0-9a-f]{6}$/i.test(c[k]), id + ': ' + k);
   assert.ok(cr(c.accent, '#ffffff') >= 4.5 && cr(c.accent, c.accentBg) >= 4.5, id + ': 강조색 글자 대비 4.5 이상');
+  const bg = /--c-bg:\s*(#[0-9a-f]{6})/i.exec(read('assets/css/design-tokens.css'));   // 선택된 번호 이름은 페이지 바탕 위에 놓인다 — studio.js 의 런타임 검증과 같은 쌍
+  assert.ok(bg && cr(c.accent, bg[1]) >= 4.5, id + ': 강조색 × 페이지 바탕(--c-bg) 대비 4.5 이상(런타임이 이 쌍도 검사해 모자라면 파트너 색을 버린다)');
+  assert.ok(js.includes("getPropertyValue('--c-bg')"), 'studio.js 가 파트너 강조색을 페이지 바탕과도 검사한다');
   assert.ok(cr(c.accentLine, '#5C5850') >= 4.5, id + ': 비활성 [만들기](accentLine 면 + 보조 글자색) 대비 4.5 이상');
   assert.ok(Array.isArray(c.hosts) && c.hosts.every((o) => /^https:\/\/[a-z0-9.-]+$/.test(o)), id + ': hosts 는 https 출처만(경로 없음)');
   assert.ok((c.hide || []).every((k) => k === 'tools'), id + ': hide 는 tools 만');
@@ -126,5 +129,9 @@ assert.ok(/html\[data-embed\] \.page-head > div:first-child/.test(css) && !/html
   const wiz = page.slice(page.indexOf('id="stIn"'), page.indexOf('</section>', page.indexOf('id="stIn"')));
   assert.ok(/id="stDropF"/.test(wiz) && /id="stFileF"/.test(wiz) && /st-fold-in/.test(wiz), '드롭 칸·파일 줄은 접히는 칸 안에');
 }
+
+// 말로 시키기(2026-10-29) — ask.js 는 페이지와 sw SHELL 에 같은 주소로, 카드는 임베드에서 숨긴다
+assert.ok(page.includes('/maker/3d/ask.js?v=1') && sw.includes("'/maker/3d/ask.js?v=1'") && /id="stAskForm"/.test(page), 'ask.js 와 말로 시키기 카드');
+assert.ok(/html\[data-embed\] \.st-ask\s*\{\s*display:\s*none/.test(css), '임베드(호스트 화면 안)에서는 말로 시키기 카드를 숨긴다');
 
 console.log('test-studio-live: OK');

@@ -1,0 +1,34 @@
+{
+  "meta": {
+    "about": "벽·바닥 마감 색 견본. 상품·가격·제조사 이름이 없는 에인연 자체 목록이다. sw(색 견본 hex)는 이 파일에서만 hex 를 쓴다 — 화면 CSS 는 토큰만 쓴다.",
+    "apply": "카드를 누르면 현재 층 finish[target] 에 id 를 넣는다: store.exec({type:'setFloor', patch:{finish:{wall|floor: id}}}). 빈 문자열 ''은 마감 없음.",
+    "fields": { "id": "finish 값으로 저장되는 이름", "target": "wall | floor", "chip": "분류 칩 id", "name": "화면에 보이는 이름", "sw": "색 견본 hex" }
+  },
+  "chips": [
+    { "id": "white", "name": "화이트" },
+    { "id": "gray", "name": "그레이" },
+    { "id": "wood", "name": "우드" },
+    { "id": "hardwood", "name": "강마루" },
+    { "id": "tile", "name": "타일" },
+    { "id": "concrete", "name": "콘크리트" }
+  ],
+  "finishes": [
+    { "id": "wall-white", "target": "wall", "chip": "white", "name": "화이트", "sw": "#F4F3EF" },
+    { "id": "wall-offwhite", "target": "wall", "chip": "white", "name": "오프화이트", "sw": "#E9E5DA" },
+    { "id": "wall-gray-light", "target": "wall", "chip": "gray", "name": "라이트 그레이", "sw": "#D8D7D3" },
+    { "id": "wall-gray-warm", "target": "wall", "chip": "gray", "name": "웜 그레이", "sw": "#BCB7AD" },
+    { "id": "wall-gray-charcoal", "target": "wall", "chip": "gray", "name": "차콜", "sw": "#4A4945" },
+    { "id": "wall-wood-oak", "target": "wall", "chip": "wood", "name": "오크 패널", "sw": "#C9A57A" },
+    { "id": "wall-wood-walnut", "target": "wall", "chip": "wood", "name": "월넛 패널", "sw": "#7A5B3F" },
+    { "id": "wall-tile-white", "target": "wall", "chip": "tile", "name": "화이트 타일", "sw": "#EEEEEA" },
+    { "id": "wall-concrete", "target": "wall", "chip": "concrete", "name": "노출 콘크리트", "sw": "#A7A7A2" },
+    { "id": "floor-hardwood-light", "target": "floor", "chip": "hardwood", "name": "밝은 오크 강마루", "sw": "#D2B48C" },
+    { "id": "floor-hardwood-natural", "target": "floor", "chip": "hardwood", "name": "내추럴 오크 강마루", "sw": "#B98E5B" },
+    { "id": "floor-hardwood-walnut", "target": "floor", "chip": "hardwood", "name": "월넛 강마루", "sw": "#6E4F36" },
+    { "id": "floor-hardwood-gray", "target": "floor", "chip": "hardwood", "name": "그레이 강마루", "sw": "#8C8780" },
+    { "id": "floor-tile-white", "target": "floor", "chip": "tile", "name": "화이트 타일", "sw": "#E7E7E3" },
+    { "id": "floor-tile-gray", "target": "floor", "chip": "tile", "name": "그레이 타일", "sw": "#B3B3AE" },
+    { "id": "floor-tile-charcoal", "target": "floor", "chip": "tile", "name": "차콜 타일", "sw": "#55554F" },
+    { "id": "floor-concrete", "target": "floor", "chip": "concrete", "name": "폴리싱 콘크리트", "sw": "#9B9A95" }
+  ]
+}
