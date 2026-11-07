@@ -23,6 +23,11 @@
   <style>
     /* 페이지 로컬: 토큰만 소비 */
     .price-note{padding:var(--sp-5) 0 var(--sp-8);color:var(--c-ink-sub);font-size:var(--fs-4);line-height:1.6}
+    .krw-body{display:flex;flex-wrap:wrap;align-items:flex-end;gap:var(--sp-4) var(--sp-6);padding:var(--sp-5)}
+    .krw-big{font-size:var(--fs-1);font-weight:var(--fw-bold);color:var(--c-ink)}
+    .krw-sub{color:var(--c-ink-sub);font-size:var(--fs-4);line-height:1.6;margin-top:4px}
+    .krw-spark{flex:1 1 220px;min-width:0;max-width:420px;height:56px;color:var(--c-accent)}
+    .krw-spark svg{width:100%;height:100%;display:block}
   </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js?v=30"></script>
@@ -60,6 +65,21 @@
         </div>
       </div>
     </header>
+
+    <!-- 구리 원화 환산 — price_history(22_price_history.sql)가 없으면 통째로 숨긴 채 둔다 -->
+    <section class="panel" aria-labelledby="hKrw" id="krwPanel" hidden>
+      <div class="phead">
+        <svg class="icon"><use href="#i-chart"/></svg>
+        <h2 id="hKrw">구리 원화 환산</h2>
+      </div>
+      <div class="krw-body">
+        <div>
+          <div class="krw-big num" id="krwNow">-</div>
+          <div class="krw-sub" id="krwSub"></div>
+        </div>
+        <div class="krw-spark" id="krwSpark" role="img" aria-label="최근 구리 원화 환산값 흐름"></div>
+      </div>
+    </section>
 
     <section class="panel" aria-labelledby="hPrices">
       <div class="phead">
@@ -151,7 +171,50 @@
         console.error(e);
       }
     }
-    addEventListener("DOMContentLoaded", () => { ainAuth.init("authSlot"); render(); });
+    // 구리(전기동) 달러/톤 × 원/달러 ÷ 1000 = 원/kg. 같은 날 두 값이 다 있는 날만 쓴다.
+    // 업자는 달러/톤을 보지 않는다 — 동관 값이 오를지 내릴지 가늠하는 방향 지표로만 보여 준다(소매가 아님).
+    function krwPerKg(hist) {
+      const by = {};
+      hist.forEach((h) => { (by[h.day] = by[h.day] || {})[h.item_id] = Number(h.price); });
+      return Object.keys(by).sort()
+        .filter((d) => Number.isFinite(by[d].copper) && Number.isFinite(by[d].usd_krw))
+        .map((d) => ({ day: d, v: by[d].copper * by[d].usd_krw / 1000 }));
+    }
+    function sparkSvg(pts) {
+      const W = 300, H = 56, P = 3;
+      const vs = pts.map((p) => p.v), lo = Math.min(...vs), hi = Math.max(...vs), span = hi - lo || 1;
+      const xy = pts.map((p, i) => [P + (W - 2 * P) * (pts.length > 1 ? i / (pts.length - 1) : 0.5), P + (H - 2 * P) * (1 - (p.v - lo) / span)]);
+      const line = xy.map(([x, y], i) => (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1)).join(" ");
+      const [ex, ey] = xy[xy.length - 1];
+      return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><path d="${line}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/><circle cx="${ex.toFixed(1)}" cy="${ey.toFixed(1)}" r="3" fill="currentColor"/></svg>`;
+    }
+    async function renderKrw() {
+      try {
+        const since = new Date(Date.now() - 120 * 86400e3).toISOString().slice(0, 10);
+        const { data, error } = await ainAuth.getClient().from("price_history")
+          .select("item_id,day,price").in("item_id", ["copper", "usd_krw"]).gte("day", since).order("day");
+        if (error) throw error;
+        const pts = krwPerKg(data || []);
+        if (!pts.length) return;
+        const now = pts[pts.length - 1];
+        // 약 한 달 전과 비교 — 그날 값이 없으면 그 이전 가장 가까운 날
+        const monthAgo = new Date(new Date(now.day).getTime() - 30 * 86400e3).toISOString().slice(0, 10);
+        const ref = [...pts].reverse().find((p) => p.day <= monthAgo);
+        const won = (v) => Math.round(v).toLocaleString("ko-KR");
+        document.getElementById("krwNow").textContent = `kg당 약 ${won(now.v)}원`;
+        let sub = `${now.day.slice(5).replace("-", ".")} 기준 · 국제 시세 × 환율로 계산한 값입니다. 동관 소매가와 다릅니다.`;
+        if (ref) {
+          const pct = (now.v / ref.v - 1) * 100;
+          sub = `한 달 전(${ref.day.slice(5).replace("-", ".")})보다 ${pct > 0 ? "+" : ""}${pct.toFixed(1)}% · ` + sub;
+        }
+        document.getElementById("krwSub").textContent = sub;
+        if (pts.length > 1) document.getElementById("krwSpark").innerHTML = sparkSvg(pts.slice(-90));
+        document.getElementById("krwPanel").hidden = false;
+      } catch (e) {
+        console.warn("구리 원화 환산을 건너뜀", e);   // 표가 아직 없으면 조용히 숨긴 채 둔다
+      }
+    }
+    addEventListener("DOMContentLoaded", () => { ainAuth.init("authSlot"); render(); renderKrw(); });
   </script>
 </body>
 </html>

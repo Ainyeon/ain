@@ -281,8 +281,44 @@
     });
   }
 
+  // ── 비회원도 읽는 자유게시판·제안 (supabase/21_open_board.sql) ──
+  // 공감·찬반·댓글 수는 집계 뷰에서, 내 표는 회원일 때만 votes 의 내 행에서 읽는다.
+  // 반환 {postId: {up, down, comments, mine}}
+  async function readStats(ids, myId) {
+    const out = {};
+    if (!ids.length) return out;
+    const [s, mine] = await Promise.all([
+      db().from('v_post_stats').select('post_id,up,down,comments').in('post_id', ids),
+      myId ? db().from('votes').select('post_id,vote').in('post_id', ids).eq('user_id', myId) : Promise.resolve({ data: [] })
+    ]);
+    if (s.error) console.warn(s.error);
+    const get = (id) => out[id] || (out[id] = { up: 0, down: 0, comments: 0, mine: null });
+    (s.data || []).forEach((r) => Object.assign(get(r.post_id), { up: r.up, down: r.down, comments: r.comments }));
+    (mine.data || []).forEach((v) => { get(v.post_id).mine = v.vote; });
+    return out;
+  }
+  // 댓글 — 작성자 id 대신 is_mine 이 온다. author 는 authorBadge 가 읽는 모양으로 맞춘다.
+  async function readComments(postId) {
+    const { data, error } = await db().from('v_comments')
+      .select('id,body,created_at,is_mine,author_nick,author_field,author_role')
+      .eq('post_id', postId).order('created_at');
+    if (error) console.warn(error);
+    return (data || []).map((c) => Object.assign({}, c,
+      { author: { nickname: c.author_nick, field: c.author_field, role: c.author_role } }));
+  }
+  // 비회원 자리 표시: 읽기는 그대로 두고, 쓰는 자리에만 로그인 안내를 둔다
+  function loginBox(text) {
+    return '<div class="gate-msg">' + text
+      + '<br><button type="button" class="gate-cta" data-login>카카오 로그인</button></div>';
+  }
+  function bindLogin(root) {
+    (root || document).querySelectorAll('[data-login]').forEach((b) =>
+      b.addEventListener('click', () => loginWithKakao()));
+  }
+
   window.ainCommunity = { FIELD_LABELS, FIELD_LEGACY, fieldLabel, getMyProfile, requireMember,
     authorBadge, authorBadgeOf, isStaff, authorSelect, timeAgo, report, fetchTeaser, postHref, boardName,
     readPosts, readMyPosts, anonymousReady, loadSaves, addSave, removeSave, savesReady, saveKey,
-    loginWithKakao, maskContacts, REPORT_REASONS, SUBSIDY_LABELS, subsidyLabel, caps };
+    loginWithKakao, maskContacts, REPORT_REASONS, SUBSIDY_LABELS, subsidyLabel, caps,
+    readStats, readComments, loginBox, bindLogin };
 })();

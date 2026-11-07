@@ -15,11 +15,11 @@ const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 
-// v_posts가 실제로 내보내는 열. 뷰는 15에서 만들고 16(구인·구직)에서 열이 하나 늘어난다 —
-// 마지막 정의를 기준으로 읽는다.
-const sql15 = fs.readFileSync(path.join(ROOT, 'supabase', '15_launch.sql'), 'utf8');
-const sql16 = fs.readFileSync(path.join(ROOT, 'supabase', '16_jobs_board.sql'), 'utf8');
-const sql = sql16.includes('view public.v_posts as') ? sql16 : sql15;
+// v_posts가 실제로 내보내는 열. 뷰는 15에서 만들고 16(구인·구직)에서 열이 하나 늘고
+// 21(비회원 읽기)에서 다시 정의된다 — 가장 나중 파일의 정의를 기준으로 읽는다.
+const sql = ['21_open_board.sql', '16_jobs_board.sql', '15_launch.sql']
+  .map((f) => fs.readFileSync(path.join(ROOT, 'supabase', f), 'utf8'))
+  .find((s) => s.includes('view public.v_posts as'));
 const head = sql.indexOf('view public.v_posts as');
 const viewBody = sql.slice(head, sql.indexOf('from public.posts p', head));
 const VIEW_COLS = new Set(
@@ -39,11 +39,13 @@ const FULL_ROW = {
 };
 
 let requested = null;
-function fakeQuery() {
+// v_posts 만 요청 열을 기록하고 FULL_ROW 를 돌려준다. 집계·댓글 뷰(21_open_board)는 빈 결과.
+function fakeQuery(table) {
   const q = {
-    select(cols) { requested = cols; return q; },
-    eq: () => q, or: () => q, order: () => q, limit: () => q,
+    select(cols) { if (table === 'v_posts') requested = cols; return q; },
+    eq: () => q, or: () => q, order: () => q, limit: () => q, in: () => q,
     then: (res) => {
+      if (table !== 'v_posts') return Promise.resolve(res({ data: [], error: null }));
       const keys = requested.split(',').map((c) => c.trim()).filter(Boolean);
       // PostgREST처럼 요청한 열만 남긴다
       const row = {};
@@ -59,7 +61,7 @@ const ctx = {
   escT: (v) => String(v == null ? '' : v),
   location: { href: 'http://x/', pathname: '/', search: '', origin: 'http://x' },
   ainAuth: {
-    getClient: () => ({ from: () => fakeQuery(), auth: { signInWithOAuth: () => {} } }),
+    getClient: () => ({ from: (t) => fakeQuery(t), auth: { signInWithOAuth: () => {} } }),
     getSession: async () => ({ user: { id: 'u1' } })
   }
 };
