@@ -1,4 +1,5 @@
 // 제안·건의 게시판 — 찬반 투표(1인 1표, upsert 변경), 채택 임계 하이라이트.
+// 비회원도 읽는다(21_open_board). 제안·투표·의견은 회원만 — 누르면 로그인 안내.
 (function () {
   'use strict';
   // 표 수는 우선순위를 보는 신호일 뿐 개발 약속이 아니다 (SPEC ②).
@@ -16,6 +17,7 @@
   const db = () => ainAuth.getClient();
   const C = () => window.ainCommunity;
   const qsId = () => new URLSearchParams(location.search).get('id');
+  const myId = (me) => (me.user ? me.user.id : null);
   let sortMode = 'votes'; // 'votes' | 'recent'
 
   function gate(html) { panel.innerHTML = '<div class="gate-msg">' + html + '</div>'; }
@@ -34,32 +36,6 @@
       + '상태: 투표중 · 채택됨 · 개발중 · 반영완료 · 보류(이유) · 안 함(이유)</div>';
   }
 
-  function teaserRender(rows) {
-    // 티저 뷰는 자유게시판·제안 글을 섞어 준다 — 제안만 보여 주고, 섞인 합계는 적지 않는다
-    const items = (rows || []).filter((r) => r.board_type === 'proposal').map((r) =>
-      '<div class="board-card board-teaser-blur" aria-hidden="true"><h2>' + escT(r.title) + '</h2>'
-      + '<div class="card-meta-line"><span class="status-badge status-' + escT(r.status) + '">'
-      + (STATUS_LABELS[r.status] || r.status) + '</span>'
-      + '<time>' + C().timeAgo(r.created_at) + '</time></div></div>').join('');
-    panel.innerHTML = rulesBanner()
-      + '<div class="gate-msg"><b>회원 전용입니다</b><br>'
-      + (qsId() ? '이 제안은 회원만 볼 수 있습니다. 로그인하면 바로 열립니다.<br>' : '')
-      + '카카오 계정으로 로그인하면 제안과 투표를 할 수 있습니다. 처음이면 닉네임과 주력분야만 정하면 됩니다.<br>'
-      + '<button type="button" class="gate-cta" id="gateLogin">카카오 로그인</button></div>'
-      + items;
-    document.getElementById('gateLogin').addEventListener('click', () => C().loginWithKakao());
-  }
-
-  // 투표 집계: votes 전체(회원 select) → {postId: {up, down, mine}}
-  function tally(votes, myId) {
-    const m = {};
-    for (const v of votes || []) {
-      const t = m[v.post_id] || (m[v.post_id] = { up: 0, down: 0, mine: null });
-      t[v.vote]++;
-      if (v.user_id === myId) t.mine = v.vote;
-    }
-    return m;
-  }
   function reached(t) {
     const total = t.up + t.down;
     return t.up >= THRESHOLD_COUNT && total > 0 && t.up / total >= THRESHOLD_RATE;
@@ -90,6 +66,7 @@
   }
 
   async function castVote(me, postId, vote, mine) {
+    if (!me.user) { C().loginWithKakao(); return; }   // 투표는 회원만
     // 이미 누른 쪽을 다시 누르면 투표를 거둔다 (자유게시판 공감과 같은 동작)
     const { error } = mine === vote
       ? await db().from('votes').delete().eq('post_id', Number(postId)).eq('user_id', me.user.id)
@@ -105,19 +82,16 @@
       b.addEventListener('click', () => castVote(me, b.dataset.post, b.dataset.vote, b.dataset.mine)));
   }
 
-  async function fetchAll(myId) {
-    const [r, { data: votes }] = await Promise.all([
-      C().readPosts((q) => q.eq('board_type', 'proposal').order('created_at', { ascending: false }).limit(100), myId),   // 최신 100건
-      db().from('votes').select('post_id,user_id,vote')
-    ]);
-    return { posts: r.rows, votes, error: r.error };
+  async function fetchAll(uid) {
+    const r = await C().readPosts((q) => q.eq('board_type', 'proposal').order('created_at', { ascending: false }).limit(100), uid);   // 최신 100건
+    const stats = r.error ? {} : await C().readStats((r.rows || []).map((p) => p.id), uid);
+    return { posts: r.rows, stats, error: r.error };
   }
 
   async function renderList(me) {
-    const { posts, votes, error } = await fetchAll(me.user.id);
+    const { posts, stats, error } = await fetchAll(myId(me));
     if (error) { gate('게시판 준비 중입니다. 잠시 후 다시 확인해 주세요.'); console.warn(error); return; }
-    const t = tally(votes, me.user.id);
-    const get = (id) => t[id] || { up: 0, down: 0, mine: null };
+    const get = (id) => stats[id] || { up: 0, down: 0, mine: null };
 
     const sorted = [...posts].sort((a, b) => sortMode === 'votes'
       ? get(b.id).up - get(a.id).up || new Date(b.created_at) - new Date(a.created_at)
@@ -149,8 +123,13 @@
         + statusBlock(p) + voteRowHtml(p.id, tv) + '</article>';
     }).join('') : '<p class="empty-note">등록된 제안이 없습니다.</p>';
 
-    panel.innerHTML = rulesBanner() + writeBlock + sortBlock + cards;
+    const write = me.user ? writeBlock : C().loginBox('제안·투표·의견은 회원만 할 수 있습니다. 처음이면 닉네임과 주력분야만 정하면 됩니다.');
+    panel.innerHTML = rulesBanner() + write + sortBlock + cards;
     bindVotes(me);
+    // 정렬을 바꾸면 목록을 다시 그린다 — 누른 버튼에 포커스를 돌려준다
+    document.getElementById('sortVotes').addEventListener('click', async () => { sortMode = 'votes'; await renderList(me); document.getElementById('sortVotes')?.focus(); });
+    document.getElementById('sortRecent').addEventListener('click', async () => { sortMode = 'recent'; await renderList(me); document.getElementById('sortRecent')?.focus(); });
+    if (!me.user) { C().bindLogin(panel); return; }
 
     const form = document.getElementById('writeForm');
     const openBtn = document.getElementById('writeOpen');
@@ -176,26 +155,24 @@
       if (err) { unlock(); alert('등록하지 못했습니다. 잠시 후 다시 시도해 주세요.'); console.error(err); return; }
       location.reload();
     });
-    // 정렬을 바꾸면 목록을 다시 그린다 — 누른 버튼에 포커스를 돌려준다
-    document.getElementById('sortVotes').addEventListener('click', async () => { sortMode = 'votes'; await renderList(me); document.getElementById('sortVotes')?.focus(); });
-    document.getElementById('sortRecent').addEventListener('click', async () => { sortMode = 'recent'; await renderList(me); document.getElementById('sortRecent')?.focus(); });
   }
 
   async function renderDetail(me, id) {
-    const [r, { data: votes }, { data: cmts }] = await Promise.all([
-      C().readPosts((q) => q.eq('id', id).eq('board_type', 'proposal'), me.user.id),
-      db().from('votes').select('post_id,user_id,vote').eq('post_id', id),
-      db().from('comments').select('id,body,created_at,author_id,author:profiles(' + C().authorSelect() + ')').eq('post_id', id).order('created_at')
+    const [r, stats, cmts] = await Promise.all([
+      C().readPosts((q) => q.eq('id', id).eq('board_type', 'proposal'), myId(me)),
+      C().readStats([Number(id)], myId(me)),
+      C().readComments(id)
     ]);
     const post = r.rows && r.rows[0];
     const error = r.error;
     if (error || !post) { gate('글을 찾을 수 없습니다. <br><br><a class="back-link" href="./">← 목록으로</a>'); return; }
-    // 조회수: 세션당 1회 증가 (RPC 미생성이어도 무시)
-    if (!sessionStorage.getItem('viewed_p' + id)) {
+    const guest = !me.user;
+    // 조회수: 회원만 세션당 1회 증가 (RPC 미생성이어도 무시)
+    if (!guest && !sessionStorage.getItem('viewed_p' + id)) {
       sessionStorage.setItem('viewed_p' + id, '1');
       db().rpc('increment_post_view', { p_post_id: Number(id) }).then(() => {}, () => {});
     }
-    const tv = tally(votes, me.user.id)[post.id] || { up: 0, down: 0, mine: null };
+    const tv = stats[post.id] || { up: 0, down: 0, mine: null };
     const mine = !!post.is_mine;
 
     // 의견도 자유게시판 댓글과 같게: 본인은 삭제, 다른 사람 의견은 신고, 연락처는 가려서 보여 준다
@@ -203,27 +180,28 @@
       '<div class="cmt"><span class="author-line">' + C().authorBadge(c.author)
       + ' <time style="color:var(--c-ink-faint);font-size:var(--fs-4)">' + C().timeAgo(c.created_at) + '</time></span>'
       + '<div class="cmt-body">' + escT(C().maskContacts(c.body)) + '</div>'
-      + '<div class="post-tools">' + (c.author_id === me.user.id
+      + (guest ? '' : '<div class="post-tools">' + (c.is_mine
         ? '<button type="button" class="tool-link" data-del-cmt="' + c.id + '">삭제</button>'
-        : '<button type="button" class="tool-link" data-report-cmt="' + c.id + '">신고</button>') + '</div></div>').join('');
+        : '<button type="button" class="tool-link" data-report-cmt="' + c.id + '">신고</button>') + '</div>')
+      + '</div>').join('');
 
     panel.innerHTML =
       '<a class="back-link" href="./">← 목록으로</a>'
       + '<article class="board-card' + (reached(tv) && post.status === 'open' ? ' reach-highlight' : '') + '">'
       + '<div class="card-meta-line" style="margin:0 0 8px"><span class="status-badge status-' + escT(post.status) + '">'
       + (STATUS_LABELS[post.status] || post.status) + '</span>'
-      + '<span><span class="view-count">조회 ' + ((post.view_count || 0) + 1) + '</span> <time style="color:var(--c-ink-faint);font-size:var(--fs-4)">' + C().timeAgo(post.created_at) + '</time></span></div>'
+      + '<span><span class="view-count">조회 ' + ((post.view_count || 0) + (guest ? 0 : 1)) + '</span> <time style="color:var(--c-ink-faint);font-size:var(--fs-4)">' + C().timeAgo(post.created_at) + '</time></span></div>'
       + '<h2 style="font-size:var(--fs-1)">' + escT(post.title) + '</h2>'
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadgeOf(post) + '</span></div>'
       + '<div class="post-body">' + escT(C().maskContacts(post.body)) + '</div>'
       + statusBlock(post)
       + voteRowHtml(post.id, tv)
-      + '<div class="post-tools">'
-      + (mine
-        ? '<button type="button" class="tool-link" id="editPost">수정</button>'
-          + '<button type="button" class="tool-link" id="delPost">삭제</button>'
-        : '<button type="button" class="tool-link" id="repPost">신고</button>')
-      + '</div>'
+      + (guest ? '' : '<div class="post-tools">'
+        + (mine
+          ? '<button type="button" class="tool-link" id="editPost">수정</button>'
+            + '<button type="button" class="tool-link" id="delPost">삭제</button>'
+          : '<button type="button" class="tool-link" id="repPost">신고</button>')
+        + '</div>')
       + (mine ? '<form class="write-form" id="editForm" hidden>'
           + '<label class="write-hint" for="eTitle">제목 수정</label>'
           + '<input type="text" id="eTitle" maxlength="80" required value="' + escT(post.title) + '">'
@@ -234,11 +212,14 @@
       + '</article>'
       + '<section class="board-card"><b style="font-size:var(--fs-2)">의견 ' + (cmts || []).length + '</b>'
       + cmtHtml
-      + '<form class="cmt-form" id="cmtForm">'
-      + '<input type="text" id="cmtBody" placeholder="의견 남기기" maxlength="2000" required aria-label="의견 입력">'
-      + '<button type="submit">등록</button></form></section>';
+      + (guest ? C().loginBox('로그인하면 의견을 남길 수 있습니다.')
+        : '<form class="cmt-form" id="cmtForm">'
+          + '<input type="text" id="cmtBody" placeholder="의견 남기기" maxlength="2000" required aria-label="의견 입력">'
+          + '<button type="submit">등록</button></form>')
+      + '</section>';
 
     bindVotes(me);
+    if (guest) { C().bindLogin(panel); return; }
     const editBtn = document.getElementById('editPost');
     const editForm = document.getElementById('editForm');
     if (editBtn && editForm) {
@@ -295,7 +276,6 @@
     const me = await ainCommunity.requireMember();
     if (me.redirecting) return;
     if (me.infraError) { gate('게시판 준비 중입니다. 잠시 후 다시 확인해 주세요.'); return; }
-    if (!me.user) { teaserRender(await ainCommunity.fetchTeaser()); return; }
     const id = qsId();
     id ? renderDetail(me, id) : renderList(me);
   });

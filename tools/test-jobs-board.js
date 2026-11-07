@@ -63,7 +63,9 @@ function run({ boardType, search, rows, mine, member, teaser }) {
     maskContacts: (t) => t, subsidyLabel: () => null, report() {},
     SUBSIDY_LABELS: { none: '국비 없이 자비' }, loginWithKakao() {},
     requireMember: async () => (member === false ? {} : { user: { id: 'u1' }, profile: { nickname: 'ㅇㅇ' } }),
-    fetchTeaser: async () => teaser || []
+    fetchTeaser: async () => teaser || [],
+    readStats: async () => ({}), readComments: async () => [],
+    loginBox: (t) => '<div class="gate-msg">' + t + '<button data-login>카카오 로그인</button></div>', bindLogin() {}
   };
 
   const ctx = {
@@ -187,13 +189,21 @@ const settle = async () => { for (let i = 0; i < 10; i++) await new Promise((r) 
     await t.boot(); await settle();
     assert.ok(!t.panel.innerHTML.includes('자유게시판 비밀 제목') && !t.panel.innerHTML.includes('글 7개'), '구인 페이지에 게시판 티저가 나왔다');
     assert.ok(t.panel.innerHTML.includes('회원 전용'));
-    const tf = run({ member: false, teaser: [
-      { board_type: 'free', title: '자유 제목', created_at: '2026-09-10T00:00:00Z', total_count: 2 },
-      { board_type: 'proposal', title: '제안 제목', created_at: '2026-09-10T00:00:00Z', total_count: 2 }] });
+    // 자유게시판은 비회원도 읽는다(21_open_board) — 실제 목록 + 쓰는 자리에만 로그인 안내
+    const tf = run({ member: false, rows: [makeRow({ board_type: 'free', title: '자유 제목' })] });
     await tf.boot(); await settle();
-    assert.ok(tf.panel.innerHTML.includes('자유 제목'), '자유게시판 티저는 그대로');
-    assert.ok(!tf.panel.innerHTML.includes('제안 제목'), '자유게시판 티저에 제안 글이 섞였다');
-    assert.ok(!tf.panel.innerHTML.includes('글 2개'), '두 게시판을 합친 수를 이 게시판 수처럼 적었다');
+    assert.ok(tf.panel.innerHTML.includes('자유 제목'), '비회원에게 자유게시판 글이 안 보인다');
+    assert.ok(tf.calls.filters.some((f) => f[1] === 'board_type' && f[2] === 'free'), '비회원 목록도 자유게시판만');
+    assert.ok(tf.panel.innerHTML.includes('카카오 로그인') && !tf.panel.innerHTML.includes('id="writeForm"'), '비회원에게 글쓰기 폼이 나왔다');
+    const td = run({ member: false, search: '?id=11', rows: [makeRow({ board_type: 'free', title: '질문' })] });
+    await td.boot(); await settle();
+    assert.ok(td.panel.innerHTML.includes('질문'), '비회원이 글을 못 연다');
+    assert.ok(!td.panel.innerHTML.includes('id="cmtForm"') && !td.panel.innerHTML.includes('id="repPost"') && !td.panel.innerHTML.includes('id="editPost"'),
+      '비회원에게 댓글·신고·수정 자리가 나왔다');
+    // 입주 캘린더 글: 비회원에게 본문이 비어 오면 로그인 안내
+    const tm = run({ member: false, search: '?id=11', rows: [makeRow({ board_type: 'free', title: '입주 캘린더 · 11.8 수도권', ref_type: 'move_in', body: null })] });
+    await tm.boot(); await settle();
+    assert.ok(/회원만 볼 수 있습니다/.test(tm.panel.innerHTML) && !/>null</.test(tm.panel.innerHTML), '캘린더 글 비회원 안내가 없다');
   }
   // 8. 구인 글에 후기 양식(?form=review)·교육 연결(?ref=)이 붙지 않는다 (교육 후기 집계에 섞임 방지)
   {

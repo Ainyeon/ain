@@ -40,7 +40,9 @@
 2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
 3. **구 기능 목록 통과**: 메이커 캔버스 실렌더(#cv 크기>0) · 게시판 게이트/티저 렌더 ·
    입주 게이팅(비로그인 잠금 카드) · 시세 실데이터 · 업무 데모 견적서/보고서 이미지 생성 · 카드 데모 문의 접수
-   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`(PGlite) · 약관을 채운 뒤 `node tools/check-legal.js`
+   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`·`test-open-board-sql.mjs`(PGlite) · 약관을 채운 뒤 `node tools/check-legal.js`
+   · (21 적용 후) 비로그인 `/board/free/`·`/board/proposal/` = 목록·본문·댓글이 보이고 쓰기·댓글·공감·투표 자리는 로그인 안내,
+     입주 캘린더 글은 본문 잠김 · 구인·구직(`/edu/jobs/`)은 여전히 회원 전용
 4. **룩 혼재 push 금지**: 전 라우트가 design-tokens/components만 소비하는지
    `grep -rln "assets/css/ain.css" --include="*.html" .` 로 확인 (legacy/ 제외 0이어야 함)
 5. **로그인 필요 기능**(글 작성·삭제, 단지명 열람)은 무인 검증 불가 — 종료 요약에 사각으로 명시
@@ -83,5 +85,12 @@
   @supports 불투명 폴백·투명도 줄이기·고대비·인쇄 대응) + 전체 검토 반영(정보·커뮤니티·도구). 토큰: --c-ink-faint #6E6A61,
   입력 테두리 --c-control. **sw ain-v30, 전 자산 ?v=30, design-tokens ?v=12**, maker-core ASSET_V=30.
   업무 문서(견적서·보고서) 색은 work-doc.js C0 고정 — 화면 토큰을 바꿔도 문서는 흰 종이
+- 2026-11-08 (feat/open-board-daily-info, **운영 SQL 적용 완료**: site_21_open_board · site_22_price_history ·
+  site_22b_price_history_backfill — 적용 후 anon REST로 공개·차단 확인, 캘린더 글 4건·시세 132/120일 확인,
+  게시판 이용 규칙 공지(글 9) 게시): 자유게시판·제안 비회원 읽기(supabase/21 — v_posts anon,
+  v_comments·v_post_stats 신설, 원본 posts·comments·votes 는 회원 전용 그대로) · 입주 캘린더 글 자동 게시
+  (move_in_contents 트리거 → 자유게시판, 운영자 이름, 비회원은 본문 null) · 시세 날짜별 기록 price_history(22, 22b 백필) +
+  /prices/ 구리 원화 kg값. **적용 순서: SQL 21·22·22b → 프런트 push** (프런트만 먼저 나가면 비회원 게시판이 "준비 중").
+  sw VERSION 은 그대로(ain-v35, 배포 때 판단), ain-community·board-*.js 만 ?v=31. 공지 초안: docs/community/notice-drafts.md
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10
