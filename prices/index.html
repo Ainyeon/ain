@@ -69,7 +69,7 @@
     <!-- 구리 원화 환산 — price_history(22_price_history.sql)가 없으면 통째로 숨긴 채 둔다 -->
     <section class="panel" aria-labelledby="hKrw" id="krwPanel" hidden>
       <div class="phead">
-        <svg class="icon"><use href="#i-chart"/></svg>
+        <svg class="icon" aria-hidden="true"><use href="#i-chart"/></svg>
         <h2 id="hKrw">구리 원화 환산</h2>
       </div>
       <div class="krw-body">
@@ -200,13 +200,13 @@
         // 약 한 달 전과 비교 — 그날 값이 없으면 그 이전 가장 가까운 날
         const monthAgo = new Date(new Date(now.day).getTime() - 30 * 86400e3).toISOString().slice(0, 10);
         const ref = [...pts].reverse().find((p) => p.day <= monthAgo);
-        const won = (v) => Math.round(v).toLocaleString("ko-KR");
-        document.getElementById("krwNow").textContent = `kg당 약 ${won(now.v)}원`;
-        let sub = `${now.day.slice(5).replace("-", ".")} 기준 · 국제 시세 × 환율로 계산한 값입니다. 동관 소매가와 다릅니다.`;
-        if (ref) {
-          const pct = (now.v / ref.v - 1) * 100;
-          sub = `한 달 전(${ref.day.slice(5).replace("-", ".")})보다 ${pct > 0 ? "+" : ""}${pct.toFixed(1)}% · ` + sub;
-        }
+        const won = new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 });
+        const pctFmt = new Intl.NumberFormat("ko-KR", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: "exceptZero" });
+        // day 는 한국 날짜 문자열(YYYY-MM-DD) — UTC 자정으로 읽고 UTC 로 찍어 날짜가 밀리지 않게 한다
+        const md = (d) => new Intl.DateTimeFormat("ko-KR", { month: "2-digit", day: "2-digit", timeZone: "UTC" }).format(new Date(d + "T00:00:00Z"));
+        document.getElementById("krwNow").textContent = `kg당 약 ${won.format(now.v)}원`;
+        let sub = `${md(now.day)} 기준 · 국제 시세 × 환율로 계산한 값입니다. 동관 소매가와 다릅니다.`;
+        if (ref) sub = `한 달 전(${md(ref.day)})보다 ${pctFmt.format(now.v / ref.v - 1)} · ` + sub;
         document.getElementById("krwSub").textContent = sub;
         if (pts.length > 1) document.getElementById("krwSpark").innerHTML = sparkSvg(pts.slice(-90));
         document.getElementById("krwPanel").hidden = false;
