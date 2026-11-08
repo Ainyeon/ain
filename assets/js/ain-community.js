@@ -79,15 +79,17 @@
   ];
   const GRADE_NOTE = '하루에 글은 3개, 댓글은 10개까지만 셉니다. 익명 글은 세지 않습니다.';
 
-  // "닉네임 · 등급 · 분야뱃지" 통일 표기 (운영자·매니저는 등급 대신 전용 뱃지)
+  // "닉네임 · 등급 · 분야뱃지" 통일 표기.
+  // 운영자·매니저는 등급·분야 대신 역할 뱃지만 — 닉네임이 역할 이름과 같으면 닉네임도 생략
+  // (예전엔 '운영자 [운영자] [기타]'처럼 같은 말이 세 번 나왔다).
   function authorBadge(profile) {
     const nick = profile && profile.nickname ? profile.nickname : '알 수 없음';
-    const field = profile && profile.field ? fieldLabel(profile.field) : null;
-    const role = profile && ROLE_BADGES[profile.role]
-      ? '<span class="role-badge role-' + profile.role + '">' + ROLE_BADGES[profile.role] + '</span>' : '';
-    const grade = !role && profile && profile.grade
+    const staff = profile && ROLE_BADGES[profile.role];
+    const field = !staff && profile && profile.field ? fieldLabel(profile.field) : null;
+    const role = staff ? '<span class="role-badge role-' + profile.role + '">' + staff + '</span>' : '';
+    const grade = !staff && profile && profile.grade
       ? '<span class="grade-badge" title="회원 등급">' + escT(profile.grade) + '</span>' : '';
-    return '<span class="author-nick">' + escT(nick) + '</span>' + role + grade
+    return (staff && nick === staff ? '' : '<span class="author-nick">' + escT(nick) + '</span>') + role + grade
       + (field ? '<span class="field-badge">' + escT(field) + '</span>' : '');
   }
 
