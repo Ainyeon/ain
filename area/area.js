@@ -53,6 +53,25 @@
     return '<span class="dday' + (n <= 7 ? ' urgent' : '') + ' num">' + (n === 0 ? 'D-day' : 'D-' + n) + '</span>';
   }
 
+  // 청약홈 분양공고 상세(23). 분양 = 공급규모라 재건축 조합원분 등은 빠질 수 있다 — 단지 총세대수로 쓰지 않는다.
+  // 주택형은 전용면적 정수(㎡)로 묶어 세대 수를 더한다 (예: 84A·84B → 84㎡).
+  function typesText(types) {
+    if (!Array.isArray(types) || !types.length) return '';
+    const by = new Map();
+    types.forEach((t) => {
+      const a = Math.floor(Number(t && t.area));
+      if (a > 0) by.set(a, (by.get(a) || 0) + (Number(t.units) || 0));
+    });
+    const list = [...by].sort((x, y) => x[0] - y[0]);
+    const shown = list.slice(0, 6).map(([a, n]) => a + '㎡' + (n ? ' ' + n.toLocaleString('ko-KR') + '세대' : '')).join(' · ');
+    return list.length > 6 ? shown + ' 외 ' + (list.length - 6) + '개' : shown;
+  }
+  function detailLines(r) {
+    const line = (k, v) => v ? '<div class="edu-line"><span class="edu-k">' + esc(k) + '</span>' + esc(v) + '</div>' : '';
+    return line('분양', r.supply_households ? Number(r.supply_households).toLocaleString('ko-KR') + '세대 (청약홈 공급규모)' : '')
+      + line('시공', r.builder) + line('주택형', typesText(r.house_types));
+  }
+
   const heartSvg = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
     + '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>';
 
@@ -99,7 +118,7 @@
     // 공개 조건은 서버에서 건다 — 공개 대상에서 빠진 단지는 이름 자체를 응답으로 받지 않는다.
     // 지역·날짜 기본 필터는 넣지 않는다(저장한 단지가 그 때문에 탈락하면 안 되므로).
     const { data, error } = await db().from('move_in_complexes')
-      .select('id,complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in')
+      .select('id,complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in,supply_households,builder,house_types')
       .eq('id', id).eq('is_public', true).limit(1);
     if (error) {
       return '<div class="edu-note"><b>지금은 확인할 수 없습니다</b>'
@@ -123,6 +142,7 @@
       + '<h3>' + esc(name) + '</h3>'
       + '<div class="edu-org">' + esc(loc) + '</div>'
       + '<div class="edu-line">' + esc(moveInLabel(row.expected_move_in)) + '</div>'
+      + detailLines(row)
       + '<div class="edu-actions">' + saveBtn('complex', row.id, name, loc) + '</div>'
       + '</article>' + back;
   }
@@ -159,7 +179,7 @@
     }
 
     const { data, error } = await db().from('move_in_complexes')
-      .select('id,complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in')
+      .select('id,complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in,supply_households,builder,house_types')
       .eq('region', region).eq('is_public', true).gte('expected_move_in', kstToday())
       .order('expected_move_in', { ascending: true }).limit(60);
     if (error) return tabs + '<div class="edu-note"><b>입주 정보를 불러오지 못했습니다</b>잠시 후 새로고침 해주세요.</div>';
@@ -186,6 +206,7 @@
           + '<h3>' + esc(name) + '</h3>'
           + '<div class="edu-org">' + esc(loc) + '</div>'
           + '<div class="edu-line">' + esc(moveInLabel(r.expected_move_in)) + '</div>'
+          + detailLines(r)
           + '<div class="edu-actions">'
           + saveBtn('complex', r.id, name, loc) + '</div>'
           + '</article>';
