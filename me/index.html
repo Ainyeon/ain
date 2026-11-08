@@ -348,25 +348,56 @@
         '<button type="button" class="btn-line" id="pushBtn">' + (sub ? "끄기" : "켜기") + "</button>");
       const btn = document.getElementById("pushBtn");
       if (!btn) return;
+      const fail = (e) => {
+        console.warn("push", e);
+        alert("알림을 켜지 못했습니다(" + ((e && (e.name || e.code)) || "오류") + "). 잠시 후 다시 눌러 주세요.");
+      };
       btn.addEventListener("click", async () => {
         btn.disabled = true;
         try {
           if (sub) {
             await ainAuth.pushOff();
           } else {
-            if (await Notification.requestPermission() !== "granted") return renderPush(session, stale);
-            const next = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) });
-            const j = next.toJSON();
-            const { error } = await ainAuth.getClient().rpc("save_push_subscription",
-              { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
-            if (error) { await next.unsubscribe(); throw error; }
+            const answer = await Notification.requestPermission();
+            if (answer !== "granted" && Notification.permission === "default") {
+              // 크롬이 권한을 팝업 대신 주소창의 작은 종 아이콘으로 조용히 묻는 경우가 있다.
+              // 그 자리에서 나중에 허용하면 이 약속(promise)은 이미 끝나 있어 켜기가 이어지지 않았다(2026-11-08 첫 시도 실측).
+              show("주소창의 알림 아이콘에서 '허용'을 눌러 주세요", "허용하면 이 기기 알림이 바로 켜집니다");
+              whenGranted(() => subscribeHere(reg).catch(fail).then(() => renderPush(session, stale)));
+              return;
+            }
+            if (Notification.permission === "granted") await subscribeHere(reg);
           }
         } catch (e) {
-          console.warn("push", e);
-          alert("알림 설정을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.");
+          fail(e);
         }
         renderPush(session, stale);
       });
+    }
+
+    // 이 기기를 구독하고 서버에 저장. 첫 구독은 푸시 서비스 등록이 잠깐 실패하기도 해 한 번만 다시 시도한다.
+    async function subscribeHere(reg) {
+      const opts = { userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) };
+      let next;
+      try {
+        next = await reg.pushManager.subscribe(opts);
+      } catch (e) {
+        console.warn("push subscribe retry", e);
+        await new Promise((r) => setTimeout(r, 1500));
+        next = await reg.pushManager.subscribe(opts);
+      }
+      const j = next.toJSON();
+      const { error } = await ainAuth.getClient().rpc("save_push_subscription",
+        { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+      if (error) { await next.unsubscribe(); throw error; }
+    }
+
+    // 알림 권한이 나중에(주소창 아이콘·사이트 설정에서) '허용'으로 바뀌면 한 번 실행
+    function whenGranted(fn) {
+      if (!navigator.permissions || !navigator.permissions.query) return;
+      navigator.permissions.query({ name: "notifications" }).then((st) => {
+        st.onchange = () => { if (st.state === "granted") { st.onchange = null; fn(); } };
+      }).catch(() => {});
     }
 
     // ── 회원 등급 (24_member_grades) — 내 등급·숫자는 본인만, 등급표는 누구에게나 ──
