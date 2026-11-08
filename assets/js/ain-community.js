@@ -70,14 +70,34 @@
   const ROLE_BADGES = { admin: '운영자', manager: '매니저' };
   const isStaff = (p) => !!(p && ROLE_BADGES[p.role]);
 
-  // "닉네임 · 분야뱃지" 통일 표기 (+운영자·매니저 전용 뱃지)
+  // 회원 등급 — 이름·조건은 supabase/24_member_grades.sql 이 정본이다(계산은 서버, 여기는 설명만).
+  const GRADES = [
+    { name: '새싹', rule: '가입하면' },
+    { name: '일꾼', rule: '글 1개 또는 댓글 3개' },
+    { name: '단골', rule: '글 10개 또는 댓글 30개, 그리고 가입 30일' },
+    { name: '고수', rule: '운영자가 정합니다' }
+  ];
+  const GRADE_NOTE = '하루에 글은 3개, 댓글은 10개까지만 셉니다. 익명 글은 세지 않습니다.';
+
+  // "닉네임 · 등급 · 분야뱃지" 통일 표기 (운영자·매니저는 등급 대신 전용 뱃지)
   function authorBadge(profile) {
     const nick = profile && profile.nickname ? profile.nickname : '알 수 없음';
     const field = profile && profile.field ? fieldLabel(profile.field) : null;
     const role = profile && ROLE_BADGES[profile.role]
       ? '<span class="role-badge role-' + profile.role + '">' + ROLE_BADGES[profile.role] + '</span>' : '';
-    return '<span class="author-nick">' + escT(nick) + '</span>' + role
+    const grade = !role && profile && profile.grade
+      ? '<span class="grade-badge" title="회원 등급">' + escT(profile.grade) + '</span>' : '';
+    return '<span class="author-nick">' + escT(nick) + '</span>' + role + grade
       + (field ? '<span class="field-badge">' + escT(field) + '</span>' : '');
+  }
+
+  // 내 등급 — 본인만 읽는 v_my_grade. 비회원·뷰 없음이면 null.
+  async function readMyGrade() {
+    const user = await getSessionUser();
+    if (!user) return null;
+    const { data, error } = await db().from('v_my_grade').select('grade,posts,comments,days').limit(1);
+    if (error) { console.warn('v_my_grade', error); return null; }
+    return (data || [])[0] || null;
   }
 
   function timeAgo(iso) {
@@ -152,7 +172,7 @@
     + 'is_mine,author_nick,author_field,author_role';
   // 나중 마이그레이션(16_jobs_board)에서 붙는 열. 프런트가 SQL보다 먼저 배포돼도
   // 게시판이 통째로 멈추지 않게, 없으면 한 번만 빼고 다시 읽는다.
-  const POST_COLS_OPTIONAL = ['closed_at'];
+  const POST_COLS_OPTIONAL = ['closed_at', 'author_grade'];   // author_grade: 24_member_grades
   let postColsOptional = POST_COLS_OPTIONAL.slice();
   const postCols = () => postColsOptional.length
     ? POST_COLS_BASE + ',' + postColsOptional.join(',') : POST_COLS_BASE;
@@ -163,7 +183,7 @@
   function fromView(r) {
     return Object.assign({}, r, {
       author: r.is_anonymous ? null
-        : { nickname: r.author_nick, field: r.author_field, role: r.author_role }
+        : { nickname: r.author_nick, field: r.author_field, role: r.author_role, grade: r.author_grade }
     });
   }
   function fromLegacy(r, myId) {
@@ -300,11 +320,11 @@
   // 댓글 — 작성자 id 대신 is_mine 이 온다. author 는 authorBadge 가 읽는 모양으로 맞춘다.
   async function readComments(postId) {
     const { data, error } = await db().from('v_comments')
-      .select('id,body,created_at,is_mine,author_nick,author_field,author_role')
+      .select('id,body,created_at,is_mine,author_nick,author_field,author_role,author_grade')
       .eq('post_id', postId).order('created_at');
     if (error) console.warn(error);
     return (data || []).map((c) => Object.assign({}, c,
-      { author: { nickname: c.author_nick, field: c.author_field, role: c.author_role } }));
+      { author: { nickname: c.author_nick, field: c.author_field, role: c.author_role, grade: c.author_grade } }));
   }
   // 비회원 자리 표시: 읽기는 그대로 두고, 쓰는 자리에만 로그인 안내를 둔다
   function loginBox(text) {
@@ -320,5 +340,5 @@
     authorBadge, authorBadgeOf, isStaff, authorSelect, timeAgo, report, fetchTeaser, postHref, boardName,
     readPosts, readMyPosts, anonymousReady, loadSaves, addSave, removeSave, savesReady, saveKey,
     loginWithKakao, maskContacts, REPORT_REASONS, SUBSIDY_LABELS, subsidyLabel, caps,
-    readStats, readComments, loginBox, bindLogin };
+    readStats, readComments, loginBox, bindLogin, GRADES, GRADE_NOTE, readMyGrade };
 })();

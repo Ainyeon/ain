@@ -19,7 +19,7 @@
   <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
-  <link rel="stylesheet" href="/assets/css/components.css?v=30">
+  <link rel="stylesheet" href="/assets/css/components.css?v=31">
   <style>
     /* 페이지 로컬: 토큰만 소비. 예외 1건 주석 — 카카오 옐로(외부 브랜드) */
     /* 운영자 답변·보류 이유는 말줄임 줄(.row-meta) 안에 있어도 전부 보이게 */
@@ -50,7 +50,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js?v=30"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
-  <script defer src="/assets/js/ain-community.js?v=31"></script>
+  <script defer src="/assets/js/ain-community.js?v=32"></script>
 </head>
 <body class="has-tabbar">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -91,6 +91,11 @@
       <section class="panel">
         <div class="phead"><svg class="icon"><use href="#i-user"/></svg><h2>계정</h2></div>
         <div class="me-body" id="meCard"><div class="empty">계정 상태 확인 중</div></div>
+      </section>
+
+      <section class="panel" aria-labelledby="hGrade">
+        <div class="phead"><svg class="icon"><use href="#i-user"/></svg><h2 id="hGrade">회원 등급</h2></div>
+        <div class="rows" id="gradeRows"><div class="empty">확인 중</div></div>
       </section>
 
       <section class="panel" aria-labelledby="hSaved">
@@ -294,9 +299,33 @@
       // 이전 회원의 저장 목록·글이 화면에 남아 있으면 안 된다.
       document.getElementById("savedRows").innerHTML = '<div class="empty">확인 중</div>';
       document.getElementById("mineRows").innerHTML = '<div class="empty">확인 중</div>';
+      document.getElementById("gradeRows").innerHTML = '<div class="empty">확인 중</div>';
       document.getElementById("savedCnt").textContent = "—";
       document.getElementById("mineCnt").textContent = "—";
-      await Promise.all([renderSaved(session, stale), renderMine(session, stale)]);
+      await Promise.all([renderSaved(session, stale), renderMine(session, stale), renderGrade(session, stale)]);
+    }
+
+    // ── 회원 등급 (24_member_grades) — 내 등급·숫자는 본인만, 등급표는 누구에게나 ──
+    async function renderGrade(session, stale) {
+      const C = ainCommunity;
+      const table = C.GRADES.map((g) => rowEl(escT(g.name), escT(g.rule))).join("")
+        + '<div class="row"><div class="row-main"><div class="row-meta wrap">' + escT(C.GRADE_NOTE)
+        + ' 등급은 닉네임 옆에 붙는 표시이고, 글 읽기를 막지 않습니다.</div></div></div>';
+      const box = document.getElementById("gradeRows");
+      if (!session) { box.innerHTML = table; return; }
+      const g = await C.readMyGrade();
+      if (stale()) return;
+      if (!g) {
+        box.innerHTML = emptyRow("지금은 등급을 확인할 수 없습니다", "잠시 후 다시 열어 주세요") + table;
+        return;
+      }
+      // 고수는 운영자가 정하므로 '다음 등급' 안내는 단골까지만
+      const i = C.GRADES.findIndex((x) => x.name === g.grade);
+      const next = i >= 0 && i < 2 ? C.GRADES[i + 1] : null;
+      box.innerHTML = rowEl("지금 " + escT(g.grade),
+          "글 " + g.posts + " · 댓글 " + g.comments + " · " + (g.days > 0 ? "가입한 지 " + g.days + "일" : "오늘 가입"))
+        + (next ? rowEl("다음 " + escT(next.name), escT(next.rule)) : "")
+        + table;
     }
 
     addEventListener("DOMContentLoaded", () => {

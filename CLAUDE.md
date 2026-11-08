@@ -40,7 +40,7 @@
 2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
 3. **구 기능 목록 통과**: 메이커 캔버스 실렌더(#cv 크기>0) · 게시판 게이트/티저 렌더 ·
    입주 게이팅(비로그인 잠금 카드) · 시세 실데이터 · 업무 데모 견적서/보고서 이미지 생성 · 카드 데모 문의 접수
-   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`·`test-open-board-sql.mjs`·`test-movein-weather-sql.mjs`(PGlite) · 약관을 채운 뒤 `node tools/check-legal.js`
+   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`·`test-open-board-sql.mjs`·`test-movein-weather-sql.mjs`·`test-member-grades-sql.mjs`(PGlite) · 약관을 채운 뒤 `node tools/check-legal.js`
    · (21 적용 후) 비로그인 `/board/free/`·`/board/proposal/` = 목록·본문·댓글이 보이고 쓰기·댓글·공감·투표 자리는 로그인 안내,
      입주 캘린더 글은 본문 잠김 · 구인·구직(`/edu/jobs/`)은 여전히 회원 전용
 4. **룩 혼재 push 금지**: 전 라우트가 design-tokens/components만 소비하는지
@@ -99,5 +99,12 @@
   화면: 홈 '현장 날씨'(주의 기준 = 강수확률 60%↑·풍속 9m/s↑·최고 33℃↑·최저 -12℃↓, index.html 한 곳) · 홈 입주 줄에 분양 세대 ·
   /area/ 회원 카드에 분양·시공·주택형. area.js 만 ?v=31(sw SHELL 동일), VERSION 은 그대로 ain-v35.
   공급규모는 단지 총세대수가 아니다(조합원분 등 제외) — 화면에 '청약홈 공급규모'로 적는다
+- 2026-11-08 (feat/member-grades, **운영 SQL 적용 완료**: site_24_member_grades — 적용 후 anon REST로 v_posts author_grade 200·
+  v_member_grades·v_my_grade 401 확인): 회원 등급(무료, 카페식) 새싹(가입)·일꾼(글 1 또는 댓글 3)·단골(글 10 또는 댓글 30, 가입 30일)·
+  고수(운영자 지정 = profiles.grade_pin, 회원은 못 고침). 하루 글 3·댓글 10까지만 셈, 익명 글·입주 캘린더 자동 글 제외.
+  남에게는 등급 이름만(v_posts·v_comments author_grade, 익명 글 null), 숫자는 본인만(v_my_grade, /me/ '회원 등급').
+  등급으로 읽기를 막지 않는다. 등급 이름·조건 문구는 ain-community.js GRADES(계산은 SQL 24가 정본 — 바꿀 땐 둘 다).
+  운영자·매니저는 등급 대신 역할 배지. components.css ?v=31(.grade-badge) · ain-community.js ?v=32, VERSION 은 ain-v35 그대로.
+  고수 지정: update profiles set grade_pin = '고수' where id = …(운영 SQL, 사용자 결정 후)
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10
