@@ -177,7 +177,10 @@ self.addEventListener('push', (e) => {
     body: d.body || '',
     icon: '/assets/icon-192.png',
     data: { url: path },
-    tag: path                     // 같은 글 알림은 한 장으로 갈아 끼운다
+    tag: path,                    // 같은 글 알림은 한 장으로 갈아 끼운다
+    // 닫을 때까지 남는 알림. 맥에서 Chrome 짧은 배너가 꺼져 있으면 보통 알림은 화면에 안 뜬다
+    // (2026-11-08 운영자 맥 실측: 남는 알림만 보임). 안드로이드·아이폰은 이 값과 상관없이 알림 목록에 남는다.
+    requireInteraction: true
   }));
 });
 
