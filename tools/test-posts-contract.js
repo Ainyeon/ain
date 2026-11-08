@@ -17,7 +17,7 @@ const ROOT = path.join(__dirname, '..');
 
 // v_posts가 실제로 내보내는 열. 뷰는 15에서 만들고 16(구인·구직)에서 열이 하나 늘고
 // 21(비회원 읽기)에서 다시 정의된다 — 가장 나중 파일의 정의를 기준으로 읽는다.
-const sql = ['21_open_board.sql', '16_jobs_board.sql', '15_launch.sql']
+const sql = ['24_member_grades.sql', '21_open_board.sql', '16_jobs_board.sql', '15_launch.sql']
   .map((f) => fs.readFileSync(path.join(ROOT, 'supabase', f), 'utf8'))
   .find((s) => s.includes('view public.v_posts as'));
 const head = sql.indexOf('view public.v_posts as');
