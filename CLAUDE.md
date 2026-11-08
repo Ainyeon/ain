@@ -100,11 +100,12 @@
   /area/ 회원 카드에 분양·시공·주택형. area.js 만 ?v=31(sw SHELL 동일), VERSION 은 그대로 ain-v35.
   공급규모는 단지 총세대수가 아니다(조합원분 등 제외) — 화면에 '청약홈 공급규모'로 적는다
 - 2026-11-08 (feat/member-grades, **운영 SQL 적용 완료**: site_24_member_grades — 적용 후 anon REST로 v_posts author_grade 200·
-  v_member_grades·v_my_grade 401 확인): 회원 등급(무료, 카페식) 새싹(가입)·일꾼(글 1 또는 댓글 3)·단골(글 10 또는 댓글 30, 가입 30일)·
-  고수(운영자 지정 = profiles.grade_pin, 회원은 못 고침). 하루 글 3·댓글 10까지만 셈, 익명 글·입주 캘린더 자동 글 제외.
+  v_member_grades·v_my_grade 401 확인): 회원 등급(무료, 카페식) 막내(가입)·기사(글 1 또는 댓글 3)·반장(글 10 또는 댓글 30, 가입 30일)·
+  명장(운영자 지정 = profiles.grade_pin, 회원은 못 고침). 하루 글 3·댓글 10까지만 셈, 익명 글·입주 캘린더 자동 글 제외.
   남에게는 등급 이름만(v_posts·v_comments author_grade, 익명 글 null), 숫자는 본인만(v_my_grade, /me/ '회원 등급').
-  등급으로 읽기를 막지 않는다. 등급 이름·조건 문구는 ain-community.js GRADES(계산은 SQL 24가 정본 — 바꿀 땐 둘 다).
-  운영자·매니저는 등급 대신 역할 배지. components.css ?v=31(.grade-badge) · ain-community.js ?v=32, VERSION 은 ain-v35 그대로.
-  고수 지정: update profiles set grade_pin = '고수' where id = …(운영 SQL, 사용자 결정 후)
+  등급으로 읽기를 막지 않는다. 등급 이름·조건 문구는 ain-community.js GRADES(계산은 SQL 24·25가 정본 — 바꿀 땐 둘 다).
+  이름은 25_grade_names(site_25_grade_names, 사용자 A안: 새싹·일꾼·단골·고수 → 막내·기사·반장·명장). 24 를 다시 돌리면 이름이 되돌아간다.
+  운영자·매니저는 등급 대신 역할 배지. components.css ?v=31(.grade-badge) · ain-community.js ?v=33, VERSION 은 ain-v35 그대로.
+  명장 지정: update profiles set grade_pin = '명장' where id = …(운영 SQL, 사용자 결정 후)
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10
