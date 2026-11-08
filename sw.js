@@ -35,7 +35,7 @@ const SHELL = [
   '/assets/css/components.css?v=32',
   '/assets/js/ain-common.js?v=30',
   '/assets/js/ain-community.js?v=34',
-  '/auth.js?v=30',
+  '/auth.js?v=31',
   '/edu/edu.css?v=30',
   '/edu/edu-logic.js?v=30',
   '/edu/edu.js?v=30',
@@ -166,4 +166,29 @@ self.addEventListener('fetch', (e) => {
       })
     );
   }
+});
+
+// ── 웹 푸시(supabase/26_web_push.sql · push-drain) — 알림 띄우기, 누르면 그 화면 열기 ──
+// 내용은 보내는 함수가 만든 {title, body, url}. url 은 사이트 안 경로만 연다.
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data ? e.data.text() : '' }; }
+  const path = typeof d.url === 'string' && d.url.startsWith('/') ? d.url : '/';
+  e.waitUntil(self.registration.showNotification(d.title || '에인연', {
+    body: d.body || '',
+    icon: '/assets/icon-192.png',
+    data: { url: path },
+    tag: path                     // 같은 글 알림은 한 장으로 갈아 끼운다
+  }));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const target = new URL((e.notification.data && e.notification.data.url) || '/', self.location.origin);
+  if (target.origin !== self.location.origin) return;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+    const open = list.find((c) => c.url === target.href);
+    if (open) return open.focus();
+    return self.clients.openWindow(target.href);
+  }));
 });
