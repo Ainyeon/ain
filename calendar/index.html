@@ -13,14 +13,14 @@
   <meta property="og:image" content="https://ainyeon.com/assets/og-card-v2.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta name="theme-color" content="#F4F1EA">
+  <meta name="theme-color" content="#F3F2EF">
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
   <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <link rel="preconnect" href="https://oqgoibbhnidsveueifet.supabase.co">
 <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="/assets/css/design-tokens.css?v=13">
-<link rel="stylesheet" href="/assets/css/components.css?v=32">
+<link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
+<link rel="stylesheet" href="/assets/css/components.css?v=31">
   <style>
     :root {
       color-scheme: only light;
@@ -420,7 +420,7 @@
 <body class="has-tabbar">
   <nav class="tnav">
     <div class="tnav-in">
-      <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#111111"/><stop offset="1" stop-color="#111111"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
+      <a class="brand" href="/"><svg class="brand-word" viewBox="0 0 929 307" role="img" aria-label="A.IN"><defs><linearGradient id="bgw" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D4A9E"/><stop offset="1" stop-color="#9E2D3D"/></linearGradient></defs><g fill="url(#bgw)"><path d="M149 0L0 303L202 302L178 250L85 249L179 61L298 303L358 303L211 1Z"/><circle cx="427" cy="268" r="40"/><path d="M510 0L509 302L565 303L565 0Z"/><path d="M633 0L632 302L688 302L689 88L862 303L927 303L928 1L872 1L871 224L693 0Z"/></g></svg><span class="brand-name">에어컨 인테리어 연구소</span></a>
       <div class="tnav-links">
         <a href="/">홈</a>
         <a href="/edu/">교육·일자리</a>
@@ -494,14 +494,14 @@
   <script>
     const VIEW_NAME = "public_move_in_calendar";
     const STAGE_ORDER = ["신규", "D-180 ~ D-91", "D-90 ~ D-31", "D-30 ~ 입주", "입주중 ~ D+90", "D+90 ~ D+180"];
-    // 스테이지 팔레트 — 디자인 토큰 값과 동일 hex (신문 컨셉 11-08: 임박=포인트 주황 / 진행=잉크 / 원거리·완료=뉴트럴)
+    // 스테이지 팔레트 — 디자인 토큰 값과 동일 hex (임박=적 / 진행=딥블루 / 원거리·완료=뉴트럴)
     const STAGE_META = {
-      "신규": { name: "신규", badge: "신규", color: "#111111", soft: "#EDE8DD", text: "#111111" },
-      "D-180 ~ D-91": { name: "D-180 ~ D-91", badge: "D-180 ~ D-91", color: "#8A857B", soft: "#EDE8DD", text: "#3D3A34" },
-      "D-90 ~ D-31": { name: "D-90 ~ D-31", badge: "D-90 ~ D-31", color: "#111111", soft: "#EDE8DD", text: "#111111" },
-      "D-30 ~ 입주": { name: "D-30 ~ 입주", badge: "D-30 ~ 입주", color: "#B04218", soft: "#F8ECE4", text: "#B04218" },
-      "입주중 ~ D+90": { name: "입주중 ~ D+90", badge: "입주중", color: "#8A857B", soft: "#EDE8DD", text: "#3D3A34" },
-      "D+90 ~ D+180": { name: "D+90 ~ D+180", badge: "D+90 ~ D+180", color: "#8A857B", soft: "#EDE8DD", text: "#3D3A34" }
+      "신규": { name: "신규", badge: "신규", color: "#2D4A9E", soft: "#EEF1F8", text: "#2D4A9E" },
+      "D-180 ~ D-91": { name: "D-180 ~ D-91", badge: "D-180 ~ D-91", color: "#79756B", soft: "#F9F8F6", text: "#5C5850" },
+      "D-90 ~ D-31": { name: "D-90 ~ D-31", badge: "D-90 ~ D-31", color: "#2D4A9E", soft: "#EEF1F8", text: "#2D4A9E" },
+      "D-30 ~ 입주": { name: "D-30 ~ 입주", badge: "D-30 ~ 입주", color: "#C13438", soft: "#F9ECEC", text: "#C13438" },
+      "입주중 ~ D+90": { name: "입주중 ~ D+90", badge: "입주중", color: "#79756B", soft: "#F9F8F6", text: "#5C5850" },
+      "D+90 ~ D+180": { name: "D+90 ~ D+180", badge: "D+90 ~ D+180", color: "#79756B", soft: "#F9F8F6", text: "#5C5850" }
     };
     const LOCAL_PROVINCES = ["강원", "대전", "세종", "충북", "충남", "대구", "경북", "부산", "울산", "경남", "광주", "전북", "전남", "제주", "기타"];
     const GYEONGGI_PREFIXES = [
