@@ -40,7 +40,7 @@
 2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
 3. **구 기능 목록 통과**: 메이커 캔버스 실렌더(#cv 크기>0) · 게시판 게이트/티저 렌더 ·
    입주 게이팅(비로그인 잠금 카드) · 시세 실데이터 · 업무 데모 견적서/보고서 이미지 생성 · 카드 데모 문의 접수
-   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`·`test-open-board-sql.mjs`(PGlite) · 약관을 채운 뒤 `node tools/check-legal.js`
+   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`·`test-open-board-sql.mjs`·`test-movein-weather-sql.mjs`(PGlite) · 약관을 채운 뒤 `node tools/check-legal.js`
    · (21 적용 후) 비로그인 `/board/free/`·`/board/proposal/` = 목록·본문·댓글이 보이고 쓰기·댓글·공감·투표 자리는 로그인 안내,
      입주 캘린더 글은 본문 잠김 · 구인·구직(`/edu/jobs/`)은 여전히 회원 전용
 4. **룩 혼재 push 금지**: 전 라우트가 design-tokens/components만 소비하는지
@@ -92,5 +92,12 @@
   (move_in_contents 트리거 → 자유게시판, 운영자 이름, 비회원은 본문 null) · 시세 날짜별 기록 price_history(22, 22b 백필) +
   /prices/ 구리 원화 kg값. **적용 순서: SQL 21·22·22b → 프런트 push** (프런트만 먼저 나가면 비회원 게시판이 "준비 중").
   sw VERSION 은 그대로(ain-v35, 배포 때 판단), ain-community·board-*.js 만 ?v=31. 공지 초안: docs/community/notice-drafts.md
+- 2026-11-08 (feat/movein-detail-weather, **운영 SQL 적용 완료**: site_23_movein_detail_weather — 적용 후 anon REST로
+  move_in_complexes 401·weather_daily 읽기 200·쓰기 401 확인): 입주 단지 청약홈 상세 칸(house_manage_no·supply_households=공급규모·
+  builder·developer·house_types, 회원 전용 그대로) + 현장 날씨 weather_daily(기상청 단기예보, 시·도청 격자, anon 읽기).
+  채우는 쪽은 ain-automation feat/applyhome-detail-weather(move_in_radar 상세 붙이기 하루 200곳 · collect_weather.py 05:40 KST).
+  화면: 홈 '현장 날씨'(주의 기준 = 강수확률 60%↑·풍속 9m/s↑·최고 33℃↑·최저 -12℃↓, index.html 한 곳) · 홈 입주 줄에 분양 세대 ·
+  /area/ 회원 카드에 분양·시공·주택형. area.js 만 ?v=31(sw SHELL 동일), VERSION 은 그대로 ain-v35.
+  공급규모는 단지 총세대수가 아니다(조합원분 등 제외) — 화면에 '청약홈 공급규모'로 적는다
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10

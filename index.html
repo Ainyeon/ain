@@ -20,6 +20,11 @@
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
   <link rel="stylesheet" href="/assets/css/components.css?v=30">
+  <style>
+    .wx-sel{min-height:40px;padding:0 var(--sp-2);border:1px solid var(--c-control);border-radius:var(--r-1);
+      background:var(--c-surface-sub);font:inherit;font-size:var(--fs-4);color:var(--c-ink)}
+    .wx-sel:focus{outline:2px solid var(--c-accent);outline-offset:1px}
+  </style>
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js?v=30"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
@@ -157,6 +162,18 @@
       </div>
 
       <div class="dash-col">
+        <!-- 현장 날씨 — weather_daily (23, 기상청 단기예보, anon SELECT) -->
+        <section class="panel" aria-labelledby="hWx">
+          <div class="phead">
+            <svg class="icon"><use href="#i-cal"/></svg>
+            <h2 id="hWx">현장 날씨</h2>
+            <div class="phead-meta">
+              <select class="wx-sel" id="wxSido" aria-label="날씨 볼 시·도"></select>
+            </div>
+          </div>
+          <div class="rows" id="wxRows"><div class="empty">불러오는 중</div></div>
+        </section>
+
         <!-- 정부사업 마감임박 -->
         <section class="panel" aria-labelledby="hGov">
           <div class="phead">
@@ -333,7 +350,7 @@
     async function loadMoveIn(sb, session) {
       if (session) {
         const results = await Promise.all(REGIONS.map((r) => sb.from("move_in_complexes")
-          .select("complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in,last_updated,first_seen_date")
+          .select("complex_name_raw,complex_name_ad,sido,sigungu,stage,expected_move_in,last_updated,first_seen_date,supply_households")
           .eq("region", r.code).gte("expected_move_in", kstToday()).eq("is_public", true)
           .order("expected_move_in", { ascending: true }).limit(15)));
         let html = "", count = 0, latest = "";
@@ -353,7 +370,9 @@
             const month = isMonthOnly(r.expected_move_in)
             ? String(r.expected_move_in).slice(0, 7).replace("-", ".") + " 입주예정 (월 단위)"
             : fmtMD(r.expected_move_in) + " 입주예정";
-            html += rowHtml(newBadge(r.first_seen_date) + esc(r.complex_name_ad || r.complex_name_raw), esc([loc, r.stage, month].filter(Boolean).join(" · ")), moveInBadge(r.expected_move_in));
+            // 분양 세대 = 청약홈 공급규모(조합원분 등은 빠질 수 있다)
+            const units = r.supply_households ? `분양 ${Number(r.supply_households).toLocaleString("ko-KR")}세대` : "";
+            html += rowHtml(newBadge(r.first_seen_date) + esc(r.complex_name_ad || r.complex_name_raw), esc([loc, r.stage, month, units].filter(Boolean).join(" · ")), moveInBadge(r.expected_move_in));
           });
         });
         // 전체 수는 화면에 그린 줄 수가 아니라 집계 뷰(비회원과 같은 기준)에서 읽는다
@@ -390,6 +409,60 @@
       $("moveCnt").textContent = total ? `전국 ${total.toLocaleString("ko-KR")}곳` : "회원 공개";
       $("statMove").textContent = total ? total.toLocaleString("ko-KR") : "—";
       $("moveUpd").textContent = "매일 아침 갱신";
+    }
+
+    // 현장 날씨 — weather_daily(23). 숫자는 기상청 단기예보를 하루 단위로 줄인 값 그대로,
+    // 주의 표시는 아래 기준 한 곳에서만 단다(기준은 화면 아래에도 적는다).
+    const WX_SIDO = ["서울", "경기", "인천", "강원", "충북", "충남", "세종", "대전", "전북", "전남", "광주", "경북", "경남", "대구", "울산", "부산", "제주"];
+    const WX_KEY = "ain-wx-sido";
+    const WX_RULE = "강수확률 60% 이상, 풍속 9m/s 이상, 최고 33℃ 이상, 최저 영하 12℃ 이하";
+    const wxCautions = (d) => [
+      d.pop_max != null && d.pop_max >= 60 ? (d.pty || "비") : "",
+      d.wind_max != null && d.wind_max >= 9 ? "강풍" : "",
+      d.tmax != null && d.tmax >= 33 ? "폭염" : "",
+      d.tmin != null && d.tmin <= -12 ? "한파" : "",
+    ].filter(Boolean);
+    const num1 = (v) => Number(v).toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+    const wxLine = (d) => [
+      d.tmin != null ? `최저 ${num1(d.tmin)}℃` : "",
+      d.tmax != null ? `최고 ${num1(d.tmax)}℃` : "",
+      d.pop_max != null ? `강수확률 ${d.pop_max}%${d.pty ? `(${d.pty})` : ""}` : "",
+      d.wind_max != null ? `바람 최대 ${num1(d.wind_max)}m/s` : "",
+    ].filter(Boolean).join(" · ");
+    async function loadWeather(sb) {
+      const { data, error } = await sb.from("weather_daily")
+        .select("sido,day,tmin,tmax,pop_max,pty,wind_max,base_at")
+        .gte("day", kstToday()).order("day", { ascending: true }).limit(WX_SIDO.length * 5);
+      if (error) throw error;
+      const rows = data || [];
+      const sel = $("wxSido");
+      let pick = "서울";
+      try { pick = localStorage.getItem(WX_KEY) || pick; } catch (e) { /* 저장소를 못 쓰면 서울 */ }
+      if (!WX_SIDO.includes(pick)) pick = "서울";
+      sel.innerHTML = WX_SIDO.map((s) => `<option${s === pick ? " selected" : ""}>${s}</option>`).join("");
+      const when = ["오늘", "내일", "모레"];
+      const draw = () => {
+        const days = rows.filter((r) => r.sido === sel.value).slice(0, 3);
+        if (!days.length) { $("wxRows").innerHTML = emptyBox("날씨를 아직 받지 못했습니다", "매일 아침 6시 전에 갱신됩니다"); return; }
+        // 넓은 화면에서 줄임표로 바람 값이 잘리지 않게 줄바꿈(row-meta wrap)으로 그린다
+        let html = days.map((d) => {
+          const n = ddayNum(d.day);
+          const marks = wxCautions(d).map((t) => `<span class="dday urgent">${esc(t)}</span>`).join(" ");
+          return `<div class="row"><div class="row-main"><div class="row-title">${esc(`${n >= 0 && n <= 2 ? when[n] + " " : ""}${fmtMD(d.day)}`)}</div>`
+            + `<div class="row-meta wrap">${esc(wxLine(d))}</div></div>${marks ? `<div class="row-side">${marks}</div>` : ""}</div>`;
+        }).join("");
+        const others = rows.filter((r) => ddayNum(r.day) === 1 && r.sido !== sel.value)
+          .map((r) => [r.sido, wxCautions(r)]).filter(([, c]) => c.length);
+        if (others.length) {
+          html += `<div class="row"><div class="row-main"><div class="row-title">내일 다른 지역 주의</div>`
+            + `<div class="row-meta wrap">${esc(others.map(([s, c]) => `${s} ${c.join("·")}`).join(" · "))}</div></div></div>`;
+        }
+        const base = new Intl.DateTimeFormat("ko-KR", { month: "long", day: "numeric", hour: "numeric", hour12: false, timeZone: "Asia/Seoul" }).format(new Date(days[0].base_at));
+        html += `<div class="row"><div class="row-main"><div class="row-meta wrap">기상청 단기예보 ${esc(base)} 발표 · 시·도청 소재지 기준. 주의 표시: ${WX_RULE}.</div></div></div>`;
+        $("wxRows").innerHTML = html;
+      };
+      sel.onchange = () => { try { localStorage.setItem(WX_KEY, sel.value); } catch (e) { /* 이번 화면만 */ } draw(); };
+      draw();
     }
 
     // 정부사업 — v_gov_list (11_v_gov_list.sql, definer 뷰, anon SELECT)
@@ -474,6 +547,7 @@
       await Promise.allSettled([
         loadPrices(sb).catch((e) => { console.error(e); $("stripUpd").textContent = "시세 확인 필요"; }),
         guard(loadMoveIn(sb, session), "moveRows"),
+        guard(loadWeather(sb), "wxRows"),
         guard(loadGov(sb), "govRows"),
         guard(loadNews(sb), "newsRows"),
       ]);
