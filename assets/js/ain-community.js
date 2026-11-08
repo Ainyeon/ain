@@ -70,12 +70,12 @@
   const ROLE_BADGES = { admin: '운영자', manager: '매니저' };
   const isStaff = (p) => !!(p && ROLE_BADGES[p.role]);
 
-  // 회원 등급 — 이름·조건은 supabase/24_member_grades.sql 이 정본이다(계산은 서버, 여기는 설명만).
+  // 회원 등급 — 이름·조건은 supabase/25_grade_names.sql(조건은 24) 이 정본이다(계산은 서버, 여기는 설명만).
   const GRADES = [
-    { name: '새싹', rule: '가입하면' },
-    { name: '일꾼', rule: '글 1개 또는 댓글 3개' },
-    { name: '단골', rule: '글 10개 또는 댓글 30개, 그리고 가입 30일' },
-    { name: '고수', rule: '운영자가 정합니다' }
+    { name: '막내', rule: '가입하면' },
+    { name: '기사', rule: '글 1개 또는 댓글 3개' },
+    { name: '반장', rule: '글 10개 또는 댓글 30개, 그리고 가입 30일' },
+    { name: '명장', rule: '운영자가 정합니다' }
   ];
   const GRADE_NOTE = '하루에 글은 3개, 댓글은 10개까지만 셉니다. 익명 글은 세지 않습니다.';
 
