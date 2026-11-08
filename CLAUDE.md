@@ -114,5 +114,13 @@
   바로가기에서 빠진 길은 시세 스트립 '전체'(/prices/)·입주정보 '캘린더'(/calendar/)·게시판 칸 '제안·건의'로 대신.
   게시판 목록은 공감·댓글·조회가 0 이면 적지 않음. authorBadge: 운영자·매니저는 분야 뱃지 없이 역할 뱃지만, 닉네임이 역할 이름과 같으면 생략.
   ain-community.js ?v=34(홈도 이제 불러옴) · board-free/proposal.js ?v=32, VERSION 은 ain-v35 그대로
+- 2026-11-08 (feat/newspaper-concept, 화면만): **신문 1면 컨셉**(이름 에인연·도메인 그대로, 사용자 결정). design-tokens v2 —
+  신문지 바탕 #F4F1EA · 잉크 #111 · 괘선 --c-rule · 포인트 주황 한 색 --c-accent #B04218(바탕 5.12·보조 4.72·흰 글씨 5.77 실측) ·
+  상승=포인트/하락=잉크 보조(방향은 ▲▼) · 모서리 r-1 2px·r-2/3 0 · 그림자 sh-1 없음 · 조명 끔 · 제목 명조 --font-serif.
+  명조 = 나눔명조 ExtraBold 부분 집합 assets/fonts/AINSerif-Heading.subset.woff2(310KB, OFL 예약 이름 때문에 'AIN Serif'로 개명,
+  라이선스 assets/fonts/OFL-AINSerif.txt). components.css 끝 「신문 1면」 블록이 카드·그림자·유리 네비를 걷고 괘선·명조를 입힌다.
+  홈은 header.phero.masthead(제호 가운데·날짜 윗줄), 포인트 버튼은 .btn-cta. 네비 로고 그라데이션 → 잉크(전 페이지), theme-color #F4F1EA,
+  캘린더 단계 색(임박=주황/진행=잉크). 업무 문서(work-doc.js)·메이커 출력·카드뉴스(cards/)·OG 이미지·legacy 는 그대로.
+  design-tokens ?v=13 · components ?v=32 (전 페이지·sw SHELL, 새 글꼴도 SHELL), VERSION 그대로
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10
