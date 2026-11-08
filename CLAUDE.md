@@ -40,7 +40,7 @@
 2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
 3. **구 기능 목록 통과**: 메이커 캔버스 실렌더(#cv 크기>0) · 게시판 게이트/티저 렌더 ·
    입주 게이팅(비로그인 잠금 카드) · 시세 실데이터 · 업무 데모 견적서/보고서 이미지 생성 · 카드 데모 문의 접수
-   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`·`test-open-board-sql.mjs`·`test-movein-weather-sql.mjs`·`test-member-grades-sql.mjs`·`test-web-push-sql.mjs`(PGlite) · `deno test -A supabase/functions/push-drain/drain_test.ts` · 약관을 채운 뒤 `node tools/check-legal.js`
+   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`·`test-open-board-sql.mjs`·`test-movein-weather-sql.mjs`·`test-member-grades-sql.mjs`·`test-web-push-sql.mjs`·`test-all-trades-sql.mjs`(PGlite) · `deno test -A supabase/functions/push-drain/drain_test.ts` · 약관을 채운 뒤 `node tools/check-legal.js`
    · (21 적용 후) 비로그인 `/board/free/`·`/board/proposal/` = 목록·본문·댓글이 보이고 쓰기·댓글·공감·투표 자리는 로그인 안내,
      입주 캘린더 글은 본문 잠김 · 구인·구직(`/edu/jobs/`)은 여전히 회원 전용
 4. **룩 혼재 push 금지**: 전 라우트가 design-tokens/components만 소비하는지
@@ -120,5 +120,12 @@
   (관심 단지 입주 30·7일, 월 단위는 30일만) + pg_net 으로 Edge Function push-drain 깨움(verify_jwt=false — 대기 줄만 보냄).
   VAPID 비밀키는 함수 비밀값에만, 공개키는 me/index.html VAPID_PUBLIC_KEY. 로그아웃(auth.js logout)은 이 기기 구독을 먼저 지운다.
   아이폰은 홈 화면에 추가한 PWA 에서만 켤 수 있다(iOS 16.4+). sw.js 에 push·notificationclick, auth.js ?v=31, VERSION 은 ain-v35 그대로
+- 2026-11-08 (feat/all-trades-order, 사용자: '현장직 사람들의 모든 공간' — 청소 등으로 국한하지 않는다):
+  주력분야 24종 → 현장직 9묶음 52종(냉난방·공조/전기·통신/설비·배관/인테리어·마감/청소·관리/철거·건설/설치·수리/이사·운반/기타).
+  정본 maker/fields.json, 화면 ain-community.js FIELD_GROUPS(가입 화면은 묶음별 optgroup), DB profiles_field_check(supabase/27) —
+  셋을 tools/test-fields-sync.js 가 대조한다. 예전 값 paper-floor·tile-bath 는 뱃지 표기만. maker-core ASSET_V=31.
+  오더 공유 게시판 /board/order/(board_type 'order', board-free.js 재사용, 회원 전용 — v_posts 비회원 조건이 free·proposal 만,
+  마감 가능, 고정 안내 = 고객 개인정보 금지·단가 맞추기 금지·1,500만원 이상 공사는 건설업 등록) · 알림 링크 post_path('order').
+  홈·manifest 설명 '현장직 모두의 공간'(이름 에인연 그대로). ain-community ?v=35 · board-free ?v=33, VERSION 은 ain-v35 그대로
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10

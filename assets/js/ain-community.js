@@ -4,19 +4,24 @@
 (function () {
   'use strict';
 
-  // maker/fields.json 마스터와 동기 (신규 22종 + legacy 2종 표기 변환)
-  const FIELD_LABELS = {
-    'ac-install': '에어컨 설치', 'ac-system': '시스템에어컨', 'ac-clean': '에어컨 세척',
-    'duct-clean': '덕트 청소', 'panel-restore': '냉난방기 복원·도색', 'boiler': '보일러', 'vent': '환기 시스템',
-    'interior': '종합 인테리어', 'paper': '도배', 'floor': '장판·마루', 'film-sheet': '필름·시트',
-    'tile': '타일', 'paint': '도장', 'carpentry': '목공', 'sash': '새시·창호',
-    'pipe': '상하수도·배관', 'waterproof': '방수',
-    'silicone': '실리콘·코킹', 'grout': '줄눈', 'mold': '결로·곰팡이', 'movein-clean': '입주청소',
-    'custom': '기타',
-    'paper-floor': '도배·장판', 'tile-bath': '타일·욕실'
-  };
-  // 표시 전용 legacy id — 신규 선택지(온보딩 select 등)에서는 제외
+  // 현장직 분야 — maker/fields.json categories 와 같은 순서·이름(tools/test-fields-sync.js 가 대조한다).
+  // 2026-11-08: 냉난방·인테리어 위주 24종 → 현장직 전체 9묶음 52종(사용자: '현장직 사람들의 모든 공간').
+  const FIELD_GROUPS = [
+    ['냉난방·공조', [['ac-install', '에어컨 설치'], ['ac-system', '시스템에어컨'], ['ac-clean', '에어컨 세척'], ['duct-clean', '덕트 청소'], ['panel-restore', '냉난방기 복원·도색'], ['boiler', '보일러'], ['vent', '환기 시스템'], ['refrigeration', '냉동·냉장 설비'], ['gas-pipe', '가스 배관']]],
+    ['전기·통신', [['electric', '전기 공사'], ['lighting', '조명'], ['telecom', '통신·CCTV'], ['solar', '태양광'], ['ev-charger', '전기차 충전기']]],
+    ['설비·배관', [['pipe', '상하수도·배관'], ['waterproof', '방수'], ['leak', '누수 탐지'], ['fire', '소방 설비'], ['drain', '하수구·정화조']]],
+    ['인테리어·마감', [['interior', '종합 인테리어'], ['paper', '도배'], ['floor', '장판·마루'], ['film-sheet', '필름·시트'], ['tile', '타일'], ['paint', '도장'], ['carpentry', '목공'], ['sash', '새시·창호'], ['silicone', '실리콘·코킹'], ['grout', '줄눈'], ['mold', '결로·곰팡이'], ['elastic-coat', '탄성코트'], ['blind', '블라인드·커튼'], ['furniture', '가구 설치'], ['middle-door', '중문'], ['screen', '방충망']]],
+    ['청소·관리', [['movein-clean', '입주청소'], ['move-clean', '이사청소'], ['office-clean', '상가·사무실 청소'], ['home-clean', '가정·정기 청소'], ['window-clean', '유리·외벽 청소'], ['pest', '소독·방역'], ['facility', '건물 관리']]],
+    ['철거·건설', [['demolition', '철거'], ['masonry', '미장·조적'], ['waste', '폐기물 처리']]],
+    ['설치·수리', [['appliance', '가전 설치·수리'], ['lock', '도어락·열쇠'], ['sign', '간판'], ['handyman', '집수리']]],
+    ['이사·운반', [['moving', '이사'], ['freight', '용달·운반']]],
+    ['기타', [['custom', '기타']]]   // 메이커는 같은 id 를 '직접 입력'으로 보여 준다(자유 입력 칸) — 뱃지는 '기타'
+  ];
+  const FIELD_LABELS = Object.fromEntries(FIELD_GROUPS.flatMap(([, items]) => items));
+  // 표시 전용 legacy id — 예전 회원 값 표기만, 새로 고르는 목록(가입·업무)에는 넣지 않는다
   const FIELD_LEGACY = ['paper-floor', 'tile-bath'];
+  FIELD_LABELS['paper-floor'] = '도배·장판';
+  FIELD_LABELS['tile-bath'] = '타일·욕실';
 
   // 교육 후기 국비 유형 표기 — 작성 폼·목록·상세·교육 카드가 같은 값을 쓴다.
   // 사본을 따로 두면 한쪽만 바뀌어 화면마다 다른 이름이 나온다.
@@ -141,9 +146,10 @@
     if (p.board_type === 'proposal') return '/board/proposal/?id=' + id;
     if (p.board_type === 'job_offer') return '/edu/jobs/?kind=offer&id=' + id;
     if (p.board_type === 'job_seek') return '/edu/jobs/?kind=seek&id=' + id;
+    if (p.board_type === 'order') return '/board/order/?id=' + id;
     return '/board/free/?id=' + id;
   }
-  const BOARD_NAMES = { proposal: '제안·건의', job_offer: '구인', job_seek: '구직', free: '자유게시판' };   // 메뉴·탭 이름과 같게
+  const BOARD_NAMES = { proposal: '제안·건의', job_offer: '구인', job_seek: '구직', order: '오더 공유', free: '자유게시판' };   // 메뉴·탭 이름과 같게
   const boardName = (p) => BOARD_NAMES[p.board_type] || '자유게시판';
 
   // 비회원 티저 데이터
@@ -338,7 +344,7 @@
       b.addEventListener('click', () => loginWithKakao()));
   }
 
-  window.ainCommunity = { FIELD_LABELS, FIELD_LEGACY, fieldLabel, getMyProfile, requireMember,
+  window.ainCommunity = { FIELD_GROUPS, FIELD_LABELS, FIELD_LEGACY, fieldLabel, getMyProfile, requireMember,
     authorBadge, authorBadgeOf, isStaff, authorSelect, timeAgo, report, fetchTeaser, postHref, boardName,
     readPosts, readMyPosts, anonymousReady, loadSaves, addSave, removeSave, savesReady, saveKey,
     loginWithKakao, maskContacts, REPORT_REASONS, SUBSIDY_LABELS, subsidyLabel, caps,
