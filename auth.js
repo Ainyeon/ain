@@ -68,7 +68,7 @@ a.ain-auth-name:hover{color:var(--c-ink,#1E1D1A);text-decoration:underline}
         + '<button class="ain-auth-logout" id="_ain_out">로그아웃</button>'
         + '</div>';
       document.getElementById('_ain_out')
-        .addEventListener('click', function () { getClient().auth.signOut(); });
+        .addEventListener('click', function () { logout(); });
     } else {
       container.innerHTML =
         '<div class="ain-auth">'
@@ -84,6 +84,22 @@ a.ain-auth-name:hover{color:var(--c-ink,#1E1D1A);text-decoration:underline}
     }
   }
 
+  // 웹 푸시 끊기(supabase/26_web_push.sql) — 로그아웃 전에 이 기기 구독을 지운다.
+  // 같은 기기를 다른 사람이 쓸 때 내 글 알림이 뜨지 않게. 실패해도 로그아웃은 막지 않는다.
+  function pushOff() {
+    if (!('serviceWorker' in navigator)) return Promise.resolve();
+    return navigator.serviceWorker.getRegistration().then(function (reg) {
+      return reg && reg.pushManager ? reg.pushManager.getSubscription() : null;
+    }).then(function (sub) {
+      if (!sub) return;
+      return getClient().rpc('delete_push_subscription', { p_endpoint: sub.endpoint })
+        .then(function () { return sub.unsubscribe(); });
+    }).catch(function () {});
+  }
+  function logout() {
+    return pushOff().then(function () { return getClient().auth.signOut(); });
+  }
+
   // 카카오 로그인 — 헤더 버튼과 페이지 안의 '카카오 로그인' 버튼이 같이 쓴다.
   // 쿼리까지 보존한다 — /edu/?id=… , /board/free/?ref=edu:… 처럼 검색 부분이 지금 화면을 결정하는 경로가 있다.
   function login() {
@@ -95,6 +111,8 @@ a.ain-auth-name:hover{color:var(--c-ink,#1E1D1A);text-decoration:underline}
 
   window.ainAuth = {
     login: login,
+    logout: logout,
+    pushOff: pushOff,
     init: function (containerId) {
       var container = document.getElementById(containerId);
       if (!container) return null;
