@@ -19,6 +19,16 @@
       type: 'job_seek', closable: true,
       empty: '등록된 구직 글이 없습니다.',
       hint: '일할 곳을 찾는 글입니다. 지역·공종·경력·가능한 기간을 본문에 적어 주세요. 연락처(전화·이메일·카카오 아이디)는 저장할 때 가려집니다. 연락은 오픈채팅 링크(https://open.kakao.com/…)나 댓글로 받으세요.'
+    },
+    // 오더 공유(27_all_trades_order) — 받은 일감 중 내 공종이 아닌 것을 다른 현장직에게 넘기는 곳. 회원 전용.
+    // 안내 문구는 법적 선을 적는다: 고객 개인정보(동의 없는 제3자 제공), 가격 맞추기(담합), 1,500만원 이상 공사(건설업 등록).
+    order: {
+      type: 'order', closable: true,
+      empty: '아직 올라온 오더가 없습니다. 받은 문의 중 내 공종이 아닌 일감을 첫 오더로 올려 보세요.',
+      hint: '받은 일감을 다른 현장직에게 넘기는 곳입니다. 지역(시·군·구), 필요한 공종, 일정, 규모(평형·대수), 넘기는 조건(소개비 여부)을 적어 주세요. '
+        + '고객 이름·전화번호·동호수는 적지 마세요 — 고객 동의 없이 넘기면 안 되는 개인정보입니다(연락처는 저장할 때 가려집니다). '
+        + '단가를 서로 맞추자는 글은 올릴 수 없습니다. 공사 한 건이 1,500만원(자재 포함) 이상이면 건설업 등록 업체만 맡을 수 있습니다. '
+        + '다 넘겼으면 글에서 마감을 눌러 주세요.'
     }
   };
   const CFG = BOARDS[(window.AIN_BOARD || {}).type] || BOARDS.free;
@@ -53,7 +63,8 @@
     review: { kind: 'review', ph: '수강한 과정, 배운 내용, 도움이 된 점' },
     edu_tip: { kind: 'tip', ph: '기관명, 과정명, 공식 페이지 주소.\n기관·업체 관계자면 어떤 관계인지도 적어 주세요.\n운영자가 원문을 확인한 뒤 반영합니다.' },
     job_offer: { kind: null, ph: '지역, 공종, 기간, 급여 조건, 지원 방법.\n개인 연락처는 본문에 적지 마세요 — 저장할 때 가려집니다.' },
-    job_seek: { kind: null, ph: '지역, 공종, 경력, 가능한 기간.\n개인 연락처는 본문에 적지 마세요 — 저장할 때 가려집니다.' }
+    job_seek: { kind: null, ph: '지역, 공종, 경력, 가능한 기간.\n개인 연락처는 본문에 적지 마세요 — 저장할 때 가려집니다.' },
+    order: { kind: null, ph: '지역: 인천 서구\n공종: 입주청소\n일정: 11월 20일 오전\n규모: 34평\n넘기는 조건: 소개비 없음 / 10%\n\n고객 이름·전화·동호수는 적지 마세요.' }
   };
   // 후기·제보 양식(?form=)은 자유게시판에서만. 구인·구직은 항상 자기 양식(후기 항목이 붙지 않게)
   const formKey = () => (CFG.type === 'free' && P().get('form')) || CFG.type;
@@ -114,6 +125,7 @@
       + '<div class="card-meta-line"><time>' + C().timeAgo(r.created_at) + '</time></div></div>').join('');
     panel.innerHTML =
       '<div class="gate-msg"><b>회원 전용입니다</b><br>'
+      + (CFG.type === 'order' ? '현장직끼리 일감을 넘기는 곳이라 회원에게만 보입니다.<br>' : '')
       + (qsId() ? '이 글은 회원만 볼 수 있습니다. 로그인하면 바로 열립니다.<br>' : '')
       + '카카오 계정으로 로그인하면 읽고 쓸 수 있습니다. 처음이면 닉네임과 주력분야만 정하면 됩니다.<br>'
       + '<button type="button" class="gate-cta" id="gateLogin">카카오 로그인</button></div>'
@@ -127,7 +139,7 @@
     const preset = FORM_PRESETS[formKey()] || null;
     const openNow = !!(ref || P().get('form'));
     const isReview = !!preset && preset.kind === 'review';
-    const label = CFG.type === 'job_offer' ? '구인 글 쓰기' : CFG.type === 'job_seek' ? '구직 글 쓰기' : '글쓰기';
+    const label = CFG.type === 'job_offer' ? '구인 글 쓰기' : CFG.type === 'job_seek' ? '구직 글 쓰기' : CFG.type === 'order' ? '오더 올리기' : '글쓰기';
     return '<button type="button" class="write-btn" id="writeOpen" aria-controls="writeForm" aria-expanded="' + openNow + '"'
       + (openNow ? ' hidden' : '') + '>' + label + '</button>'
       + '<form class="write-form" id="writeForm"' + (openNow ? '' : ' hidden') + '>'
@@ -350,7 +362,7 @@
       + (guest ? '' : '<div class="post-tools">'
         + (mine
           ? '<button type="button" class="tool-link" id="editPost">수정</button>'
-            + (post.board_type === 'job_offer' || post.board_type === 'job_seek'
+            + (CFG.closable
               ? '<button type="button" class="tool-link" id="closePost">'
                 + (post.closed_at ? '마감 해제' : '마감') + '</button>' : '')
             + '<button type="button" class="tool-link" id="delPost">삭제</button>'

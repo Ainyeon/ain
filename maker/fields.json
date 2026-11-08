@@ -1,5 +1,5 @@
 {
-  "_guide": "업종 마스터 (메이커·회원가입 주력분야·게시판 뱃지 공유). 항목 추가 = items에 {id,label} 한 줄.",
+  "_guide": "업종 마스터 (메이커·회원가입 주력분야·게시판 뱃지·업무 관리 공유). 항목 추가 = items에 {id,label} 한 줄 + ain-community.js FIELD_GROUPS + supabase 의 profiles_field_check(27) 세 곳. tools/test-fields-sync.js 가 셋을 대조한다.",
   "_legacy_map_comment": "기존 profiles.field 9종 매핑: ac-install/ac-clean/panel-restore/film-sheet/movein-clean/custom은 id 동일 유지. interior→interior(유지), paper-floor→(도배+장판마루로 분화, 구값은 legacy_map으로 표기 변환), tile-bath→(타일로 흡수). DB 제약은 sql/10에서 legacy+신규 모두 허용 — 기존 회원 데이터 무손상.",
   "legacy_map": {
     "paper-floor": "paper",
@@ -7,50 +7,266 @@
   },
   "categories": [
     {
-      "id": "hvac", "label": "냉난방",
+      "id": "hvac",
+      "label": "냉난방·공조",
       "items": [
-        { "id": "ac-install", "label": "에어컨 설치" },
-        { "id": "ac-system", "label": "시스템에어컨" },
-        { "id": "ac-clean", "label": "에어컨 세척" },
-        { "id": "duct-clean", "label": "덕트 청소" },
-        { "id": "panel-restore", "label": "냉난방기 복원·도색" },
-        { "id": "boiler", "label": "보일러" },
-        { "id": "vent", "label": "환기 시스템" }
+        {
+          "id": "ac-install",
+          "label": "에어컨 설치"
+        },
+        {
+          "id": "ac-system",
+          "label": "시스템에어컨"
+        },
+        {
+          "id": "ac-clean",
+          "label": "에어컨 세척"
+        },
+        {
+          "id": "duct-clean",
+          "label": "덕트 청소"
+        },
+        {
+          "id": "panel-restore",
+          "label": "냉난방기 복원·도색"
+        },
+        {
+          "id": "boiler",
+          "label": "보일러"
+        },
+        {
+          "id": "vent",
+          "label": "환기 시스템"
+        },
+        {
+          "id": "refrigeration",
+          "label": "냉동·냉장 설비"
+        },
+        {
+          "id": "gas-pipe",
+          "label": "가스 배관"
+        }
       ]
     },
     {
-      "id": "interior", "label": "인테리어",
+      "id": "electric",
+      "label": "전기·통신",
       "items": [
-        { "id": "interior", "label": "종합 인테리어" },
-        { "id": "paper", "label": "도배" },
-        { "id": "floor", "label": "장판·마루" },
-        { "id": "film-sheet", "label": "필름·시트" },
-        { "id": "tile", "label": "타일" },
-        { "id": "paint", "label": "도장" },
-        { "id": "carpentry", "label": "목공" },
-        { "id": "sash", "label": "새시·창호" }
+        {
+          "id": "electric",
+          "label": "전기 공사"
+        },
+        {
+          "id": "lighting",
+          "label": "조명"
+        },
+        {
+          "id": "telecom",
+          "label": "통신·CCTV"
+        },
+        {
+          "id": "solar",
+          "label": "태양광"
+        },
+        {
+          "id": "ev-charger",
+          "label": "전기차 충전기"
+        }
       ]
     },
     {
-      "id": "plumbing", "label": "설비",
+      "id": "plumbing",
+      "label": "설비·배관",
       "items": [
-        { "id": "pipe", "label": "상하수도·배관" },
-        { "id": "waterproof", "label": "방수" }
+        {
+          "id": "pipe",
+          "label": "상하수도·배관"
+        },
+        {
+          "id": "waterproof",
+          "label": "방수"
+        },
+        {
+          "id": "leak",
+          "label": "누수 탐지"
+        },
+        {
+          "id": "fire",
+          "label": "소방 설비"
+        },
+        {
+          "id": "drain",
+          "label": "하수구·정화조"
+        }
       ]
     },
     {
-      "id": "finish", "label": "마감·보수",
+      "id": "interior",
+      "label": "인테리어·마감",
       "items": [
-        { "id": "silicone", "label": "실리콘·코킹" },
-        { "id": "grout", "label": "줄눈" },
-        { "id": "mold", "label": "결로·곰팡이" },
-        { "id": "movein-clean", "label": "입주청소" }
+        {
+          "id": "interior",
+          "label": "종합 인테리어"
+        },
+        {
+          "id": "paper",
+          "label": "도배"
+        },
+        {
+          "id": "floor",
+          "label": "장판·마루"
+        },
+        {
+          "id": "film-sheet",
+          "label": "필름·시트"
+        },
+        {
+          "id": "tile",
+          "label": "타일"
+        },
+        {
+          "id": "paint",
+          "label": "도장"
+        },
+        {
+          "id": "carpentry",
+          "label": "목공"
+        },
+        {
+          "id": "sash",
+          "label": "새시·창호"
+        },
+        {
+          "id": "silicone",
+          "label": "실리콘·코킹"
+        },
+        {
+          "id": "grout",
+          "label": "줄눈"
+        },
+        {
+          "id": "mold",
+          "label": "결로·곰팡이"
+        },
+        {
+          "id": "elastic-coat",
+          "label": "탄성코트"
+        },
+        {
+          "id": "blind",
+          "label": "블라인드·커튼"
+        },
+        {
+          "id": "furniture",
+          "label": "가구 설치"
+        },
+        {
+          "id": "middle-door",
+          "label": "중문"
+        },
+        {
+          "id": "screen",
+          "label": "방충망"
+        }
       ]
     },
     {
-      "id": "etc", "label": "기타",
+      "id": "cleaning",
+      "label": "청소·관리",
       "items": [
-        { "id": "custom", "label": "직접 입력", "custom": true }
+        {
+          "id": "movein-clean",
+          "label": "입주청소"
+        },
+        {
+          "id": "move-clean",
+          "label": "이사청소"
+        },
+        {
+          "id": "office-clean",
+          "label": "상가·사무실 청소"
+        },
+        {
+          "id": "home-clean",
+          "label": "가정·정기 청소"
+        },
+        {
+          "id": "window-clean",
+          "label": "유리·외벽 청소"
+        },
+        {
+          "id": "pest",
+          "label": "소독·방역"
+        },
+        {
+          "id": "facility",
+          "label": "건물 관리"
+        }
+      ]
+    },
+    {
+      "id": "build",
+      "label": "철거·건설",
+      "items": [
+        {
+          "id": "demolition",
+          "label": "철거"
+        },
+        {
+          "id": "masonry",
+          "label": "미장·조적"
+        },
+        {
+          "id": "waste",
+          "label": "폐기물 처리"
+        }
+      ]
+    },
+    {
+      "id": "repair",
+      "label": "설치·수리",
+      "items": [
+        {
+          "id": "appliance",
+          "label": "가전 설치·수리"
+        },
+        {
+          "id": "lock",
+          "label": "도어락·열쇠"
+        },
+        {
+          "id": "sign",
+          "label": "간판"
+        },
+        {
+          "id": "handyman",
+          "label": "집수리"
+        }
+      ]
+    },
+    {
+      "id": "moving",
+      "label": "이사·운반",
+      "items": [
+        {
+          "id": "moving",
+          "label": "이사"
+        },
+        {
+          "id": "freight",
+          "label": "용달·운반"
+        }
+      ]
+    },
+    {
+      "id": "etc",
+      "label": "기타",
+      "items": [
+        {
+          "id": "custom",
+          "label": "직접 입력",
+          "custom": true
+        }
       ]
     }
   ]

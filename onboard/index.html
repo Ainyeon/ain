@@ -51,7 +51,7 @@
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script defer src="/auth.js?v=31"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
-  <script defer src="/assets/js/ain-community.js?v=34"></script>
+  <script defer src="/assets/js/ain-community.js?v=35"></script>
 </head>
 <body class="has-tabbar">
   <nav class="tnav">
@@ -93,9 +93,9 @@
         return;
       }
 
-      const opts = Object.entries(ainCommunity.FIELD_LABELS)
-        .filter(([id]) => !(ainCommunity.FIELD_LEGACY || []).includes(id))
-        .map(([id, label]) => `<option value="${id}">${label}</option>`).join('');
+      // 현장직 전체 분야를 묶음별로 (ain-community.js FIELD_GROUPS — 고정 문자열이라 그대로 넣는다)
+      const opts = ainCommunity.FIELD_GROUPS.map(([group, items]) => `<optgroup label="${group}">`
+        + items.map(([id, label]) => `<option value="${id}">${label}</option>`).join('') + '</optgroup>').join('');
       body.innerHTML = `
         <form class="ob-card" id="obForm">
           <div class="field">
