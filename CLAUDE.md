@@ -40,7 +40,7 @@
 2. **콘솔 에러 0** (해당 페이지 신규 발생분 기준)
 3. **구 기능 목록 통과**: 메이커 캔버스 실렌더(#cv 크기>0) · 게시판 게이트/티저 렌더 ·
    입주 게이팅(비로그인 잠금 카드) · 시세 실데이터 · 업무 데모 견적서/보고서 이미지 생성 · 카드 데모 문의 접수
-   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`·`test-open-board-sql.mjs`·`test-movein-weather-sql.mjs`·`test-member-grades-sql.mjs`(PGlite) · 약관을 채운 뒤 `node tools/check-legal.js`
+   · `node tools/test-*.js` 전부 + `node tools/test-work-sql.mjs`·`test-open-board-sql.mjs`·`test-movein-weather-sql.mjs`·`test-member-grades-sql.mjs`·`test-web-push-sql.mjs`(PGlite) · `deno test -A supabase/functions/push-drain/drain_test.ts` · 약관을 채운 뒤 `node tools/check-legal.js`
    · (21 적용 후) 비로그인 `/board/free/`·`/board/proposal/` = 목록·본문·댓글이 보이고 쓰기·댓글·공감·투표 자리는 로그인 안내,
      입주 캘린더 글은 본문 잠김 · 구인·구직(`/edu/jobs/`)은 여전히 회원 전용
 4. **룩 혼재 push 금지**: 전 라우트가 design-tokens/components만 소비하는지
@@ -114,5 +114,11 @@
   바로가기에서 빠진 길은 시세 스트립 '전체'(/prices/)·입주정보 '캘린더'(/calendar/)·게시판 칸 '제안·건의'로 대신.
   게시판 목록은 공감·댓글·조회가 0 이면 적지 않음. authorBadge: 운영자·매니저는 분야 뱃지 없이 역할 뱃지만, 닉네임이 역할 이름과 같으면 생략.
   ain-community.js ?v=34(홈도 이제 불러옴) · board-free/proposal.js ?v=32, VERSION 은 ain-v35 그대로
+- 2026-11-08 (feat/web-push): 앱 출시 1단계 = 웹 푸시(사용자 결정: ① 웹 푸시 → ② 플레이스토어 → ③ 앱스토어, 앱인토스 보류).
+  supabase/26_web_push.sql(push_subscriptions·push_outbox 둘 다 직접 접근 0, 회원은 save/delete_push_subscription 으로 자기 기기만,
+  알려진 푸시 서비스 주소만) + 트리거(댓글 → 글쓴이, 공감·찬성 → 글마다 하루 1번) + pg_cron 'push-movein-daily' 09:00 KST
+  (관심 단지 입주 30·7일, 월 단위는 30일만) + pg_net 으로 Edge Function push-drain 깨움(verify_jwt=false — 대기 줄만 보냄).
+  VAPID 비밀키는 함수 비밀값에만, 공개키는 me/index.html VAPID_PUBLIC_KEY. 로그아웃(auth.js logout)은 이 기기 구독을 먼저 지운다.
+  아이폰은 홈 화면에 추가한 PWA 에서만 켤 수 있다(iOS 16.4+). sw.js 에 push·notificationclick, auth.js ?v=31, VERSION 은 ain-v35 그대로
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10
