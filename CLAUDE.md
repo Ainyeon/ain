@@ -107,5 +107,12 @@
   이름은 25_grade_names(site_25_grade_names, 사용자 A안: 새싹·일꾼·단골·고수 → 막내·기사·반장·명장). 24 를 다시 돌리면 이름이 되돌아간다.
   운영자·매니저는 등급 대신 역할 배지. components.css ?v=31(.grade-badge) · ain-community.js ?v=33, VERSION 은 ain-v35 그대로.
   명장 지정: update profiles set grade_pin = '명장' where id = …(운영 SQL, 사용자 결정 후)
+- 2026-11-08 (feat/home-alive, 화면만 — DB 변경 없음): 홈 정리. 네 방향 카드·바로가기 패널 제거(위 탭·아래 탭바와 중복),
+  1줄 게시판 스트립 → '현장 게시판' 칸을 히어로 바로 아래로(ain-community.js readPosts·readStats 재사용, 사람 글 최신 5개,
+  입주 캘린더 자동 글은 한 줄로 묶음, 사람 글이 3개 미만이면 첫 글 권유 + '기사' 등급 안내). 히어로 숫자 0 은 숨김(setStat),
+  집계 기준·날씨 기준 안내는 <details class="note"> '기준 보기'로 접음, 비회원 입주 자물쇠 줄 지역당 2개, 업무 관리 칸은 도구 위로,
+  바로가기에서 빠진 길은 시세 스트립 '전체'(/prices/)·입주정보 '캘린더'(/calendar/)·게시판 칸 '제안·건의'로 대신.
+  게시판 목록은 공감·댓글·조회가 0 이면 적지 않음. authorBadge: 운영자·매니저는 분야 뱃지 없이 역할 뱃지만, 닉네임이 역할 이름과 같으면 생략.
+  ain-community.js ?v=34(홈도 이제 불러옴) · board-free/proposal.js ?v=32, VERSION 은 ain-v35 그대로
 - 미검증(출시 후 남은 것): 새 카카오 인증 왕복, 다른 실제 기기, 모바일 이미지 저장·공유,
   서비스워커 업그레이드·오프라인. 자세한 것은 docs/launch/RELEASE_AUDIT.md §10

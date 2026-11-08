@@ -119,7 +119,7 @@
       return '<article class="board-card' + (reached(tv) && p.status === 'open' ? ' reach-highlight' : '') + (C().isStaff(p.author) ? ' staff-accent' : '') + '">'
         + '<a href="?id=' + p.id + '"><h2>' + escT(p.title) + '</h2></a>'
         + '<div class="card-meta-line"><span class="author-line">' + C().authorBadgeOf(p) + '</span>'
-        + '<span><span class="view-count">조회 ' + (p.view_count || 0) + '</span> <span class="status-badge status-' + escT(p.status) + '">' + (STATUS_LABELS[p.status] || p.status) + '</span></span></div>'
+        + '<span>' + (p.view_count ? '<span class="view-count">조회 ' + p.view_count + '</span> ' : '') + '<span class="status-badge status-' + escT(p.status) + '">' + (STATUS_LABELS[p.status] || p.status) + '</span></span></div>'
         + statusBlock(p) + voteRowHtml(p.id, tv) + '</article>';
     }).join('') : '<p class="empty-note">등록된 제안이 없습니다.</p>';
 

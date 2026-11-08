@@ -184,6 +184,9 @@
 
     const stats = await C().readStats(data.map((p) => p.id), myId(me));
     const st = (id) => stats[id] || { up: 0, comments: 0 };
+    // 0 은 적지 않는다 — 줄마다 '공감 0 · 댓글 0 · 조회 0'이 붙으면 아무도 없는 곳처럼 보인다
+    const counts = (p) => [st(p.id).up ? '공감 ' + st(p.id).up : '', st(p.id).comments ? '댓글 ' + st(p.id).comments : '',
+      p.view_count ? '조회 ' + p.view_count : ''].filter(Boolean).join(' · ');
 
     const closedTag = (p) => p.closed_at ? '<span class="field-badge">마감</span>' : '';
     const moveInTag = (p) => p.ref_type === 'move_in' ? '<span class="field-badge">입주</span>' : '';
@@ -193,8 +196,8 @@
     const list = data.length ? data.map((p) =>
       '<a class="board-card' + (C().isStaff(p.author) ? ' staff-accent' : '') + '" href="' + postUrl(p.id) + '"><h2>' + closedTag(p) + moveInTag(p) + reviewTag(p) + ' ' + escT(p.title) + '</h2>'
       + '<div class="card-meta-line"><span class="author-line">' + C().authorBadgeOf(p) + '</span>'
-      + '<span><span class="cmt-count">공감 ' + st(p.id).up + ' · 댓글 ' + st(p.id).comments + ' · 조회 ' + (p.view_count || 0) + '</span>'
-      + ' · <time>' + C().timeAgo(p.created_at) + '</time></span></div></a>').join('')
+      + '<span>' + (counts(p) ? '<span class="cmt-count">' + counts(p) + '</span> · ' : '')
+      + '<time>' + C().timeAgo(p.created_at) + '</time></span></div></a>').join('')
       : '<p class="empty-note">' + (refFiltered ? '이 과정에 연결된 글이 없습니다.' : CFG.empty) + '</p>';
 
     const boardHint = CFG.hint ? '<div class="rules-banner">' + escT(CFG.hint) + '</div>' : '';
