@@ -99,13 +99,14 @@ export function createTools({ store, view, sel, ui, state }) {
   let tapPan = null, fingers = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches; // tapPan = 손가락 한 개로 빈 곳을 끄는 중 {px, moved} · fingers = 마지막 포인터가 손가락(안내문이 손가락 기준으로 말한다)
   let kc = null, focused = false, lastMm = null, said = false, sayT = 0; // kc = 키보드 커서 {mm} · focused = 캔버스에 초점 · lastMm = 마지막 포인터 자리 · said = 이번 누르기에서 처리기가 낭독했는가 · sayT = 커서 낭독을 모으는 타이머
   const pts = new Map(), doc = () => store.doc, fl = () => curFloor(store.doc), vp = () => view.vp, T = (px) => px / vp().scale;
+  const seen = () => { const d = doc(); return state.analysis !== 'poche' ? d : { ...d, floors: d.floors.map((f, i) => (i === d.cur ? { ...f, openings: [], guides: [], items: [] } : f)) }; }; // 집기·훑기가 보는 문서 — 포셰 보기에서 그리지 않는 것(개구부·보조선·제품)은 집히지도 않는다
   const run = (cmd) => { try { return store.exec(cmd); } catch (err) { ui.toast(err.message, 'err'); return null; } };
   const say = (m) => { said = true; ui.say(m); };
   const hint = () => ui.hint(NAMES[tool] + (tool === 'opening' ? ` · ${OPENING_NAMES[opts.type || 'door']}` : ''), H[tool].hint() + kbTip());
   const redraw = () => { hint(); view.requestDraw(); };
   const single = () => (sel.size === 1 ? findEl(doc(), [...sel.ids][0]) : null);
   const snap = (c, from, ex) => snapPoint(ex ? withoutIds(doc(), ex) : doc(), c.mm, { gridMm: snapStep(vp().scale), tolMm: T(PX.snap), from, ortho: !!(from && c.shift) });
-  const blankAt = (px) => { const one = single(); if (one && !state.locked && hitHandle(one, px)) return false; return !hitTest(doc(), view.toMm(px), T(PX.hit)); }; // 고른 것의 핸들이나 도형 위가 아닌 빈 곳
+  const blankAt = (px) => { const one = single(); if (one && !state.locked && hitHandle(one, px)) return false; return !hitTest(seen(), view.toMm(px), T(PX.hit)); }; // 고른 것의 핸들이나 도형 위가 아닌 빈 곳
   const hitHandle = (one, px) => handlesOf(one).find((h) => { const q = view.toPx(h.p); return Math.hypot(q[0] - px[0], q[1] - px[1]) <= PX.handle; }) || null;
   const abort = () => { if (drag && drag.started) store.cancel(); drag = null; };
   const end = () => { op = null; redraw(); };
@@ -117,7 +118,7 @@ export function createTools({ store, view, sel, ui, state }) {
   const kbCtx = (mm, shift) => ({ e: null, px: view.toPx(mm), mm, shift: !!shift, dn, moved: false, isDrag: false });
   const kbTool = () => KB_SET.has(tool) || (tool === 'select' && !sel.size); // 방향키·Enter 가 커서를 움직이는 도구 — 고른 것이 있으면 방향키는 그것을 옮긴다
   const kbShown = () => !!kc && focused && kbTool();
-  const kbUnder = () => (tool === 'select' || tool === 'delete' ? hitTest(doc(), kc.mm, T(PX.hit)) : null);
+  const kbUnder = () => (tool === 'select' || tool === 'delete' ? hitTest(seen(), kc.mm, T(PX.hit)) : null);
   function kbSayLater() { // 커서 낭독은 모았다가 한 번만 — 키를 누르고 있는 동안 계속 읽지 않는다
     clearTimeout(sayT);
     sayT = setTimeout(() => { if (!kc) return; const hit = kbUnder(); ui.say(`커서 ${kbText(kc.mm)}${hit ? ' · ' + describeEl(doc(), hit.id) : ''}`); }, 250);
@@ -137,7 +138,7 @@ export function createTools({ store, view, sel, ui, state }) {
     else if (before && !op) ui.say('그리기를 마쳤습니다');
   }
   function stepSel(dir) { // [ ] — 모든 요소를 차례로 하나씩 고르고 이름을 읽는다. 속성 패널은 선택이 바뀌면 app 이 만든다
-    const ids = allIds(fl());
+    const ids = allIds(curFloor(seen()));
     if (!ids.length) return ui.say('고를 것이 없습니다');
     const id = stepId(ids, sel.size === 1 ? [...sel.ids][0] : null, dir);
     sel.set([id]);
@@ -184,7 +185,7 @@ export function createTools({ store, view, sel, ui, state }) {
       down(c) {
         const one = single(), multi = c.shift || state.multi;
         if (one && !state.locked) { const hd = hitHandle(one, c.px); if (hd) { const ex = new Set([one.id]), joined = []; if (one.col === 'walls' && hd.k !== 'bulge') for (const w of fl().walls) if (w.id !== one.id) for (const k of ['a', 'b']) if (dist(w[k], hd.p) < 1) { joined.push({ id: w.id, k }); ex.add(w.id); } drag = { kind: 'handle', one, k: hd.k, joined, ex, started: false, failed: false }; return; } }
-        const hit = hitTest(doc(), c.mm, T(PX.hit));
+        const hit = hitTest(seen(), c.mm, T(PX.hit));
         if (hit) {
           if (multi) { sel.toggle(hit.id); return; }
           if (!sel.has(hit.id)) sel.set([hit.id]);
@@ -194,7 +195,7 @@ export function createTools({ store, view, sel, ui, state }) {
       },
       move(c) {
         if (!drag) { // 가리키기
-          const hit = hitTest(doc(), c.mm, T(PX.hit)), one = single(), hd = one && !state.locked ? hitHandle(one, c.px) : null;
+          const hit = hitTest(seen(), c.mm, T(PX.hit)), one = single(), hd = one && !state.locked ? hitHandle(one, c.px) : null;
           view.hover = hit && !hd ? { id: hit.id } : null;
           ui.cursor(hd ? 'crosshair' : hit ? (sel.has(hit.id) && !state.locked ? 'move' : 'pointer') : 'default'); return;
         }
@@ -218,11 +219,11 @@ export function createTools({ store, view, sel, ui, state }) {
       },
       up(c) {
         const d = drag; drag = null; if (!d) return;
-        if (d.kind === 'marquee') { if (dist(d.a, d.b) * vp().scale >= PX.drag) { const ids = idsInRect(doc(), d.a, d.b); sel.set(d.add ? [...new Set([...sel.ids, ...ids])] : ids); } return; }
+        if (d.kind === 'marquee') { if (dist(d.a, d.b) * vp().scale >= PX.drag) { const ids = idsInRect(seen(), d.a, d.b); sel.set(d.add ? [...new Set([...sel.ids, ...ids])] : ids); } return; }
         if (d.started) { if (d.failed) { store.cancel(); ui.toast('그 자리에는 놓을 수 없습니다 · 원래대로 되돌렸습니다', 'err'); } else { store.commit(); say('이동했습니다'); } return; }
         if (d.kind === 'move' && sel.size > 1 && !c.shift && !state.multi) sel.set([d.hit]); // 눌렀다 뗐을 뿐이면 그것 하나로
       },
-      dbl(c) { const hit = hitTest(doc(), c.mm, T(PX.hit)); if (hit && hit.kind === 'room') ui.renameRoom(hit.id); },
+      dbl(c) { const hit = hitTest(seen(), c.mm, T(PX.hit)); if (hit && hit.kind === 'room') ui.renameRoom(hit.id); },
       overlay(g) {
         const { ctx, C, toPx } = g;
         if (drag && drag.kind === 'marquee') { const a = toPx(drag.a), b = toPx(drag.b); ctx.save(); ctx.globalAlpha = 0.25; ctx.fillStyle = C.accentBg; ctx.fillRect(a[0], a[1], b[0] - a[0], b[1] - a[1]); ctx.globalAlpha = 1; ctx.strokeStyle = C.accent; ctx.setLineDash([4, 3]); ctx.lineWidth = 1; ctx.strokeRect(a[0] + 0.5, a[1] + 0.5, b[0] - a[0], b[1] - a[1]); ctx.restore(); }
@@ -283,8 +284,8 @@ export function createTools({ store, view, sel, ui, state }) {
     },
     delete: {
       hint: () => '지울 것을 누르세요 · 방을 지우면 방의 벽도 함께 지워집니다',
-      move(c) { const hit = hitTest(doc(), c.mm, T(PX.hit)); view.hover = hit ? { id: hit.id, danger: true } : null; ui.cursor(hit ? 'pointer' : 'default'); },
-      up(c) { const hit = hitTest(doc(), c.mm, T(PX.hit)); if (!hit) return; if (run({ type: 'remove', ids: [hit.id] })) { view.hover = null; sel.prune(doc()); say('지웠습니다'); } },
+      move(c) { const hit = hitTest(seen(), c.mm, T(PX.hit)); view.hover = hit ? { id: hit.id, danger: true } : null; ui.cursor(hit ? 'pointer' : 'default'); },
+      up(c) { const hit = hitTest(seen(), c.mm, T(PX.hit)); if (!hit) return; if (run({ type: 'remove', ids: [hit.id] })) { view.hover = null; sel.prune(doc()); say('지웠습니다'); } },
       overlay() {},
     },
     colRect: colTool('rect'),

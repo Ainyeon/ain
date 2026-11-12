@@ -11,6 +11,7 @@ export const PREFIX = { walls: 'W', rooms: 'R', columns: 'C', openings: 'O', gui
 export const COLS = Object.keys(PREFIX);
 const FLOOR_H = 2300;
 const KIND = { walls: ['inner', 'exterior'], openings: ['door', 'window', 'open'], columns: ['rect', 'round'] };
+export const ZONES = ['public', 'private', 'service']; // 방 구분(room.zone, 없어도 된다 — 없으면 이름으로 추정: analysis.js)
 
 export const cloneDoc = (doc) => structuredClone(doc);
 export const curFloor = (doc) => doc.floors[doc.cur];
@@ -81,7 +82,8 @@ const CHECK = {
     : areaOf(r.poly) < 1 ? '방의 넓이가 0 입니다'
     : typeof r.name !== 'string' ? '방 이름이 문자열이 아닙니다'
     : !Array.isArray(r.wallIds) || r.wallIds.some((i) => !W.has(i)) ? '방이 없는 벽을 가리킵니다'
-    : r.wallIds.length > f.walls.length ? '방의 벽 목록이 층의 벽 수보다 깁니다' : '',
+    : r.wallIds.length > f.walls.length ? '방의 벽 목록이 층의 벽 수보다 깁니다'
+    : r.zone !== undefined && !ZONES.includes(r.zone) ? '방 구분(zone)은 public·private·service 입니다' : '',
   columns: (c) => !KIND.columns.includes(c.kind) ? '기둥 종류는 rect 또는 round 입니다'
     : !pt(c.c) ? '기둥 위치가 올바르지 않습니다 (±10km 이내의 숫자)'
     : !(len(c.w) && (c.kind === 'round' || len(c.d))) ? '기둥 크기는 0 보다 크고 10km 이하여야 합니다'

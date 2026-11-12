@@ -1,8 +1,9 @@
 // 2D 도면 편집기 — 화면 조립·저장/불러오기/내보내기·층과 상세 설정·선택 속성·밑그림·패널(panels.js)·3D(view3d.js) 연결·키보드. 그리기는 view2d.js, 도구는 tools.js, 미니맵은 minimap.js
-import { createDoc, curFloor, COLS, APPLIANCE_LABEL, DEFAULTS } from './core/model.js';
+import { createDoc, curFloor, COLS, APPLIANCE_LABEL, DEFAULTS, ZONES } from './core/model.js';
 import { Store } from './core/store.js';
 import { toDocJSON, fromDocJSON } from './core/export.js';
 import { roomAreaM2, bounds, wallLen, dist } from './core/geom.js';
+import { ZONE_LABEL, zoneOf, zoneTable, poche, routesFor } from './core/analysis.js';
 import { createLibrary } from './library.js';
 import { createView2D, fmtLen, fmtArea, readTheme, floorAreaM2 } from './view2d.js';
 import { createTools, Selection, TOOL_ROWS, OPENING_NAMES, findEl } from './tools.js';
@@ -28,7 +29,7 @@ try { storage = window.localStorage; storage.getItem('ain-plan-docs'); } catch (
 const lib = createLibrary(storage), UI_KEY = 'ain-plan-ui';
 const prefs = (() => { try { return JSON.parse(storage.getItem(UI_KEY)) || {}; } catch (e) { return {}; } })();
 const a01 = (v) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
-const state = { locked: false, multi: false, showGrid: prefs.showGrid !== false, showLabels: prefs.showLabels !== false, unit: prefs.unit === 'ft' ? 'ft' : 'mm', wallAlpha: a01(prefs.wallAlpha), floorAlpha: a01(prefs.floorAlpha), areaGross: !!prefs.areaGross, mode: '2d' };
+const state = { locked: false, multi: false, showGrid: prefs.showGrid !== false, showLabels: prefs.showLabels !== false, unit: prefs.unit === 'ft' ? 'ft' : 'mm', wallAlpha: a01(prefs.wallAlpha), floorAlpha: a01(prefs.floorAlpha), areaGross: !!prefs.areaGross, mode: '2d', analysis: null, routes: [] };   // analysis: 분석 보기('poche'·'zone'·'route', 꺼짐 null) · routes: 사용자가 더한 동선 [[출발 방 id, 도착 방 id]…] — 둘 다 이 창에서만(저장하지 않는다)
 const savePrefs = () => { try { storage.setItem(UI_KEY, JSON.stringify({ unit: state.unit, showGrid: state.showGrid, showLabels: state.showLabels, wallAlpha: state.wallAlpha, floorAlpha: state.floorAlpha, areaGross: state.areaGross })); } catch (e) { /* 환경설정은 못 남겨도 된다 */ } };
 const narrow = matchMedia('(max-width: 768px)'), mid = matchMedia('(max-width: 1023px)'), coarse = matchMedia('(pointer: coarse)');   // mid: 중간 폭(태블릿 세로 등)에서는 오른쪽 패널을 접어 두어 캔버스를 넓힌다
 state.touch = narrow.matches || coarse.matches; // 키보드가 없는 화면 — 도구 안내문이 키 대신 누르는 동작을 말하고 [끝내기] 단추가 보인다
@@ -138,7 +139,7 @@ async function confirmDiscard(what) { // 저장 안 한 변경이 있을 때 →
   return v === 'drop';
 }
 function replaceDoc(doc, id, updated = null) {
-  store.replace(doc); curId = id; savedAt = updated; sel.clear(); tools.setTool('select');
+  store.replace(doc); curId = id; savedAt = updated; state.routes = []; sel.clear(); tools.setTool('select');
   view.resize(); view.fit(bounds(store.doc)); schedule();
 }
 async function newDoc() {
@@ -224,8 +225,9 @@ function refresh() {
   $('plAreaNet').setAttribute('aria-pressed', String(!state.areaGross)); $('plAreaGross').setAttribute('aria-pressed', String(state.areaGross));
   setVal($('plWallA'), Math.round(state.wallAlpha * 100)); setVal($('plWallAn'), Math.round(state.wallAlpha * 100));
   setVal($('plFloorA'), Math.round(state.floorAlpha * 100)); setVal($('plFloorAn'), Math.round(state.floorAlpha * 100));
-  for (const [id, on] of [['plLabels', state.showLabels], ['plGrid', state.showGrid], ['plLock', state.locked], ['plUnitMm', state.unit === 'mm'], ['plUnitFt', state.unit === 'ft'], ['plMode2d', state.mode === '2d'], ['plMode3d', state.mode === '3d']]) $(id).setAttribute('aria-pressed', String(on));
-  underlayUI(d); for (const f2 of propFields) f2.sync();
+  for (const [id, on] of [['plLabels', state.showLabels], ['plGrid', state.showGrid], ['plAnal', !!state.analysis], ['plLock', state.locked], ['plUnitMm', state.unit === 'mm'], ['plUnitFt', state.unit === 'ft'], ['plMode2d', state.mode === '2d'], ['plMode3d', state.mode === '3d']]) $(id).setAttribute('aria-pressed', String(on));
+  $('plApp').classList.toggle('ana', !!state.analysis && state.mode === '2d');   // 폰: 분석 시트만큼 캔버스를 줄인다(plan.css)
+  underlayUI(d); syncRoutes(); for (const f2 of propFields) f2.sync();
   view.requestDraw(); mini.draw();
 }
 
@@ -234,7 +236,7 @@ let propFields = [];
 function propsBuild() {
   const box = $('plProps'), ids = [...sel.ids]; propFields = [];
   const first = ids.length === 1 ? findEl(store.doc, ids[0]) : null;
-  if (!ids.length || (ids.length === 1 && !first)) { box.hidden = true; box.replaceChildren(); return; }
+  if (!ids.length || (ids.length === 1 && !first)) { if (state.analysis && state.mode === '2d') return analysisBuild(box); box.hidden = true; box.replaceChildren(); return; }   // 고른 것이 없으면 분석 표가 이 칸을 쓴다
   box.hidden = false;
   const kids = [h('h2', { id: 'plPropsH', text: '선택' })], KO = { walls: '벽', rooms: '방', columns: '기둥', openings: '개구부', guides: '보조선', items: '에어컨' };
   const add = (fld) => { propFields.push(fld); kids.push(fld.el); };
@@ -264,7 +266,7 @@ function propsBuild() {
     const isApp = first.col === 'items' && first.el.kind === 'appliance';
     kids.push(h('p', { class: 'ed-note', text: `${isApp ? '가전' : KO[first.col]} · ${id}` }));
     if (first.col === 'walls') { add(ro('길이', (e) => fmtLen(wallLen(e), state.unit))); add(num('두께', 'mm', (e) => e.t, (v) => up({ t: v }), { min: 10 })); add(pick('종류', [['inner', '내벽'], ['exterior', '외벽']], (e) => e.kind, (v) => up({ kind: v }))); add(num('곡선 처짐', 'mm', (e) => e.bulge, (v) => up({ bulge: v }))); }
-    else if (first.col === 'rooms') { add(txt('이름', (e) => e.name, (v) => up({ name: v }))); add(ro('실면적', (e) => fmtArea(roomAreaM2(store.doc, e), state.unit))); }
+    else if (first.col === 'rooms') { add(txt('이름', (e) => e.name, (v) => up({ name: v }))); add(ro('실면적', (e) => fmtArea(roomAreaM2(store.doc, e), state.unit))); add(pick('구분', ZONES.map((z) => [z, ZONE_LABEL[z]]), (e) => zoneOf(e), (v) => up({ zone: v }))); }
     else if (first.col === 'columns') { const rect = first.el.kind === 'rect'; add(num(rect ? '가로' : '지름', 'mm', (e) => e.w, (v) => up(rect ? { w: v } : { w: v, d: v }), { min: 10 })); if (rect) add(num('세로', 'mm', (e) => e.d, (v) => up({ d: v }), { min: 10 })); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 15 })); }
     else if (first.col === 'openings') { add(pick('종류', Object.entries(OPENING_NAMES), (e) => e.type, (v) => setOpeningType(cur, up, v))); add(num('폭', 'mm', (e) => e.width, (v) => up({ width: v }), { min: 100 })); add(num('높이', 'mm', (e) => e.height, (v) => up({ height: v }), { min: 100 })); add(num('바닥에서', 'mm', (e) => e.sill, (v) => up({ sill: v }), { min: 0 })); add(ro('경첩', (e) => (e.type === 'door' ? HINGE_NAME[e.hinge === 'b' ? 'b' : 'a'] : '없음'))); add(ro('열리는 쪽', (e) => (e.type === 'door' ? SWING_NAME[e.swing === -1 ? -1 : 1] : '없음'))); add(doorSwingRow(cur, up)); }
     else if (isApp) { // 가전: 크기는 공식 제원 값이라 고치지 않는다(읽기 전용), 돌리기만
@@ -293,6 +295,66 @@ function doorSwingRow(cur, up) {
   const bt = (text, patch, said) => h('button', { type: 'button', class: 'ed-b', text, onclick: () => { const e = cur(); if (!e) return; const p = patch(e); if (up(p)) say(said(p)); } });
   const b1 = bt('경첩 반대쪽으로', (e) => ({ hinge: e.hinge === 'b' ? 'a' : 'b' }), (p) => `경첩을 ${HINGE_NAME[p.hinge]}으로 옮겼습니다`), b2 = bt('반대편으로 열기', (e) => ({ swing: e.swing === -1 ? 1 : -1 }), (p) => `열리는 쪽을 ${SWING_NAME[p.swing]}으로 바꿨습니다`);
   return { el: h('div', { class: 'ed-btns' }, [b1, b2]), sync() { const e = cur(); b1.disabled = b2.disabled = !e || e.type !== 'door'; } };
+}
+
+/* 분석 보기(포셰·존·동선) — 계산은 core/analysis.js, 그림은 view2d.js. 표는 속성 칸에 두고 문서·종류·동선 목록이 바뀔 때만 다시 만든다 */
+const ANA = { poche: '포셰', zone: '존', route: '동선' };
+const f2 = (v) => v.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), f1 = (v) => v.toFixed(1);
+const tbl = (caption, head, rows, foot) => h('table', { class: 'ed-tbl' }, [h('caption', { class: 'ed-vh', text: caption }),
+  h('thead', {}, h('tr', {}, head.map(([t, num]) => h('th', { scope: 'col', class: num ? 'num' : null }, t)))), h('tbody', {}, rows), foot ? h('tfoot', {}, foot) : null]);
+const numTd = (t) => h('td', { class: 'num', text: t });
+function setAnalysis(mode) {
+  const was = state.analysis; state.analysis = mode;
+  if (mode && !was) { if (narrow.matches) setPanel(false); else setSide(true); }   // 폰: 도구 시트가 표 시트를 덮지 않게 · 중간 폭: 접힌 오른쪽 칸을 편다
+  if (!mode !== !was) propsBuild();   // 종류만 바꿀 때는 칸을 다시 만들지 않는다(누른 단추의 초점이 남는다)
+  schedule(); say(mode ? `${ANA[mode]} 보기` : '분석 보기를 껐습니다');
+  if (!mode && was && document.activeElement !== $('plAnal')) $('plAnal').focus({ preventScroll: true });   // 칸 안의 [끝내기] 가 사라지므로 초점은 켜는 단추로
+}
+const syncRoutes = () => { view.routes = state.analysis === 'route' && state.mode === '2d' ? routesFor(curFloor(store.doc), state.routes) : []; };   // 표가 안 보일 때(무언가 고른 동안)도 그림은 문서를 따라간다
+function analysisBuild(box) {
+  const body = h('div', { class: 'ed-ana' }), tabs = Object.entries(ANA).map(([m, t]) => h('button', { type: 'button', class: 'ed-sb', 'data-m': m, text: t, 'aria-pressed': 'false', onclick: () => setAnalysis(m) }));
+  let key = [], focusAdd = false;
+  const addRoute = (from, to) => {
+    if (from === to) return toast('출발과 도착이 같습니다', 'err');
+    const r = routesFor(curFloor(store.doc), [...state.routes, [from, to]]);
+    if (r.length === view.routes.length) return toast('이미 있는 동선입니다', 'err');
+    const n = r[r.length - 1]; state.routes = [...state.routes, [from, to]]; focusAdd = true; schedule();
+    say(`${n.fromName} → ${n.toName} · ${n.ok ? `${f1(n.lenMm / 1000)} m · ${n.steps}걸음` : '길이 없습니다'}`);
+  };
+  const fill = {
+    poche(d, f) {
+      const p = poche(d, f);
+      return [tbl('벽과 바닥 면적', [['항목'], ['값', 1]], [['벽 비율', `${f1(p.pct ?? 0)} %`], ['벽', `${f2(p.wallM2)} ㎡`], ['바닥', `${f2(p.floorM2)} ㎡`]].map(([k, v]) => h('tr', {}, [h('th', { scope: 'row', text: k }), numTd(v)])))];
+    },
+    zone(d, f) {
+      const z = zoneTable(d, f);
+      return [tbl('존별 면적', [['구분'], ['면적 ㎡', 1], ['비율 %', 1]], z.rows.map((r) => h('tr', {}, [h('th', { scope: 'row' }, [h('span', { class: 'ed-zsw', 'data-z': r.zone, 'aria-hidden': 'true' }), r.label, r.names.length ? h('small', { text: r.names.join(', ') }) : null]), numTd(f2(r.areaM2)), numTd(f1(r.pct))])),
+        h('tr', {}, [h('th', { scope: 'row', text: '합계' }), numTd(f2(z.totalM2)), numTd('100.0')]))];
+    },
+    route(d, f) {
+      const R = view.routes, opts = () => f.rooms.map((r) => h('option', { value: r.id, text: r.name }));
+      const from = h('select', { 'aria-label': '출발' }, opts()), to = h('select', { 'aria-label': '도착' }, opts()); to.selectedIndex = 1;
+      const add = h('button', { type: 'button', class: 'ed-b', text: '추가', onclick: () => addRoute(from.value, to.value) });
+      if (focusAdd) { focusAdd = false; requestAnimationFrame(() => add.focus({ preventScroll: true })); }
+      const row = (r, i) => h('tr', {}, [numTd(String(i + 1)), h('th', { scope: 'row', text: `${r.fromName} → ${r.toName}` }),
+        ...(r.ok ? [numTd(`${f1(r.lenMm / 1000)} m`), numTd(String(r.steps))] : [h('td', { colspan: '2', text: r.reason === 'big' ? '도면이 너무 큽니다' : '길이 없습니다' })]),
+        h('td', {}, r.custom ? h('button', { type: 'button', class: 'ed-b', text: '지우기', 'aria-label': `${r.fromName} → ${r.toName} 지우기`, onclick: () => { state.routes = state.routes.filter(([a, b]) => a !== r.from || b !== r.to); focusAdd = true; schedule(); say('지웠습니다'); } }) : null)]);
+      return [R.length ? tbl('방 사이 걸음 거리', [['번호', 1], ['구간'], ['거리', 1], ['걸음', 1], [h('span', { class: 'ed-vh', text: '지우기' })]], R.map(row)) : null,
+        f.rooms.length > 1 ? h('div', { class: 'ed-ana-add' }, [h('label', { class: 'ed-f' }, [h('span', { text: '출발' }), from]), h('label', { class: 'ed-f' }, [h('span', { text: '도착' }), to]), add]) : h('p', { class: 'ed-note', text: '방이 둘 이상 필요합니다' })];
+    },
+  };
+  const sync = () => {
+    const d = store.doc, f = curFloor(d), m = state.analysis, next = [f, m, state.routes];
+    if (!m) return;
+    if (next.every((v, i) => v === key[i])) return;
+    key = next;
+    for (const b of tabs) b.setAttribute('aria-pressed', String(b.dataset.m === m));
+    body.replaceChildren(...(f.rooms.length ? fill[m](d, f) : [h('p', { class: 'ed-note', text: '방이 없습니다' })]).filter(Boolean));
+  };
+  propFields = [{ sync }]; box.hidden = false;
+  box.replaceChildren(h('div', { class: 'ed-sec-h' }, [h('h2', { id: 'plPropsH', text: '분석' }), h('button', { type: 'button', class: 'ed-b', text: '끝내기', 'aria-label': '분석 끝내기', onclick: () => setAnalysis(null) })]),
+    h('div', { class: 'ed-seg wide', role: 'group', 'aria-label': '분석 종류' }, tabs), body);
+  syncRoutes(); sync();
 }
 function delSel() { if (sel.size && run({ type: 'remove', ids: [...sel.ids] })) { sel.prune(store.doc); say('지웠습니다'); } }
 
@@ -404,14 +466,14 @@ async function enter3d(which = 'iso') {
   }
   state.mode = '3d'; $('plApp').classList.add('is3d'); $('plViews').hidden = false;
   v3.setWallAlpha(state.wallAlpha); v3.setFloorAlpha(state.floorAlpha); set3dView(which); v3.resize && v3.resize();
-  sel.clear(); schedule();
+  sel.clear(); propsBuild(); schedule();
   $('plView3d').focus({ preventScroll: true });   // Safari 는 단추를 눌러도 초점이 단추로 안 가 2·3·4 보기 글쇠가 안 먹었다 — 3D 화면으로 초점을 옮긴다
 }
 function set3dView(which) { if (!v3) return; v3.setView(which); for (const b of $('plViews').querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === which)); }
 function exit3d() {
   if (state.mode !== '3d') return;
   if (v3) v3.hide(); $('plView3d').hidden = true; $('plViews').hidden = true; $('plApp').classList.remove('is3d'); state.mode = '2d';
-  view.resize(); schedule();
+  propsBuild(); view.resize(); schedule();
   if (!document.querySelector('dialog[open]')) $('plCanvas').focus({ preventScroll: true });   // 3D 화면이 숨겨지며 초점이 사라지지 않게(Safari 에서는 단추 초점도 없다). 대화상자가 열려 있으면 건드리지 않는다
 }
 
@@ -451,6 +513,7 @@ function wire() {
   $('plViews').addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) set3dView(b.dataset.view); });
   const flag = (id, key) => { $(id).onclick = () => { state[key] = !state[key]; savePrefs(); schedule(); }; };
   flag('plLabels', 'showLabels'); flag('plGrid', 'showGrid');
+  $('plAnal').onclick = () => setAnalysis(state.analysis ? null : 'poche');
   $('plLock').onclick = () => setLocked(!state.locked);
   $('plSnap').onclick = () => { view.requestDraw(); requestAnimationFrame(() => $('plCanvas').toBlob((b) => (b ? download(`ain-도면-${safe(store.doc.title)}.png`, b) : toast('이미지를 만들지 못했습니다', 'err')))); };
   $('plZoomIn').onclick = () => view.zoomCenter(1.25); $('plZoomOut').onclick = () => view.zoomCenter(0.8); $('plFit').onclick = () => view.fit(bounds(store.doc));

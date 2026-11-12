@@ -126,6 +126,22 @@ button, input, select { font: inherit; color: inherit; }
 .ed-sec .ed-b.wide { margin-bottom: var(--sp-2); }
 .ed-sec .ed-btns { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
 
+/* 분석 보기(포셰·존·동선) — 속성 칸(ed-props) 안의 표. 존 견본은 캔버스와 같은 토큰·같은 진하기 */
+.ed-ana { display: grid; gap: var(--sp-2); }
+.ed-props > .ed-seg { margin-bottom: var(--sp-2); }
+.ed-ana .ed-note, .ed-ana .ed-f { margin: 0; }
+.ed-tbl { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.ed-tbl th, .ed-tbl td { padding: var(--sp-1); border-bottom: 1px solid var(--c-line); font-size: var(--fs-3); font-weight: var(--fw-semi); text-align: left; vertical-align: top; }
+.ed-tbl thead th { border-bottom-color: var(--c-line-strong); color: var(--c-ink-sub); font-size: var(--fs-4); line-height: var(--lh-4); }
+.ed-tbl .num { text-align: right; white-space: nowrap; }
+.ed-tbl tfoot th, .ed-tbl tfoot td { border-bottom: 0; font-weight: var(--fw-bold); }
+.ed-tbl small { display: block; color: var(--c-ink-sub); font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--fw-reg); }
+.ed-tbl .ed-b { min-height: 28px; padding: 0 var(--sp-2); }
+.ed-zsw { display: inline-block; width: var(--sp-3); height: var(--sp-3); margin-right: var(--sp-1); border: 1px solid var(--c-accent); border-radius: var(--r-1); background: color-mix(in srgb, var(--c-accent) 20%, transparent); vertical-align: -1px; }
+.ed-zsw[data-z="private"] { border-color: var(--c-up); background: color-mix(in srgb, var(--c-up) 20%, transparent); }
+.ed-zsw[data-z="service"] { border-color: var(--c-control); background: color-mix(in srgb, var(--c-control) 20%, transparent); }
+.ed-ana-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: var(--sp-2); }
+
 /* 알림·창 */
 .ed-toasts { position: fixed; left: 50%; bottom: calc(var(--sp-8) + var(--sp-8)); z-index: 50; display: grid; gap: var(--sp-2); justify-items: center; translate: -50% 0; pointer-events: none; max-width: calc(100vw - var(--sp-6)); }
 .ed-toast { padding: var(--sp-2) var(--sp-4); border-radius: var(--r-1); background: var(--c-ink); color: var(--c-surface); font-size: var(--fs-3); animation: ed-in var(--t-base) var(--ease) backwards; }
@@ -149,7 +165,7 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
 
 @media (pointer: coarse) {
   :root { --ed-edge: 44px; }
-  .ed-b, .ed-sb, .ed-row, .ed-title, .ed-f select, .ed-f input[type="text"], .ed-f input[type="number"], .ed-rg input[type="range"] { min-height: 44px; }
+  .ed-b, .ed-tbl .ed-b, .ed-sb, .ed-row, .ed-title, .ed-f select, .ed-f input[type="text"], .ed-f input[type="number"], .ed-rg input[type="range"] { min-height: 44px; }
   .ed-sb { min-width: 44px; }
   .ed-x { width: 44px; height: 44px; }
 }
@@ -197,8 +213,10 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
   .ed-props { grid-area: auto; position: fixed; z-index: 19; left: 0; right: 0; bottom: 56px; max-height: 45dvh; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; column-gap: var(--sp-3); border-left: 0; border-top: 1px solid var(--c-line); border-radius: var(--r-3) var(--r-3) 0 0; box-shadow: var(--sh-2); }   /* 선택 속성 = 닫힌 서랍 밖의 아래 시트 */
   .ed-props > h2 { grid-column: 1; align-self: center; margin: 0 0 var(--sp-2); }
   .ed-props > .ed-note { grid-column: 2; align-self: center; margin: 0 0 var(--sp-2); text-align: right; }
-  .ed-props > .ed-btns { grid-column: 1 / -1; }
+  .ed-props > .ed-btns, .ed-props > .ed-sec-h, .ed-props > .ed-seg, .ed-props > .ed-ana { grid-column: 1 / -1; }
   .ed-app.no-side .ed-props { visibility: visible; }
+  .ed-app.ana .ed-stage { margin-bottom: 40dvh; }   /* 분석 보기: 시트가 계속 떠 있으므로 캔버스를 시트 위로 줄인다 — 도면과 캔버스 단추가 시트에 가리지 않는다 */
+  .ed-app.ana .ed-props { height: 40dvh; max-height: none; }
   .ed-hide-small { display: none; }
   .ed-hint { max-width: calc(100% - var(--sp-4)); }
   .ed-hint { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0 var(--sp-2); padding: var(--sp-1) var(--sp-2); }   /* 폰: 이름 · 글(두 줄까지) · [끝내기] 를 한 줄 막대로 — 화면의 5분의 1 을 먹던 카드를 줄인다 */
