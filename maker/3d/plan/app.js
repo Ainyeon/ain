@@ -5,6 +5,8 @@ import { toDocJSON, fromDocJSON } from './core/export.js';
 import { roomAreaM2, bounds, wallLen, dist } from './core/geom.js';
 import { ZONE_LABEL, zoneOf, zoneTable, poche, routesFor } from './core/analysis.js';
 import { CITIES, DAYS, compass, sunAt, dayRange, daySpanMin, clampDayMin, extWindows, sunPatches, sunHours, section, footprint, shadowPolys, shadowAt, polysBox } from './core/sun.js';
+import { buildMesh } from './core/mesh3d.js';
+import { axoScene } from './core/axo.js';
 import { createLibrary } from './library.js';
 import { createView2D, fmtLen, fmtArea, readTheme, floorAreaM2, drawSection } from './view2d.js';
 import { createTools, Selection, TOOL_ROWS, OPENING_NAMES, findEl } from './tools.js';
@@ -30,7 +32,7 @@ try { storage = window.localStorage; storage.getItem('ain-plan-docs'); } catch (
 const lib = createLibrary(storage), UI_KEY = 'ain-plan-ui';
 const prefs = (() => { try { return JSON.parse(storage.getItem(UI_KEY)) || {}; } catch (e) { return {}; } })();
 const a01 = (v) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
-const state = { locked: false, multi: false, showGrid: prefs.showGrid !== false, showLabels: prefs.showLabels !== false, unit: prefs.unit === 'ft' ? 'ft' : 'mm', wallAlpha: a01(prefs.wallAlpha), floorAlpha: a01(prefs.floorAlpha), areaGross: !!prefs.areaGross, mode: '2d', analysis: null, routes: [], sun: { day: 'winter', t: null, stories: 1, storyMm: 2800, cut: null } };   // analysis: 분석 보기(ANA 의 키, 꺼짐 null) · routes: 사용자가 더한 동선 [[출발 방 id, 도착 방 id]…] · sun: 일조·단면·그림자 보기 상태(day 날 · t 한 시각(분, null = 하루를 겹쳐 본다) · stories × storyMm 그림자 높이 · cut 자를 방) — 모두 이 창에서만(저장하지 않는다). 방위·위도는 문서(doc.site)
+const state = { locked: false, multi: false, showGrid: prefs.showGrid !== false, showLabels: prefs.showLabels !== false, unit: prefs.unit === 'ft' ? 'ft' : 'mm', wallAlpha: a01(prefs.wallAlpha), floorAlpha: a01(prefs.floorAlpha), areaGross: !!prefs.areaGross, mode: '2d', analysis: null, routes: [], sun: { day: 'winter', t: null, stories: 1, storyMm: 2800, cut: null }, axo: { spread: 1 } };   // analysis: 분석 보기(ANA 의 키, 꺼짐 null) · routes: 사용자가 더한 동선 [[출발 방 id, 도착 방 id]…] · sun: 일조·단면·그림자 보기 상태(day 날 · t 한 시각(분, null = 하루를 겹쳐 본다) · stories × storyMm 그림자 높이 · cut 자를 방) — · axo: 액소 보기의 벌림(0 붙음 ~ 1) — 모두 이 창에서만(저장하지 않는다). 방위·위도는 문서(doc.site)
 const savePrefs = () => { try { storage.setItem(UI_KEY, JSON.stringify({ unit: state.unit, showGrid: state.showGrid, showLabels: state.showLabels, wallAlpha: state.wallAlpha, floorAlpha: state.floorAlpha, areaGross: state.areaGross })); } catch (e) { /* 환경설정은 못 남겨도 된다 */ } };
 const narrow = matchMedia('(max-width: 768px)'), mid = matchMedia('(max-width: 1023px)'), coarse = matchMedia('(pointer: coarse)'), calm = matchMedia('(prefers-reduced-motion: reduce)');   // mid: 중간 폭(태블릿 세로 등)에서는 오른쪽 패널을 접어 두어 캔버스를 넓힌다
 state.touch = narrow.matches || coarse.matches; // 키보드가 없는 화면 — 도구 안내문이 키 대신 누르는 동작을 말하고 [끝내기] 단추가 보인다
@@ -95,6 +97,7 @@ const ui = {
   hint: (name, text) => { $('plHintName').textContent = name; $('plHintText').textContent = text; if (endBtn) endBtn.hidden = !(state.touch && tools && tools.tool !== 'select'); },
   setTool(name, o) {
     if (state.mode === '3d') exit3d();
+    if (state.analysis === 'axo' && name !== 'select') setAnalysis(null);   // 액소 보기에서 도구를 고르면 평면으로 돌아가 그린다
     const was = tools.tool, wasType = openingType;
     if (!tools.setTool(name, o || {})) return false;
     if (name === 'opening') openingType = (o && o.type) || openingType;
@@ -299,18 +302,20 @@ function doorSwingRow(cur, up) {
 }
 
 /* 분석 보기(포셰·존·동선) — 계산은 core/analysis.js, 그림은 view2d.js. 표는 속성 칸에 두고 문서·종류·동선 목록이 바뀔 때만 다시 만든다 */
-const ANA = { poche: '포셰', zone: '존', route: '동선', sun: '일조', section: '단면', shadow: '그림자' }, SUNNY = new Set(['sun', 'section', 'shadow']);
+const ANA = { poche: '포셰', zone: '존', route: '동선', sun: '일조', section: '단면', shadow: '그림자', axo: '액소' }, SUNNY = new Set(['sun', 'section', 'shadow']), REFIT = new Set(['shadow', 'axo']);   // REFIT: 평면과 범위가 다른 보기 — 드나들 때 화면을 다시 맞춘다
 const f2 = (v) => v.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), f1 = (v) => v.toFixed(1);
 const tbl = (caption, head, rows, foot) => h('table', { class: 'ed-tbl' }, [h('caption', { class: 'ed-vh', text: caption }),
   h('thead', {}, h('tr', {}, head.map(([t, num]) => h('th', { scope: 'col', class: num ? 'num' : null }, t)))), h('tbody', {}, rows), foot ? h('tfoot', {}, foot) : null]);
 const numTd = (t) => h('td', { class: 'num', text: t });
 function setAnalysis(mode) {
   const was = state.analysis; state.analysis = mode; stopPlay();
+  if (mode === 'axo') { tools.setTool('select'); sel.clear(); }   // 액소: 캔버스에서는 화면만 움직인다(tools.js)
   if (mode && !was) { if (narrow.matches) setPanel(false); else setSide(true); }   // 폰: 도구 시트가 표 시트를 덮지 않게 · 중간 폭: 접힌 오른쪽 칸을 편다
   if (!mode !== !was) propsBuild();   // 종류만 바꿀 때는 칸을 다시 만들지 않는다(누른 단추의 초점이 남는다)
   schedule(); say(mode ? `${ANA[mode]} 보기` : '분석 보기를 껐습니다');
   if (!mode && was && document.activeElement !== $('plAnal')) $('plAnal').focus({ preventScroll: true });   // 칸 안의 [끝내기] 가 사라지므로 초점은 켜는 단추로
-  if (mode === 'shadow' || was === 'shadow') { refresh(); view.resize(); view.fit(fitBounds()); }   // 그림자까지 화면에 넣고, 나오면 원래 범위로(폰은 시트만큼 캔버스 크기가 바뀐 뒤에 맞춘다)
+  if (mode === 'axo' || was === 'axo') tools.hint();
+  if (REFIT.has(mode) || REFIT.has(was)) { refresh(); view.resize(); view.fit(fitBounds()); }   // 그림자·액소까지 화면에 넣고, 나오면 원래 범위로(폰은 시트만큼 캔버스 크기가 바뀐 뒤에 맞춘다)
 }
 /* 일조·단면·그림자 — 계산은 core/sun.js. 시각은 진태양시(분) */
 const SUN_HOURS = [8, 9, 10, 11, 12, 13, 14, 15, 16], SHADE_HOURS = [9, 12, 15], PLAY_MS = 12000;   // 겹쳐 그리는 시각 · 재생 한 번(해 뜸 → 해 짐) 길이
@@ -325,14 +330,18 @@ function anaView(f, m) { // 캔버스에 그릴 것(view2d.js 의 view.ana)
   } else { const sec = section(f, site, S.cut); if (sec.ok) out.cut = [sec.a, sec.b]; }
   return out;
 }
+const MESH = new WeakMap(), meshOf = (f) => { let m = MESH.get(f); if (!m) MESH.set(f, (m = buildMesh(store.doc, store.doc.floors.indexOf(f)))); return m; };   // 층 객체가 그대로면 조각도 그대로(불변 문서) — 벌리기·재생 중에는 투영만 다시 한다
+const axoOf = (f, spread) => { const z = new Map(f.rooms.map((r) => [r.id, zoneOf(r)])); return axoScene(meshOf(f), { spread, zoneOf: (id) => z.get(id) }); };
 const syncRoutes = () => { // 표가 안 보일 때(무언가 고른 동안)도 그림은 문서를 따라간다
   const on = state.mode === '2d', m = state.analysis, f = curFloor(store.doc), S = state.sun;
   if (S.t !== null) { const t = clampDayMin(S.t, siteOf(store.doc).lat, DAYS[S.day].decl); if (t !== S.t) state.sun = { ...S, t }; }   // 날·위도가 바뀌어(되돌리기·불러오기 포함) 낮이 줄면 고른 시각을 새 범위로
   view.routes = on && m === 'route' ? routesFor(f, state.routes) : [];
   view.ana = on && SUNNY.has(m) ? anaView(f, m) : null;
+  view.axo = on && m === 'axo' && f.rooms.length ? axoOf(f, state.axo.spread) : null;
 };
-function fitBounds() { // 보기 맞춤 범위 — 그림자 보기에서는 그림자까지
+function fitBounds() { // 보기 맞춤 범위 — 그림자 보기에서는 그림자까지, 액소 보기에서는 다 벌린 장면(재생 중에 화면이 흔들리지 않는다)
   syncRoutes();
+  if (view.axo) { const f = curFloor(store.doc), a = axoOf(f, 1).box; return { ...a, y1: Math.max(a.y1, axoOf(f, 0).box.y1) }; }   // 붙였을 때의 아랫단(바깥벽 밑)까지
   const b = bounds(store.doc), s = view.ana && polysBox(view.ana.shade.flatMap((x) => x.polys));
   if (!b || !s) return b;
   const g = Math.max(b.x1 - b.x0, b.y1 - b.y0);   // keep: 그림자가 최소 배율에도 다 안 들어가면 도면(둘레에 제 크기만큼 여유)은 화면에 남긴다
@@ -348,6 +357,17 @@ function startPlay(paint) { // 지금 시각(끝이면 해 뜸)부터 해 짐까
     const t = Math.min(b, from + ((ts - t0) / PLAY_MS) * (b - a));
     state.sun = { ...state.sun, t }; syncRoutes(); paint(); view.requestDraw();
     if (t >= b) { playRaf = 0; playUi(); } else playRaf = requestAnimationFrame(step);
+  };
+  playRaf = requestAnimationFrame(step); playUi();
+}
+const AXO_MS = 2400;   // 액소 재생 한 번(붙음 → 다 벌림) 길이
+function startAxo(paint) { // 벌림 0 → 1. 프레임마다 투영과 슬라이더 값만 고친다
+  let t0 = null;
+  const step = (ts) => {
+    t0 ??= ts;
+    const k = Math.min(1, (ts - t0) / AXO_MS);
+    state.axo = { spread: k * k * (3 - 2 * k) }; syncRoutes(); paint(); view.requestDraw();
+    if (k >= 1) { playRaf = 0; playUi(); } else playRaf = requestAnimationFrame(step);
   };
   playRaf = requestAnimationFrame(step); playUi();
 }
@@ -405,17 +425,23 @@ function analysisBuild(box) {
   const lat = numF('위도', '°', { min: -SITE.latMax, max: SITE.latMax, step: 0.01 }, () => site().lat, (v) => run({ type: 'setSite', patch: { lat: v } })), north = numF('위쪽 방위', '°', { min: 0, max: 359, step: 1 }, () => site().north, (v) => run({ type: 'setSite', patch: { north: v } }));
   citySel.addEventListener('change', () => { const c = CITIES.find(([n]) => n === citySel.value); if (c) run({ type: 'setSite', patch: { lat: c[1] } }); });
   const setSum = h('summary'), setBox = h('details', { class: 'ed-ana-set' }, [setSum, h('label', { class: 'ed-f' }, [h('span', { text: '지역' }), citySel]), h('div', { class: 'ed-ana-two' }, [lat.el, north.el])]);
-  const ctl = h('div', { class: 'ed-ana-ctl' }, [timeBox, shadeBox, cutBox, setBox]);
+  const rgA = h('input', { type: 'range', id: 'plAxoS', min: '0', max: '1', step: '0.05' }), outA = h('span', { class: 'ed-out' });   // 액소: 벌리기 슬라이더 + 재생
+  const paintAxo = () => { const p = Math.round(state.axo.spread * 100); if (document.activeElement !== rgA || playRaf) rgA.value = String(state.axo.spread); rgA.setAttribute('aria-valuetext', `${p} %`); outA.textContent = `${p} %`; };
+  rgA.addEventListener('input', () => { stopPlay(); state.axo = { spread: Number(rgA.value) }; schedule(); });
+  const axoB = calm.matches ? null : h('button', { type: 'button', class: 'ed-b', text: '재생', onclick: () => (playRaf ? stopPlay() : startAxo(paintAxo)) });
+  const axoBox = h('div', { class: 'ed-ana-ctl' }, [h('div', { class: 'ed-f' }, [h('label', { for: 'plAxoS', text: '벌리기' }), h('div', { class: 'ed-rg' }, [rgA, outA])]), axoB ? h('div', { class: 'ed-btns' }, [axoB]) : null]);
+  const ctl = h('div', { class: 'ed-ana-ctl' }, [timeBox, shadeBox, cutBox, setBox, axoBox]);
   const paint = () => { // 시각에 따라 바뀌는 글자 — 재생 중에도 이것만 고친다
     const s = site(), S = state.sun, t = S.t ?? 720, p = sunAt(s.lat, DAYS[S.day].decl, t / 60, s.north), sh = state.analysis === 'shadow' && p.z > 1e-6 ? ` · ${f2((S.stories * S.storyMm) / Math.tan((p.alt * Math.PI) / 180) / 1000)} m` : '';
     if (document.activeElement !== rg || playRaf) rg.value = String(Math.round(t / 10) * 10);
     rg.setAttribute('aria-valuetext', `${Math.floor(Math.round(t) / 60)}시 ${Math.round(t) % 60}분`);
     clock.textContent = hm(t); nowP.textContent = `고도 ${f1(p.alt)}° · ${compass(p.az)} ${Math.round(p.az)}°${sh}`;
   };
-  playUi = () => { if (playB) playB.textContent = playRaf ? '멈춤' : '재생'; dayB.setAttribute('aria-pressed', String(state.sun.t === null)); };
+  playUi = () => { for (const b of [playB, axoB]) if (b) b.textContent = playRaf ? '멈춤' : '재생'; dayB.setAttribute('aria-pressed', String(state.sun.t === null)); };
   const ctlSync = (m, f) => {
     const s = site(), S = state.sun, [a, b] = sunSpan(), city = CITIES.find(([, v]) => v === s.lat);
-    ctl.hidden = !SUNNY.has(m); timeBox.hidden = m === 'section'; shadeBox.hidden = m !== 'shadow'; cutBox.hidden = m !== 'section';
+    const ax = m === 'axo';
+    ctl.hidden = !SUNNY.has(m) && !ax; timeBox.hidden = m === 'section' || ax; shadeBox.hidden = m !== 'shadow'; cutBox.hidden = m !== 'section'; setBox.hidden = ax; axoBox.hidden = !ax; paintAxo();
     rg.min = String(a); rg.max = String(b);
     for (const d of days) d.setAttribute('aria-pressed', String(d.dataset.d === S.day));
     const rooms = JSON.stringify(f.rooms.map((r) => [r.id, r.name]));
@@ -451,6 +477,7 @@ function analysisBuild(box) {
         kv('높이와 가정', [['높이', `${f2(H / 1000)} m`], ['시각 기준', '진태양시'], ['가정', '평지 · 앞 건물 없음']])];
     },
   });
+  fill.axo = (d, f) => [kv('층 구성', [['바닥', `방 ${f.rooms.length}개`], ['벽', `${f.walls.length}개`], ['문·창', `${f.openings.length}개`], ['기기', `${f.items.length}대`], ['천장 높이', mm(f.heightMm)]])];
   const sync = () => {
     const d = store.doc, f = curFloor(d), m = state.analysis, s = siteOf(d), S = state.sun, next = [f, m, state.routes, s.north, s.lat, S.day, S.stories, S.storyMm, S.cut];
     if (!m) return;
@@ -664,7 +691,7 @@ function onKey(e) {
   if (typing(e.target)) return;
   if (mod && e.code === 'KeyZ') { e.preventDefault(); if (e.shiftKey) doRedo(); else doUndo(); return; }
   if (mod && e.code === 'KeyY') { e.preventDefault(); doRedo(); return; }
-  if (mod && e.code === 'KeyA' && state.mode === '2d' && onCanvas) { e.preventDefault(); const f = curFloor(store.doc); sel.set(COLS.flatMap((c) => f[c].map((x) => x.id))); return; }
+  if (mod && e.code === 'KeyA' && state.mode === '2d' && onCanvas && state.analysis !== 'axo') { e.preventDefault(); const f = curFloor(store.doc); sel.set(COLS.flatMap((c) => f[c].map((x) => x.id))); return; }
   if (e.key === 'Shift') tools.setShift(true);
   if (e.code === 'Escape' && $('plMenu').classList.contains('open')) { $('plMenu').classList.remove('open'); $('plMore').setAttribute('aria-expanded', 'false'); $('plMore').focus({ preventScroll: true }); return; }
   if (state.mode === '3d') { // 3D: 2·3·4 = 보기, ESC = 2D 로, 도구 글쇠 = 2D 로 돌아가 그 도구

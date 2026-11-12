@@ -22,7 +22,7 @@ const tan = (deg) => Math.tan((deg * Math.PI) / 180);
     assert.ok(/^\/\/ \S/.test(src), 'sun.js 맨 위 한 줄 역할 주석');
     assert.ok(!/\b(document|window|navigator|globalThis)\s*[.\[]|\b(localStorage|sessionStorage|requestAnimationFrame)\b|innerHTML|\beval\s*\(|new Function|Math\.random|Date\.now|new Date/.test(code), 'sun.js 는 DOM·난수·시계를 쓰지 않는다(순수)');
     const app = rd('app.js'), css = rd('plan.css'), v2 = rd('view2d.js');
-    assert.ok(/const ANA = \{ poche: '포셰', zone: '존', route: '동선', sun: '일조', section: '단면', shadow: '그림자' \}/.test(app), '분석 종류 여섯');
+    assert.ok(/const ANA = \{ poche: '포셰', zone: '존', route: '동선', sun: '일조', section: '단면', shadow: '그림자', axo: '액소' \}/.test(app), '분석 종류 일곱(액소는 test-plan-axo)');
     assert.ok(!/innerHTML/.test(app + v2), 'innerHTML 을 쓰지 않는다');
     assert.ok(/type: 'range', id: 'plSunT'/.test(app) && /h\('label', \{ for: 'plSunT', text: '시각' \}\)/.test(app) && /'aria-valuetext'/.test(app), '시각 슬라이더: label 연결 · 읽는 값');
     for (const l of ['자를 방', '지역', '층수', '층당 높이', '위도', '위쪽 방위']) assert.ok(app.includes(`'${l}'`), '라벨: ' + l);
@@ -39,8 +39,8 @@ const tan = (deg) => Math.tan((deg * Math.PI) / 180);
     const mine = css.slice(css.indexOf('/* 일조·단면·그림자'), css.indexOf('/* 알림·창 */'));
     assert.ok(mine.length > 200 && !/#[0-9a-fA-F]{3,8}\b|rgba?\(|gradient|999px|\d+m?s\b/.test(mine), '새 CSS 는 토큰만(hex·rgb·gradient·999px·시간 숫자 없음)');
     const phone = css.slice(css.indexOf('@media (max-width: 768px)'), css.indexOf('@media (max-width: 359px)'));
-    assert.ok(phone.includes('.ed-props > .ed-ana-ctl { grid-column: 1 / -1; }') && phone.includes('.ed-props > .ed-seg.wide { grid-template-columns: repeat(6, minmax(0, 1fr)); }'), '폰: 조작 묶음은 시트 두 칸을 다 쓰고 종류 단추 6개는 한 줄');
-    assert.ok(/\.ed-props > \.ed-seg\.wide \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \}/.test(css), '넓은 화면: 종류 단추는 세 칸 두 줄(넘치지 않는다)'); }
+    assert.ok(phone.includes('.ed-props > .ed-ana-ctl { grid-column: 1 / -1; }') && phone.includes('.ed-props > .ed-seg.wide { grid-template-columns: repeat(7, minmax(0, 1fr)); }'), '폰: 조작 묶음은 시트 두 칸을 다 쓰고 종류 단추 7개는 한 줄');
+    assert.ok(/\.ed-props > \.ed-seg\.wide \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\); \}/.test(css), '넓은 화면: 종류 단추는 네 칸 두 줄(넘치지 않는다)'); }
 
   /* ===== 1. 태양 위치 — 알려진 값(서울 37.57°) ===== */
   { const noon = (lat, d, n = 0) => U.sunAt(lat, d, 12, n);

@@ -132,11 +132,24 @@ export function readTheme() { // 캔버스 색은 토큰(CSS 변수)에서 읽�
   return { bg: g('--c-surface-sub'), surface: g('--c-surface'), ink: g('--c-ink'), sub: g('--c-ink-sub'), faint: g('--c-ink-faint'), line: g('--c-line'), strong: g('--c-line-strong'), control: g('--c-control'), accent: g('--c-accent'), accentBg: g('--c-accent-bg'), accentLine: g('--c-accent-line'), up: g('--c-up'), font: bs.fontFamily, fs3: parseFloat(g('--fs-3')) || 13, fs4: parseFloat(g('--fs-4')) || 11.5, fw: g('--fw-semi') || '600', r1: parseFloat(g('--r-1')) || 6 };
 }
 
+const zoneColors = (C) => ({ public: C.accent, private: C.up, service: C.control });   // 존 색(평면의 존 보기 · 액소 바닥)
+// 분해 액소 — sc = core/axo.js axoScene() 의 결과. ctx 는 mm→화면 변환이 걸린 채로 받는다(px = 화면 1px 의 mm). 바닥(존 색) → 벽·기기 면(먼 것부터) → 천장선(점선)
+export function drawAxo(ctx, C, sc, px) {
+  const path = (pts) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); }, ZC = zoneColors(C);
+  ctx.lineJoin = 'round'; ctx.lineWidth = px; ctx.setLineDash([]);
+  for (const r of sc.floors) { path(r.pts); ctx.globalAlpha = 0.2; ctx.fillStyle = ZC[r.zone] || C.accentBg; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = C.sub; ctx.stroke(); }
+  ctx.strokeStyle = C.ink;
+  for (const f of sc.faces) { path(f.pts); ctx.fillStyle = f.kind === 'ac' ? C.accent : f.kind === 'appliance' ? C.control : f.side === 'top' ? C.surface : f.side === 'l' ? C.line : C.strong; ctx.fill(); ctx.stroke(); }
+  ctx.strokeStyle = C.sub; ctx.setLineDash([6 * px, 4 * px]);
+  for (const pts of sc.ceil) { path(pts); ctx.stroke(); }
+  ctx.setLineDash([]);
+}
+
 /* ---------- 캔버스 뷰 ---------- */
 export function createView2D(canvas, { store, getState, getSel }) {
   const ctx = canvas.getContext('2d');
   let vp = newVP(), dpr = 1, raf = 0, C = readTheme();
-  const imgs = new Map(), view = { hover: null, overlay: null, onChange: null, underlayTemp: null, drawCount: 0, routes: [], ana: null };   // routes: 동선 보기에서 그릴 경로 · ana: 일조·단면·그림자 보기에서 그릴 것 { north, shade:[{ polys, tip, text }], sun:[{ poly, text, now }], cut:null|[북 끝, 남 끝] } (둘 다 app.js 가 넣는다, 계산은 core/sun.js)
+  const imgs = new Map(), view = { hover: null, overlay: null, onChange: null, underlayTemp: null, drawCount: 0, routes: [], ana: null, axo: null };   // routes: 동선 보기에서 그릴 경로 · ana: 일조·단면·그림자 보기에서 그릴 것 { north, shade:[{ polys, tip, text }], sun:[{ poly, text, now }], cut:null|[북 끝, 남 끝] } · axo: 액소 보기에서 그릴 장면(core/axo.js) (모두 app.js 가 넣는다, 계산은 core/sun.js)
   const changed = () => { requestDraw(); if (view.onChange) view.onChange(vp); };
   const set = (next) => { vp = next; changed(); };
   function requestDraw() { if (!raf) raf = requestAnimationFrame(draw); }
@@ -204,11 +217,13 @@ export function createView2D(canvas, { store, getState, getSel }) {
     raf = 0; view.drawCount++;
     const st = getState(), doc = store.doc, f = curFloor(doc), fc = floorCache(f), sel = getSel(), s = vp.scale, px = 1 / s, R = viewRect(vp, 40);
     const vis = (b) => b[2] >= R.x0 && b[0] <= R.x1 && b[3] >= R.y0 && b[1] <= R.y1;
-    const P = st.analysis === 'poche', Z = st.analysis === 'zone', ZC = { public: C.accent, private: C.up, service: C.control };   // 분석 보기 — 포셰: 벽·기둥만 진하게, 존: 방을 구분 색으로
+    const P = st.analysis === 'poche', Z = st.analysis === 'zone', ZC = zoneColors(C);   // 분석 보기 — 포셰: 벽·기둥만 진하게, 존: 방을 구분 색으로
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.globalAlpha = 1; ctx.fillStyle = C.bg; ctx.fillRect(0, 0, vp.w, vp.h);
-    if (st.showGrid && !P) grid();
+    const AX = st.analysis === 'axo' && view.axo;   // 액소: 평면 대신 투영한 장면만(격자·글씨·선택 표시·눈금자 없음). 끌기·확대는 그대로
+    if (st.showGrid && !P && !AX) grid();
     ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * vp.ox, dpr * vp.oy);
     ctx.lineJoin = 'round';
+    if (AX) return drawAxo(ctx, C, AX, px);
     const u0 = doc.underlay; // 밑그림
     if (u0 && !P) {
       const u = view.underlayTemp ? { ...u0, ...view.underlayTemp } : u0, im = underlayImg(u0);

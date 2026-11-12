@@ -99,7 +99,7 @@ export function createTools({ store, view, sel, ui, state }) {
   let tapPan = null, fingers = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches; // tapPan = 손가락 한 개로 빈 곳을 끄는 중 {px, moved} · fingers = 마지막 포인터가 손가락(안내문이 손가락 기준으로 말한다)
   let kc = null, focused = false, lastMm = null, said = false, sayT = 0; // kc = 키보드 커서 {mm} · focused = 캔버스에 초점 · lastMm = 마지막 포인터 자리 · said = 이번 누르기에서 처리기가 낭독했는가 · sayT = 커서 낭독을 모으는 타이머
   const pts = new Map(), doc = () => store.doc, fl = () => curFloor(store.doc), vp = () => view.vp, T = (px) => px / vp().scale;
-  const seen = () => { const d = doc(); return state.analysis !== 'poche' ? d : { ...d, floors: d.floors.map((f, i) => (i === d.cur ? { ...f, openings: [], guides: [], items: [] } : f)) }; }; // 집기·훑기가 보는 문서 — 포셰 보기에서 그리지 않는 것(개구부·보조선·제품)은 집히지도 않는다
+  const seen = () => { const d = doc(); if (state.analysis === 'axo') return { ...d, floors: d.floors.map((f, i) => (i === d.cur ? { ...f, walls: [], rooms: [], columns: [], openings: [], guides: [], items: [] } : f)) }; return state.analysis !== 'poche' ? d : { ...d, floors: d.floors.map((f, i) => (i === d.cur ? { ...f, openings: [], guides: [], items: [] } : f)) }; }; // 집기·훑기가 보는 문서 — 포셰 보기에서 그리지 않는 것(개구부·보조선·제품)은 집히지도 않는다. 액소 보기에서는 아무것도 집히지 않는다
   const run = (cmd) => { try { return store.exec(cmd); } catch (err) { ui.toast(err.message, 'err'); return null; } };
   const say = (m) => { said = true; ui.say(m); };
   const hint = () => ui.hint(NAMES[tool] + (tool === 'opening' ? ` · ${OPENING_NAMES[opts.type || 'door']}` : ''), H[tool].hint() + kbTip());
@@ -113,7 +113,7 @@ export function createTools({ store, view, sel, ui, state }) {
   const kb = (key, touch) => (state.touch ? touch : key); // 안내문 — 키보드가 없는 화면(폰·태블릿)은 키 대신 누르는 동작을 말한다
 
   /* ---------- 키보드 커서 — 포인터 대신 점을 가리킨다. 누르기는 마우스와 같은 down/up 처리기를 지나므로 스냅·검증·실행 취소가 그대로다 ---------- */
-  const kbTip = () => (state.touch ? '' : tool === 'select' ? (sel.size ? ' · 방향키로도 옮깁니다 · [ ] 로 다른 것을 고릅니다' : ' · 방향키로 옮기고 Enter 로 고릅니다 · [ ] 로 하나씩 훑습니다') : KB_SET.has(tool) ? ' · 방향키로 옮기고 Enter 로 누릅니다 (Shift+방향키는 10칸)' : '');
+  const kbTip = () => (state.touch || state.analysis === 'axo' ? '' : tool === 'select' ? (sel.size ? ' · 방향키로도 옮깁니다 · [ ] 로 다른 것을 고릅니다' : ' · 방향키로 옮기고 Enter 로 고릅니다 · [ ] 로 하나씩 훑습니다') : KB_SET.has(tool) ? ' · 방향키로 옮기고 Enter 로 누릅니다 (Shift+방향키는 10칸)' : '');
   const kbStepMm = () => snapStep(vp().scale);
   const kbCtx = (mm, shift) => ({ e: null, px: view.toPx(mm), mm, shift: !!shift, dn, moved: false, isDrag: false });
   const kbTool = () => KB_SET.has(tool) || (tool === 'select' && !sel.size); // 방향키·Enter 가 커서를 움직이는 도구 — 고른 것이 있으면 방향키는 그것을 옮긴다
@@ -181,7 +181,7 @@ export function createTools({ store, view, sel, ui, state }) {
   /* 도구별 처리: down/move/up(포인터), hint(안내), overlay(미리보기) */
   const H = {
     select: {
-      hint: () => (state.locked ? '잠금 상태입니다 · 고르기만 할 수 있습니다' : sel.size ? `끌어서 옮깁니다 · 끝점 핸들을 끌어 길이를 고칩니다 · ${kb('Delete 로 지웁니다', '오른쪽 패널의 [지우기]로 지웁니다')}` : state.multi ? '빈 곳을 끌어 한꺼번에 고르고, 도형을 눌러 더하거나 뺍니다' : fingers ? '도형을 눌러 고르고, 빈 곳을 끌면 화면이 움직입니다 · 두 손가락으로 확대·축소합니다' : '도형을 눌러 고르고, 빈 곳을 끌어 한꺼번에 고릅니다 · 방은 두 번 눌러 이름을 바꿉니다'),
+      hint: () => (state.analysis === 'axo' ? '끌어서 화면을 옮깁니다' : state.locked ? '잠금 상태입니다 · 고르기만 할 수 있습니다' : sel.size ? `끌어서 옮깁니다 · 끝점 핸들을 끌어 길이를 고칩니다 · ${kb('Delete 로 지웁니다', '오른쪽 패널의 [지우기]로 지웁니다')}` : state.multi ? '빈 곳을 끌어 한꺼번에 고르고, 도형을 눌러 더하거나 뺍니다' : fingers ? '도형을 눌러 고르고, 빈 곳을 끌면 화면이 움직입니다 · 두 손가락으로 확대·축소합니다' : '도형을 눌러 고르고, 빈 곳을 끌어 한꺼번에 고릅니다 · 방은 두 번 눌러 이름을 바꿉니다'),
       down(c) {
         const one = single(), multi = c.shift || state.multi;
         if (one && !state.locked) { const hd = hitHandle(one, c.px); if (hd) { const ex = new Set([one.id]), joined = []; if (one.col === 'walls' && hd.k !== 'bulge') for (const w of fl().walls) if (w.id !== one.id) for (const k of ['a', 'b']) if (dist(w[k], hd.p) < 1) { joined.push({ id: w.id, k }); ex.add(w.id); } drag = { kind: 'handle', one, k: hd.k, joined, ex, started: false, failed: false }; return; } }
@@ -412,6 +412,7 @@ export function createTools({ store, view, sel, ui, state }) {
       if (e.pointerType === 'mouse' && e.button === 1) { e.preventDefault(); pan = px; return ui.cursor('grabbing'); }
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       if (space) { pan = px; return ui.cursor('grabbing'); }
+      if (state.analysis === 'axo') { pan = px; return ui.cursor('grabbing'); }   // 액소 보기: 화면 좌표가 평면이 아니다 — 끌면 화면만 움직인다
       if (e.pointerType === 'touch' && tool === 'select' && !state.multi && blankAt(px)) { pan = px; tapPan = { px, moved: false }; return; } // 손가락 한 개로 빈 곳을 끌면 화면이 움직인다(전에는 두 손가락뿐이었다). 가볍게 누르면 선택을 푼다. 여러 개 고르기는 [그룹화]
       dn = ctxOf(e, px); cur = dn; H[tool].down(dn); view.requestDraw();
     });
@@ -452,6 +453,7 @@ export function createTools({ store, view, sel, ui, state }) {
     if (code === 'Escape') { escape(); return true; }
     const t = code.startsWith('Key') ? SHORTCUTS[code.slice(3)] : null;
     if (t) { if (!inScope) return false; ui.setTool(t); return true; }
+    if (state.analysis === 'axo') return false;   // 액소 보기: 캔버스 글쇠(커서·고르기·지우기)는 쉰다
     if ((k === '[' || k === ']') && inScope) {
       if (tool === 'placeItem') { rot = (rot + (k === ']' ? 90 : -90) + 360) % 360; redraw(); return true; }
       if (tool === 'select' && isCanvas) { stepSel(k === ']' ? 1 : -1); return true; }
