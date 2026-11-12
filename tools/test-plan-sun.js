@@ -81,7 +81,8 @@ const tan = (deg) => Math.tan((deg * Math.PI) / 180);
     for (const bad of [{ north: 360, lat: 0 }, { north: -1, lat: 0 }, { north: 0, lat: 67 }, { north: 0, lat: -67 }, { north: 0, lat: 90 }, { north: 0 }, { lat: 37 }, { north: '0', lat: 37 }, [], null, 'x']) assert.ok(ok(bad).some((m) => /방위·위도/.test(m)), '검증 거절: ' + JSON.stringify(bad));
     assert.throws(() => X.fromDocJSON(JSON.stringify({ ...M.createDoc(), site: { north: 0, lat: 90 } })), /읽지 못했습니다/, '극지 위도 파일은 열지 않는다');
     assert.ok(!('site' in M.createDoc()), 'createDoc 은 키를 만들지 않는다(옛 문서와 같은 모양)'); }
-  for (const t of TPL) { assert.deepStrictEqual(M.validateDoc(t.doc), [], t.id + ' 검증'); assert.ok(!('site' in t.doc)); assert.deepStrictEqual(M.siteOf(X.fromDocJSON(JSON.stringify(t.doc))), { north: 0, lat: 37.57 }, t.id + ' 옛 문서는 기본값'); }
+  for (const t of TPL) { assert.deepStrictEqual(M.validateDoc(t.doc), [], t.id + ' 검증'); assert.deepStrictEqual(t.doc.site, { north: 180, lat: 37.57 }, t.id + ' 위가 남'); const { site, ...old } = t.doc; assert.deepStrictEqual(M.siteOf(X.fromDocJSON(JSON.stringify(old))), { north: 0, lat: 37.57 }, t.id + ' 옛 문서는 기본값'); }
+  { const t3 = TPL.find((t) => t.id === 'three-b'), live = U.sunHours(cf(t3.doc), M.siteOf(t3.doc), -23.44).find((r) => r.name === '거실'); assert.ok(live && live.min > 0, '쓰리룸 기본 화면(동지): 거실 직사광이 없음이 아니다'); }
 
   /* ===== 3. 외벽 창 · 햇빛 자리 · 직사광 시간 ===== */
   // 손 문서: 방 [0,0]~[4000,3000](벽 W1 위 · W2 오른쪽 · W3 아래 · W4 왼쪽, 중심선은 75 바깥), W3 한가운데 창 1200 × 1200, 바닥에서 900 → 윗단 2100
