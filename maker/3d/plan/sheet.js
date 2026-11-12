@@ -20,7 +20,7 @@ export function buildSheet({ store, state, cells, info }) {
       if (c.section) { drawSection(off, C, c.section, LW, bw / LW); const s = Math.min(1, bh / off.height); g.drawImage(off, bx + (bw - off.width * s) / 2, by + (bh - off.height * s) / 2, off.width * s, off.height * s); }
       else { g.fillStyle = C.sub; g.font = font(3); g.textAlign = 'center'; g.fillText(c.note, bx + bw / 2, by + bh / 2); }
     } else {
-      st = { ...state, analysis: c.m, showGrid: false, showLabels: true };
+      st = { ...state, analysis: c.m, showGrid: false, showLabels: c.m !== 'route' && c.m !== 'sun' };   // 동선·일조 칸은 방 글씨를 뺀다(작은 칸에서 번호·시각 글씨와 겹친다 — 방 이름은 평면 칸에)
       v.renderTo(LW, (LW * bh) / bw, bw / LW, { routes: c.routes, ana: c.ana, axo: c.axo, bounds: c.bounds, k: ratio ? LW / r.w / ratio : 0 });
       g.drawImage(off, bx, by, bw, bh);
     }
@@ -43,9 +43,11 @@ export function buildSheet({ store, state, cells, info }) {
 export function openSheet({ h, openDialog, download, toast }, opts) { // h·openDialog·download·toast 는 app.js 의 것
   const cv = buildSheet(opts);
   cv.className = 'ed-sheet-cv'; cv.setAttribute('role', 'img'); cv.setAttribute('aria-label', `도면판 · ${opts.info.title} · ${opts.cells.map((c) => c.label).join(' · ')}`);
-  const print = () => { document.body.classList.add('printing'); window.addEventListener('afterprint', () => document.body.classList.remove('printing'), { once: true }); window.print(); };
+  const mark = () => document.body.classList.add('printing'), unmark = () => document.body.classList.remove('printing');   // 창이 떠 있는 동안은 브라우저 인쇄(Ctrl+P)도 도면판만 찍는다
+  window.addEventListener('beforeprint', mark); window.addEventListener('afterprint', unmark);
+  const print = () => { mark(); window.print(); };
   const save = () => cv.toBlob((b) => (b ? download(opts.name, b) : toast('이미지를 만들지 못했습니다', 'err')), 'image/png');
-  const d = openDialog('도면판', [cv, h('div', { class: 'row ed-sheet-act' }, [h('button', { type: 'button', class: 'ed-b', text: '인쇄·PDF', onclick: print }), h('button', { type: 'button', class: 'ed-b primary', text: 'PNG 저장', onclick: save })])], { onclose: () => { document.body.classList.remove('printing'); cv.width = cv.height = 0; } });
+  const d = openDialog('도면판', [cv, h('div', { class: 'row ed-sheet-act' }, [h('button', { type: 'button', class: 'ed-b', text: '인쇄·PDF', onclick: print }), h('button', { type: 'button', class: 'ed-b primary', text: 'PNG 저장', onclick: save })])], { onclose: () => { window.removeEventListener('beforeprint', mark); window.removeEventListener('afterprint', unmark); unmark(); cv.width = cv.height = 0; } });
   d.el.classList.add('ed-sheet');
   return d;
 }

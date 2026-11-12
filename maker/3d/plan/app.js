@@ -309,7 +309,7 @@ const tbl = (caption, head, rows, foot) => h('table', { class: 'ed-tbl' }, [h('c
 const numTd = (t) => h('td', { class: 'num', text: t });
 function setAnalysis(mode) {
   const was = state.analysis; state.analysis = mode; stopPlay();
-  if (mode === 'axo') { tools.setTool('select'); sel.clear(); }   // 액소: 캔버스에서는 화면만 움직인다(tools.js)
+  if (mode === 'axo') { tools.setTool('select'); sel.clear(); syncDraw(); }   // 액소: 캔버스에서는 화면만 움직인다(tools.js)
   if (mode && !was) { if (narrow.matches) setPanel(false); else setSide(true); }   // 폰: 도구 시트가 표 시트를 덮지 않게 · 중간 폭: 접힌 오른쪽 칸을 편다
   if (!mode !== !was) propsBuild();   // 종류만 바꿀 때는 칸을 다시 만들지 않는다(누른 단추의 초점이 남는다)
   schedule(); say(mode ? `${ANA[mode]} 보기` : '분석 보기를 껐습니다');

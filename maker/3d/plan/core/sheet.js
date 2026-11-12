@@ -11,7 +11,7 @@ export function sheetLayout(n, S = SHEET) {
 const RATIOS = [20, 25, 30, 40, 50, 60, 75, 100, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1500, 2000, 2500, 5000];
 // 도면 범위 b(mm)가 종이 w × h(mm)에 들어가는 가장 큰 축척의 분모(1:n 의 n). 표에 없을 만큼 크면 1000 단위로 올린다
 export function sheetScale(b, w, h) {
-  const need = Math.max((b.x1 - b.x0) / w, (b.y1 - b.y0) / h, 1);
+  const need = Math.max((b.x1 - b.x0) / w, (b.y1 - b.y0) / h);
   return RATIOS.find((r) => r >= need) ?? Math.ceil(need / 1000) * 1000;
 }
 // 표제란 [이름, 값] — 날짜는 부르는 쪽이 넘긴 글자 그대로(여기서 시계를 읽지 않는다)
