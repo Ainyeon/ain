@@ -1,5 +1,5 @@
 // 도면 저장소 — 명령(exec)으로만 문서를 바꾸고, 바뀐 부분만 새로 만든 불변 문서를 undo 스택에 쌓는다 (순수 로직, DOM 없음)
-import { DEFAULTS, PREFIX, COLS, MODELS, BRANDS, APPLIANCE_CATEGORIES, createDoc, cloneDoc, curFloor, newId, fixSeq, makeFloor, validateDoc } from './model.js';
+import { DEFAULTS, PREFIX, COLS, MODELS, BRANDS, APPLIANCE_CATEGORIES, createDoc, cloneDoc, curFloor, newId, fixSeq, makeFloor, validateDoc, siteOf } from './model.js';
 import { dist, polyArea, signedArea, offsetPoly, roomInnerPoly, segSegIntersect, wallLen, bounds, pointInPoly } from './geom.js';
 import { History } from './history.js';
 
@@ -249,10 +249,20 @@ const CMD = {
     d.title = c.title;
     return [];
   },
+  setSite(d, f, c) { // 방위·위도(doc.site). 방위는 0~360 으로 접고, 범위 밖 위도는 validateDoc 이 거절한다
+    ok(c.patch && typeof c.patch === 'object', '방위·위도 값이 필요합니다');
+    const cur = siteOf(d), next = { ...cur }; // 준 키만 바꾼다. 숫자가 아닌 값(NaN 은 명령을 옮길 때 null 이 된다)은 그대로 넣어 검증이 거절하게 한다
+    for (const k of ['north', 'lat']) if (k in c.patch) next[k] = c.patch[k];
+    if (Number.isFinite(next.north)) next.north = (((next.north % 360) + 360) % 360) || 0;
+    if (same(next, cur)) return null;
+    d.site = next;
+    return [];
+  },
   load(d, f, c) {
     const bad = validateDoc(c.doc);
     ok(!bad.length, '도면 파일을 읽지 못했습니다');
     Object.assign(d, fixSeq(c.doc));
+    if (!('site' in c.doc)) delete d.site; // 방위·위도가 없는 문서는 기본값으로(앞 문서의 값이 남지 않게)
     return [];
   },
 };

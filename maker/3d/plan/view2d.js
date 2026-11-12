@@ -19,11 +19,21 @@ export function viewRect(vp, padPx = 0) { // 보이는 도면 범위(mm)
   const [x0, y0] = toMm(vp, [-padPx, -padPx]), [x1, y1] = toMm(vp, [vp.w + padPx, vp.h + padPx]);
   return { x0, y0, x1, y1 };
 }
-export function fitVP(vp, b, padPx = 56, insetR = 0) { // 경계 상자 b 가 화면에 꽉 차게. 비었으면 처음 화면. insetR: 오른쪽에 떠 있는 단추 묶음 폭(px) — 그만큼 오른쪽을 더 비운다
+// keep: b 가 최소 배율에도 다 안 들어갈 때 화면에 남길 상자(그림자 보기의 도면) — 보이는 창을 그쪽으로 민다. b 가 다 들어가면 쓰지 않는다
+export function fitVP(vp, b, padPx = 56, insetR = 0, keep = null) { // 경계 상자 b 가 화면에 꽉 차게. 비었으면 처음 화면. insetR: 오른쪽에 떠 있는 단추 묶음 폭(px) — 그만큼 오른쪽을 더 비운다
   if (!b) return newVP(vp.w, vp.h);
   const bw = Math.max(b.x1 - b.x0, 500), bh = Math.max(b.y1 - b.y0, 500), pad = Math.min(padPx, vp.w / 4, vp.h / 4), padR = Math.max(pad, Math.min(insetR, vp.w / 3));
-  const k = clamp(Math.min((vp.w - pad - padR) / bw, (vp.h - 2 * pad) / bh), SCALE.min, SCALE.max);
-  return { ...vp, scale: k, ox: pad + (vp.w - pad - padR) / 2 - ((b.x0 + b.x1) / 2) * k, oy: vp.h / 2 - ((b.y0 + b.y1) / 2) * k };
+  const raw = Math.min((vp.w - pad - padR) / bw, (vp.h - 2 * pad) / bh), k = clamp(raw, SCALE.min, SCALE.max);
+  let cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+  if (keep && raw < SCALE.min) { const hw = (vp.w - pad - padR) / 2 / k, hh = (vp.h - 2 * pad) / 2 / k; cx = Math.min(keep.x0 + hw, Math.max(keep.x1 - hw, cx)); cy = Math.min(keep.y0 + hh, Math.max(keep.y1 - hh, cy)); }
+  return { ...vp, scale: k, ox: pad + (vp.w - pad - padR) / 2 - cx * k, oy: vp.h / 2 - cy * k };
+}
+// 선분 p→q 의 끝 p 를 상자 [x0, y0, x1, y1] 안으로 선을 따라 당긴다(끝 글자가 안내 막대·눈금자에 겹치지 않게). 반 가까이(0.45)까지만
+export function pullIn(p, q, [x0, y0, x1, y1]) {
+  let t = 0;
+  for (const [a, b, lo, hi] of [[p[0], q[0], x0, x1], [p[1], q[1], y0, y1]]) if (a !== b) t = Math.max(t, (clamp(a, lo, hi) - a) / (b - a));
+  t = Math.min(t, 0.45);
+  return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
 }
 const GRID = [100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000];
 export function gridSteps(scale, minPx = 9) { // 가는 격자(기본 100mm)와 굵은 격자(10배, 기본 1000mm)
@@ -126,7 +136,7 @@ export function readTheme() { // 캔버스 색은 토큰(CSS 변수)에서 읽�
 export function createView2D(canvas, { store, getState, getSel }) {
   const ctx = canvas.getContext('2d');
   let vp = newVP(), dpr = 1, raf = 0, C = readTheme();
-  const imgs = new Map(), view = { hover: null, overlay: null, onChange: null, underlayTemp: null, drawCount: 0, routes: [] };   // routes: 동선 보기에서 그릴 경로(app.js 가 넣는다)
+  const imgs = new Map(), view = { hover: null, overlay: null, onChange: null, underlayTemp: null, drawCount: 0, routes: [], ana: null };   // routes: 동선 보기에서 그릴 경로 · ana: 일조·단면·그림자 보기에서 그릴 것 { north, shade:[{ polys, tip, text }], sun:[{ poly, text, now }], cut:null|[북 끝, 남 끝] } (둘 다 app.js 가 넣는다, 계산은 core/sun.js)
   const changed = () => { requestDraw(); if (view.onChange) view.onChange(vp); };
   const set = (next) => { vp = next; changed(); };
   function requestDraw() { if (!raf) raf = requestAnimationFrame(draw); }
@@ -210,6 +220,12 @@ export function createView2D(canvas, { store, getState, getSel }) {
       for (const e of g.walls) if (vis(e.box)) for (const poly of e.polys) { path(poly); ctx.fill(); }
       ctx.globalAlpha = 1;
     }
+    const AN = view.ana;
+    if (AN) { // 땅 그림자: 시각마다 조각을 한 경로에 모아 한 번에 칠한다(nonzero = 합집합). 시각끼리 겹친 곳은 더 진하다
+      ctx.fillStyle = C.ink; ctx.globalAlpha = 0.16;
+      for (const sh of AN.shade) { ctx.beginPath(); for (const poly of sh.polys) { poly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); } ctx.fill('nonzero'); }
+      ctx.globalAlpha = 1;
+    }
     ctx.globalAlpha = Z ? 0.2 : st.floorAlpha; ctx.fillStyle = C.accentBg; // 방 바닥
     if (!P) for (const e of fc.rooms) if (vis(e.box)) { if (Z) ctx.fillStyle = ZC[zoneOf(e.el)]; path(e.poly); ctx.fill(); }
     ctx.globalAlpha = 1;
@@ -231,6 +247,7 @@ export function createView2D(canvas, { store, getState, getSel }) {
       const poly = e.poly; path(poly); ctx.fillStyle = C.surface; ctx.fill(); ctx.strokeStyle = C.accent; ctx.lineWidth = px * 1.5; ctx.stroke();
       ctx.lineWidth = px; ctx.strokeStyle = C.accentLine; path([poly[0], poly[2]], false); ctx.stroke(); path([poly[1], poly[3]], false); ctx.stroke();
     }
+    if (AN) for (const e of AN.sun) { path(e.poly); ctx.globalAlpha = e.now ? 0.4 : 0.14; ctx.fillStyle = C.up; ctx.fill(); ctx.globalAlpha = 1; ctx.strokeStyle = C.up; ctx.lineWidth = (e.now ? 2 : 1) * px; ctx.stroke(); } // 햇빛 자리: 매시 자리는 옅게 겹치고 한 시각은 진하게
     const hl = (ids, color, wpx) => { // 선택·가리킨 것 윤곽
       ctx.strokeStyle = color; ctx.lineWidth = wpx * px;
       for (const id of ids) { const e = fc.by.get(id); if (e && vis(e.box)) for (const o of e.outline) { path(o, e.kind !== 'guide'); ctx.stroke(); } }
@@ -278,6 +295,27 @@ export function createView2D(canvas, { store, getState, getSel }) {
       for (let i = 0; i + 1 < r.pts.length; i++) { const a = r.pts[i], b = r.pts[i + 1], d = Math.hypot(b[0] - a[0], b[1] - a[1]); if (half <= d && d > 0) { m = toPx(vp, [a[0] + ((b[0] - a[0]) * half) / d, a[1] + ((b[1] - a[1]) * half) / d]); break; } half -= d; }
       drawPill(ctx, C, `${n + 1} · ${(r.lenMm / 1000).toFixed(1)} m`, m[0], m[1], { color: C.accent });
     });
+    if (AN) { // 일조·단면·그림자: 글자(색만으로 구분하지 않는다) · 자른 선 · 방위표
+      ctx.font = `${C.fw} ${C.fs4}px ${C.font}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+      const safe = [24, (view.insetTop ? view.insetTop() : 0) + 16, vp.w - 24, vp.h - (vp.w >= 560 ? 48 : 16)];   // 가장자리 글자가 설 수 있는 범위: 위는 안내 막대 아래, 아래는 눈금자 위
+      for (const e of AN.sun) { // 자리 가운데에 시각 — 매시 자리는 들어갈 만큼 클 때만
+        const b = boxOf(e.poly), q = toPx(vp, polyCentroid(e.poly));
+        if (e.now) drawPill(ctx, C, e.text, q[0], q[1], { color: C.up });
+        else if (Math.min(b[2] - b[0], b[3] - b[1]) * s >= 18) { ctx.strokeStyle = C.surface; ctx.lineWidth = 3; ctx.strokeText(e.text, q[0], q[1]); ctx.fillStyle = C.ink; ctx.fillText(e.text, q[0], q[1]); }
+      }
+      for (const sh of AN.shade) { const q = toPx(vp, sh.tip); drawPill(ctx, C, sh.text, clamp(q[0], 48, vp.w - 48), clamp(q[1], safe[1], safe[3])); }   // 그림자 끝이 화면 밖이면 가장자리에
+      if (AN.cut) {
+        const q = AN.cut.map((p) => toPx(vp, p));
+        for (const [color, w, dash] of [[C.surface, 6, []], [C.accent, 2, [10, 4, 2, 4]]]) { ctx.strokeStyle = color; ctx.lineWidth = w; ctx.setLineDash(dash); path(q, false); ctx.stroke(); }
+        ctx.setLineDash([]);
+        const n = pullIn(q[0], q[1], safe), z = pullIn(q[1], q[0], safe);
+        drawPill(ctx, C, '북', n[0], n[1], { color: C.accent }); drawPill(ctx, C, '남', z[0], z[1], { color: C.accent });
+      }
+      const cx = 36, cy = 108, r = 16, t = (AN.north * Math.PI) / 180, d = [-Math.sin(t), -Math.cos(t)], tip = [cx + d[0] * 11, cy + d[1] * 11], at = (k, w) => [tip[0] - d[0] * k - d[1] * w, tip[1] - d[1] * k + d[0] * w];   // 방위표: 원 + 북쪽 화살(선) + N
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fillStyle = C.surface; ctx.fill(); ctx.strokeStyle = C.control; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx - d[0] * 11, cy - d[1] * 11); ctx.lineTo(tip[0], tip[1]); ctx.moveTo(...at(7, 5)); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(...at(7, -5)); ctx.stroke();
+      ctx.strokeStyle = C.surface; ctx.lineWidth = 3; ctx.strokeText('N', cx + d[0] * (r + 9), cy + d[1] * (r + 9)); ctx.fillStyle = C.ink; ctx.fillText('N', cx + d[0] * (r + 9), cy + d[1] * (r + 9));
+    }
     if (vp.w >= 560) { // 눈금자
       const len = niceLen(120 / s), x1 = vp.w / 2 + (len * s) / 2, x0 = x1 - len * s, y = vp.h - 16;
       ctx.strokeStyle = C.sub; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(Math.round(x0) + 0.5, y - 4); ctx.lineTo(Math.round(x0) + 0.5, y); ctx.lineTo(Math.round(x1) + 0.5, y); ctx.lineTo(Math.round(x1) + 0.5, y - 4); ctx.stroke();
@@ -298,8 +336,44 @@ export function createView2D(canvas, { store, getState, getSel }) {
     resize, requestDraw, set,
     refreshTheme() { C = readTheme(); requestDraw(); },
     zoomAt: (s, f) => set(zoomAt(vp, s, f)), zoomCenter: (f) => set(zoomAt(vp, [vp.w / 2, vp.h / 2], f)), panBy: (dx, dy) => set(panBy(vp, dx, dy)),
-    fit(b) { set(fitVP(vp, b, undefined, view.insetRight ? view.insetRight() : 0)); }, centerOn(p) { set({ ...vp, ox: vp.w / 2 - p[0] * vp.scale, oy: vp.h / 2 - p[1] * vp.scale }); },
+    fit(b) { set(fitVP(vp, b, undefined, view.insetRight ? view.insetRight() : 0, b && b.keep)); }, centerOn(p) { set({ ...vp, ox: vp.w / 2 - p[0] * vp.scale, oy: vp.h / 2 - p[1] * vp.scale }); },
     toMm: (s) => toMm(vp, s), toPx: (p) => toPx(vp, p),
     entry: (id) => floorCache(curFloor(store.doc)).by.get(id) || null,
+  });
+}
+
+/* ---------- 단면 그림(분석 칸의 작은 캔버스) — sec = core/sun.js section() 의 결과 ---------- */
+// 왼쪽이 북, 오른쪽이 남. 가로·세로 같은 배율. 잘린 벽은 채우고 개구부 자리는 비운다(창은 가는 두 줄). 정오 햇빛은 기준 창 윗단에서 안쪽 바닥으로 — 동지 실선, 하지 점선(색만으로 구분하지 않는다)
+export function drawSection(canvas, C, sec) {
+  const dpr = window.devicePixelRatio || 1, w = Math.max(1, Math.round(canvas.clientWidth)), pad = 8, top = C.fs4 + 12, rows = sec.ref ? 2 : 0;
+  const k = (w - 2 * pad) / (sec.u1 - sec.u0), h = Math.round(top + sec.H * k + 8 + rows * (C.fs4 + 6) + 4), X = (u) => pad + (u - sec.u0) * k, Y = (z) => top + (sec.H - z) * k;
+  canvas.style.height = h + 'px'; canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); canvas.dataset.w = String(w);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  ctx.font = `${C.fw} ${C.fs4}px ${C.font}`; ctx.textBaseline = 'middle'; ctx.fillStyle = C.sub;
+  ctx.textAlign = 'left'; ctx.fillText('북', pad, top / 2); ctx.textAlign = 'right'; ctx.fillText('남', w - pad, top / 2);
+  ctx.strokeStyle = C.control; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(pad, Math.round(Y(0)) + 0.5); ctx.lineTo(w - pad, Math.round(Y(0)) + 0.5); ctx.stroke();   // 땅
+  ctx.strokeStyle = C.ink; ctx.lineWidth = 1.5; ctx.textAlign = 'center';
+  for (const r of sec.rooms) { // 방: 바닥·천장 선과 이름
+    ctx.beginPath(); ctx.moveTo(X(r.u0), Y(0)); ctx.lineTo(X(r.u1), Y(0)); ctx.moveTo(X(r.u0), Y(sec.H)); ctx.lineTo(X(r.u1), Y(sec.H)); ctx.stroke();
+    if (ctx.measureText(r.name).width + 6 <= (r.u1 - r.u0) * k) { ctx.fillStyle = C.sub; ctx.fillText(r.name, X((r.u0 + r.u1) / 2), Y(sec.H / 2)); }
+  }
+  ctx.fillStyle = C.ink;
+  for (const c of sec.cuts) {
+    const x = X(c.u - c.t / 2), tw = Math.max(1.5, c.t * k), bar = (z0, z1) => { if (z1 > z0) ctx.fillRect(x, Y(z1), tw, (z1 - z0) * k); };
+    if (!c.gap) { bar(0, sec.H); continue; }
+    bar(0, c.gap.z0); bar(c.gap.z1, sec.H);
+    if (c.gap.type === 'window') { ctx.lineWidth = 1; ctx.beginPath(); for (const dx of [tw / 2 - 1, tw / 2 + 1]) { ctx.moveTo(x + dx, Y(c.gap.z0)); ctx.lineTo(x + dx, Y(c.gap.z1)); } ctx.stroke(); }
+  }
+  if (!sec.ref) return;
+  [['동지', sec.winter, []], ['하지', sec.summer, [4, 3]]].forEach(([name, day, dash], i) => {
+    const y = Y(0) + 8 + (i + 0.5) * (C.fs4 + 6);
+    ctx.strokeStyle = C.up; ctx.lineWidth = 1.5; ctx.setLineDash(dash);
+    if (day.depth > 0) { // 맞은편 벽에 먼저 닿으면 거기서 끊는다
+      const d = sec.roomDepth > 0 ? Math.min(day.depth, sec.roomDepth) : day.depth;
+      ctx.beginPath(); ctx.moveTo(X(0), Y(sec.ref.z1)); ctx.lineTo(X(sec.ref.inward * d), Y(sec.ref.z1 * (1 - d / day.depth))); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(pad, y); ctx.lineTo(pad + 22, y); ctx.stroke(); ctx.setLineDash([]);   // 범례: 선 모양 + 글자
+    ctx.fillStyle = C.ink; ctx.textAlign = 'left'; ctx.fillText(`${name} ${day.depth > 0 ? (day.depth / 1000).toFixed(2) + ' m' : '들지 않음'}`, pad + 28, y);
   });
 }

@@ -12,6 +12,9 @@ export const COLS = Object.keys(PREFIX);
 const FLOOR_H = 2300;
 const KIND = { walls: ['inner', 'exterior'], openings: ['door', 'window', 'open'], columns: ['rect', 'round'] };
 export const ZONES = ['public', 'private', 'service']; // 방 구분(room.zone, 없어도 된다 — 없으면 이름으로 추정: analysis.js)
+// 방위·지역(doc.site, 없어도 된다 — 없으면 이 기본값). north = 도면 위쪽이 가리키는 방위(북 0°, 시계방향 · 0 = 위가 북), lat = 위도(기본 서울). 위도는 ±latMax 안에서만 — 그 밖은 해가 안 뜨거나 안 지는 날이 있다
+export const SITE = Object.freeze({ north: 0, lat: 37.57, latMax: 66 });
+export const siteOf = (doc) => ({ north: doc.site?.north ?? SITE.north, lat: doc.site?.lat ?? SITE.lat });
 
 export const cloneDoc = (doc) => structuredClone(doc);
 export const curFloor = (doc) => doc.floors[doc.cur];
@@ -110,6 +113,8 @@ export function validateDoc(doc) {
   if (!Number.isInteger(doc.cur) || doc.cur < 0 || doc.cur >= doc.floors.length) bad('현재 층 번호가 범위를 벗어났습니다');
   const u = doc.underlay;
   if (u != null && !(typeof u.name === 'string' && typeof u.src === 'string' && co(u.x) && co(u.y) && len(u.mmPerPx) && num(u.rot) && num(u.opacity) && u.opacity >= 0 && u.opacity <= 1)) bad('밑그림 정보가 올바르지 않습니다');
+  const s = doc.site;
+  if (s !== undefined && !(s && typeof s === 'object' && !Array.isArray(s) && num(s.north) && s.north >= 0 && s.north < 360 && num(s.lat) && Math.abs(s.lat) <= SITE.latMax)) bad(`방위·위도가 올바르지 않습니다 (방위 0~359°, 위도 -${SITE.latMax}~${SITE.latMax}°)`);
   if (doc.seq != null && (typeof doc.seq !== 'object' || Array.isArray(doc.seq) || Object.values(doc.seq).some((v) => !(Number.isSafeInteger(v) && v >= 0)))) bad('번호 카운터(seq)는 0 이상의 유한한 정수여야 합니다');
   const seen = new Set(), uid = (id, who) => { if (typeof id !== 'string' || !id) bad(`${who}의 id 가 없습니다`); else if (seen.has(id)) bad(`id ${id} 가 중복되었습니다`); else seen.add(id); };
   for (const f of doc.floors) {

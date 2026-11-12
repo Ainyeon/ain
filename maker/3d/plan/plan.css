@@ -141,6 +141,19 @@ button, input, select { font: inherit; color: inherit; }
 .ed-zsw[data-z="private"] { border-color: var(--c-up); background: color-mix(in srgb, var(--c-up) 20%, transparent); }
 .ed-zsw[data-z="service"] { border-color: var(--c-control); background: color-mix(in srgb, var(--c-control) 20%, transparent); }
 .ed-ana-add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; gap: var(--sp-2); }
+/* 일조·단면·그림자 — 종류 단추 6개는 세 칸 두 줄(폰은 한 줄). 조작(ed-ana-ctl)은 표 밖 고정 묶음, 단면은 작은 캔버스 */
+.ed-props > .ed-seg.wide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ed-props > .ed-seg.wide .ed-sb { min-width: 0; padding: 0; }
+.ed-ana-ctl { display: grid; gap: var(--sp-2); }
+.ed-props > .ed-ana-ctl { margin-bottom: var(--sp-3); }
+.ed-ana-ctl .ed-f, .ed-ana-ctl .ed-note { margin: 0; }
+.ed-ana-ctl .ed-note { font-size: var(--fs-4); line-height: var(--lh-4); text-align: right; font-variant-numeric: tabular-nums; }
+.ed-ana-ctl .ed-b[aria-pressed="true"] { border-color: var(--c-accent); background: var(--c-accent-bg); color: var(--c-accent); }
+.ed-ana-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+.ed-ana-set summary { min-height: 32px; padding: var(--sp-1) 0; color: var(--c-ink-sub); font-size: var(--fs-4); line-height: var(--lh-2); font-weight: var(--fw-semi); cursor: pointer; }
+.ed-ana-set > .ed-f { margin: var(--sp-1) 0 var(--sp-2); }
+.ed-tbl .val { text-align: right; }
+.ed-sec-cv { display: block; width: 100%; height: 96px; border: 1px solid var(--c-line); border-radius: var(--r-1); background: var(--c-surface-sub); }
 
 /* 알림·창 */
 .ed-toasts { position: fixed; left: 50%; bottom: calc(var(--sp-8) + var(--sp-8)); z-index: 50; display: grid; gap: var(--sp-2); justify-items: center; translate: -50% 0; pointer-events: none; max-width: calc(100vw - var(--sp-6)); }
@@ -165,7 +178,7 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
 
 @media (pointer: coarse) {
   :root { --ed-edge: 44px; }
-  .ed-b, .ed-tbl .ed-b, .ed-sb, .ed-row, .ed-title, .ed-f select, .ed-f input[type="text"], .ed-f input[type="number"], .ed-rg input[type="range"] { min-height: 44px; }
+  .ed-b, .ed-tbl .ed-b, .ed-sb, .ed-row, .ed-title, .ed-f select, .ed-f input[type="text"], .ed-f input[type="number"], .ed-rg input[type="range"], .ed-ana-set summary { min-height: 44px; }
   .ed-sb { min-width: 44px; }
   .ed-x { width: 44px; height: 44px; }
 }
@@ -214,6 +227,8 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
   .ed-props > h2 { grid-column: 1; align-self: center; margin: 0 0 var(--sp-2); }
   .ed-props > .ed-note { grid-column: 2; align-self: center; margin: 0 0 var(--sp-2); text-align: right; }
   .ed-props > .ed-btns, .ed-props > .ed-sec-h, .ed-props > .ed-seg, .ed-props > .ed-ana { grid-column: 1 / -1; }
+  .ed-props > .ed-ana-ctl { grid-column: 1 / -1; }
+  .ed-props > .ed-seg.wide { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .ed-app.no-side .ed-props { visibility: visible; }
   .ed-app.ana .ed-stage { margin-bottom: 40dvh; }   /* 분석 보기: 시트가 계속 떠 있으므로 캔버스를 시트 위로 줄인다 — 도면과 캔버스 단추가 시트에 가리지 않는다 */
   .ed-app.ana .ed-props { height: 40dvh; max-height: none; }
