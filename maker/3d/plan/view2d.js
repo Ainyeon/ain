@@ -146,13 +146,20 @@ export function drawAxo(ctx, C, sc, px) {
 }
 
 /* ---------- 캔버스 뷰 ---------- */
-export function createView2D(canvas, { store, getState, getSel }) {
+export function createView2D(canvas, { store, getState, getSel, offscreen = false }) { // offscreen: 화면 밖 캔버스(도면판 칸) — 휠·크기 관찰을 달지 않고 renderTo 로만 그린다. 바탕은 종이색
   const ctx = canvas.getContext('2d');
   let vp = newVP(), dpr = 1, raf = 0, C = readTheme();
+  if (offscreen) C.bg = C.surface;
   const imgs = new Map(), view = { hover: null, overlay: null, onChange: null, underlayTemp: null, drawCount: 0, routes: [], ana: null, axo: null };   // routes: 동선 보기에서 그릴 경로 · ana: 일조·단면·그림자 보기에서 그릴 것 { north, shade:[{ polys, tip, text }], sun:[{ poly, text, now }], cut:null|[북 끝, 남 끝] } · axo: 액소 보기에서 그릴 장면(core/axo.js) (모두 app.js 가 넣는다, 계산은 core/sun.js)
   const changed = () => { requestDraw(); if (view.onChange) view.onChange(vp); };
   const set = (next) => { vp = next; changed(); };
   function requestDraw() { if (!raf) raf = requestAnimationFrame(draw); }
+  function renderTo(w, h, scale, { routes = [], ana = null, axo = null, bounds = null, k = 0 } = {}) { // 정한 크기(논리 px)·배율로 바로 그린다(rAF 없음). k(px/mm)를 주면 그 축척으로 가운데에, 아니면 bounds 에 맞춘다
+    canvas.width = Math.round(w * scale); canvas.height = Math.round(h * scale); dpr = scale;
+    Object.assign(view, { routes, ana, axo });
+    vp = k && bounds ? { scale: k, ox: w / 2 - ((bounds.x0 + bounds.x1) / 2) * k, oy: h / 2 - ((bounds.y0 + bounds.y1) / 2) * k, w, h } : fitVP({ ...vp, w, h }, bounds, 12);
+    draw();
+  }
   function resize() {
     dpr = window.devicePixelRatio || 1;
     const w = Math.max(1, Math.round(canvas.clientWidth)), h = Math.max(1, Math.round(canvas.clientHeight));
@@ -326,7 +333,7 @@ export function createView2D(canvas, { store, getState, getSel }) {
         const n = pullIn(q[0], q[1], safe), z = pullIn(q[1], q[0], safe);
         drawPill(ctx, C, '북', n[0], n[1], { color: C.accent }); drawPill(ctx, C, '남', z[0], z[1], { color: C.accent });
       }
-      const cx = 36, cy = 108, r = 16, t = (AN.north * Math.PI) / 180, d = [-Math.sin(t), -Math.cos(t)], tip = [cx + d[0] * 11, cy + d[1] * 11], at = (k, w) => [tip[0] - d[0] * k - d[1] * w, tip[1] - d[1] * k + d[0] * w];   // 방위표: 원 + 북쪽 화살(선) + N
+      const cx = 36, cy = view.insetTop ? 108 : 36, r = 16, t = (AN.north * Math.PI) / 180, d = [-Math.sin(t), -Math.cos(t)], tip = [cx + d[0] * 11, cy + d[1] * 11], at = (k, w) => [tip[0] - d[0] * k - d[1] * w, tip[1] - d[1] * k + d[0] * w];   // 방위표: 원 + 북쪽 화살(선) + N
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fillStyle = C.surface; ctx.fill(); ctx.strokeStyle = C.control; ctx.lineWidth = 1; ctx.stroke();
       ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(cx - d[0] * 11, cy - d[1] * 11); ctx.lineTo(tip[0], tip[1]); ctx.moveTo(...at(7, 5)); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(...at(7, -5)); ctx.stroke();
       ctx.strokeStyle = C.surface; ctx.lineWidth = 3; ctx.strokeText('N', cx + d[0] * (r + 9), cy + d[1] * (r + 9)); ctx.fillStyle = C.ink; ctx.fillText('N', cx + d[0] * (r + 9), cy + d[1] * (r + 9));
@@ -339,16 +346,18 @@ export function createView2D(canvas, { store, getState, getSel }) {
     if (view.overlay) view.overlay({ ctx, vp, C, st, toPx: (p) => toPx(vp, p), fmt: (mm) => fmtLen(mm, st.unit) });
   }
 
-  canvas.addEventListener('wheel', (e) => { // 휠 = 커서 기준 확대·축소
-    e.preventDefault();
-    const r = canvas.getBoundingClientRect(), k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
-    set(zoomAt(vp, [e.clientX - r.left, e.clientY - r.top], Math.exp(-e.deltaY * k * (e.ctrlKey ? 0.01 : 0.0016))));
-  }, { passive: false });
-  new ResizeObserver(resize).observe(canvas);
+  if (!offscreen) {
+    canvas.addEventListener('wheel', (e) => { // 휠 = 커서 기준 확대·축소
+      e.preventDefault();
+      const r = canvas.getBoundingClientRect(), k = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
+      set(zoomAt(vp, [e.clientX - r.left, e.clientY - r.top], Math.exp(-e.deltaY * k * (e.ctrlKey ? 0.01 : 0.0016))));
+    }, { passive: false });
+    new ResizeObserver(resize).observe(canvas);
+  }
 
   Object.defineProperties(view, { vp: { get: () => vp }, theme: { get: () => C } }); // 읽을 때마다 지금 값(Object.assign 은 getter 를 값으로 굳혀 버린다)
   return Object.assign(view, {
-    resize, requestDraw, set,
+    resize, requestDraw, renderTo, set,
     refreshTheme() { C = readTheme(); requestDraw(); },
     zoomAt: (s, f) => set(zoomAt(vp, s, f)), zoomCenter: (f) => set(zoomAt(vp, [vp.w / 2, vp.h / 2], f)), panBy: (dx, dy) => set(panBy(vp, dx, dy)),
     fit(b) { set(fitVP(vp, b, undefined, view.insetRight ? view.insetRight() : 0, b && b.keep)); }, centerOn(p) { set({ ...vp, ox: vp.w / 2 - p[0] * vp.scale, oy: vp.h / 2 - p[1] * vp.scale }); },
@@ -358,11 +367,13 @@ export function createView2D(canvas, { store, getState, getSel }) {
 }
 
 /* ---------- 단면 그림(분석 칸의 작은 캔버스) — sec = core/sun.js section() 의 결과 ---------- */
+// w0·dpr0: 화면 밖 캔버스(도면판 칸)에 그릴 때의 폭(px)과 배율 — 주면 캔버스의 CSS 크기를 읽지도 고치지도 않는다
 // 왼쪽이 북, 오른쪽이 남. 가로·세로 같은 배율. 잘린 벽은 채우고 개구부 자리는 비운다(창은 가는 두 줄). 정오 햇빛은 기준 창 윗단에서 안쪽 바닥으로 — 동지 실선, 하지 점선(색만으로 구분하지 않는다)
-export function drawSection(canvas, C, sec) {
-  const dpr = window.devicePixelRatio || 1, w = Math.max(1, Math.round(canvas.clientWidth)), pad = 8, top = C.fs4 + 12, rows = sec.ref ? 2 : 0;
+export function drawSection(canvas, C, sec, w0 = 0, dpr0 = 0) {
+  const dpr = dpr0 || window.devicePixelRatio || 1, w = w0 || Math.max(1, Math.round(canvas.clientWidth)), pad = 8, top = C.fs4 + 12, rows = sec.ref ? 2 : 0;
   const k = (w - 2 * pad) / (sec.u1 - sec.u0), h = Math.round(top + sec.H * k + 8 + rows * (C.fs4 + 6) + 4), X = (u) => pad + (u - sec.u0) * k, Y = (z) => top + (sec.H - z) * k;
-  canvas.style.height = h + 'px'; canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); canvas.dataset.w = String(w);
+  if (!w0) canvas.style.height = h + 'px';
+  canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); canvas.dataset.w = String(w);
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
   ctx.font = `${C.fw} ${C.fs4}px ${C.font}`; ctx.textBaseline = 'middle'; ctx.fillStyle = C.sub;

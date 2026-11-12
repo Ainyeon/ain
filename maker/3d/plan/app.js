@@ -339,13 +339,24 @@ const syncRoutes = () => { // 표가 안 보일 때(무언가 고른 동안)도 
   view.ana = on && SUNNY.has(m) ? anaView(f, m) : null;
   view.axo = on && m === 'axo' && f.rooms.length ? axoOf(f, state.axo.spread) : null;
 };
+// 도면 범위 b 에 그림자 범위 s 를 더한다. keep: 그림자가 최소 배율에도 다 안 들어가면 도면(둘레에 제 크기만큼 여유)은 화면에 남긴다
+function withShade(b, s) {
+  if (!b || !s) return b;
+  const g = Math.max(b.x1 - b.x0, b.y1 - b.y0);
+  return { x0: Math.min(b.x0, s.x0), y0: Math.min(b.y0, s.y0), x1: Math.max(b.x1, s.x1), y1: Math.max(b.y1, s.y1), keep: { x0: b.x0 - g, y0: b.y0 - g, x1: b.x1 + g, y1: b.y1 + g } };
+}
 function fitBounds() { // 보기 맞춤 범위 — 그림자 보기에서는 그림자까지, 액소 보기에서는 다 벌린 장면(재생 중에 화면이 흔들리지 않는다)
   syncRoutes();
   if (view.axo) { const f = curFloor(store.doc), a = axoOf(f, 1).box; return { ...a, y1: Math.max(a.y1, axoOf(f, 0).box.y1) }; }   // 붙였을 때의 아랫단(바깥벽 밑)까지
-  const b = bounds(store.doc), s = view.ana && polysBox(view.ana.shade.flatMap((x) => x.polys));
-  if (!b || !s) return b;
-  const g = Math.max(b.x1 - b.x0, b.y1 - b.y0);   // keep: 그림자가 최소 배율에도 다 안 들어가면 도면(둘레에 제 크기만큼 여유)은 화면에 남긴다
-  return { x0: Math.min(b.x0, s.x0), y0: Math.min(b.y0, s.y0), x1: Math.max(b.x1, s.x1), y1: Math.max(b.y1, s.y1), keep: { x0: b.x0 - g, y0: b.y0 - g, x1: b.x1 + g, y1: b.y1 + g } };
+  return withShade(bounds(store.doc), view.ana && polysBox(view.ana.shade.flatMap((x) => x.polys)));
+}
+async function openSheet() { // 도면판: 평면과 분석 보기 일곱을 A3 가로 한 장에 — 지금 날·시각·동선·자를 방 설정 그대로. 그리기는 sheet.js
+  const d = store.doc, f = curFloor(d), site = siteOf(d);
+  if (!f.rooms.length) return toast('방이 없습니다', 'err');
+  const b = bounds(d), sec = section(f, site, state.sun.cut), shade = anaView(f, 'shadow'), axo = axoOf(f, 0.6), plan = (m, more) => ({ label: m ? ANA[m] : '평면', m, bounds: b, scaled: true, ...more });
+  const cells = [plan(null), plan('poche'), plan('zone'), plan('route', { routes: routesFor(f, state.routes) }), plan('sun', { ana: anaView(f, 'sun') }), { label: ANA.section, section: sec.ok ? sec : null, note: '자를 벽이 없습니다' },
+    plan('shadow', { ana: shade, bounds: withShade(b, polysBox(shade.shade.flatMap((x) => x.polys))) }), { label: ANA.axo, m: 'axo', axo, bounds: axo.box }];
+  try { (await import('./sheet.js')).openSheet({ h, openDialog, download, toast }, { store, state, cells, name: `ain-도면판-${safe(d.title)}.png`, info: { title: d.title, areaM2: floorAreaM2(d, f, state.areaGross), north: site.north, lat: site.lat, date: new Date().toLocaleDateString('ko-KR') } }); } catch (e) { errDialog('도면판을 열지 못했습니다', 'sheet.js 를 불러오거나 실행하지 못했습니다', e); }
 }
 let playRaf = 0, playUi = () => {};   // 하루 타임랩스 — playUi: 지금 떠 있는 분석 칸의 단추 글자 맞춤
 function stopPlay() { if (!playRaf) return; cancelAnimationFrame(playRaf); playRaf = 0; playUi(); }
@@ -488,7 +499,7 @@ function analysisBuild(box) {
     body.replaceChildren(...(f.rooms.length ? fill[m](d, f) : [h('p', { class: 'ed-note', text: '방이 없습니다' })]).filter(Boolean));
   };
   propFields = [{ sync }]; box.hidden = false;
-  box.replaceChildren(h('div', { class: 'ed-sec-h' }, [h('h2', { id: 'plPropsH', text: '분석' }), h('button', { type: 'button', class: 'ed-b', text: '끝내기', 'aria-label': '분석 끝내기', onclick: () => setAnalysis(null) })]),
+  box.replaceChildren(h('div', { class: 'ed-sec-h' }, [h('h2', { id: 'plPropsH', text: '분석' }), h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: '도면판', onclick: openSheet }), h('button', { type: 'button', class: 'ed-b', text: '끝내기', 'aria-label': '분석 끝내기', onclick: () => setAnalysis(null) })])]),
     h('div', { class: 'ed-seg wide', role: 'group', 'aria-label': '분석 종류' }, tabs), ctl, body);
   syncRoutes(); sync();
 }

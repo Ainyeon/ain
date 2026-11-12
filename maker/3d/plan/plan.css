@@ -245,3 +245,15 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
   .ed-hist .ed-b { padding: 0 var(--sp-1); }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+/* 도면판 — 미리보기 창과 A3 가로 인쇄(인쇄할 때는 도면판 캔버스만 남긴다) */
+dialog.ed-dlg.ed-sheet { width: min(1120px, calc(100vw - var(--sp-6))); }
+.ed-sheet-cv { display: block; width: 100%; height: auto; border: 1px solid var(--c-line); }
+@page { size: A3 landscape; margin: 0; }
+@media print {
+  body.printing > :not(.ed-sheet) { display: none !important; }
+  body.printing dialog.ed-sheet { position: absolute; inset: 0; width: 420mm; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible; }
+  body.printing dialog.ed-sheet::backdrop { display: none; }
+  body.printing .ed-sheet .ed-dlg-h, body.printing .ed-sheet-act { display: none; }
+  body.printing .ed-sheet .ed-dlg-b { padding: 0; }
+  body.printing .ed-sheet-cv { width: 420mm; height: 297mm; border: 0; }
+}
