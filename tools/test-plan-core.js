@@ -18,6 +18,7 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
   const [M, G, H, S, X, MESH] = await Promise.all(FILES.map((f) => import(pathToFileURL(path.join(DIR, f + '.js')).href)));
   const sample = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'maker/3d/view/apartment.json'), 'utf8')).data.space;
   const cf = M.curFloor;
+  const COLSUM = (d) => M.COLS.reduce((n, c) => n + d.floors[0][c].length, 0);
   const wallsOf = (doc, r) => r.wallIds.map((i) => cf(doc).walls.find((w) => w.id === i));
   const badRooms = (doc) => cf(doc).rooms.filter((r) => G.roomInnerPoly(wallsOf(doc, r), r.poly).some((p, i) => Math.hypot(p[0] - r.poly[i][0], p[1] - r.poly[i][1]) > 1e-3)).map((r) => r.id); // 방 다각형과 벽이 어긋난 방
 
@@ -721,6 +722,41 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
       for (let i = 1; i <= M.FLOOR_MAX_ELEMENTS; i++) f.guides.push(guide(i));
       assert.deepStrictEqual(M.validateDoc(e), [], '정확히 5만 개는 허용'); f.guides.push(guide(M.FLOOR_MAX_ELEMENTS + 1));
       const p = M.validateDoc(e); assert.ok(p.length === 1 && ko(p[0]) && /너무 많/.test(p[0]), p.join()); throwsKo(() => X.fromDocJSON(J(e)), /읽지 못/); throwsKo(() => new S.Store(e), /너무 많/); }
+  }
+
+  /* ===== 엔진이 읽은 도면 → 문서(fromSpaceJSON): 스튜디오가 읽은 결과를 도면 그리기로 열 때 쓴다 ===== */
+  {
+    const fl = (d) => d.floors[0], sumArea = (d) => fl(d).rooms.reduce((a, r) => a + G.polyArea(r.poly), 0) / 1e6;
+    for (const t of TPL) {                                        // 템플릿마다 내보냈다 되읽기 — 개수·넓이·개구부 자리가 그대로
+      const src = X.fromDocJSON(J(t.doc)), sp = X.toSpaceJSON(src, 0), back = X.fromSpaceJSON(sp, { brand: 'samsung' }), a = fl(src), b = fl(back);
+      assert.deepStrictEqual(M.validateDoc(back), [], t.id);
+      const straight = a.walls.every((w) => !w.bulge);
+      assert.deepStrictEqual([b.walls.length, b.rooms.length, b.openings.length, b.items.length], [a.walls.length, a.rooms.length, a.openings.length, a.items.filter((i) => i.kind === 'ac').length], t.id + ' 개수');
+      near(sumArea(back), sumArea(src), 0.01, t.id + ' 방 넓이 합');
+      if (straight) b.openings.forEach((o, k) => near(o.at, a.openings[k].at, 2e-3, t.id + ' 개구부 자리'));   // 내보낼 때 점을 mm 로 반올림한다
+      assert.ok(b.rooms.every((r) => r.wallIds.length === 0 && G.signedArea(r.poly) > 0), t.id + ' 방은 벽과 안 묶고 한 방향');
+    }
+    // 엔진 초안(y 위쪽, 그림 틀 높이 9000mm): 뒤집어 밑그림과 겹친다. 손으로 계산한 값
+    const E = { rooms: [{ id: 'R01', name_ko: '실 1', polygon: [[1000, 8000], [1000, 2000], [4000, 2000], [4000, 8000]] }],
+      walls: [{ id: 'W001', a: [900, 8100], b: [4100, 8100], thickness: 200, kind: 'exterior' }, { id: 'W002', a: [4100, 8100], b: [4100, 1900], thickness: 300, kind: 'interior' }, { id: 'W9', a: [5, 5], b: [5, 5], thickness: 100, kind: 'interior' }],
+      openings: [{ wall: 'W002', at: [4100, 6550], width: 900, sill: 0, height: 2100, type: 'door' }, { wall: 'W404', at: [0, 0], width: 900, sill: 0, height: 2100, type: 'door' }, { wall: 'W001', at: [1700, 8100], width: 1200, type: 'hatch' }],
+      ac_units: [{ model: '1way', size_mm: [1001, 500, 35], center: [2500, 5000], rotation_deg: 90, capacity_kw: 4 }, { model: 'mini_4way', size_mm: [620, 620, 35], center: [2000, 3000], rotation_deg: 0, capacity_kw: null }, { model: 'duct', size_mm: [1, 1, 1], center: [0, 0], rotation_deg: 0 }],
+      ceiling_mm: 2400, brand: 'lg', frame_h_mm: 9000 };
+    const d = X.fromSpaceJSON(E, { frameH: E.frame_h_mm }), f = fl(d);
+    assert.deepStrictEqual(M.validateDoc(d), []); assert.strictEqual(d.title, '내 도면'); assert.strictEqual(f.heightMm, 2400);
+    assert.deepStrictEqual(f.walls.map((w) => [w.id, w.a, w.b, w.t, w.kind, w.bulge]), [['W1', [900, 900], [4100, 900], 200, 'exterior', 0], ['W2', [4100, 900], [4100, 7100], 300, 'inner', 0]], '길이 0 벽은 버린다');
+    assert.deepStrictEqual(f.rooms.map((r) => [r.id, r.name, r.wallIds]), [['R1', '실 1', []]]); near(G.polyArea(f.rooms[0].poly) / 1e6, 18, 1e-9); assert.ok(G.signedArea(f.rooms[0].poly) > 0);
+    assert.ok(f.rooms[0].poly.some((p) => p[0] === 1000 && p[1] === 1000) && f.rooms[0].poly.some((p) => p[0] === 4000 && p[1] === 7000), '뒤집힌 꼭짓점');
+    assert.deepStrictEqual(f.openings.map((o) => [o.wall, o.type, o.at, o.width, o.height, o.sill]), [['W2', 'door', 0.25, 900, 2100, 0], ['W1', 'open', 0.25, 1200, 2100, 0]], '없는 벽의 개구부는 버리고 모르는 종류는 open');
+    assert.deepStrictEqual(f.items.map((i) => [i.model, i.brand, i.c, i.rot, i.capacityKw, i.size, i.code]), [['1way', 'lg', [2500, 4000], 270, 4, [1001, 500], ''], ['mini4way', 'lg', [2000, 6000], 0, null, [620, 620], '']], '모르는 형식은 버린다');
+    assert.deepStrictEqual(d.seq, { W: 2, R: 1, C: 0, O: 2, G: 0, I: 2, F: 1 });
+    const keep = X.fromSpaceJSON(E), k = fl(keep);              // frameH 없이 = 좌표 그대로
+    assert.deepStrictEqual([k.walls[0].a, k.items[0].c, k.items[0].rot], [[900, 8100], [2500, 5000], 90]);
+    assert.deepStrictEqual(fl(X.fromSpaceJSON(E, { brand: 'x' })).items, [], '브랜드를 모르면 에어컨은 싣지 않는다');
+    for (const bad of [null, undefined, 3, 'x', [], {}, { rooms: 'x', walls: [null, 3, {}], openings: [{}], ac_units: [{ model: '1way' }] }, { rooms: [{ polygon: [[0, 0], [1, 'a'], [2, 2]] }, { polygon: [[0, 0], [0, 0], [0, 0]] }] }]) {
+      const e = X.fromSpaceJSON(bad); assert.deepStrictEqual(M.validateDoc(e), []); assert.deepStrictEqual(COLSUM(e), 0, '깨진 입력은 빈 문서 ' + J(bad));
+    }
+    throwsKo(() => X.fromSpaceJSON({ walls: [{ id: 'W1', a: [0, 0], b: [1e9, 0] }] }), /옮기지 못했습니다/, '범위 밖 좌표');
   }
 
   console.log('test-plan-core: OK');

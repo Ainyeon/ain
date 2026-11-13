@@ -134,4 +134,16 @@ assert.ok(/html\[data-embed\] \.page-head > div:first-child/.test(css) && !/html
 assert.ok(page.includes('/maker/3d/ask.js?v=1') && sw.includes("'/maker/3d/ask.js?v=1'") && /id="stAskForm"/.test(page), 'ask.js 와 말로 시키기 카드');
 assert.ok(/html\[data-embed\] \.st-ask\s*\{\s*display:\s*none/.test(css), '임베드(호스트 화면 안)에서는 말로 시키기 카드를 숨긴다');
 
+// 읽은 도면을 [도면 그리기]로 — 작업 폴더의 읽은 도면·올린 그림만 읽고, 멈춘 작업도 다음 행동(도면 그리기)으로 잇는다
+{
+  const tp = js.slice(js.indexOf('async function planSrc'), js.indexOf('function runView'));
+  assert.ok(tp.includes("'/out/draft.json'") && /\/\^in\\\.\(png\|jpe\?g\|webp\)\$\//.test(tp), 'toPlan 은 out/draft.json 과 in.(png|jpg|webp) 만 읽는다');
+  assert.deepStrictEqual([...tp.matchAll(/get\(([^)]*)\)/g)].map((m) => m[1]), ["src.dir + '/out/draft.json'", "src.dir + '/' + src.pic"], '받는 경로는 둘뿐');
+  assert.ok(tp.includes("import('/maker/3d/plan/core/export.js')") && tp.includes("import('/maker/3d/plan/library.js')") && tp.includes('fromSpaceJSON') && tp.includes('savePlan'), '변환·보관은 플래너 것을 쓴다');
+  assert.ok(tp.includes("'/maker/3d/plan/'") && tp.includes('keepQ()'), '파트너 표시를 남기고 플래너로');
+  for (const t of ['도면에서 고치기', '도면 그리기 열기', '읽은 데까지 도면으로 옮깁니다 · 틀린 곳만 고치세요', '올린 도면을 밑그림으로 깝니다 · 벽을 따라 그리세요', '이 파일은 직접 그려야 합니다', '도면 여는 중']) assert.ok(js.includes("'" + t + "'"), '문구: ' + t);
+  assert.ok(/status === 'failed'\) \{ paint\(1\); return fail\(/.test(js), '멈춘 작업은 fail() 로');
+  assert.ok(!/읽지 못했습니다|일부|추정|수 있습니다/.test(tp + js.slice(js.indexOf('const fail = async'), js.indexOf("say('접수 확인 중')"))), '새 문구에 애매한 말 없음');
+}
+
 console.log('test-studio-live: OK');
