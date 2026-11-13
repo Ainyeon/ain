@@ -756,7 +756,30 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
     for (const bad of [null, undefined, 3, 'x', [], {}, { rooms: 'x', walls: [null, 3, {}], openings: [{}], ac_units: [{ model: '1way' }] }, { rooms: [{ polygon: [[0, 0], [1, 'a'], [2, 2]] }, { polygon: [[0, 0], [0, 0], [0, 0]] }] }]) {
       const e = X.fromSpaceJSON(bad); assert.deepStrictEqual(M.validateDoc(e), []); assert.deepStrictEqual(COLSUM(e), 0, '깨진 입력은 빈 문서 ' + J(bad));
     }
-    throwsKo(() => X.fromSpaceJSON({ walls: [{ id: 'W1', a: [0, 0], b: [1e9, 0] }] }), /옮기지 못했습니다/, '범위 밖 좌표');
+    // 범위 밖(±10km)·글자 숫자는 그 요소만 버리거나 기본값으로 — 나머지는 그대로 싣는다(하나 때문에 읽은 도면 전체를 잃지 않는다)
+    const far = X.fromSpaceJSON({ ...E, rooms: [...E.rooms, { polygon: [[0, 0], [1e9, 0], [1e9, 1e9]] }], walls: [...E.walls, { id: 'WX', a: [0, 0], b: [1e9, 0] }, { id: 'WT', a: [0, 0], b: [0, 500], thickness: 1e9 }],
+      ac_units: [...E.ac_units, { model: '1way', size_mm: ['1001', '500'], center: [0, 0] }], ceiling_mm: 1e9 }, { frameH: 9000 }), ff = fl(far);
+    assert.deepStrictEqual(M.validateDoc(far), []);
+    assert.deepStrictEqual([ff.rooms.length, ff.walls.length, ff.walls[2].t, ff.items.length, ff.heightMm, ff.openings.length], [1, 3, M.DEFAULTS.wallT, 2, fl(X.fromSpaceJSON(null)).heightMm, 2], '범위 밖 요소만 빠진다');
+    assert.deepStrictEqual(COLSUM(X.fromSpaceJSON(E, { frameH: 1e300 })), 0, '틀 높이가 터무니없으면 좌표가 다 범위 밖');
+    // 창(높이·창대는 엔진 값 그대로, 없으면 창 기본값) · exterior:true · ceiling.height_mm · 글자가 아닌 벽 id
+    const Wn = fl(X.fromSpaceJSON({ ceiling: { height_mm: 2650 }, walls: [{ id: 'A', a: [0, 0], b: [4000, 0], thickness: 200, exterior: true }, { id: 7, a: [0, 0], b: [0, 3000], thickness: 100 }],
+      openings: [{ wall: 'A', at: [1000, 0], width: 1500, sill: 700, height: 1300, type: 'window' }, { wall: 'A', at: [3000, 0], type: 'window' }, { wall: 'A', at: [2000, 0], width: 800, sill: -5, height: 2000, type: 'door' }, { wall: 7, at: [0, 1000], type: 'door' }] }));
+    assert.deepStrictEqual([Wn.heightMm, Wn.walls.map((w) => w.kind)], [2650, ['exterior', 'inner']]);
+    assert.deepStrictEqual(Wn.openings.map((o) => [o.type, o.width, o.height, o.sill]), [['window', 1500, 1300, 700], ['window', M.DEFAULTS.winW, M.DEFAULTS.winH, M.DEFAULTS.winSill], ['door', 800, 2000, 0]], '창 높이·창대, 숫자 id 벽의 개구부는 버린다');
+    assert.ok(M.DEFAULTS.winH !== M.DEFAULTS.doorH && M.DEFAULTS.winSill !== 0);
+    // 요소 수에 비례하는 시간(벽 20,000개) · 층 상한을 넘으면 통째로 거절
+    { const t = Date.now(), big = X.fromSpaceJSON({ walls: Array.from({ length: 20000 }, (_, i) => ({ id: 'W' + i, a: [0, i], b: [1000, i], thickness: 100 })) });
+      assert.strictEqual(fl(big).walls.length, 20000); assert.strictEqual(fl(big).walls[19999].id, 'W20000'); assert.strictEqual(big.seq.W, 20000); assert.ok(Date.now() - t < 3000, '벽 20,000개 ' + (Date.now() - t) + 'ms'); }
+    throwsKo(() => X.fromSpaceJSON({ walls: Array.from({ length: M.FLOOR_MAX_ELEMENTS + 1 }, (_, i) => ({ a: [0, i], b: [1000, i] })) }), /옮기지 못했습니다/, '층 상한 초과');
+    // 작업 장비 초안의 틀 높이·밑그림 축척(draftFrame) — sample-e24 실제 값: 읽기 틀 564×880px · 16.9728mm/px, 가로 1452px 로 깔면 10.2865mm/px
+    const DF = { frame_h_mm: 9573, image: { mm_per_px: 16.9728, hw: [564, 880], skew: 0 } };
+    assert.strictEqual(X.draftFrame(DF).frameH, 9573); near(X.draftFrame(DF, 1452).mmPerPx, 880 * 16.9728 / 1452, 1e-9); near(X.draftFrame(DF, 1452).mmPerPx, 10.2865, 1e-4);
+    assert.ok(Math.abs(X.draftFrame(DF, 1452).mmPerPx - 564 * 16.9728 / 1452) > 1, '가로(hw[1])로 잰다');
+    for (const bad of [null, {}, { image: {} }, { image: { hw: [1, 1], mm_per_px: 1e300 } }, { image: { hw: [564, 880], mm_per_px: 2000 } }, { frame_h_mm: 1e300 }, { frame_h_mm: '9' }])
+      assert.deepStrictEqual(X.draftFrame(bad, 1000), { frameH: null, mmPerPx: 10 }, '축척 없음·터무니없음 → 가로 10m ' + J(bad));
+    const viaDraft = fl(X.fromSpaceJSON({ ...E, frame_h_mm: 9000 }, X.draftFrame({ ...E, frame_h_mm: 9000 })));   // 스튜디오가 부르는 꼴 — 틀 높이로 뒤집힌다
+    assert.deepStrictEqual([viaDraft.walls[0].a, viaDraft.items[0].c, viaDraft.items[0].rot], [[900, 900], [2500, 4000], 270]);
   }
 
   console.log('test-plan-core: OK');

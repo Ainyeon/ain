@@ -433,26 +433,29 @@
   }
 
   // ── 읽은 도면을 [도면 그리기]로 — 끝난 작업은 고치러, 멈춘 작업은 읽은 데까지(없으면 올린 그림을 밑그림으로) 이어 그리러 ──
-  async function planSrc(id) {                           // 도면 작업 폴더에 있는 것: 읽은 도면(out/draft.json)·올린 그림(in.png·jpg·webp). 사진 손질 작업이면 null
-    const c = client(), dir = S.session.user.id + '/' + id, st = c.storage.from('studio');
+  const PLAN_X = '/maker/3d/plan/core/export.js';
+  async function planSrc(id) {                           // 도면 작업 폴더에 있는 것: 읽은 도면(out/draft.json — 플래너로 옮겨지는 것만, 깨졌으면 null)·올린 그림(in.png·jpg·webp). 사진 손질 작업이면 null
+    const c = client(), dir = S.session.user.id + '/' + id, st = c.storage.from('studio'), get = async (p) => { const d = await st.download(p); if (d.error) throw d.error; return d.data; };
     const [j, o, i] = await Promise.all([c.from('studio_jobs').select('tool').eq('id', id).maybeSingle(), st.list(dir + '/out', { search: 'draft.json' }), st.list(dir, { search: 'in.' })]);
     if (j.error || !j.data || j.data.tool === 'erase' || j.data.tool === 'cutout') return null;
-    return { dir, draft: !o.error && (o.data || []).some((x) => x.name === 'draft.json'), pic: (!i.error && (i.data || []).map((x) => x.name).find((n) => /^in\.(png|jpe?g|webp)$/.test(n))) || null };
+    let draft = null;
+    if (!o.error && (o.data || []).some((x) => x.name === 'draft.json')) try {   // 문구·단추가 실제로 열릴 것과 같게 여기서 옮겨 본다
+      const X = await import(PLAN_X), D = JSON.parse(await (await get(dir + '/out/draft.json')).text()), f = X.fromSpaceJSON(D, X.draftFrame(D)).floors[0];
+      if (f.rooms.length || f.walls.length) draft = D;
+    } catch (e) {}
+    return { dir, get, draft, pic: (!i.error && (i.data || []).map((x) => x.name).find((n) => /^in\.(png|jpe?g|webp)$/.test(n))) || null };
   }
   async function toPlan(id, src, btn, say) {             // 플래너 문서로 바꿔 내 프로젝트(이 기기)에 넣고 연다. 변환은 플래너의 fromSpaceJSON 이 한다
     btn.disabled = true; say('도면 여는 중');
     try {
-      const st = client().storage.from('studio'), get = async (p) => { const d = await st.download(p); if (d.error) throw d.error; return d.data; };
-      const [X, L] = await Promise.all([import('/maker/3d/plan/core/export.js'), import('/maker/3d/plan/library.js')]);
-      let draft = null, doc = null;
-      if (src.draft) try { draft = JSON.parse(await (await get(src.dir + '/out/draft.json')).text()); doc = X.fromSpaceJSON(draft, { frameH: Number.isFinite(draft.frame_h_mm) ? draft.frame_h_mm : null }); } catch (e) { draft = doc = null; }   // 못 옮기면 밑그림만
-      doc = doc || X.fromSpaceJSON(null);
+      const [X, L] = await Promise.all([import(PLAN_X), import('/maker/3d/plan/library.js')]);
+      const draft = src.draft, doc = X.fromSpaceJSON(draft, X.draftFrame(draft));   // 읽은 도면이 없으면 빈 문서(밑그림만)
       const sent = S.sent && S.sent.id === id && S.sent.f && S.sent.f.isImg ? S.sent.f.blob : null;   // 이 방문에서 올린 그림은 다시 받지 않는다
-      const im = await loadImage(sent || (src.pic ? await get(src.dir + '/' + src.pic) : null));
+      const im = await loadImage(sent || (src.pic ? await src.get(src.dir + '/' + src.pic) : null));
       if (im) {
-        const c = fitCanvas(im, 2400), g = c.getContext('2d'), a = draft && draft.image, wide = a && Array.isArray(a.hw) && a.hw[1] * a.mm_per_px;
+        const c = fitCanvas(im, 2400), g = c.getContext('2d');
         g.globalCompositeOperation = 'destination-over'; g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);   // 투명 PNG 는 흰 바탕(작업 장비가 읽은 것과 같게)
-        doc.underlay = { name: '올린 도면', src: c.toDataURL('image/jpeg', .82), x: 0, y: 0, mmPerPx: (wide > 0 ? wide : 10000) / c.width, rot: 0, opacity: doc.floors[0].rooms.length ? .35 : .6 };   // 읽은 축척이 없으면 가로 10m 로 — 플래너에서 맞춘다
+        doc.underlay = { name: '올린 도면', src: c.toDataURL('image/jpeg', .82), x: 0, y: 0, mmPerPx: X.draftFrame(draft, c.width).mmPerPx, rot: 0, opacity: doc.floors[0].rooms.length ? .35 : .6 };   // 읽은 축척이 없으면 가로 10m 로 — 플래너에서 맞춘다
       }
       const f = doc.floors[0], q = keepQ();
       location.assign('/maker/3d/plan/' + q + (q ? '&' : '?') + (doc.underlay || f.rooms.length || f.walls.length ? 'doc=' + L.createLibrary(localStorage).savePlan(doc).id : 'new=1'));
@@ -497,9 +500,10 @@
       if (!(S.toolJob && S.toolJob.id === id)) try { src = await planSrc(id); } catch (e) {}
       if (stale()) return;
       if (!src) return end(text, true);
-      end(src.draft ? '읽은 데까지 도면으로 옮깁니다 · 틀린 곳만 고치세요' : src.pic ? '올린 도면을 밑그림으로 깝니다 · 벽을 따라 그리세요' : '이 파일은 직접 그려야 합니다', true);
-      msg.className = 'st-msg';
-      tail.replaceChildren(planBtn(src, '도면 그리기 열기'), redo());
+      const read = /단계에서 멈췄|도면을 읽지 못/.test(text);   // 도면을 읽다 멈춘 사유(작업 장비 studio_worker.py run_job 의 두 문구) — 시간 초과·장비 오류는 받은 사유를 그대로 보인다
+      if (read && (src.draft || src.pic)) { end(src.draft ? '읽은 데까지 도면으로 옮깁니다 · 틀린 곳만 고치세요' : '올린 도면을 밑그림으로 깝니다 · 벽을 따라 그리세요', true); msg.className = 'st-msg'; }
+      else end(text, true);
+      tail.replaceChildren(...(read || src.draft ? [planBtn(src, read ? '도면 그리기 열기' : '도면에서 고치기')] : []), redo());
     };
     paint(0);
     say('접수 확인 중');
@@ -927,7 +931,7 @@
       if (v === 'in' && S.file) clearFile();
       setView(v, false);
     });
-    window.addEventListener('pageshow', (e) => { if (e.persisted) { if (S.unlock) S.unlock(); S.leaving = false; bar(); } });   // 카카오에서 뒤로 돌아오면(되돌아온 페이지) 로그인 단추를 다시 쓸 수 있게
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { if (S.unlock) S.unlock(); S.leaving = false; bar(); if (S.view === 'out' && S.job && !isDemo()) runView(S.job, false); } });   // 카카오에서 뒤로 돌아오면(되돌아온 페이지) 로그인 단추를 다시 쓸 수 있게
     window.addEventListener('beforeunload', (e) => { if (S.busy || S.sending) e.preventDefault(); });   // 올리는 중(만들기·사진 손질)에 닫으면 작업이 올리는 중에 멈춘다   // 올리는 중에 닫으면 작업이 '올리는 중'에 멈춘다
     const hash = location.hash;
     const job = hash.match(/^#job-(\d+)$/);

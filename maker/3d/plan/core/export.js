@@ -1,5 +1,5 @@
 // 도면 내보내기·불러오기 — 문서 JSON(저장·내려받기)과 엔진 공간 JSON(data.space) 변환 (순수 로직, DOM 없음)
-import { AC_PANEL_MM, AC_BODY_MM, BRANDS, DEFAULTS, MODELS, createDoc, curFloor, fixSeq, newId, validateDoc } from './model.js';
+import { AC_PANEL_MM, AC_BODY_MM, BRANDS, COORD_MAX, DEFAULTS, MODELS, createDoc, curFloor, fixSeq, validateDoc } from './model.js';
 import { dist, pointInPoly, polyArea, polyCentroid, projectOnSeg, roomAreaM2, signedArea } from './geom.js';
 
 export const toDocJSON = (doc) => JSON.stringify(doc);
@@ -67,10 +67,10 @@ export function toSpaceJSON(doc, floorIndex = doc.cur, { spaceType = 'apartment'
 }
 
 // 엔진 공간 JSON(읽은 도면 초안) → 문서. toSpaceJSON 의 반대 방향. 엔진 좌표는 y 가 위쪽이라, frameH(그림 틀 높이 mm)를 주면 y 를 뒤집어 왼쪽 위 원점의 밑그림과 겹친다.
-// 깨진 요소(길이 0 벽·없는 벽의 개구부·모르는 에어컨 형식)는 버리고 나머지만 싣는다. 방은 벽과 묶지 않는다(wallIds 빈 목록 — 엔진 벽은 방 변과 일대일이 아니다). id 는 새로 준다.
+// 깨진 요소(길이 0 벽·없는 벽의 개구부·모르는 에어컨 형식·±10km 밖 좌표)는 버리고 나머지만 싣는다. 방은 벽과 묶지 않는다(wallIds 빈 목록 — 엔진 벽은 방 변과 일대일이 아니다). id 는 새로 준다.
 export function fromSpaceJSON(S, { title = '내 도면', frameH = null, brand = S?.brand } = {}) {
-  const doc = createDoc(title), f = doc.floors[0], num = Number.isFinite, list = (v) => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : []);
-  const P = (p) => (Array.isArray(p) && num(p[0]) && num(p[1]) ? [p[0], frameH == null ? p[1] : frameH - p[1]] : null);
+  const doc = createDoc(title), f = doc.floors[0], num = (v) => Number.isFinite(v) && Math.abs(v) <= COORD_MAX, n = { W: 0, R: 0, O: 0, I: 0 }, newId = (_, k) => k + ++n[k], list = (v) => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : []);
+  const P = (p) => { const q = Array.isArray(p) && num(p[0]) && num(p[1]) ? [p[0], frameH == null ? p[1] : frameH - p[1]] : null; return q && num(q[1]) ? q : null; };
   const pos = (v, d) => (num(v) && v > 0 ? v : d);
   S = S && typeof S === 'object' ? S : {};
   f.heightMm = pos(S.ceiling_mm ?? S.ceiling?.height_mm, f.heightMm);
@@ -95,11 +95,17 @@ export function fromSpaceJSON(S, { title = '내 도면', frameH = null, brand = 
   }
   for (const u of list(S.ac_units)) {
     const model = u.model === 'mini_4way' ? 'mini4way' : u.model, c = P(u.center), z = u.size_mm;
-    if (!MODELS.includes(model) || !BRANDS.includes(brand) || !c || !Array.isArray(z) || !(z[0] > 0 && z[1] > 0)) continue;
+    if (!MODELS.includes(model) || !BRANDS.includes(brand) || !c || !Array.isArray(z) || !(pos(z[0], 0) && pos(z[1], 0))) continue;
     const rot = num(u.rotation_deg) ? ((u.rotation_deg % 360) + 360) % 360 : 0;
     f.items.push({ id: newId(doc, 'I'), kind: 'ac', model, brand, c, rot: frameH == null ? rot : (360 - rot) % 360, capacityKw: pos(u.capacity_kw, null), code: '', size: [z[0], z[1]] });
   }
   const bad = validateDoc(doc);
   if (bad.length) { const e = new Error('읽은 도면을 옮기지 못했습니다'); e.problems = bad; throw e; }
   return fixSeq(doc);
+}
+
+// 작업 장비가 올린 읽은 도면(draft.json) → fromSpaceJSON 에 줄 틀 높이(frameH)와, 올린 그림을 가로 pxW 로 깔 때의 밑그림 축척(mmPerPx). 읽은 축척이 없거나 가로 1km 를 넘으면 가로 10m 로 — 플래너에서 맞춘다
+export function draftFrame(D, pxW) {
+  const a = D?.image, wide = Array.isArray(a?.hw) ? a.hw[1] * a.mm_per_px : NaN;
+  return { frameH: Number.isFinite(D?.frame_h_mm) && Math.abs(D.frame_h_mm) <= COORD_MAX ? D.frame_h_mm : null, mmPerPx: (wide > 0 && wide <= 1e6 ? wide : 10000) / pxW };
 }

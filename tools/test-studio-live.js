@@ -138,11 +138,19 @@ assert.ok(/html\[data-embed\] \.st-ask\s*\{\s*display:\s*none/.test(css), '임�
 {
   const tp = js.slice(js.indexOf('async function planSrc'), js.indexOf('function runView'));
   assert.ok(tp.includes("'/out/draft.json'") && /\/\^in\\\.\(png\|jpe\?g\|webp\)\$\//.test(tp), 'toPlan 은 out/draft.json 과 in.(png|jpg|webp) 만 읽는다');
-  assert.deepStrictEqual([...tp.matchAll(/get\(([^)]*)\)/g)].map((m) => m[1]), ["src.dir + '/out/draft.json'", "src.dir + '/' + src.pic"], '받는 경로는 둘뿐');
-  assert.ok(tp.includes("import('/maker/3d/plan/core/export.js')") && tp.includes("import('/maker/3d/plan/library.js')") && tp.includes('fromSpaceJSON') && tp.includes('savePlan'), '변환·보관은 플래너 것을 쓴다');
+  assert.deepStrictEqual([...tp.matchAll(/get\(([^)]*)\)/g)].map((m) => m[1]), ["dir + '/out/draft.json'", "src.dir + '/' + src.pic"], '받는 경로는 둘뿐');
+  assert.ok(/const PLAN_X = '\/maker\/3d\/plan\/core\/export\.js'/.test(js) && tp.includes('import(PLAN_X)') && tp.includes("import('/maker/3d/plan/library.js')") && tp.includes('fromSpaceJSON') && tp.includes('savePlan'), '변환·보관은 플래너 것을 쓴다');
   assert.ok(tp.includes("'/maker/3d/plan/'") && tp.includes('keepQ()'), '파트너 표시를 남기고 플래너로');
-  for (const t of ['도면에서 고치기', '도면 그리기 열기', '읽은 데까지 도면으로 옮깁니다 · 틀린 곳만 고치세요', '올린 도면을 밑그림으로 깝니다 · 벽을 따라 그리세요', '이 파일은 직접 그려야 합니다', '도면 여는 중']) assert.ok(js.includes("'" + t + "'"), '문구: ' + t);
+  for (const t of ['도면에서 고치기', '도면 그리기 열기', '읽은 데까지 도면으로 옮깁니다 · 틀린 곳만 고치세요', '올린 도면을 밑그림으로 깝니다 · 벽을 따라 그리세요', '도면 여는 중']) assert.ok(js.includes("'" + t + "'"), '문구: ' + t);
   assert.ok(/status === 'failed'\) \{ paint\(1\); return fail\(/.test(js), '멈춘 작업은 fail() 로');
+  const fl = js.slice(js.indexOf('const fail = async'), js.indexOf("say('접수 확인 중')"));
+  const readRe = new RegExp(fl.match(/const read = \/(.+?)\/\.test\(text\)/)[1]);                      // 도면을 읽다 멈춘 사유만 바꿔 말한다 — 작업 장비 문구(studio_worker.py)와 맞물린다
+  assert.deepStrictEqual(["'2 도면 추출' 단계에서 멈췄습니다. 도면이 흐리거나 여러 장이 겹친 파일이면 한 평면만 담긴 원본으로 다시 올려 주세요.", '도면을 읽지 못했습니다. DWG·DXF 원본이나 큰 평면도 이미지로 다시 올려 주세요.',
+    '처리 시간이 너무 길어 멈췄습니다. 사진 다듬기를 끄고 다시 올려 주세요.', '처리 중 문제가 생겼습니다. 잠시 뒤 다시 올려 주세요.', '만들지 못했습니다.'].map((t) => readRe.test(t)), [true, true, false, false, false], '시간 초과·장비 오류는 받은 사유 그대로');
+  assert.ok(/else end\(text, true\)/.test(fl) && !js.includes('이 파일은 직접 그려야 합니다'), '읽기 실패가 아니거나 옮길 것이 없으면 받은 사유를 보인다');
+  assert.ok(/X\.fromSpaceJSON\(D, X\.draftFrame\(D\)\)/.test(tp) && /X\.fromSpaceJSON\(draft, X\.draftFrame\(draft\)\)/.test(tp) && /mmPerPx: X\.draftFrame\(draft, c\.width\)\.mmPerPx/.test(tp), '틀 높이·밑그림 축척은 플래너 core 의 draftFrame(시험 있음)으로');
+  assert.ok(/if \(f\.rooms\.length \|\| f\.walls\.length\) draft = D/.test(tp), '옮겨지는 읽은 도면만 읽은 도면으로 친다(문구·단추가 열릴 것과 같게)');
+  assert.ok(/pageshow[^\n]*e\.persisted[^\n]*runView\(S\.job, false\)/.test(js), '플래너에서 뒤로 돌아오면(되돌아온 페이지) 작업 화면을 다시 그린다 — 꺼진 단추로 남지 않게');
   assert.ok(!/읽지 못했습니다|일부|추정|수 있습니다/.test(tp + js.slice(js.indexOf('const fail = async'), js.indexOf("say('접수 확인 중')"))), '새 문구에 애매한 말 없음');
 }
 
