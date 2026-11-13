@@ -39,6 +39,7 @@ export function buildMesh(doc, floorIndex = doc.cur) {
     items: f.items.map((i) => (i.kind === 'appliance' // 가전: 바닥(z0=0)에서 제품 높이까지의 상자. 시스템에어컨: 천장 아래 판넬(z0~z1)과 천장 속 본체(mountZ~+bodyH)
       ? { id: i.id, kind: i.kind, category: i.category, brand: i.brand, model: i.model, name: i.name, code: i.code, c: i.c, rot: i.rot, size: i.size, heightMm: i.heightMm, poly: rectPoly(i.c, i.size[0], i.size[1], i.rot), z0: 0, z1: i.heightMm }
       : { id: i.id, kind: i.kind, model: i.model, brand: i.brand, code: i.code, capacityKw: i.capacityKw, c: i.c, rot: i.rot, size: i.size, poly: rectPoly(i.c, i.size[0], i.size[1], i.rot), z0: H - AC_PANEL_MM, z1: H, mountZ: H, bodyH: AC_BODY_MM })),
+    height: H, // 층고(천장 높이) — bounds.z1 은 키 큰 가전까지 담는 카메라 상자라 다르다
     bounds: b && { ...b, z0: 0, z1: Math.max(H, ...f.items.map((i) => i.heightMm ?? 0)) }, // 층고보다 큰 가전이 있으면 카메라 상자도 그만큼 높인다
   };
 }

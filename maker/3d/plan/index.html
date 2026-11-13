@@ -12,8 +12,8 @@
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <script src="/maker/3d/partner-boot.js?v=2"></script>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
-  <link rel="stylesheet" href="/maker/3d/plan/plan.css?v=2">
-  <script type="module" src="/maker/3d/plan/app.js?v=1"></script>
+  <link rel="stylesheet" href="/maker/3d/plan/plan.css?v=3">
+  <script type="module" src="/maker/3d/plan/app.js?v=2"></script>
 </head>
 <body class="pl">
   <a class="ed-skip" href="#plCanvas">도면 캔버스로 건너뛰기</a>
@@ -70,6 +70,7 @@
           <div class="ed-seg only2d" role="group" aria-label="표시">
             <button type="button" class="ed-sb" id="plLabels" aria-pressed="true" title="방 이름·면적 라벨">라벨</button>
             <button type="button" class="ed-sb" id="plGrid" aria-pressed="true" title="격자">격자</button>
+            <button type="button" class="ed-sb" id="plAnal" aria-pressed="false" aria-controls="plProps">분석</button>
           </div>
           <div class="ed-views" id="plViews" role="group" aria-label="3D 보기" hidden>
             <button type="button" class="ed-row" data-view="plan" id="plV2"><span>평면 뷰어</span><kbd class="ed-k">2</kbd></button>

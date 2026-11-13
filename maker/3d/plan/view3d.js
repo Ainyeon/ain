@@ -243,7 +243,7 @@ export function createView3D(container, store, opts = {}) {
     requestRender();
   }
   const unsub = store.subscribe((e) => {
-    if (e.type === 'rename' || e.type === 'setUnderlay') return;
+    if (e.type === 'rename' || e.type === 'setUnderlay' || e.type === 'setSite') return;
     dirty = true;
     if (!visible) return;
     if (needsRefit(builtCur, store.doc, e.type)) refitNext = true;

@@ -80,6 +80,7 @@ async function build() {
       if (hits.length !== 1) throw new Error(`${sp.id}: (${x},${y}) 에 벽이 ${hits.length}개입니다`);
       try { store.exec({ type: 'addOpening', wall: hits[0].w.id, at: hits[0].p.t, kind, width }); } catch (e) { throw new Error(`${sp.id}: (${x},${y}) ${kind} ${width} — ${e.message}`); }
     }
+    store.exec({ type: 'setSite', patch: { north: 180 } }); // 위가 남 — 거실 창이 그려진 쪽(위)으로 해가 든다. 위도는 기본값
     const doc = store.doc, bad = validateDoc(doc);
     if (bad.length) throw new Error(`${sp.id}: ${bad[0]}`);
     const rooms = doc.floors[0].rooms.map((r) => ({ name: r.name, areaM2: r2(roomAreaM2(doc, r)) })), areaM2 = r2(rooms.reduce((s, r) => s + r.areaM2, 0));
@@ -89,7 +90,7 @@ async function build() {
     templates.push({ id: sp.id, name: sp.name, layout: sp.layout, size: size.id, tags: [sp.layout, size.name], areaM2, pyeong, rooms, doc: JSON.parse(JSON.stringify(doc)) });
   }
   const meta = {
-    about: '예시 평면(실제 세대 아님). 각 doc 은 core 명령으로 만든 Doc 이고 validateDoc 을 통과한다. 벽 두께 150, 층고 2300.',
+    about: '예시 평면(실제 세대 아님). 각 doc 은 core 명령으로 만든 Doc 이고 validateDoc 을 통과한다. 벽 두께 150, 층고 2300. 위가 남(방위 180).',
     areaBasis: 'areaM2 = 방 실면적(안쪽 면) 합. 방마다 소수 둘째 자리로 맺은 값의 합이며 toSpaceJSON(doc).envelope.all_rooms_m2 와 같다.',
     pyeongBasis: `pyeong = areaM2 ÷ ${M2_PER_PYEONG}. 평형 구간은 이 평 값으로 나눈 것이다(공급면적 기준 평형이 아니다).`,
     start: '?template=<id> 로 열면 doc 으로 새 문서를 시작한다(제목은 name).',

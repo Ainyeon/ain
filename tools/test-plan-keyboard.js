@@ -239,5 +239,17 @@ const imp = (f) => import(pathToFileURL(path.join(DIR, f)).href);
     { const t = mk({}, room); t.fire('pointerdown', 700, 500, touch()); t.fire('pointerup', 700, 500, touch()); assert.ok(/화면이 움직입니다/.test(t.log.hint[1]) && /두 손가락/.test(t.log.hint[1]), '손가락 안내: ' + t.log.hint[1]); t.fire('pointerdown', 700, 500); t.fire('pointerup', 700, 500); assert.ok(/한꺼번에 고릅니다/.test(t.log.hint[1]), '마우스 안내로 돌아간다'); const g = mk({ multi: true }, room); g.tools.hint(); assert.ok(/한꺼번에 고르고/.test(g.log.hint[1]), '그룹화 안내'); }
     const tl = strip(rd('tools.js')); assert.ok(/e\.pointerType === 'touch' && tool === 'select' && !state\.multi && blankAt\(px\)/.test(tl), '터치 빈 곳 이동 분기(정적)'); }
 
+  /* ===== 포셰 보기: 그리지 않는 것(개구부·보조선·제품)은 집히지도 훑어지지도 않는다 — 보기를 끄면 원래대로 ===== */
+  { const init = (store) => { store.exec({ type: 'addRoomRect', a: [0, 0], b: [4000, 3000], name: '거실' }); store.exec({ type: 'addItem', kind: 'ac', ...stub, c: [2000, 1500], rot: 0 });
+      store.exec({ type: 'addOpening', wall: 'W3', at: 0.5, kind: 'door' }); store.exec({ type: 'addGuide', a: [500, 2000], b: [3500, 2000] }); };   // 제품 (200,150)px · 문 (200,307)px · 보조선 y=200px
+    const one = (t) => [...t.sel.ids].join();
+    const n = mk({}, init); n.tap(200, 150); assert.strictEqual(one(n), 'I1', '평소: 제품이 집힌다'); n.tap(200, 307); assert.strictEqual(one(n), 'O1', '평소: 문이 집힌다'); n.tap(300, 200); assert.strictEqual(one(n), 'G1', '평소: 보조선이 집힌다');
+    const p = mk({ analysis: 'poche' }, init); p.tap(200, 150); assert.strictEqual(one(p), 'R1', '포셰: 제품 자리를 누르면 그 아래 방'); p.tap(200, 307); assert.strictEqual(one(p), 'W3', '포셰: 문 자리를 누르면 벽'); p.tap(300, 200); assert.strictEqual(one(p), 'R1', '포셰: 보조선은 집히지 않는다');
+    p.state.analysis = null; p.tap(200, 150); assert.strictEqual(one(p), 'I1', '보기를 끄면 원래대로'); p.state.analysis = 'zone'; p.tap(200, 307); assert.strictEqual(one(p), 'O1', '다른 분석 보기에서는 그대로 집힌다'); p.state.analysis = 'poche';
+    p.sel.clear(); p.focus(); const seen = new Set(); for (let i = 0; i < 12; i++) { p.k(']', { code: 'BracketRight' }); seen.add(one(p)); } assert.deepStrictEqual([...seen].sort(), ['R1', 'W1', 'W2', 'W3', 'W4'], '포셰: [ ] 훑기도 보이는 것만');
+    p.sel.clear(); p.fire('pointerdown', 790, 590); for (let i = 1; i <= 6; i++) p.fire('pointermove', 790 - 130 * i, 590 - 98 * i); p.fire('pointerup', 10, 2); assert.ok(p.sel.size > 0 && !['I1', 'O1', 'G1'].some((i) => p.sel.has(i)), '포셰: 범위 선택에도 들지 않는다');
+    n.tools.setTool('delete'); n.tap(300, 200); assert.strictEqual(n.flr().guides.length, 0, '평소: 삭제 도구가 보조선을 지운다');
+    p.sel.clear(); p.tools.setTool('delete'); p.tap(300, 200); assert.strictEqual(p.flr().guides.length, 1, '포셰: 삭제 도구가 안 보이는 보조선을 지우지 않는다'); p.tools.setTool('select'); }
+
   console.log('test-plan-keyboard: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

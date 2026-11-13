@@ -519,7 +519,7 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
       assert.deepStrictEqual(mm.floors, [{ id: 'R1', name: '방 1', poly: [[0, 0], [5000, 0], [5000, 4000], [0, 4000]], z: 0, thickness: 180, finish: '강마루' }]);
       assert.strictEqual(mm.items.length, 1); const it = mm.items[0]; assert.deepStrictEqual([it.id, it.model, it.z0, it.z1, it.mountZ, it.bodyH, it.size, it.c], ['I1', '1way', 2265, 2300, 2300, 140, [1000, 500], [2500, 2000]]); near(G.polyArea(it.poly), 500000, 1e-6); nearPt(it.poly[0], [2500 + 250, 2000 - 500], 1e-6, '회전 90°');
       assert.deepStrictEqual(mm.bounds, { x0: -150, y0: -150, x1: 5150, y1: 4150, z0: 0, z1: 2300 }); assert.strictEqual(MESH.buildMesh(M.createDoc()).bounds, null);
-      assert.deepStrictEqual(MESH.buildMesh(M.createDoc()), { walls: [], openings: [], floors: [], items: [], bounds: null });
+      assert.deepStrictEqual(MESH.buildMesh(M.createDoc()), { walls: [], openings: [], floors: [], items: [], height: 2300, bounds: null }); assert.strictEqual(mm.height, 2300, '층고는 따로 싣는다(bounds.z1 은 키 큰 가전까지)');
       const vert = mm.openings.find((o) => o.id === 'O2'); assert.strictEqual(Math.round(vert.angle), 90, '세로 벽의 개구부 방향'); nearPt(vert.c, [5075, 2000]);
       s.exec({ type: 'addFloor' }); assert.strictEqual(MESH.buildMesh(s.doc).walls.length, 0); assert.ok(MESH.buildMesh(s.doc, 0).walls.length > 4); assert.throws(() => MESH.buildMesh(s.doc, 9), /층을 찾을 수 없습니다/);
     }

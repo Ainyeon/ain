@@ -148,6 +148,14 @@ export function wallSlice(w, u0 = 0, u1 = 1, ends = null) {
 // walls(같은 층 벽 배열)를 주면 끝점 접합 모서리까지 반영. 많은 벽은 wallOutlines 로 한 번에
 export const wallOutline = (w, walls = null) => wallSlice(w, 0, 1, walls && jointsOf(walls)(w));
 export function wallOutlines(walls) { const J = jointsOf(walls); return walls.map((w) => wallSlice(w, 0, 1, J(w))); }
+// 개구부(ops = 그 벽의 개구부) 구간을 비운 벽 조각들의 외곽. 개구부가 벽을 다 덮으면 빈 배열
+export function wallPieces(w, ops, ends = null) {
+  const L = wallLen(w), cuts = ops.map((o) => [Math.max(0, o.at - o.width / 2 / L), Math.min(1, o.at + o.width / 2 / L)]).sort((a, b) => a[0] - b[0]), polys = [];
+  let u = 0;
+  for (const [c0, c1] of cuts) { if ((c0 - u) * L >= 0.5) polys.push(wallSlice(w, u, c0, ends)); u = Math.max(u, c1); }
+  if ((1 - u) * L >= 0.5) polys.push(wallSlice(w, u, 1, ends));
+  return polys;
+}
 
 function nearestOnPath(pts, p) {
   let best = null, acc = 0;
