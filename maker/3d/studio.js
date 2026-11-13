@@ -179,7 +179,7 @@
     S.slowT = setTimeout(() => { if (!box.classList.contains('on')) { msg.textContent = '모형이 늦어지고 있습니다'; S.slowT = setTimeout(() => { if (!box.classList.contains('on')) msg.textContent = '모형을 열지 못했습니다 · 번호 줄의 그림으로 확인해 주세요'; }, 22000); } }, 8000);
     nav.replaceChildren();
     box.querySelector('img').hidden = !!mine;            // 예시 그림은 내 모형 밑에 깔지 않는다('예시' 표시는 show() 가 맞춘다)
-    const frame = S.frame = h('iframe', { src: '/maker/3d/view/?embed&scene=' + (mine ? '@host' : 'apartment&v=3'), title: mine ? '내 공간 모형' : '예시 평면 모형', loading: mine ? null : 'lazy' });
+    const frame = S.frame = h('iframe', { src: '/maker/3d/view/?embed&scene=' + (mine ? '@host' : 'apartment&v=4'), title: mine ? '내 공간 모형' : '예시 평면 모형', loading: mine ? null : 'lazy' });
     const send = (m) => frame.contentWindow.postMessage(Object.assign({ ns: 'bd3d' }, m), location.origin);
     const mark = (id) => { for (const b of nav.children) { const on = b.dataset.id === (id || '') || (!!id && b.dataset.zone === id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); if (on && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2, behavior: motion() }); } };   // 바닥을 눌러 들어가면 id 가 구역이다
     window.removeEventListener('message', S.heard);
