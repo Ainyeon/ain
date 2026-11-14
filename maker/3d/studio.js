@@ -179,7 +179,7 @@
     S.slowT = setTimeout(() => { if (!box.classList.contains('on')) { msg.textContent = '모형이 늦어지고 있습니다'; S.slowT = setTimeout(() => { if (!box.classList.contains('on')) msg.textContent = '모형을 열지 못했습니다 · 번호 줄의 그림으로 확인해 주세요'; }, 22000); } }, 8000);
     nav.replaceChildren();
     box.querySelector('img').hidden = !!mine;            // 예시 그림은 내 모형 밑에 깔지 않는다('예시' 표시는 show() 가 맞춘다)
-    const frame = S.frame = h('iframe', { src: '/maker/3d/view/?embed&scene=' + (mine ? '@host' : 'apartment&v=2'), title: mine ? '내 공간 모형' : '예시 평면 모형', loading: mine ? null : 'lazy' });
+    const frame = S.frame = h('iframe', { src: '/maker/3d/view/?embed&scene=' + (mine ? '@host' : 'apartment&v=4'), title: mine ? '내 공간 모형' : '예시 평면 모형', loading: mine ? null : 'lazy' });
     const send = (m) => frame.contentWindow.postMessage(Object.assign({ ns: 'bd3d' }, m), location.origin);
     const mark = (id) => { for (const b of nav.children) { const on = b.dataset.id === (id || '') || (!!id && b.dataset.zone === id); b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); if (on && nav.scrollWidth > nav.clientWidth) nav.scrollTo({ left: b.offsetLeft - (nav.clientWidth - b.offsetWidth) / 2, behavior: motion() }); } };   // 바닥을 눌러 들어가면 id 가 구역이다
     window.removeEventListener('message', S.heard);
@@ -432,6 +432,36 @@
     rail(S.items);                                       // 모형 칸이 생긴다 — 큰 판은 모형이 뜬 뒤(ready)에 넘긴다(그 사이 빈 판이 되지 않게)
   }
 
+  // ── 읽은 도면을 [도면 그리기]로 — 끝난 작업은 고치러, 멈춘 작업은 읽은 데까지(없으면 올린 그림을 밑그림으로) 이어 그리러 ──
+  const PLAN_X = '/maker/3d/plan/core/export.js';
+  async function planSrc(id) {                           // 도면 작업 폴더에 있는 것: 읽은 도면(out/draft.json — 플래너로 옮겨지는 것만, 깨졌으면 null)·올린 그림(in.png·jpg·webp). 사진 손질 작업이면 null
+    const c = client(), dir = S.session.user.id + '/' + id, st = c.storage.from('studio'), get = async (p) => { const d = await st.download(p); if (d.error) throw d.error; return d.data; };
+    const [j, o, i] = await Promise.all([c.from('studio_jobs').select('tool').eq('id', id).maybeSingle(), st.list(dir + '/out', { search: 'draft.json' }), st.list(dir, { search: 'in.' })]);
+    if (j.error || !j.data || j.data.tool === 'erase' || j.data.tool === 'cutout') return null;
+    let draft = null;
+    if (!o.error && (o.data || []).some((x) => x.name === 'draft.json')) try {   // 문구·단추가 실제로 열릴 것과 같게 여기서 옮겨 본다
+      const X = await import(PLAN_X), D = JSON.parse(await (await get(dir + '/out/draft.json')).text()), f = X.fromSpaceJSON(D, X.draftFrame(D)).floors[0];
+      if (f.rooms.length || f.walls.length) draft = D;
+    } catch (e) {}
+    return { dir, get, draft, pic: (!i.error && (i.data || []).map((x) => x.name).find((n) => /^in\.(png|jpe?g|webp)$/.test(n))) || null };
+  }
+  async function toPlan(id, src, btn, say) {             // 플래너 문서로 바꿔 내 프로젝트(이 기기)에 넣고 연다. 변환은 플래너의 fromSpaceJSON 이 한다
+    btn.disabled = true; say('도면 여는 중');
+    try {
+      const [X, L] = await Promise.all([import(PLAN_X), import('/maker/3d/plan/library.js')]);
+      const draft = src.draft, doc = X.fromSpaceJSON(draft, X.draftFrame(draft));   // 읽은 도면이 없으면 빈 문서(밑그림만)
+      const sent = S.sent && S.sent.id === id && S.sent.f && S.sent.f.isImg ? S.sent.f.blob : null;   // 이 방문에서 올린 그림은 다시 받지 않는다
+      const im = await loadImage(sent || (src.pic ? await src.get(src.dir + '/' + src.pic) : null));
+      if (im) {
+        const c = fitCanvas(im, 2400), g = c.getContext('2d');
+        g.globalCompositeOperation = 'destination-over'; g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);   // 투명 PNG 는 흰 바탕(작업 장비가 읽은 것과 같게)
+        doc.underlay = { name: '올린 도면', src: c.toDataURL('image/jpeg', .82), x: 0, y: 0, mmPerPx: X.draftFrame(draft, c.width).mmPerPx, rot: 0, opacity: doc.floors[0].rooms.length ? .35 : .6 };   // 읽은 축척이 없으면 가로 10m 로 — 플래너에서 맞춘다
+      }
+      const f = doc.floors[0], q = keepQ();
+      location.assign('/maker/3d/plan/' + q + (q ? '&' : '?') + (doc.underlay || f.rooms.length || f.walls.length ? 'doc=' + L.createLibrary(localStorage).savePlan(doc).id : 'new=1'));
+    } catch (e) { btn.disabled = false; say(/저장 공간/.test((e && e.message) || '') ? e.message : errText(e), true); }
+  }
+
   function runView(id, push) {
     clearTimeout(S.timer);
     const run = S.run = (S.run || 0) + 1, stale = () => S.run !== run || S.job !== id;   // 이 화면의 확인 고리 — 떠났거나 다시 열었으면 앞 고리는 화면에 쓰지 않는다
@@ -464,6 +494,17 @@
       if (err) note('failed');
       if (document.hidden) document.title = (err ? '(실패) ' : '(완료) ') + (S.title || document.title);   // 숨은 탭에서도 알린다 — 파트너 이름은 그대로
     };
+    const planBtn = (src, text) => h('button', { type: 'button', class: 'btn-line', text, onclick: (e) => toPlan(id, src, e.currentTarget, say) });
+    const fail = async (text) => {                       // 멈춘 도면 작업은 '못 읽었다'로 끝내지 않는다 — 읽은 데까지, 없으면 올린 그림을 밑그림으로 도면 그리기를 연다
+      let src = null;
+      if (!(S.toolJob && S.toolJob.id === id)) try { src = await planSrc(id); } catch (e) {}
+      if (stale()) return;
+      if (!src) return end(text, true);
+      const read = /단계에서 멈췄|도면을 읽지 못/.test(text);   // 도면을 읽다 멈춘 사유(작업 장비 studio_worker.py run_job 의 두 문구) — 시간 초과·장비 오류는 받은 사유를 그대로 보인다
+      if (read && (src.draft || src.pic)) { end(src.draft ? '읽은 데까지 도면으로 옮깁니다 · 틀린 곳만 고치세요' : '올린 도면을 밑그림으로 깝니다 · 벽을 따라 그리세요', true); msg.className = 'st-msg'; }
+      else end(text, true);
+      tail.replaceChildren(...(read || src.draft ? [planBtn(src, read ? '도면 그리기 열기' : '도면에서 고치기')] : []), redo());
+    };
     paint(0);
     say('접수 확인 중');
     const tick = async () => {
@@ -490,7 +531,7 @@
           paint(1); note('running');
           if (!tRun) tRun = Date.now();                  // 대기가 아니라 만들기 시작한 때부터 센다
           say(`${S.scene ? '그림 만드는 중' : '만드는 중'} · ${Math.max(1, Math.round((Date.now() - tRun) / 60000))}분째${S.sent && S.sent.id === id && S.sent.m ? ' · ' + S.sent.m : ''}`);
-        } else if (s.status === 'failed') { paint(1); return end(s.error_ko || '만들지 못했습니다.', true); }
+        } else if (s.status === 'failed') { paint(1); return fail(s.error_ko || '만들지 못했습니다.'); }
         else if (s.status === 'expired') return end('14일 지나 지웠습니다', true);   // 도면을 다시 넣어 새로 만든다
         else if (s.status === 'done') {
           const got = await results(s.outputs || [], stale);
@@ -501,6 +542,10 @@
           if (!got.empty) tail.replaceChildren(...(got.bom || got.pend ? [h('button', { type: 'button', class: 'btn-line', text: got.bom ? '물량' : '확인 필요 ' + got.pend,
             onclick: () => { $('stSum').focus({ preventScroll: true }); $('stSum').scrollIntoView({ behavior: motion(), block: 'start' }); } })] : []),
             h('p', { class: 'note', text: '끝난 지 14일이 지나면 지워집니다 · 필요한 그림은 저장해 두세요' }));
+          if (!got.empty && !(S.toolJob && S.toolJob.id === id)) try {   // 읽은 도면이 있으면 고치러 갈 수 있다
+            const src = await planSrc(id);
+            if (!stale() && src && src.draft) tail.lastChild.before(planBtn(src, '도면에서 고치기'));
+          } catch (e) {}
           return;
         }
       }
@@ -886,7 +931,7 @@
       if (v === 'in' && S.file) clearFile();
       setView(v, false);
     });
-    window.addEventListener('pageshow', (e) => { if (e.persisted) { if (S.unlock) S.unlock(); S.leaving = false; bar(); } });   // 카카오에서 뒤로 돌아오면(되돌아온 페이지) 로그인 단추를 다시 쓸 수 있게
+    window.addEventListener('pageshow', (e) => { if (e.persisted) { if (S.unlock) S.unlock(); S.leaving = false; bar(); if (S.view === 'out' && S.job && !isDemo()) runView(S.job, false); } });   // 카카오에서 뒤로 돌아오면(되돌아온 페이지) 로그인 단추를 다시 쓸 수 있게
     window.addEventListener('beforeunload', (e) => { if (S.busy || S.sending) e.preventDefault(); });   // 올리는 중(만들기·사진 손질)에 닫으면 작업이 올리는 중에 멈춘다   // 올리는 중에 닫으면 작업이 '올리는 중'에 멈춘다
     const hash = location.hash;
     const job = hash.match(/^#job-(\d+)$/);

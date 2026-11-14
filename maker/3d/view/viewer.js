@@ -84,7 +84,43 @@ const state = { mode: 'house', zone: null, view: 0, unit: null, pipes: true, gri
 const EMBED = document.documentElement.classList.contains('embed');
 let inset = { l: 0, r: 0, t: 0, b: 0 }, frameQueued = false, readySent = false;
 // embed 는 멈춰 있을 때 그리지 않는다: 위에 backdrop-filter 유리가 얹혀 매 프레임 그리면 GPU 가 계속 돈다
-function invalidate() { if (EMBED && !frameQueued) { frameQueued = true; requestAnimationFrame(tick); } }
+// camOnly: 카메라만 움직인 프레임(끌어 돌리기·감쇠 꼬리) — 그림자 맵을 다시 그리지 않는다. 그 밖의 요청은 장면이 바뀌었을 수 있어 다시 그린다
+let shadowDirty = true;
+function invalidate(camOnly) { if (camOnly !== true) shadowDirty = true; if (EMBED && !frameQueued) { frameQueued = true; requestAnimationFrame(tick); } }
+/* <smooth> 순수 로직(DOM·three 없음) — test_smooth.mjs 가 이 블록만 떼어 node 로 돌린다 */
+// 끌기 관성: 부른 횟수가 아니라 지난 시간으로 줄인다. k=5 는 60Hz 에서 예전 고정 계수 0.08 과 같다(-ln .92 × 60). 멈췄다 다시 움직이는 첫 번(dt 없음)은 1/60 초로 본다
+const dampK = (dt, k = 5) => 1 - Math.exp(-k * (dt > 0 ? Math.min(dt, .1) : 1 / 60));
+// 탭: 누른 동안 가장 멀리 간 거리(far)로 본다 — 끌었다 제자리로 돌아와 떼도 탭이 아니다. 터치 12px 는 손가락 떨림 5~15px 로 탭이 버려지던 것(10-02) 때문
+const isTap = (far, ms, touch) => far < (touch ? 12 : 6) && ms < (touch ? 900 : 600);
+// 해상도 조절: 이어진 50프레임 평균이 21ms 를 넘으면 -0.15, 빠른 구간이 4번 이어지면 +0.1. 상한은 처음 값, 하한 0.9. 숨은 탭·250ms 넘는 프레임은 세지 않는다
+// - hold(정해진 비행 중)에는 재기만 하고 바꾸지 않는다 — 드로잉 버퍼를 다시 잡는 프레임이 비행에 끼지 않게
+// - 빠름 = 14.5ms 미만, 또는 이 방문에서 본 가장 빠른 구간(base)의 1.1배 안. 60Hz 화면은 16.7ms 밑으로 못 내려가 14.5 만으로는 영영 못 오른다
+// - 올리자마자 느려진 단계로는 다시 올리지 않는다(top) — 90Hz 처럼 '빠름'과 '느림' 사이가 없는 화면에서 끝없이 오르내리지 않게
+// - 화소를 절반으로(√½ 배) 내렸는데도 프레임이 그대로면(10% 도 안 줄면) 해상도 탓이 아니다(절전 30fps 묶임·다른 부하) → 내리기 전으로 되돌리고 이 방문에서는 더 조절하지 않는다
+// ponytail: 프레임 간격만 본다(GPU 시간은 못 잰다). 잠깐의 부하가 '올리자마자 느려짐'으로 읽히면 그 방문의 상한이 한 단계 낮게 남는다
+function prGovernor(max, min = .9) {
+  const lo = Math.min(min, max);
+  let pr = max, top = max, sum = 0, n = 0, fast = 0, base = Infinity, from = 0, ref = 0, up = false, off = false;
+  return (ms, hidden, hold) => {
+    if (off || hidden || !(ms > 0) || ms > 250) return pr;
+    sum += ms; if (++n < 50 || hold) return pr;
+    const avg = sum / n; sum = n = 0; base = Math.min(base, avg);
+    if (avg > 21) {
+      fast = 0;
+      if (up) top = pr - .1;
+      if (!ref) { ref = avg; from = pr; }
+      else if (pr <= from * .71 || pr <= lo) { if (avg > ref * .9) { off = true; return pr = from; } ref = avg; from = pr; }
+      pr = Math.max(lo, pr - .15);
+    } else {
+      ref = 0;
+      if (avg >= Math.max(14.5, base * 1.1)) fast = 0;
+      else if (++fast >= 4 && pr < top) { fast = 0; pr = Math.min(top, pr + .1); up = true; return pr; }
+    }
+    up = false;
+    return pr;
+  };
+}
+/* </smooth> */
 const post = m => { if (EMBED && parent !== window) parent.postMessage({ ns: 'bd3d', viewer: 'commercial', ...m }, '*'); };
 let S = null; // active space
 const spaces = {};
@@ -94,10 +130,12 @@ const stage = $('stage');
 const canvas = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const govern = prGovernor(renderer.getPixelRatio());
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = !EMBED; // embed 는 요청 렌더라 장면이 바뀐 프레임을 안다(tick) — 해와 물체는 멈춰 있고 카메라만 도는 프레임에는 그림자 맵을 다시 그리지 않는다
 renderer.setClearColor(0x000000, 0);
 const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
@@ -144,7 +182,15 @@ if (EMBED) {
   for (const ev of ['gesturestart', 'gesturechange']) canvas.addEventListener(ev, e => e.preventDefault());
 }
 controls.enableDamping = !reduced.matches;
-controls.dampingFactor = 0.08;
+// 누르고 있는 포인터. 누른 동안은 (1) 프레임을 이어 그린다 — 터치 끌기는 감쇠가 꺼져 있어 입력이 올 때만 그렸고, 그 간격은 손 속도라 해상도 조절기가 셀 수 없었다
+// (2) 감쇠를 두 배로(k 10) — OrbitControls 는 pointermove 마다 update() 를 스스로 한 번 더 불러, 끄는 동안은 프레임당 두 번 줄던 것(60Hz 에서 0.92²)과 같게
+const held = new Set();
+canvas.addEventListener('pointerdown', e => held.add(e.pointerId), true);
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(ev, e => held.delete(e.pointerId), true);
+{ // 감쇠 계수를 update() 를 부를 때마다 '앞 번 뒤로 지난 시간'으로 정한다 — tick 이 부르든 OrbitControls 가 pointermove 에서 부르든 같은 시간에 같은 만큼 줄어, 프레임률·입력 횟수와 무관하다
+  const update = controls.update; let last = 0;
+  controls.update = dt => { const now = performance.now(), gap = now - last; last = now; controls.dampingFactor = dampK(gap < 250 ? gap / 1000 : 0, held.size ? 10 : 5); return update.call(controls, dt); };
+}
 const CUT = 1000; // cutaway height in the overview (visual choice, not a plan value)
 
 /* ============ textures ============ */
@@ -1452,7 +1498,7 @@ function setHover(id) {
   canvas.style.cursor = id ? 'pointer' : '';
   invalidate();
 }
-canvas.addEventListener('pointermove', e => { pointer = e; if (EMBED && !tween && !e.buttons) setHover(pick(e)); });
+canvas.addEventListener('pointermove', e => { pointer = e; if (down) down.far = Math.max(down.far, Math.hypot(e.clientX - down.x, e.clientY - down.y)); if (EMBED && !tween && !e.buttons) setHover(pick(e)); });
 canvas.addEventListener('pointerleave', () => { pointer = null; setHover(null); });
 // 캔버스에 둘째 손가락이 닿으면 탭이 아니다(확대). 방 시점(확대 없음)에서는 손가락을 다 뗄 때까지 회전도 멈춘다
 // — 그냥 두면 OrbitControls 가 두 손가락의 가운데를 회전 끝점으로 삼아 시야가 한 번에 튄다
@@ -1476,11 +1522,11 @@ for (const ev of ['touchend', 'touchcancel']) canvas.addEventListener(ev, e => {
   if (zoomHome && !tween && camera.position.distanceTo(controls.target) > controls.maxDistance * .9) unzoom(() => {}, 220);
   zoomNote(true);
 }, { passive: true });
-canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+canvas.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY, t: performance.now(), far: 0 }; });
 canvas.addEventListener('pointerup', e => {
   if (!down || (tween && !tween.intro && !tween.unzoom)) return; // 인트로 중 탭도 받는다(10-02). 방 시점에서도 다른 실내기·구역을 눌러 옮긴다. 확대에서 물러나는 중의 탭은 물러난 뒤로 잇는다
-  const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
-  if (moved < (e.pointerType === 'touch' ? 12 : 6) && performance.now() - down.t < (e.pointerType === 'touch' ? 900 : 600)) /* 손가락 떨림 5~15px 로 탭이 버려지던 것 */ { const id = pick(e); if (id) (S.unitsById[id] ? goUnit(id) : goZone(id)); }
+  const far = Math.max(down.far, Math.hypot(e.clientX - down.x, e.clientY - down.y));
+  if (isTap(far, performance.now() - down.t, e.pointerType === 'touch')) { const id = pick(e); if (id) (S.unitsById[id] ? goUnit(id) : goZone(id)); }
   down = null;
 });
 $('btnHome').addEventListener('click', goHome);
@@ -1515,8 +1561,10 @@ new ResizeObserver(() => {
 /* ============ loop ============ */
 const tmp = new THREE.Vector3(), fwd = new THREE.Vector3(), right = new THREE.Vector3();
 const northG = $('northG');
+let lastT = 0; // 앞 프레임 시각 — 이어진 프레임(비행·끌기·감쇠 꼬리)일 때만. 멈췄다 다시 그리는 프레임은 0
 function tick(now, manual) {
   let moving = false;
+  const dt = lastT ? now - lastT : 0, flying = !!tween;
   if (tween) {
     const t = tween.dur ? clamp((now - tween.t0) / tween.dur, 0, 1) : 1, e = tweenAt(tween, tween.tNow = t, flight);
     camera.position.copy(flight.pos); camera.rotation.set(flight.pitch, flight.yaw + Math.PI, 0, 'YXZ'); // 카메라는 -Z 를 본다
@@ -1561,10 +1609,13 @@ function tick(now, manual) {
     right.crossVectors(fwd, camera.up).normalize();
     northG.setAttribute('transform', `rotate(${(Math.atan2(-right.z, -fwd.z) / DEG).toFixed(1)})`);
   }
+  if (!manual) { const pr = govern(dt, document.hidden, !!tween); if (pr !== renderer.getPixelRatio()) renderer.setPixelRatio(pr); } // setPixelRatio 가 드로잉 버퍼를 다시 잡는다 — 바로 아래에서 그린다. 비행 중에는 바꾸지 않고 도착 프레임에 바꾼다
+  if (EMBED) { renderer.shadowMap.needsUpdate = shadowDirty || flying; shadowDirty = false; }
   renderer.render(scene, camera);
+  lastT = tween || moving || held.size || !EMBED ? now : 0;
   if (!EMBED) { if (!manual) requestAnimationFrame(tick); return; }
   frameQueued = false;
-  if (tween || moving) invalidate();
+  if (tween) invalidate(); else if (moving || held.size) invalidate(true);
   if (!readySent) { readySent = true; post({ type: 'ready', key: S.key, entries: entries() }); }
 }
 if (matchMedia('(max-width: 1100px)').matches) { // phones/tablets: start with the list folded
@@ -1573,7 +1624,7 @@ if (matchMedia('(max-width: 1100px)').matches) { // phones/tablets: start with t
 setSpace(KEYS.includes(location.hash.slice(1)) ? location.hash.slice(1) : KEYS[0]);
 addEventListener('hashchange', () => setSpace(location.hash.slice(1))); // typed #cafe / back button: setSpace ignores unknown keys
 if (EMBED) {
-  controls.addEventListener('change', invalidate);
+  controls.addEventListener('change', () => invalidate(true));
   invalidate();
   // 모형 위에 파일을 떨어뜨리면 이 문서가 그 파일로 넘어가 버린다 — 막고, 같은 출처 부모가 있으면 넘긴다(올리기 칸이 있는 페이지용)
   addEventListener('dragover', e => e.preventDefault());
