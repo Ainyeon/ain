@@ -25,7 +25,7 @@ const SHELL = [
   '/maker/compare/',
   '/maker/3d/',
   '/maker/3d/studio.css?v=12',
-  '/maker/3d/studio.js?v=14',
+  '/maker/3d/studio.js?v=15',
   '/maker/3d/ask.js?v=1',
   '/maker/3d/partner-boot.js?v=2',
   '/board/free/',
