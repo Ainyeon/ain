@@ -143,7 +143,7 @@ async function confirmDiscard(what) { // 저장 안 한 변경이 있을 때 →
   return v === 'drop';
 }
 function replaceDoc(doc, id, updated = null) {
-  stopPlay(); store.replace(doc); curId = id; savedAt = updated; state.routes = []; state.sun = { ...state.sun, t: null, cut: null }; sel.clear(); tools.setTool('select');
+  stopPlay(); store.replace(doc); curId = id; savedAt = updated; reviewUI(); state.routes = []; state.sun = { ...state.sun, t: null, cut: null }; sel.clear(); tools.setTool('select');
   view.resize(); view.fit(fitBounds()); schedule();
 }
 async function newDoc() {
@@ -505,6 +505,15 @@ function analysisBuild(box) {
 }
 function delSel() { if (sel.size && run({ type: 'remove', ids: [...sel.ids] })) { sel.prune(store.doc); say('지웠습니다'); } }
 
+function reviewUI() { // 스튜디오가 AI 로 읽은 초안과 같이 둔 '확인할 곳'(이 기기에만) — 다 보면 지운다. 글은 문자열만 textContent 로
+  const box = $('plReview'), key = 'ain-review-' + curId;
+  let items = [];
+  try { const a = curId ? JSON.parse(storage.getItem(key) || '[]') : []; items = (Array.isArray(a) ? a : []).filter((t) => typeof t === 'string' && t).slice(0, 12).map((t) => t.slice(0, 80)); } catch (e) {}
+  box.hidden = !items.length;
+  if (!items.length) return box.replaceChildren();
+  box.replaceChildren(h('h2', { id: 'plReviewH', text: '확인할 곳' }), h('ul', { class: 'ed-note' }, items.map((t) => h('li', { text: t }))),
+    h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: '다 봤습니다', onclick: () => { try { storage.removeItem(key); } catch (e) {} reviewUI(); } })]));
+}
 function underlayUI(d) { // 밑그림이 있을 때만: 투명도·축척·이동·지우기
   const box = $('plUnder'), u = d.underlay, key = u ? u.name : '';
   box.hidden = !u;
@@ -721,7 +730,7 @@ function onKeyUp(e) { if (e.key === 'Shift') tools.setShift(false); if (e.code =
 async function boot() {
   const init = await initialDoc();
   try { store = new Store(init.doc); } catch (e) { store = new Store(createDoc()); init.notice = e.message; init.id = null; }
-  curId = init.id; savedAt = init.at;
+  curId = init.id; savedAt = init.at; reviewUI();
   sel = new Selection(() => { propsBuild(); if (view) view.requestDraw(); });
   const canvas = $('plCanvas');
   view = createView2D(canvas, { store, getState: () => state, getSel: () => sel });

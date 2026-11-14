@@ -298,5 +298,13 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
     { const t = fresh('window'); swap(t, 'door'); assert.deepStrictEqual(dims(swap(t, 'window')), ['window', D.winW, D.winH, D.winSill], '창 → 문 → 창은 처음 값으로'); }
     assert.deepStrictEqual(patchOf(fresh('door').o(), 'window'), { type: 'window', width: D.winW, height: D.winH, sill: D.winSill }, '패치 모양'); }
 
+  /* ===== 확인할 곳(스튜디오가 AI 로 읽은 초안과 같이 둔 목록) ===== */
+  { const html = rd('index.html'), app = rd('app.js'), fn = app.slice(app.indexOf('function reviewUI()'), app.indexOf('function underlayUI('));
+    assert.ok(/<section class="ed-sec" id="plReview" aria-labelledby="plReviewH" hidden><\/section>\s*<section class="ed-sec" id="plUnder"/.test(html), '확인할 곳 칸은 밑그림 칸 위, 처음엔 숨김');
+    assert.ok(/'ain-review-' \+ curId/.test(fn) && /storage\.getItem\(key\)/.test(fn) && /storage\.removeItem\(key\)/.test(fn) && !/localStorage/.test(fn), '저장소는 주입된 storage 로(사생활 보호 창에서도 예외 없음)');
+    assert.ok(/typeof t === 'string' && t\)\.slice\(0, 12\)\.map\(\(t\) => t\.slice\(0, 80\)\)/.test(fn) && /try \{[^\n]*JSON\.parse[^\n]*\} catch \(e\) \{\}/.test(fn), '문자열만 12줄·80자, 깨진 값은 빈 목록');
+    assert.ok(/box\.hidden = !items\.length/.test(fn) && /h\('li', \{ text: t \}\)/.test(fn) && fn.includes("text: '확인할 곳'") && fn.includes("text: '다 봤습니다'"), '글은 textContent 로, 없으면 숨김');
+    assert.ok(/curId = init\.id; savedAt = init\.at; reviewUI\(\);/.test(app) && /curId = id; savedAt = updated; reviewUI\(\);/.test(app), '열 때·도면을 바꿀 때 다시 본다'); }
+
   console.log('test-plan-ui: OK');
 })().catch((e) => { console.error(e); process.exit(1); });
