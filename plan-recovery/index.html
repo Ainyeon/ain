@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-cG4xDDcnsUatCVU9D/qbCUpQNFjKBkOb/yYS8w89bL0='; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; connect-src 'none'">
+  <title>이전 도면 보관하기 | 모당</title>
+  <style>
+    body{font:16px/1.6 system-ui,sans-serif;color:#202a34;background:#f4f6f7;margin:0}
+    main{max-width:680px;margin:auto;padding:32px 20px 60px}h1{font-size:1.7rem}p{margin:12px 0}
+    section{background:#fff;border:1px solid #dce2e6;border-radius:12px;padding:20px;margin-top:20px}
+    button{font:inherit;padding:9px 14px;background:#254f70;color:#fff;border:0;border-radius:7px;cursor:pointer}
+    button:focus-visible,a:focus-visible{outline:3px solid #f29d38;outline-offset:3px}
+    li{padding:12px 0;border-bottom:1px solid #e6eaed}li:last-child{border:0}ul{padding-left:22px}
+    .note{color:#52616b}.error{color:#a02a23}a{color:#254f70}
+  </style>
+</head>
+<body><main>
+  <h1>이전 도면 보관하기</h1>
+  <p>이전에 작성한 고객 안내문과 홍보 카드는 <a href="/plan-recovery/maker/">안내문·홍보 카드 보관하기</a>에서 따로 옮길 수 있습니다.</p>
+  <p>3D 제품 즐겨찾기는 <a href="/catalog-favorites-transfer/">별도로 보관하기</a>에서 옮겨 주세요.</p>
+  <p>예전에 에인연에서 저장한 도면을 파일로 내려받고, 모당의 도면 편집기에서 다시 불러올 수 있습니다.</p>
+  <section>
+    <h2>로그인 중 남은 3D 원본 파일</h2>
+    <p>예전 3D 도구에서 로그인하기 직전에 선택한 파일이 이 브라우저에 임시로 남아 있다면 내려받을 수 있습니다. 파일은 원래 로그인 복귀용이며, 이미 사용됐거나 삭제됐다면 찾을 수 없습니다. 완성된 3D 결과를 복구하는 기능은 아닙니다.</p>
+    <button type="button" id="find-studio">임시 원본 파일 찾기</button>
+    <p id="studio-status" role="status" aria-live="polite"></p>
+    <button type="button" id="save-studio" hidden>원본 파일 받기</button>
+  </section>
+  <section>
+    <h2>시작하기 전</h2>
+    <p>예전에 <strong>ainyeon.com</strong>에서 도면을 만들었던 같은 기기와 브라우저로 열어 주세요. 다른 주소에서 저장했거나 브라우저 저장소를 지웠다면 도면이 보이지 않을 수 있습니다.</p>
+    <p>도면은 이 기기에서 선택한 파일로만 저장하며 서버에 보내지 않습니다. 내려받기는 기존 도면을 삭제하지 않습니다. 형식이 손상된 자료는 복구를 위해 원본 텍스트로 보관할 수 있습니다.</p>
+    <button type="button" id="load">이 기기에 저장된 도면 찾기</button>
+    <p id="status" role="status" aria-live="polite"></p>
+    <ul id="list"></ul>
+  </section>
+  <section>
+    <h2>목록에 있는 도면 한 번에 보관</h2>
+    <p>목록에 등록된 도면과 북마크·휴지통 상태를 한 파일로 보관합니다. 다른 도면 편집 탭을 모두 닫은 뒤 진행해 주세요. 목록에 없는 도면은 위에서 각각 받아 주세요.</p>
+    <button type="button" id="save-bundle">도면 묶음 받기</button>
+    <p id="bundle-status" role="status" aria-live="polite"></p>
+  </section>
+  <section>
+    <h2>모당에서 열기</h2>
+    <p>모당의 가져오기 기능은 준비 중입니다. 지금은 받은 파일을 안전하게 보관하고, 전환 안내 후 같은 기기에서 가져와 주세요.</p>
+    <p>도면 묶음은 전환 후 한 번에 불러올 수 있습니다.</p>
+    <p class="note">개별 도면 파일에는 북마크와 휴지통 상태가 포함되지 않습니다. 이 화면은 업무의 임시 저장 내용을 옮기지 않습니다.</p>
+    <p>업무 임시 저장 내용은 <a href="/work-draft-recovery/">업무 초안 보관하기</a>에서 별도로 옮길 수 있습니다.</p>
+  </section>
+</main>
+<script>
+(() => {
+  const findStudio = document.getElementById('find-studio'), saveStudio = document.getElementById('save-studio'), studioStatus = document.getElementById('studio-status');
+  let studioFile = null;
+  findStudio.addEventListener('click', () => {
+    studioFile = null; saveStudio.hidden = true; studioStatus.className = '';
+    studioStatus.textContent = '이 기기의 임시 파일을 확인하고 있습니다.';
+    try {
+      const request = indexedDB.open('ain-studio');
+      let absent = false;
+      request.onupgradeneeded = () => { absent = true; request.transaction.abort(); };
+      request.onerror = () => { studioStatus.textContent = absent ? '이 브라우저에서 임시 파일을 찾지 못했습니다.' : '임시 저장소를 읽지 못했습니다. 브라우저 설정을 확인해 주세요.'; };
+      request.onblocked = () => { studioStatus.textContent = '다른 탭에서 저장소를 사용 중입니다. 해당 탭을 닫고 다시 시도해 주세요.'; };
+      request.onsuccess = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('k')) { db.close(); studioStatus.textContent = '이 브라우저에서 임시 파일을 찾지 못했습니다.'; return; }
+        try {
+          const tx = db.transaction('k', 'readonly'), get = tx.objectStore('k').get('p');
+          get.onsuccess = () => {
+            const file = get.result && get.result.f;
+            if (!file || !(file.blob instanceof Blob) || !file.blob.size) { studioStatus.textContent = '이 브라우저에서 임시 파일을 찾지 못했습니다.'; return; }
+            studioFile = file;
+            saveStudio.hidden = false;
+            studioStatus.textContent = '임시 원본 파일을 찾았습니다. 파일 받기를 눌러 이 기기에 보관해 주세요.';
+          };
+          tx.oncomplete = () => db.close();
+          tx.onabort = tx.onerror = () => { db.close(); studioFile = null; saveStudio.hidden = true; studioStatus.textContent = '임시 저장소를 읽지 못했습니다.'; };
+        } catch (_) { db.close(); studioStatus.textContent = '임시 저장소를 읽지 못했습니다.'; }
+      };
+    } catch (_) { studioStatus.textContent = '임시 저장소를 읽지 못했습니다. 브라우저 설정을 확인해 주세요.'; }
+  });
+  saveStudio.addEventListener('click', () => {
+    if (!studioFile) return;
+    const url = URL.createObjectURL(studioFile.blob), a = document.createElement('a');
+    a.href = url; a.download = typeof studioFile.name === 'string' && studioFile.name ? studioFile.name : '3d-original'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    studioStatus.textContent = '다운로드 목록에서 파일을 확인해 주세요. 기존 임시 자료는 삭제하지 않았습니다.';
+  });
+  const load = document.getElementById('load'), list = document.getElementById('list'), status = document.getElementById('status');
+  let downloaded = false;
+  const bundleStatus = document.getElementById('bundle-status');
+  document.getElementById('save-bundle').addEventListener('click', () => {
+    try {
+      const stored=localStorage.getItem('ain-plan-docs'), records=stored===null?[]:JSON.parse(stored);
+      if (!Array.isArray(records) || records.length>300 || records.some(m=>!m || typeof m.id!=='string' || !/^p[a-z0-9]+$/.test(m.id) || typeof m.title!=='string' || m.title.length>1024 || !Number.isFinite(m.updated)) || new Set(records.map(m=>m.id)).size!==records.length) throw new Error('invalid-list');
+      if (!records.length) {bundleStatus.textContent='목록에 등록된 도면이 없습니다. 목록에 없는 도면은 위에서 각각 확인해 주세요.';return;}
+      const plans=records.map(m=>({id:m.id,title:m.title,updated:m.updated,bookmark:!!m.bookmark,trashed:!!m.trashed,raw:localStorage.getItem('ain-plan-'+m.id)}));
+      if (localStorage.getItem('ain-plan-docs')!==stored || plans.some(p=>localStorage.getItem('ain-plan-'+p.id)!==p.raw)) throw new Error('changed');
+      const text=JSON.stringify({format:'modang-plan-transfer',version:1,plans});
+      if (new TextEncoder().encode(text).byteLength>50*1024*1024) throw new Error('too-large');
+      const url=URL.createObjectURL(new Blob([text],{type:'application/json'})), a=document.createElement('a');
+      a.href=url;a.download='모당-도면-묶음.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+      downloaded=true;bundleStatus.textContent=`목록의 도면 ${plans.length}개를 파일로 준비했습니다. 다운로드 목록에서 확인해 주세요.`;
+    } catch (_) {bundleStatus.textContent='묶음을 만들지 못했습니다. 기존 자료를 지우지 말고 위에서 도면을 각각 받아 주세요.';}
+  });
+  window.addEventListener('storage', event => {
+    if (event.storageArea !== localStorage || (event.key !== null && event.key !== 'ain-plan-docs' && !/^ain-plan-p[a-z0-9]+$/.test(event.key))) return;
+    status.className = 'error';
+    status.textContent = downloaded ? '다른 탭에서 도면이 바뀌었습니다. 이미 내려받은 파일에 최신 변경이 없을 수 있습니다. 도면 찾기를 다시 눌러 확인해 주세요.' : '다른 탭에서 도면이 바뀌었습니다. 도면 찾기를 다시 눌러 확인해 주세요.';
+    if (downloaded) bundleStatus.textContent='다른 탭에서 도면이 바뀌었습니다. 묶음 파일도 다시 받아 주세요.';
+  });
+  load.addEventListener('click', () => {
+    list.replaceChildren(); status.className = '';
+    let records, listUnreadable = false, scanUnreadable = false;
+    try {
+      const value = localStorage.getItem('ain-plan-docs');
+      records = value === null ? [] : JSON.parse(value);
+      if (!Array.isArray(records)) throw new Error('invalid-list');
+    } catch (_) {
+      records = []; listUnreadable = true;
+    }
+    // 목록만 손상되거나 삭제된 경우에도 별도 키에 남은 도면을 찾는다.
+    // 저장소는 읽기만 하며, 목록에 없는 키는 파일을 눌렀을 때 다시 검증한다.
+    const listed = new Set(records.filter(x => x && typeof x.id === 'string').map(x => x.id));
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i), match = typeof key === 'string' && /^ain-plan-(p[a-z0-9]+)$/.exec(key);
+        if (match && !listed.has(match[1])) { records.push({id:match[1], title:'목록에 없는 도면 (' + match[1] + ')', orphan:true}); listed.add(match[1]); }
+      }
+    } catch (_) { scanUnreadable = true; }
+    const seen = new Set(); let shown = 0, invalid = 0;
+    for (const item of records) {
+      if (!item || typeof item.id !== 'string' || !/^p[a-z0-9]+$/.test(item.id) || seen.has(item.id)) { invalid++; continue; }
+      seen.add(item.id); shown++;
+      const row = document.createElement('li'), title = document.createElement('span');
+      title.textContent = (typeof item.title === 'string' && item.title.trim() ? item.title : '이름 없는 도면') + (item.trashed ? ' (휴지통)' : '') + (item.orphan ? ' · 확인 필요' : '') + ' ';
+      row.append(title);
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = '파일로 받기';
+      button.setAttribute('aria-label', (title.textContent.trim()) + ' 파일로 받기');
+      button.addEventListener('click', () => {
+        try {
+          const raw = localStorage.getItem('ain-plan-' + item.id);
+          if (raw === null) throw new Error('missing-document');
+          let doc = null;
+          try { doc = JSON.parse(raw); } catch (_) { /* 형식이 손상돼도 원본은 보관한다. */ }
+          const valid = !!doc && typeof doc === 'object' && !Array.isArray(doc) && Array.isArray(doc.floors);
+          const url = URL.createObjectURL(new Blob([raw], {type:valid ? 'application/json' : 'text/plain'}));
+          const a = document.createElement('a'); a.href = url; a.download = '도면-' + item.id + (valid ? '.json' : '-원본.txt'); a.click();
+          setTimeout(() => URL.revokeObjectURL(url), 60000);
+          downloaded = true;
+          status.className = valid ? '' : 'error';
+          status.textContent = valid ? '다운로드 목록에서 파일을 확인하고 모당 전환 안내 전까지 보관해 주세요.' : '도면 형식이 손상돼 원본 텍스트로 보관했습니다. 모당에서 바로 열 수 없으므로 기존 자료와 파일을 보관하고 운영자에게 문의해 주세요.';
+        } catch (_) {
+          status.className = 'error'; status.textContent = '이 도면을 읽지 못했습니다. 기존 도면 화면에서 확인해 주세요.';
+        }
+      });
+      row.append(button); list.append(row);
+    }
+    const warning = listUnreadable ? ' 저장된 목록은 읽을 수 없어 남은 개별 도면을 확인했습니다.' : '';
+    const scanWarning = scanUnreadable ? ' 일부 저장 항목은 확인하지 못했습니다.' : '';
+    status.textContent = shown ? `도면 후보 ${shown}개를 찾았습니다.${invalid ? ` 목록에서 읽을 수 없는 항목 ${invalid}개가 있습니다.` : ''}${warning}${scanWarning}` : (invalid || listUnreadable || scanUnreadable ? '도면을 확인하지 못했습니다. 기존 저장 자료를 지우지 말고 운영자에게 문의해 주세요.' : '이 브라우저에서 저장된 도면을 찾지 못했습니다.');
+  });
+})();
+</script></body></html>
