@@ -754,7 +754,7 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
     assert.deepStrictEqual([k.walls[0].a, k.items[0].c, k.items[0].rot], [[900, 8100], [2500, 5000], 90]);
     assert.deepStrictEqual(fl(X.fromSpaceJSON(E, { brand: 'x' })).items, [], '브랜드를 모르면 에어컨은 싣지 않는다');
     { const A = X.fromSpaceJSON({ ...E, ai: { read: true, effort: 'low', review: ['<script>x</script>'], unread: ['복도'] } }, { frameH: E.frame_h_mm });   // 작업 장비가 덧붙인 AI 표시는 문서에 들어가지 않는다
-      assert.deepStrictEqual(M.validateDoc(A), []); assert.ok(!('ai' in A) && !J(A).includes('script') && J(fl(A)) === J(f), 'ai 키는 버린다'); A.title = '읽은 초안'; assert.deepStrictEqual(M.validateDoc(A), []);
+      assert.deepStrictEqual(M.validateDoc(A), []); assert.ok(!('ai' in A) && !J(A).includes('script') && J(fl(A)) === J(f), 'ai 키는 버린다'); A.title = 'AI 초안'; assert.deepStrictEqual(M.validateDoc(A), []);
       const S = X.fromSpaceJSON({ rooms: [], walls: [], ai: { skipped: 'member' } }, X.draftFrame({ rooms: [], walls: [] })); assert.deepStrictEqual([M.validateDoc(S), COLSUM(S)], [[], 0], '상한 안내만 든 draft 는 빈 문서'); }
     for (const bad of [null, undefined, 3, 'x', [], {}, { rooms: 'x', walls: [null, 3, {}], openings: [{}], ac_units: [{ model: '1way' }] }, { rooms: [{ polygon: [[0, 0], [1, 'a'], [2, 2]] }, { polygon: [[0, 0], [0, 0], [0, 0]] }] }]) {
       const e = X.fromSpaceJSON(bad); assert.deepStrictEqual(M.validateDoc(e), []); assert.deepStrictEqual(COLSUM(e), 0, '깨진 입력은 빈 문서 ' + J(bad));

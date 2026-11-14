@@ -307,7 +307,7 @@
     }
     if (S.file && S.file.thumb) URL.revokeObjectURL(S.file.thumb);
     S.file = { blob, name: f.name, up, size: blob.size, isImg, thumb, type: up === 'jpg' ? 'image/jpeg' : f.type || 'application/octet-stream' };
-    msg.className = 'st-msg'; msg.textContent = many > 1 ? '한 번에 한 장씩 넣습니다 · 첫 파일만 사용했습니다' : isImg ? '치수가 없으면 한 변 길이를 적어 주세요 · 방이 많은 층은 구역별로' : '';
+    msg.className = 'st-msg'; msg.textContent = many > 1 ? '한 번에 한 장씩 넣습니다 · 첫 파일만 사용했습니다' : '';
     fileRow();
     pick();
     setView('pick');
@@ -465,7 +465,7 @@
         doc.underlay = { name: '올린 도면', src: c.toDataURL('image/jpeg', .82), x: 0, y: 0, mmPerPx: X.draftFrame(draft, c.width).mmPerPx, rot: 0, opacity: doc.floors[0].rooms.length ? .35 : .6 };   // 읽은 축척이 없으면 가로 10m 로 — 플래너에서 맞춘다
       }
       const f = doc.floors[0], q = keepQ(), note = draft && src.ai && src.ai.read ? src.ai.items : null;   // AI 가 읽은 초안: 확인할 곳을 플래너 옆 칸에 보이게 이 기기에 같이 둔다
-      if (note) doc.title = '읽은 초안';
+      if (note) doc.title = 'AI 초안';
       const pid = doc.underlay || f.rooms.length || f.walls.length ? L.createLibrary(localStorage).savePlan(doc).id : null;
       if (pid && note && note.length) try { localStorage.setItem('ain-review-' + pid, JSON.stringify(note)); } catch (e) {}
       location.assign('/maker/3d/plan/' + q + (q ? '&' : '?') + (pid ? 'doc=' + pid : 'new=1'));
@@ -511,7 +511,7 @@
       if (stale()) return;
       if (!src) return end(text, true);
       if (src.draft && src.ai && src.ai.read) {          // AI 가 읽은 초안 — 그림·물량 없이 도면만 왔다. 확인할 곳 수를 말하고 플래너로
-        end(src.ai.items.length ? '초안입니다 · 확인할 곳 ' + src.ai.items.length : '초안입니다 · 도면에서 확인하세요', true); msg.className = 'st-msg';
+        end(src.ai.items.length ? 'AI 초안입니다 · 확인할 곳 ' + src.ai.items.length : 'AI 초안입니다 · 도면에서 확인하세요', true); msg.className = 'st-msg';
         return tail.replaceChildren(planBtn(src, '초안 고치기'), redo());
       }
       const read = /단계에서 멈췄|도면을 읽지 못/.test(text);   // 도면을 읽다 멈춘 사유(작업 장비 studio_worker.py run_job 의 두 문구) — 시간 초과·장비 오류는 받은 사유를 그대로 보인다

@@ -505,14 +505,14 @@ function analysisBuild(box) {
 }
 function delSel() { if (sel.size && run({ type: 'remove', ids: [...sel.ids] })) { sel.prune(store.doc); say('지웠습니다'); } }
 
-function reviewUI() { // 스튜디오가 AI 로 읽은 초안과 같이 둔 '확인할 곳'(이 기기에만) — 다 보면 지운다. 글은 문자열만 textContent 로
+function reviewUI() { // 스튜디오가 AI 로 읽은 초안과 같이 둔 '확인할 곳'(이 기기에만, 오른쪽 칸 미니맵 바로 아래) — 다 보면 지우고 초점은 캔버스로. 글은 문자열만 textContent 로
   const box = $('plReview'), key = 'ain-review-' + curId;
   let items = [];
   try { const a = curId ? JSON.parse(storage.getItem(key) || '[]') : []; items = (Array.isArray(a) ? a : []).filter((t) => typeof t === 'string' && t).slice(0, 12).map((t) => t.slice(0, 80)); } catch (e) {}
   box.hidden = !items.length;
   if (!items.length) return box.replaceChildren();
   box.replaceChildren(h('h2', { id: 'plReviewH', text: '확인할 곳' }), h('ul', { class: 'ed-note' }, items.map((t) => h('li', { text: t }))),
-    h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: '다 봤습니다', onclick: () => { try { storage.removeItem(key); } catch (e) {} reviewUI(); } })]));
+    h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: '다 봤습니다', onclick: () => { try { storage.removeItem(key); } catch (e) {} reviewUI(); $('plCanvas').focus({ preventScroll: true }); } })]));
 }
 function underlayUI(d) { // 밑그림이 있을 때만: 투명도·축척·이동·지우기
   const box = $('plUnder'), u = d.underlay, key = u ? u.name : '';
@@ -748,6 +748,7 @@ async function boot() {
   if (narrow.matches) setPanel(false);
   if (mid.matches) setSide(false); // 폰 + 중간 폭: 오른쪽 패널은 접어서 시작
   openPanel('draw'); tools.setTool('select');
+  if (mid.matches && !$('plReview').hidden) setSide(true); // 확인할 곳이 있으면 접어 둔 오른쪽 칸을 펴서 시작(목록이 도착한 화면에 보이게)
   view.resize(); view.fit(fitBounds()); refresh();
   requestAnimationFrame(() => requestAnimationFrame(() => { appEl.style.transition = ''; }));
   // 처음 맞춤은 캔버스 크기가 확정되기 전에 계산될 수 있다(패널 접힘·템플릿 불러오기 도중) — 사용자가 화면을 만지기 전까지는 크기가 바뀔 때마다 다시 맞춘다

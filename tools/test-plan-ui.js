@@ -300,7 +300,8 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
 
   /* ===== 확인할 곳(스튜디오가 AI 로 읽은 초안과 같이 둔 목록) ===== */
   { const html = rd('index.html'), app = rd('app.js'), fn = app.slice(app.indexOf('function reviewUI()'), app.indexOf('function underlayUI('));
-    assert.ok(/<section class="ed-sec" id="plReview" aria-labelledby="plReviewH" hidden><\/section>\s*<section class="ed-sec" id="plUnder"/.test(html), '확인할 곳 칸은 밑그림 칸 위, 처음엔 숨김');
+    assert.ok(/id="plMini"[^\n]*<\/section>\s*<section class="ed-sec" id="plReview" aria-labelledby="plReviewH" hidden><\/section>\s*<section class="ed-sec" aria-labelledby="plFloorH2">/.test(html), '확인할 곳 칸은 오른쪽 칸 미니맵 바로 아래(내리지 않아도 보인다), 처음엔 숨김');
+    assert.ok(/if \(mid\.matches && !\$\('plReview'\)\.hidden\) setSide\(true\);/.test(app) && /reviewUI\(\); \$\('plCanvas'\)\.focus\(\{ preventScroll: true \}\)/.test(fn), '좁은 화면은 오른쪽 칸을 펴서 시작 · 다 본 뒤 초점은 캔버스로');
     assert.ok(/'ain-review-' \+ curId/.test(fn) && /storage\.getItem\(key\)/.test(fn) && /storage\.removeItem\(key\)/.test(fn) && !/localStorage/.test(fn), '저장소는 주입된 storage 로(사생활 보호 창에서도 예외 없음)');
     assert.ok(/typeof t === 'string' && t\)\.slice\(0, 12\)\.map\(\(t\) => t\.slice\(0, 80\)\)/.test(fn) && /try \{[^\n]*JSON\.parse[^\n]*\} catch \(e\) \{\}/.test(fn), '문자열만 12줄·80자, 깨진 값은 빈 목록');
     assert.ok(/box\.hidden = !items\.length/.test(fn) && /h\('li', \{ text: t \}\)/.test(fn) && fn.includes("text: '확인할 곳'") && fn.includes("text: '다 봤습니다'"), '글은 textContent 로, 없으면 숨김');
