@@ -248,13 +248,14 @@ export function createView2D(canvas, { store, getState, getSel, offscreen = fals
       for (const sh of AN.shade) { ctx.beginPath(); for (const poly of sh.polys) { poly.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.closePath(); } ctx.fill('nonzero'); }
       ctx.globalAlpha = 1;
     }
-    ctx.globalAlpha = Z ? 0.2 : st.floorAlpha; ctx.fillStyle = C.accentBg; // 방 바닥
+    const UA = u0 && !P ? 0.45 : 1; // 밑그림이 있으면 바닥·벽을 비치게(밑그림을 따라 고칠 수 있게)
+    ctx.globalAlpha = Z ? 0.2 : Math.min(st.floorAlpha, UA); ctx.fillStyle = C.accentBg; // 방 바닥
     if (!P) for (const e of fc.rooms) if (vis(e.box)) { if (Z) ctx.fillStyle = ZC[zoneOf(e.el)]; path(e.poly); ctx.fill(); }
     ctx.globalAlpha = 1;
     ctx.strokeStyle = C.faint; ctx.lineWidth = px; ctx.setLineDash([6 * px, 4 * px]); // 보조선
     if (!P) for (const e of fc.guides) if (vis(e.box)) { path(e.el.a ? [e.el.a, e.el.b] : [], false); ctx.stroke(); }
     ctx.setLineDash([]);
-    ctx.globalAlpha = P ? 1 : st.wallAlpha; // 벽: 내벽은 보조 잉크, 외벽은 잉크
+    ctx.globalAlpha = P ? 1 : Math.min(st.wallAlpha, UA); // 벽: 내벽은 보조 잉크, 외벽은 잉크
     for (const kind of ['inner', 'exterior']) {
       ctx.fillStyle = kind === 'exterior' || P ? C.ink : C.sub;
       for (const e of fc.walls) if (e.el.kind === kind && vis(e.box)) for (const poly of e.polys) { path(poly); ctx.fill(); }
