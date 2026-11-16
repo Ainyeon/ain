@@ -41,7 +41,7 @@ export function axoScene(mesh, { spread = 0, zoneOf = () => null } = {}) {
     }
   };
   for (const w of mesh.walls) prism(w, w.kind === 'column' ? 'column' : 'wall', lift(1));
-  for (const i of mesh.items) prism(i, i.kind === 'appliance' ? 'appliance' : 'ac', lift(2));
+  for (const i of mesh.items) prism(i, i.kind === 'ac' ? 'ac' : 'appliance', lift(2))   // 가구는 전체 상자 하나로(조각을 넣으면 중심 정렬이 틀린다) — 가전과 같은 면;
   faces.sort((a, b) => a.d - b.d);   // 같은 d 끼리는 화면에서 겹치지 않는다(겹치면 높이도 같다) — 둘째 기준이 필요 없다. ponytail: 조각 중심 정렬 — 기기가 벽을 뚫고 지나는 것까지 맞추려면 BSP 로
   const floors = mesh.floors.map((r) => ({ id: r.id, zone: zoneOf(r.id), pts: r.poly.map((p) => axoPt(p, 0)) }));
   const ceil = mesh.floors.map((r) => r.poly.map((p) => axoPt(p, H + lift(3))));

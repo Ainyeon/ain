@@ -6,6 +6,8 @@ export const BRANDS = ['samsung', 'lg'];
 export const APPLIANCE_CATEGORIES = ['refrigerator', 'kimchi', 'washer', 'dryer', 'washtower', 'dishwasher', 'styler', 'airpurifier', 'aircon', 'tv', 'cooking', 'water'];
 export const APPLIANCE_LABEL = { refrigerator: '냉장고', kimchi: '김치냉장고', washer: '세탁기', dryer: '건조기', washtower: '워시타워·워시콤보', dishwasher: '식기세척기', styler: '의류관리기', airpurifier: '공기청정기', aircon: '에어컨', tv: 'TV', cooking: '조리가전', water: '정수기' };
 export const APPLIANCE_LIMITS = Object.freeze({ footMin: 5, footMax: 5000, heightMin: 5, heightMax: 4000 }); // 놓을 수 있는 가전 크기(mm): 평면 가로·깊이, 높이
+// 가구(kind:'furniture') — 직접 정한 치수의 기본형. shape = 평면 기호·모형의 생김새(data/furniture-catalog.json 의 shape 와 같다 — 시험이 대조한다). 크기는 놓은 뒤 고친다(범위는 가전과 같다)
+export const FURNITURE_SHAPES = ['box', 'table', 'ldesk', 'chair', 'bed', 'sofa', 'shelf', 'panel', 'rug', 'plant'];
 export const AC_PANEL_MM = 35, AC_BODY_MM = 140; // 엔진 공간 JSON 규약(size_mm[2], body_h_mm)
 export const PREFIX = { walls: 'W', rooms: 'R', columns: 'C', openings: 'O', guides: 'G', items: 'I' };
 export const COLS = Object.keys(PREFIX);
@@ -73,6 +75,11 @@ const checkAppliance = (i) => !APPLIANCE_CATEGORIES.includes(i.category) ? '가�
   : !(Array.isArray(i.size) && i.size.length === 2 && i.size.every((v) => inR(v, APPLIANCE_LIMITS.footMin, APPLIANCE_LIMITS.footMax))) ? `가전 크기(가로·깊이)는 ${APPLIANCE_LIMITS.footMin}~${APPLIANCE_LIMITS.footMax} mm 여야 합니다`
   : !inR(i.heightMm, APPLIANCE_LIMITS.heightMin, APPLIANCE_LIMITS.heightMax) ? `가전 높이는 ${APPLIANCE_LIMITS.heightMin}~${APPLIANCE_LIMITS.heightMax} mm 여야 합니다`
   : i.url !== undefined && !(typeof i.url === 'string' && /^https:\/\/\S+$/.test(i.url)) ? '가전 출처 주소는 https 주소여야 합니다' : '';
+const checkFurniture = (i) => !FURNITURE_SHAPES.includes(i.shape) ? '가구 모양이 올바르지 않습니다'
+  : typeof i.name !== 'string' || !i.name ? '가구 이름이 없습니다'
+  : !pt(i.c) || !num(i.rot) ? '제품 위치·회전이 올바르지 않습니다 (±10km 이내의 숫자)'
+  : !(Array.isArray(i.size) && i.size.length === 2 && i.size.every((v) => inR(v, APPLIANCE_LIMITS.footMin, APPLIANCE_LIMITS.footMax))) ? `가구 크기(가로·깊이)는 ${APPLIANCE_LIMITS.footMin}~${APPLIANCE_LIMITS.footMax} mm 여야 합니다`
+  : !inR(i.heightMm, APPLIANCE_LIMITS.heightMin, APPLIANCE_LIMITS.heightMax) ? `가구 높이는 ${APPLIANCE_LIMITS.heightMin}~${APPLIANCE_LIMITS.heightMax} mm 여야 합니다` : '';
 
 // 요소 하나의 문제 한 줄(없으면 ''). f = 그 요소가 속한 층, W = 그 층의 벽 id 집합(층마다 한 번만 만든다 — 요소마다 벽을 훑으면 제곱 시간이다)
 const CHECK = {
@@ -99,7 +106,7 @@ const CHECK = {
     : !(len(o.width) && len(o.height) && nonneg(o.sill)) ? '개구부 폭·높이는 0 보다, 바닥 높이는 0 이상이어야 합니다 (10km 이하)' : '',
   guides: (g) => !pt(g.a) || !pt(g.b) ? '보조선 좌표가 올바르지 않습니다 (±10km 이내의 숫자)'
     : Math.hypot(g.a[0] - g.b[0], g.a[1] - g.b[1]) < 1 ? '보조선 길이는 1mm 이상이어야 합니다' : '', // addGuide 와 같은 기준
-  items: (i) => (i.kind === 'ac' ? checkAc(i) : i.kind === 'appliance' ? checkAppliance(i) : '제품 종류는 ac 또는 appliance 입니다'),
+  items: (i) => (i.kind === 'ac' ? checkAc(i) : i.kind === 'appliance' ? checkAppliance(i) : i.kind === 'furniture' ? checkFurniture(i) : '제품 종류는 ac·appliance·furniture 입니다'),
 };
 
 export const FLOOR_MAX_ELEMENTS = 50000; // 한 층의 요소(벽·방·기둥·개구부·보조선·제품) 합계 상한. 이보다 많은 도면은 편집 한 번마다 전체 검증이 느려진다
