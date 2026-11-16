@@ -154,4 +154,31 @@ assert.ok(/html\[data-embed\] \.st-ask\s*\{\s*display:\s*none/.test(css), '임�
   assert.ok(!/읽지 못했습니다|일부|추정|수 있습니다/.test(tp + js.slice(js.indexOf('const fail = async'), js.indexOf("say('접수 확인 중')"))), '새 문구에 애매한 말 없음');
 }
 
+// AI 가 읽은 초안(2026-11-14) — 작업 장비가 draft.json 에 실은 ai 만 보고 가른다. 글은 다시 자르고 textContent 로만
+{
+  const aiNote = new Function('return ' + js.match(/function aiNote\(ai\) \{[\s\S]*?\n  \}/)[0])();
+  for (const bad of [null, undefined, 3, 'x']) assert.strictEqual(aiNote(bad), null, 'ai 가 없으면 없다');
+  const long = '가'.repeat(200), n = aiNote({ read: true, review: [...Array(13).fill('거실 · 폭이 다릅니다'), long], unread: ['복도'], skipped: 'x' });
+  assert.deepStrictEqual([n.read, n.skipped, n.items.length, n.items[0]], [true, null, 12, '거실 · 폭이 다릅니다'], '확인할 곳은 12줄까지');
+  const m = aiNote({ read: 'true', review: [long, 3, null, { a: 1 }, '  ', '<b>x</b>'], unread: ['복도', 7], skipped: 'member' });
+  assert.deepStrictEqual([m.read, m.skipped, m.items.map((t) => t.length), m.items[2]], [false, 'member', [80, 8, 9], '못 읽음 · 복도'], '문자열만, 80자까지, 못 읽은 것은 앞에 표시');
+  assert.deepStrictEqual(aiNote({}).items, [], '빈 값');
+  const tp = js.slice(js.indexOf('async function planSrc'), js.indexOf('function runView')), fl = js.slice(js.indexOf('const fail = async'), js.indexOf("say('접수 확인 중')"));
+  assert.ok(tp.indexOf('ai = aiNote(D && D.ai)') > 0 && tp.indexOf('ai = aiNote(D && D.ai)') < tp.indexOf('X.fromSpaceJSON(D, X.draftFrame(D))') && /return \{ dir, get, draft, ai, pic:/.test(tp), '방이 없는 draft.json(상한 안내)에서도 ai 는 읽는다');
+  assert.ok(/if \(src\.draft && src\.ai && src\.ai\.read\) \{[^\n]*\n\s*end\(src\.ai\.items\.length \? 'AI 초안입니다 · 확인할 곳 ' \+ src\.ai\.items\.length : 'AI 초안입니다 · 도면에서 확인하세요', true\)/.test(fl) && fl.includes("planBtn(src, '초안 고치기')"), 'AI 초안은 AI 표시·확인할 곳 수와 [초안 고치기]');
+  assert.ok(fl.indexOf('src.ai.read') < fl.indexOf('const read = /'), 'AI 초안은 받은 사유 문구와 상관없이 먼저 가른다');
+  assert.ok(fl.includes("src.ai && src.ai.skipped ? '오늘 AI 읽기를 다 썼습니다 · 올린 도면을 밑그림으로 깝니다' : '올린 도면을 밑그림으로 깝니다 · 벽을 따라 그리세요'"), '회원 상한은 그 사실만, 나머지는 기존 문구 그대로');
+  assert.ok(/note = draft && src\.ai && src\.ai\.read \? src\.ai\.items : null/.test(tp) && tp.includes("doc.title = 'AI 초안'") && tp.includes("localStorage.setItem('ain-review-' + pid, JSON.stringify(note))"), '확인할 곳은 플래너 문서 옆에 둔다');
+  assert.ok(read('maker/3d/plan/app.js').includes("'ain-review-' + curId"), '플래너가 같은 키로 읽는다');
+  assert.ok(!/innerHTML|outerHTML|insertAdjacentHTML/.test(js.replace(/\/\/[^\n]*/g, '')), 'studio.js 에 innerHTML 없음');
+  assert.ok(page.includes('<span class="st-hint">사진은 펴서 정면 · 평면만 꽉 차게 · 치수가 읽히게</span>') && /id="stDrop">[\s\S]*<span class="st-hint" id="stAiNote">사진·그림 도면은 읽기 위해 Anthropic\(미국\)으로 보냅니다<\/span>[\s\S]*id="stPick"/.test(page), '올리기 전 안내·고지');
+  assert.ok(!/한 변 길이/.test(js + page), '적을 칸이 없는 것을 적으라고 하지 않는다');
+  for (const t of ['AI 초안입니다 · 확인할 곳 ', 'AI 초안입니다 · 도면에서 확인하세요', '초안 고치기', '오늘 AI 읽기를 다 썼습니다 · 올린 도면을 밑그림으로 깝니다', '사진은 펴서 정면 · 평면만 꽉 차게 · 치수가 읽히게', '사진·그림 도면은 읽기 위해 Anthropic(미국)으로 보냅니다', '못 읽음 · '])
+    assert.ok(!/일부|수 있습니다|죄송|추정|아마/.test(t), '애매한 말 없음: ' + t);
+  const pv = read('_dev/legal/privacy/index.html'), row = pv.match(/<tr><td>Anthropic, PBC<\/td>.*?<\/tr>/)[0];
+  assert.ok(/<td>미국<\/td>/.test(row) && !/채울 것/.test(row) && /<tr><td>도면 작업<\/td>.*14일/.test(pv), '처리방침 초안: 받는 곳·국가·항목, 도면 작업 보유 기간');
+  assert.ok(pv.includes('규칙으로 읽지 못하거나 읽은 결과의 방 수가 넓이에 비해 적으면'), '보내는 조건은 코드(ai_read.extract: 엔진 실패 또는 engine_suspect)와 같게');
+  assert.strictEqual((pv.match(/〔채울 것: Anthropic[^〕]*〕/g) || []).length, 1, 'Anthropic 보관 기간은 확인 뒤 채운다(채울 곳 1)');
+}
+
 console.log('test-studio-live: OK');
