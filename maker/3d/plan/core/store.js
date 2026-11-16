@@ -137,7 +137,7 @@ const CMD = {
     if (c.kind === 'furniture') { // 가구: 모양·이름·크기·높이(범위는 문서 검증이 본다)
       ok(isPt(c.c), '제품 위치가 필요합니다');
       ok(Array.isArray(c.size) && c.size.length === 2, '가구는 크기(가로·깊이)와 높이가 있어야 놓을 수 있습니다');
-      return [put(d, f, 'items', { kind: 'furniture', shape: c.shape, name: c.name, c: P2(c.c), rot: c.rot ?? 0, size: [c.size[0], c.size[1]], heightMm: c.heightMm })];
+      return [put(d, f, 'items', { kind: 'furniture', shape: c.shape, name: c.name, c: P2(c.c), rot: c.rot ?? 0, size: [c.size[0], c.size[1]], heightMm: c.heightMm, ...(c.tone === undefined ? {} : { tone: c.tone }) })];
     }
     ok(c.kind === 'ac' && MODELS.includes(c.model) && BRANDS.includes(c.brand), '제품 종류·형식·브랜드가 올바르지 않습니다');
     ok(isPt(c.c), '제품 위치가 필요합니다');

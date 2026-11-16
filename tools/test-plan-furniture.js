@@ -12,7 +12,7 @@ const read = (p) => fs.readFileSync(path.join(PLAN, p), 'utf8');
 
 (async () => {
   const [Mo, S, X, MESH, E, P, T, V3, AX] = await Promise.all(['core/model.js', 'core/store.js', 'core/export.js', 'core/mesh3d.js', 'estimate.js', 'panels.js', 'tools.js', 'view3d.js', 'core/axo.js'].map(imp));
-  const { Store } = S, { createDoc, validateDoc, curFloor, FURNITURE_SHAPES, APPLIANCE_LIMITS: LIM } = Mo;
+  const { Store } = S, { createDoc, validateDoc, curFloor, FURNITURE_SHAPES, FURNITURE_TONES, APPLIANCE_LIMITS: LIM } = Mo;
   const CAT = JSON.parse(read('data/furniture-catalog.json')), items = CAT.items;
 
   /* 1. 목록 */
@@ -24,7 +24,8 @@ const read = (p) => fs.readFileSync(path.join(PLAN, p), 'utf8');
   for (const m of items) {
     assert.ok(types.includes(m.type) && places.includes(m.place) && FURNITURE_SHAPES.includes(m.shape), `${m.id} 분류·모양`);
     assert.ok([m.widthMm, m.depthMm].every((v) => Number.isInteger(v) && v >= LIM.footMin && v <= LIM.footMax) && Number.isInteger(m.heightMm) && m.heightMm >= LIM.heightMin && m.heightMm <= LIM.heightMax, `${m.id} 치수 범위`);
-    assert.deepStrictEqual(Object.keys(m), ['id', 'place', 'type', 'shape', 'name', 'widthMm', 'depthMm', 'heightMm'], `${m.id} 칸`);
+    assert.deepStrictEqual(Object.keys(m), ['id', 'place', 'type', 'shape', 'name', 'widthMm', 'depthMm', 'heightMm', ...(m.tone ? ['tone'] : [])], `${m.id} 칸`);
+    assert.ok(m.tone === undefined || FURNITURE_TONES.some(([t]) => t === m.tone), `${m.id} 색`);
   }
   for (const t of types) assert.ok(items.some((m) => m.type === t), `종류 ${t} 에 행이 있다`);
   for (const sh of FURNITURE_SHAPES) assert.ok(items.some((m) => m.shape === sh), `모양 ${sh} 를 쓰는 행이 있다`);
@@ -169,4 +170,15 @@ const read = (p) => fs.readFileSync(path.join(PLAN, p), 'utf8');
   assert.deepStrictEqual(wallSnapShift([{ ...W[0], bulge: 300 }], rectPoly([2000, 500], 600, 600), 200), [0, 0], '곡선벽은 건너뛴다');
   assert.deepStrictEqual(wallSnapShift(W, rectPoly([2000, 340], 600, 600), 200), [0, 35], '묻힌 것은 밖으로');
   console.log('wall snap ok');
+})().catch((e) => { console.error(e); process.exit(1); });
+
+// 가구 색(tone): 주 재질만 바뀌고, 잘못된 색은 거절
+(async () => {
+  const { Store } = await imp('core/store.js'), MESH = await imp('core/mesh3d.js'), { validateDoc } = await imp('core/model.js');
+  const st = new Store(); st.exec({ type: 'addItem', kind: 'furniture', shape: 'chair', name: '의자', c: [500, 500], size: [500, 500], heightMm: 850, tone: 'navy' });
+  const roles = MESH.buildMesh(st.doc, 0).items[0].parts.map((p) => p.role);
+  assert.ok(roles.includes('navy') && !roles.includes('seat') && roles.includes('metal'), '좌판·등판만 네이비, 다리는 철재');
+  const bad = JSON.parse(JSON.stringify(st.doc)); bad.floors[0].items[0].tone = 'pink';
+  assert.ok(validateDoc(bad).some((m) => /가구 색/.test(m)), '모르는 색은 거절');
+  console.log('tone ok');
 })().catch((e) => { console.error(e); process.exit(1); });

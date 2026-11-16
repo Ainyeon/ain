@@ -42,6 +42,13 @@
     { "id": "furn-soft", "name": "소파·러그 천", "sw": "#A3A7AB" },
     { "id": "furn-leaf", "name": "잎", "sw": "#5B8A4C" },
     { "id": "furn-pot", "name": "화분", "sw": "#DCD7CE" },
-    { "id": "furn-screen", "name": "모니터", "sw": "#17191C" }
+    { "id": "furn-screen", "name": "모니터", "sw": "#17191C" },
+    { "id": "furn-walnut", "name": "월넛", "sw": "#6F4E37" },
+    { "id": "furn-gray", "name": "그레이", "sw": "#8E9196" },
+    { "id": "furn-beige", "name": "베이지", "sw": "#D6C7AE" },
+    { "id": "furn-navy", "name": "네이비", "sw": "#2F3E5C" },
+    { "id": "furn-sage", "name": "세이지", "sw": "#8FA58A" },
+    { "id": "furn-brick", "name": "테라코타", "sw": "#B5654A" },
+    { "id": "furn-steel", "name": "실버", "sw": "#B9BDC2" }
   ]
 }

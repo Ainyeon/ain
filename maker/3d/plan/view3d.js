@@ -17,8 +17,8 @@ export const VIEWS = Object.freeze({
 /* ---------- 순수 계산 1: buildMesh 결과 → 정점·인덱스 자료 ---------- */
 const soup = () => ({ pos: [], idx: [] });
 // 가구 재질(core/mesh3d.js furnitureParts 의 재질 이름). 색은 마감재 자료(data/finishes.json furniture 의 furn-<재질>)
-export const FURN_ROLES = ['top', 'body', 'metal', 'seat', 'fabric', 'wood', 'soft', 'leaf', 'pot', 'screen'];
-const FURN_FINISH = { metal: [0.45, 0.4], screen: [0.25, 0.1] };   // [거칠기, 금속성] — 나머지는 무광
+export const FURN_ROLES = ['top', 'body', 'metal', 'seat', 'fabric', 'wood', 'soft', 'leaf', 'pot', 'screen', 'walnut', 'gray', 'beige', 'navy', 'sage', 'brick', 'steel'];
+const FURN_FINISH = { metal: [0.45, 0.4], screen: [0.25, 0.1], steel: [0.35, 0.6] };   // [거칠기, 금속성] — 나머지는 무광
 const fin = (s) => ({ pos: Float32Array.from(s.pos), idx: Uint32Array.from(s.idx) });
 
 // 평평한 다각형 한 장(높이 y mm). up=true 면 위를, false 면 아래를 본다. 오목해도 된다
