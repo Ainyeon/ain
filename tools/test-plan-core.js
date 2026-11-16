@@ -355,14 +355,14 @@ const throwsKo = (fn, re, msg) => { let err; try { fn(); } catch (e) { err = e; 
       { type: 'addOpening', wall: 'W1', at: 0.5, kind: 'window' }, { type: 'addOpening', wall: 'W4', at: 0.5, kind: 'door' }, { type: 'addOpening', wall: 'W11', at: 0.5, kind: 'open' },
       { type: 'addGuide', a: [0, 8000], b: [3000, 8000] }, { type: 'addItem', kind: 'ac', model: '1way', brand: 'samsung', c: [2500, 1500], rot: 90, capacityKw: 5.2, code: 'AJ052', size: [1001, 500] },
       { type: 'update', id: 'W2', patch: { t: 200, kind: 'exterior' } }, { type: 'update', id: 'O1', patch: { at: 0.3, sill: 1000 } }, { type: 'update', id: 'R2', patch: { name: '서재' } },
-      { type: 'move', ids: ['R2'], dx: 500, dy: 500 }, { type: 'move', ids: ['W3', 'I1', 'C1', 'G1'], dx: -10, dy: 20 },
+      { type: 'move', ids: ['R2'], dx: 500, dy: 500 }, { type: 'move', ids: ['W3', 'I1', 'C1', 'G1'], dx: -10, dy: 20 }, { type: 'turn', ids: ['I1', 'C1', 'W1'], deg: -90 },
       { type: 'mirror', axis: 'x' }, { type: 'mirror', axis: 'y' }, { type: 'rotate', deg: 90 }, { type: 'rotate', deg: -90 },
       { type: 'setUnderlay', underlay: { name: 'u.png', src: 'data:,x', mmPerPx: 3, x: 5, y: 6, rot: 7, opacity: 0.4 } }, { type: 'setUnderlay', underlay: null },
       { type: 'remove', ids: ['O3', 'C2', 'G1', 'I1'] }, { type: 'remove', ids: ['W4'] }, { type: 'remove', ids: ['R2'] },
       { type: 'addFloor' }, { type: 'addRoomRect', a: [0, 0], b: [2000, 2000] }, { type: 'setFloor', patch: { name: 'B' } },
       { type: 'load', doc: fixture().doc },
     ];
-    const seen = new Set(steps.map((x) => x.type)); for (const t of ['addWall', 'addRoomRect', 'addRoomPoly', 'addColumn', 'addOpening', 'addGuide', 'addItem', 'remove', 'update', 'move', 'mirror', 'rotate', 'setFloor', 'addFloor', 'setUnderlay', 'rename', 'load']) assert.ok(seen.has(t), '전수 목록에 ' + t);
+    const seen = new Set(steps.map((x) => x.type)); for (const t of ['addWall', 'addRoomRect', 'addRoomPoly', 'addColumn', 'addOpening', 'addGuide', 'addItem', 'remove', 'update', 'move', 'turn', 'mirror', 'rotate', 'setFloor', 'addFloor', 'setUnderlay', 'rename', 'load']) assert.ok(seen.has(t), '전수 목록에 ' + t);
     for (const st of steps) {
       const before = J(s.doc), jb = s.doc;
       s.exec(st); const after = J(s.doc);
