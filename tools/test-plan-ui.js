@@ -30,8 +30,8 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
   for (const id of IDS) assert.ok(new RegExp(`id="${id}"`).test(html), 'id ' + id);
   assert.strictEqual(new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1])).size, [...html.matchAll(/ id="([^"]+)"/g)].length, 'id 중복 없음');
   // 왼쪽 줄: 패널 이름 여섯 개(panels.js 의 mountPanel 이름과 같다), 글자 이름
-  const rail = [...html.matchAll(/<button[^>]*data-panel="(\w+)"[^>]*>([^<]+)<\/button>/g)].map((m) => [m[1], m[2]]);
-  assert.deepStrictEqual(rail, [['templates', '템플릿'], ['draw', '도면 그리기'], ['products', '제품'], ['materials', '마감재'], ['library', '설계형 라이브러리'], ['resources', '리소스 관리']], '왼쪽 줄 여섯 칸');
+  const rail = [...html.matchAll(/<button[^>]*data-panel="(\w+)"[^>]*><span class="ico [^"]+" aria-hidden="true"><\/span><span>([^<]+)<\/span><\/button>/g)].map((m) => [m[1], m[2]]);
+  assert.deepStrictEqual(rail, [['templates', '템플릿'], ['draw', '도면 그리기'], ['products', '제품'], ['materials', '마감재'], ['library', '설계형 라이브러리'], ['resources', '리소스 관리']], '왼쪽 줄 여섯 칸(아이콘 + 이름)');
   // 상단: 없는 기능(렌더샷·갤러리·시방서)을 단추로 두지 않는다. 있는 기능의 이름
   for (const t of ['견적 물량표', '도면 내보내기 (.json)', '도면 불러오기', '새로 만들기', '실행 취소', '다시 실행', '저장', '나가기']) assert.ok(html.includes('>' + t + '<'), '상단 이름 ' + t);
   for (const t of ['렌더샷', '갤러리', '시방서']) assert.ok(!html.includes(t), t + ' 단추를 만들지 않는다');

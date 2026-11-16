@@ -596,9 +596,9 @@ function syncDraw() {
 function mountDraw(body) {
   const rows = new Map(), sub = [], mk = (r) => {
     const key = r.key ? h('kbd', { class: 'ed-k', text: r.key }) : null;
-    if (r.href) return [h('a', { class: 'ed-row link', href: r.href, text: r.label })];
-    if (r.action) return [h('button', { type: 'button', class: 'ed-row', onclick: () => rowAction(r.action) }, [h('span', { text: r.label })])];
-    const b = h('button', { type: 'button', class: 'ed-row', 'data-tool': r.id, 'aria-pressed': 'false', onclick: () => rowTool(r.id) }, [h('span', { text: r.label }), key]);
+    if (r.href) return [h('a', { class: 'ed-row link', href: r.href }, [rowLab(r.id, r.label)])];
+    if (r.action) return [h('button', { type: 'button', class: 'ed-row', onclick: () => rowAction(r.action) }, [rowLab(r.action, r.label)])];
+    const b = h('button', { type: 'button', class: 'ed-row', 'data-tool': r.id, 'aria-pressed': 'false', onclick: () => rowTool(r.id) }, [rowLab(r.id, r.label), key]);
     if (r.id !== 'underlay') rows.set(r.id, b);
     if (r.id !== 'opening') return [b];
     const seg = h('div', { class: 'ed-sub', role: 'group', 'aria-label': '개구부 종류' }, Object.entries(OPENING_NAMES).map(([type, label]) => { const s = h('button', { type: 'button', class: 'ed-sb', 'data-type': type, text: label, 'aria-pressed': 'false', onclick: () => { if (ui.setTool('opening', { type })) toCanvas(); } }); sub.push(s); return s; }));
@@ -608,6 +608,9 @@ function mountDraw(body) {
   drawRows = { rows, sub }; syncDraw();
   return { destroy() { drawRows = null; } };
 }
+// 도구 줄 아이콘(Phosphor, icons/) — 아이콘 + 이름
+const ROW_ICON = { 'underlay': 'image', 'maps': 'magnifying-glass', 'wall': 'wall', 'arc': 'bezier-curve', 'room': 'polygon', 'delete': 'eraser', 'colRect': 'square', 'colRound': 'circle', 'opening': 'door', 'guide': 'line-segment', 'measure': 'ruler', 'mirror-x': 'flip-horizontal', 'mirror-y': 'flip-vertical', 'rot-ccw': 'arrow-counter-clockwise', 'rot-cw': 'arrow-clockwise', 'select': 'cursor', 'multi': 'selection-plus' };
+const rowLab = (id, label) => h('span', { class: 'ed-lab' }, [ROW_ICON[id] ? h('span', { class: 'ico i-' + ROW_ICON[id], 'aria-hidden': 'true' }) : null, h('span', { text: label })]);
 function rowTool(id) {
   if (id === 'underlay') return pickImage();
   if (id === 'multi') { state.multi = !state.multi; syncDraw(); tools.hint(); return say(state.multi ? '여러 개 고르기를 켰습니다' : '여러 개 고르기를 껐습니다'); }
