@@ -248,3 +248,27 @@ export function netWallLen(doc) {
   const f = curFloor(doc);
   return f.walls.reduce((s, w) => s + Math.max(0, wallLen(w) - f.openings.filter((o) => o.wall === w.id).reduce((t, o) => t + o.width, 0)), 0);
 }
+
+// 벽 붙이기: 발자국(점 목록)을 가까운 곧은 벽 면에 붙이는 이동량 [dx, dy]. tol(mm) 안의 가장 가까운 면 하나에 붙이고, 그와 꺾인 벽이 또 가까우면 거기에도(모서리). 벽을 가로지르는 발자국은 건너뛴다
+export function wallSnapShift(walls, pts, tol) {
+  const shift = [0, 0], used = [];
+  for (let pass = 0; pass < 2; pass++) {
+    let best = null;
+    for (const w of walls) {
+      const L = dist(w.a, w.b);
+      if (w.bulge || L < 1) continue;
+      const u = [(w.b[0] - w.a[0]) / L, (w.b[1] - w.a[1]) / L], n = [-u[1], u[0]];
+      if (used.some((m) => Math.abs(m[0] * n[0] + m[1] * n[1]) > 0.9)) continue;   // 이미 붙인 벽과 나란한 벽은 건너뛴다
+      const P = pts.map((p) => [p[0] + shift[0] - w.a[0], p[1] + shift[1] - w.a[1]]), along = P.map((q) => q[0] * u[0] + q[1] * u[1]), across = P.map((q) => q[0] * n[0] + q[1] * n[1]);
+      if (Math.max(...along) <= 0 || Math.min(...along) >= L) continue;   // 벽 길이 밖
+      const lo = Math.min(...across), hi = Math.max(...across), h = w.t / 2;
+      if (lo < -h && hi > h) continue;   // 벽을 가로지른다
+      const side = lo + hi >= 0 ? 1 : -1, gap = side > 0 ? lo - h : -h - hi;   // 면까지 틈(음수 = 벽에 묻힘)
+      if (Math.abs(gap) > tol || (best && Math.abs(gap) >= Math.abs(best.gap))) continue;
+      best = { gap, d: [-n[0] * gap * side, -n[1] * gap * side], n };
+    }
+    if (!best) break;
+    shift[0] += best.d[0]; shift[1] += best.d[1]; used.push(best.n);
+  }
+  return [Math.round(shift[0]), Math.round(shift[1])];
+}

@@ -32,7 +32,7 @@ try { storage = window.localStorage; storage.getItem('ain-plan-docs'); } catch (
 const lib = createLibrary(storage), UI_KEY = 'ain-plan-ui';
 const prefs = (() => { try { return JSON.parse(storage.getItem(UI_KEY)) || {}; } catch (e) { return {}; } })();
 const a01 = (v) => (Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 1);
-const state = { locked: false, multi: false, showGrid: prefs.showGrid !== false, showLabels: prefs.showLabels !== false, unit: prefs.unit === 'ft' ? 'ft' : 'mm', wallAlpha: a01(prefs.wallAlpha), floorAlpha: a01(prefs.floorAlpha), areaGross: !!prefs.areaGross, mode: '2d', analysis: null, routes: [], sun: { day: 'winter', t: null, stories: 1, storyMm: 2800, cut: null }, axo: { spread: 1 } };   // analysis: 분석 보기(ANA 의 키, 꺼짐 null) · routes: 사용자가 더한 동선 [[출발 방 id, 도착 방 id]…] · sun: 일조·단면·그림자 보기 상태(day 날 · t 한 시각(분, null = 하루를 겹쳐 본다) · stories × storyMm 그림자 높이 · cut 자를 방) — · axo: 액소 보기의 벌림(0 붙음 ~ 1) — 모두 이 창에서만(저장하지 않는다). 방위·위도는 문서(doc.site)
+const state = { locked: false, multi: false, showGrid: prefs.showGrid !== false, showLabels: prefs.showLabels !== false, unit: prefs.unit === 'ft' ? 'ft' : 'mm', wallAlpha: a01(prefs.wallAlpha), floorAlpha: a01(prefs.floorAlpha), areaGross: !!prefs.areaGross, mode: '2d', cutWalls: true, analysis: null, routes: [], sun: { day: 'winter', t: null, stories: 1, storyMm: 2800, cut: null }, axo: { spread: 1 } };   // analysis: 분석 보기(ANA 의 키, 꺼짐 null) · routes: 사용자가 더한 동선 [[출발 방 id, 도착 방 id]…] · sun: 일조·단면·그림자 보기 상태(day 날 · t 한 시각(분, null = 하루를 겹쳐 본다) · stories × storyMm 그림자 높이 · cut 자를 방) — · axo: 액소 보기의 벌림(0 붙음 ~ 1) — 모두 이 창에서만(저장하지 않는다). 방위·위도는 문서(doc.site)
 const savePrefs = () => { try { storage.setItem(UI_KEY, JSON.stringify({ unit: state.unit, showGrid: state.showGrid, showLabels: state.showLabels, wallAlpha: state.wallAlpha, floorAlpha: state.floorAlpha, areaGross: state.areaGross })); } catch (e) { /* 환경설정은 못 남겨도 된다 */ } };
 const narrow = matchMedia('(max-width: 768px)'), mid = matchMedia('(max-width: 1023px)'), coarse = matchMedia('(pointer: coarse)'), calm = matchMedia('(prefers-reduced-motion: reduce)');   // mid: 중간 폭(태블릿 세로 등)에서는 오른쪽 패널을 접어 두어 캔버스를 넓힌다
 state.touch = narrow.matches || coarse.matches; // 키보드가 없는 화면 — 도구 안내문이 키 대신 누르는 동작을 말하고 [끝내기] 단추가 보인다
@@ -651,7 +651,7 @@ async function enter3d(which = 'iso') {
     if (v3 && v3Plain && sw) { v3.destroy(); v3 = null; } // 처음 열 때 못 읽은 마감재 색을 이제 읽었으면 다시 만든다
     if (!v3) {
       const m = await import('./view3d.js');
-      const v = m.createView3D($('plView3d'), store, { view: which, wallAlpha: state.wallAlpha, floorAlpha: state.floorAlpha, finishColor: (kind, id) => finishMap && finishMap.get(id), onEmpty: () => { exit3d(); openDialog('방이 하나 이상 필요합니다', [h('p', { text: '방을 만들어 주세요.' }), okRow()], { small: true }); } });   // 보는 중에 층을 바꾸거나 새로 만들어 방이 없어지면 빈 화면으로 두지 않는다
+      const v = m.createView3D($('plView3d'), store, { view: which, cut: state.cutWalls, wallAlpha: state.wallAlpha, floorAlpha: state.floorAlpha, finishColor: (kind, id) => finishMap && finishMap.get(id), onEmpty: () => { exit3d(); openDialog('방이 하나 이상 필요합니다', [h('p', { text: '방을 만들어 주세요.' }), okRow()], { small: true }); } });   // 보는 중에 층을 바꾸거나 새로 만들어 방이 없어지면 빈 화면으로 두지 않는다
       if (v && v.ok === false) r = v; else { v3 = v; v3Plain = !sw; }
     }
     if (v3) r = v3.show();
@@ -707,6 +707,7 @@ function wire() {
 
   $('plMode2d').onclick = exit3d; $('plMode3d').onclick = () => enter3d('iso');
   $('plViews').addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) set3dView(b.dataset.view); });
+  $('plVCut').addEventListener('click', () => { state.cutWalls = !state.cutWalls; $('plVCut').setAttribute('aria-pressed', String(state.cutWalls)); if (v3) v3.setCut(state.cutWalls); say(state.cutWalls ? '보는 쪽 벽을 걷었습니다' : '벽을 모두 세웠습니다'); });
   const flag = (id, key) => { $(id).onclick = () => { state[key] = !state[key]; savePrefs(); schedule(); }; };
   flag('plLabels', 'showLabels'); flag('plGrid', 'showGrid');
   $('plAnal').onclick = () => setAnalysis(state.analysis ? null : 'poche');
