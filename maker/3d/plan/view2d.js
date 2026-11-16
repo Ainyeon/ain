@@ -202,14 +202,27 @@ export function createView2D(canvas, { store, getState, getSel, offscreen = fals
     drawPill(ctx, C, fmtLen(wallLen(e.el), st.unit), q[0] + nx * (e.el.t * vp.scale / 2 + 14), q[1] + ny * (e.el.t * vp.scale / 2 + 14), { color: C.accent });
   }
 
+  function itemDims(e, st) { // 제품·가구 치수 — 가로는 뒤쪽 변, 깊이는 오른쪽 변 바깥에
+    const [a, b, c] = e.poly, m = [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2];
+    for (const [p, q, v] of [[a, b, e.el.size[0]], [b, c, e.el.size[1]]]) {
+      const mid = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2], o = [mid[0] - m[0], mid[1] - m[1]], L = Math.hypot(...o) || 1, r = toPx(vp, mid);
+      drawPill(ctx, C, fmtLen(v, st.unit), r[0] + (o[0] / L) * 12, r[1] + (o[1] / L) * 12, { color: C.accent });
+    }
+  }
+
   // 가전 글씨: 분류 이름(굵게)을 상자 가운데에 — 상자 안에 들어갈 때만. 그 아래 모델 코드는 상자 안에서 문 호·방 글씨·분류 이름을 피한 자리에 — 안 들어가면 생략한다(작은 제품은 글씨 없음)
-  function applianceLabels(e, avoid, many) {
+  function applianceLabels(e, avoid, many, dims) {
     const s = vp.scale, [cx, cy] = e.el.c, furn = e.el.kind === 'furniture', name = furn ? e.el.name : APPLIANCE_LABEL[e.el.category] ?? e.el.category, taken = [];
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.font = `${C.fw} ${C.fs3}px ${C.font}`;
     const nw = ctx.measureText(name).width, hx = (nw + 6) / 2 / s, hy = (C.fs3 + 4) / 2 / s, r = [cx - hx, cy - hy, cx + hx, cy + hy];
     if (!rectInsidePoly(e.poly, r)) return;
     const q = toPx(vp, [cx, cy]);
+    if (furn && dims) { // 치수 켜짐: 이름 아래 가로×깊이 — 상자 안에 들어갈 때만, 안 들어가면 이름만
+      const t = `${e.el.size[0]}×${e.el.size[1]}`; ctx.font = `${C.fs4}px ${C.font}`; const tw = ctx.measureText(t).width, H = (C.fs3 + C.fs4 + 6) / 2 / s, W = (Math.max(nw, tw) + 6) / 2 / s;
+      if (rectInsidePoly(e.poly, [cx - W, cy - H, cx + W, cy + H])) { ctx.fillStyle = C.sub; ctx.fillText(t, q[0], q[1] + (C.fs3 + 2) / 2 + 1); ctx.font = `${C.fw} ${C.fs3}px ${C.font}`; ctx.fillStyle = C.ink; ctx.fillText(name, q[0], q[1] - (C.fs4 + 2) / 2); return; }
+      ctx.font = `${C.fw} ${C.fs3}px ${C.font}`;
+    }
     ctx.fillStyle = C.ink; ctx.fillText(name, q[0], q[1]);
     if (furn) return;   // 가구는 이름 한 줄(러그는 draw 에서 글씨를 뺀다 — 위에 놓인 가구 이름과 겹친다)
     taken.push({ poly: [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]], box: r });
@@ -316,7 +329,7 @@ export function createView2D(canvas, { store, getState, getSel, offscreen = fals
       const avoidCode = swingsOf(fc).concat(taken);          // 문 호 + 방 이름·면적 글씨 — 이 프레임에서만 쓰므로 캐시하지 않는다(중심이 비어 있으면 바로 끝난다)
       for (const e of fc.items) {
         if (!vis(e.box)) continue;
-        if (e.el.kind !== 'ac') { if (e.el.shape !== 'rug') applianceLabels(e, avoidCode, many); continue; }
+        if (e.el.kind !== 'ac') { if (e.el.shape !== 'rug') applianceLabels(e, avoidCode, many, st.showDims); continue; }
         if ((e.box[2] - e.box[0]) * s < 44) continue;
         ctx.font = `${C.fs4}px ${C.font}`; ctx.fillStyle = C.sub;   // 가전 글씨가 바꿔 둔 글꼴·색을 되돌린다
         const code = e.el.code || e.el.model.toUpperCase(), cw = ctx.measureText(code).width;
@@ -325,7 +338,8 @@ export function createView2D(canvas, { store, getState, getSel, offscreen = fals
         const q = toPx(vp, [sp.x, sp.y]); ctx.fillText(code, q[0], q[1]);
       }
     }
-    for (const id of sel.ids) { const e = fc.by.get(id); if (!e || !vis(e.box)) continue; if (e.kind === 'wall') wallLabel(e, st); else if (e.kind === 'guide') { const q = toPx(vp, [(e.el.a[0] + e.el.b[0]) / 2, (e.el.a[1] + e.el.b[1]) / 2]); drawPill(ctx, C, fmtLen(Math.hypot(e.el.a[0] - e.el.b[0], e.el.a[1] - e.el.b[1]), st.unit), q[0], q[1] - 14, { color: C.accent }); } }
+    if (st.showDims && !P && !AX) for (const e of fc.walls) if (vis(e.box) && !sel.has(e.el.id) && wallLen(e.el) * s >= 48) wallLabel(e, st);   // 치수 켜짐: 벽 길이(가구 치수는 이름 아래, 고른 것은 변 바깥)
+    for (const id of sel.ids) { const e = fc.by.get(id); if (!e || !vis(e.box)) continue; if (e.kind === 'wall') wallLabel(e, st); else if (e.kind === 'item') itemDims(e, st); else if (e.kind === 'guide') { const q = toPx(vp, [(e.el.a[0] + e.el.b[0]) / 2, (e.el.a[1] + e.el.b[1]) / 2]); drawPill(ctx, C, fmtLen(Math.hypot(e.el.a[0] - e.el.b[0], e.el.a[1] - e.el.b[1]), st.unit), q[0], q[1] - 14, { color: C.accent }); } }
     if (st.analysis === 'route') view.routes.forEach((r, n) => { // 동선: 밝은 선 위에 강조색 선(어떤 바탕에서도 보인다) + 양 끝 점 + 가운데에 번호·거리(번호는 표와 같다)
       if (!r.ok) return;
       const q = r.pts.map((p) => toPx(vp, p));

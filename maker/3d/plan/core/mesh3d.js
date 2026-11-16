@@ -30,9 +30,11 @@ export function furnitureParts(shape, w, d, h) {
   if (shape === 'panel' && w > 120 && h > 200) return [...m('metal', [[-X, -Y, -X + 30, Y, 0, h], [X - 30, -Y, X, Y, 0, h], [-X + 30, -Y, X - 30, Y, h - 25, h]]), ...m('fabric', [[-X + 30, -Y * 0.6, X - 30, Y * 0.6, 60, h - 25]])];
   return m(shape === 'rug' ? 'soft' : shape === 'panel' ? 'fabric' : 'body', [[-X, -Y, X, Y, 0, h]]);   // box · rug · 좁은 panel
 }
+// 모양마다 주 재질 — 가구의 tone(색)이 이 재질을 바꾼다
+export const FURNITURE_MAIN = { table: 'top', ldesk: 'top', workdesk: 'top', chair: 'seat', stool: 'seat', sofa: 'soft', bed: 'wood', shelf: 'wood', box: 'body', panel: 'fabric', rug: 'soft', plant: 'leaf' };
 function furnitureItem(i) { // 전체 상자(poly·z0·z1, 가전과 같다) + 조각(parts)
   const [w, d] = i.size, r = (i.rot * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
-  const parts = furnitureParts(i.shape, w, d, i.heightMm).map(([x0, y0, x1, y1, z0, z1, role]) => { const x = (x0 + x1) / 2, y = (y0 + y1) / 2; return { poly: rectPoly([i.c[0] + x * co - y * si, i.c[1] + x * si + y * co], x1 - x0, y1 - y0, i.rot), z0, z1, role }; });
+  const parts = furnitureParts(i.shape, w, d, i.heightMm).map(([x0, y0, x1, y1, z0, z1, r0]) => { const role = i.tone && r0 === FURNITURE_MAIN[i.shape] ? i.tone : r0; const x = (x0 + x1) / 2, y = (y0 + y1) / 2; return { poly: rectPoly([i.c[0] + x * co - y * si, i.c[1] + x * si + y * co], x1 - x0, y1 - y0, i.rot), z0, z1, role }; });
   return { id: i.id, kind: i.kind, shape: i.shape, name: i.name, c: i.c, rot: i.rot, size: i.size, heightMm: i.heightMm, poly: rectPoly(i.c, w, d, i.rot), z0: 0, z1: i.heightMm, parts };
 }
 

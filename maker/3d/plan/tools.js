@@ -338,7 +338,7 @@ export function createTools({ store, view, sel, ui, state }) {
         const p = placeAt(c);
         if (!fl().rooms.some((r) => pointInPoly(r.poly, p))) return ui.toast('방 안에서 놓아 주세요', 'err');
         if (fl().items.some((i) => dist(i.c, p) < 1 && i.size[0] === opts.size[0] && i.size[1] === opts.size[1])) return; // 같은 자리에 같은 크기를 또 누르면(더블클릭) 두 대가 겹쳐 놓이므로 무시 — 크기가 다르면(러그 위 탁자, 에어컨 아래 책상) 놓는다
-        const ids = run(opts.kind === 'furniture' ? { type: 'addItem', kind: 'furniture', shape: opts.shape, name: opts.name, c: p, rot, size: opts.size, heightMm: opts.heightMm }
+        const ids = run(opts.kind === 'furniture' ? { type: 'addItem', kind: 'furniture', shape: opts.shape, name: opts.name, c: p, rot, size: opts.size, heightMm: opts.heightMm, ...(opts.tone ? { tone: opts.tone } : {}) }
           : opts.kind === 'appliance' // 가전: 패널이 공식 제원의 크기·높이를 실어 보낸다(없으면 core 가 거절한다). 그 밖은 시스템에어컨
           ? { type: 'addItem', kind: 'appliance', category: opts.category, brand: opts.brand, model: opts.model, name: opts.name || '', c: p, rot, size: opts.size, heightMm: opts.heightMm, code: opts.code || opts.model, url: opts.url }
           : { type: 'addItem', kind: 'ac', model: opts.model, brand: opts.brand, c: p, rot, capacityKw: opts.capacityKw ?? null, code: opts.code || '', size: opts.size });

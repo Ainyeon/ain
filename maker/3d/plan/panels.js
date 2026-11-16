@@ -95,7 +95,7 @@ export function filterFurniture(items, { type = 'all', place = 'all', query = ''
   const q = norm(query);
   return items.filter((m) => (type === 'all' || m.type === type) && (place === 'all' || m.place === place) && (!ids || ids.has(m.id)) && (!q || norm(m.name).includes(q)));
 }
-export const furnitureOpts = (m) => ({ kind: 'furniture', shape: m.shape, name: m.name, size: [m.widthMm, m.depthMm], heightMm: m.heightMm }); // ctx.setTool('placeItem', …) 에 넘기는 값
+export const furnitureOpts = (m) => ({ kind: 'furniture', shape: m.shape, name: m.name, size: [m.widthMm, m.depthMm], heightMm: m.heightMm, ...(m.tone ? { tone: m.tone } : {}) }); // ctx.setTool('placeItem', …) 에 넘기는 값
 
 /* ---------- 자료 불러오기 ---------- */
 const cache = new Map();
