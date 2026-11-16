@@ -267,7 +267,7 @@ const nearV = (a, b, eps, msg) => a.forEach((v, i) => near(v, b[i], eps, msg));
       const { v } = mkView(s); assert.deepStrictEqual(v.show(), { ok: true }); settle();
       const g0 = v.stats().geometries; assert.strictEqual(g0, 4, '벽·바닥·에어컨·가전 지오메트리 넷');
       for (let i = 0; i < 6; i++) { s.exec({ ...FR, c: [3000 + i * 10, 1500] }); settle(); s.undo(); settle(); s.exec({ type: 'move', ids: ['I1'], dx: 10, dy: 0 }); settle(); }
-      assert.strictEqual(v.stats().geometries, g0, '가전을 놓고 지우고 옮겨도 지오메트리 수가 그대로(누수 0)'); assert.strictEqual(v.stats().textures, 0);
+      assert.strictEqual(v.stats().geometries, g0, '가전을 놓고 지우고 옮겨도 지오메트리 수가 그대로(누수 0)'); assert.ok(v.stats().textures <= 1, '텍스처는 그림자 지도 하나뿐');
       assert.ok(v.stats().rebuilds >= 18, '다시 지었다');
       s.exec({ type: 'remove', ids: ['I1', 'I2'] }); settle(); assert.strictEqual(v.stats().geometries, g0 - 1, '가전이 모두 없어지면 그 지오메트리는 내려간다');
       s.undo(); settle(); assert.strictEqual(v.stats().geometries, g0, '되돌리면 다시 올라온다');

@@ -620,7 +620,7 @@ async function openPanel(name) {
 /* ---------- 3D (view3d.js) ---------- */
 let finishMap = null, v3Plain = false, entering3d = false; // v3Plain = 3D 화면을 마감재 색 없이 만들었다
 async function finishColors() { // 마감재 id → 색(panels.js 의 자료). 못 읽으면 저장해 두지 않는다 — 다음 3D 진입에서 다시 읽는다
-  if (!finishMap) { try { finishMap = new Map(((await (await getPanels()).loadFinishes()).finishes || []).map((x) => [x.id, x.sw])); } catch (e) { /* 이번에는 기본 색 */ } }
+  if (!finishMap) { try { const fd = await (await getPanels()).loadFinishes(); finishMap = new Map([...(fd.finishes || []), ...(fd.furniture || [])].map((x) => [x.id, x.sw])); } catch (e) { /* 이번에는 기본 색 */ } }
   return finishMap;
 }
 async function enter3d(which = 'iso') {

@@ -16,6 +16,9 @@ export const VIEWS = Object.freeze({
 
 /* ---------- 순수 계산 1: buildMesh 결과 → 정점·인덱스 자료 ---------- */
 const soup = () => ({ pos: [], idx: [] });
+// 가구 재질(core/mesh3d.js furnitureParts 의 재질 이름). 색은 마감재 자료(data/finishes.json furniture 의 furn-<재질>)
+export const FURN_ROLES = ['top', 'body', 'metal', 'seat', 'fabric', 'wood', 'soft', 'leaf', 'pot', 'screen'];
+const FURN_FINISH = { metal: [0.45, 0.4], screen: [0.25, 0.1] };   // [거칠기, 금속성] — 나머지는 무광
 const fin = (s) => ({ pos: Float32Array.from(s.pos), idx: Uint32Array.from(s.idx) });
 
 // 평평한 다각형 한 장(높이 y mm). up=true 면 위를, false 면 아래를 본다. 오목해도 된다
@@ -40,17 +43,24 @@ function addPrism(out, poly, z0, z1, bottom) {
   if (bottom) addFace(out, ring, z0, false);
 }
 // buildMesh(doc) 결과 → {walls, floors, ac, appliance} 각각 {pos:Float32Array(x,y,z 연속), idx:Uint32Array}. 벽은 개구부로 이미 나뉜 조각 그대로(구멍은 조각 사이의 빈틈). 가전은 바닥에서 제품 높이까지의 상자(밑면 없음)
-export function meshData(mesh) {
-  const W = soup(), F = soup(), A = soup(), P = soup(), U = soup();
-  for (const w of mesh.walls) addPrism(W, w.poly, w.z0, w.z1, w.z0 > 0);          // 상인방 밑면만 보인다
+// cut = 보는 쪽 평면 방향 [x, y](단위 벡터) — 모형 중심에서 그쪽에 있는 벽은 CUT_MM 높이로 잘라 안이 보이게 한다(인형집 단면). null 이면 벽 전체
+export const CUT_MM = 100;
+export function meshData(mesh, cut = null) {
+  const W = soup(), F = soup(), A = soup(), P = soup(), U = soup(), R = Object.fromEntries(FURN_ROLES.map((r) => [r, soup()]));
+  const b = mesh.bounds, C = b ? [(b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2] : [0, 0];
+  const near = (poly) => { if (!cut) return false; const n = poly.length, m = poly.reduce((a, p) => [a[0] + p[0] / n, a[1] + p[1] / n], [0, 0]); return (m[0] - C[0]) * cut[0] + (m[1] - C[1]) * cut[1] > 0; };
+  for (const w of mesh.walls) {
+    if (!near(w.poly)) { addPrism(W, w.poly, w.z0, w.z1, w.z0 > 0); continue; }          // 상인방 밑면만 보인다
+    if (w.z0 < CUT_MM) addPrism(W, w.poly, w.z0, Math.min(w.z1, CUT_MM), w.z0 > 0);    // 보는 쪽 벽: 밑동만
+  }
   for (const f of mesh.floors) { if (f.thickness > 0) addPrism(F, f.poly, -f.thickness, 0, false); else addFace(F, f.poly, 0, true); }
   for (const i of mesh.items) { // 판넬은 천장면(mountZ) 아래로 얇게, 본체는 그 위(천장 속)로
     if (i.kind === 'appliance') { addPrism(P, i.poly, i.z0, i.z1, false); continue; }
-    if (i.kind === 'furniture') { for (const p of i.parts) addPrism(U, p.poly, p.z0, p.z1, p.z0 > 0); continue; }   // 가구: 상자 조합(뜬 조각만 밑면)
+    if (i.kind === 'furniture') { for (const p of i.parts) { addPrism(U, p.poly, p.z0, p.z1, p.z0 > 0); addPrism(R[p.role] ?? R.wood, p.poly, p.z0, p.z1, p.z0 > 0); } continue; }   // 가구: 상자 조합(뜬 조각만 밑면)
     addPrism(A, i.poly, i.z0, i.z1, true);
     addPrism(A, i.poly.map((p) => [i.c[0] + (p[0] - i.c[0]) * BODY_SCALE, i.c[1] + (p[1] - i.c[1]) * BODY_SCALE]), i.mountZ, i.mountZ + i.bodyH, false);
   }
-  return { walls: fin(W), floors: fin(F), ac: fin(A), appliance: fin(P), furniture: fin(U) };
+  return { walls: fin(W), floors: fin(F), ac: fin(A), appliance: fin(P), furniture: fin(U), furn: Object.fromEntries(FURN_ROLES.map((r) => [r, fin(R[r])])) };   // furniture = 가구 전체(경계·시험용), furn = 재질별(그리기용)
 }
 export function soupBounds(s) { // 정점 자료의 경계 {min:[x,y,z], max:[x,y,z]}(m), 비었으면 null
   if (!s.pos.length) return null;
@@ -111,10 +121,13 @@ export function createView3D(container, store, opts = {}) {
   let renderer, canvas, controls, ro, raf = 0, inFrame = false, tw = null, fadeSeq = 0, fadeT = 0, fading = false, buildT = 0, moved = false, applied = null, builtCur = -1, refitNext = false, emptyFired = false;
   const scene = new THREE.Scene();
   const mat = () => new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
-  const mats = { wall: mat(), floor: mat(), ac: mat(), appliance: mat(), furniture: mat() };
+  const mats = { wall: mat(), floor: mat(), ac: mat(), appliance: mat(), ...Object.fromEntries(FURN_ROLES.map((r) => [`f_${r}`, mat()])) };
+  for (const [r, [ro, me]] of Object.entries(FURN_FINISH)) Object.assign(mats[`f_${r}`], { roughness: ro, metalness: me });
   const meshes = Object.fromEntries(Object.entries(mats).map(([k, m]) => { const o = new THREE.Mesh(new THREE.BufferGeometry(), m); o.frustumCulled = false; o.visible = false; scene.add(o); return [k, o]; }));
-  const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-3, 6, 4);
-  scene.add(new THREE.AmbientLight(0xffffff, 1.2), sun); // 조명 둘 — 그림자 없음
+  const sun = new THREE.DirectionalLight(0xffffff, 2.1); sun.position.set(-3, 6, 4);
+  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02; scene.add(sun.target);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.85), new THREE.HemisphereLight(0xffffff, 0x8a857b, 0.6), sun); // 해 하나(부드러운 그림자) + 고른 빛
+  for (const [k, o] of Object.entries(meshes)) { o.castShadow = k !== 'floor'; o.receiveShadow = true; }
   const persp = new THREE.PerspectiveCamera(VIEWS.free.fov, 1, 0.05, 100), ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
   let camera = VIEWS[view].type === 'ortho' ? ortho : persp;
 
@@ -139,18 +152,38 @@ export function createView3D(container, store, opts = {}) {
     mats.floor.color.set(pick('floor', tok('--c-line-strong')));
     mats.ac.color.set(tok('--c-accent'));
     mats.appliance.color.set(tok('--c-control')); // 가전: 중간 회색(벽의 흰색·바닥의 연회색과 구분)
-    mats.furniture.color.set(pick('furniture', tok('--c-control'))); // 가구: 나무색(마감재 자료의 색) — 못 읽으면 가전과 같은 회색
+    for (const r of FURN_ROLES) { let c = null; try { c = opts.finishColor?.('furniture', `furn-${r}`); } catch { /* 기본 색 */ } mats[`f_${r}`].color.set(c || tok('--c-control')); } // 가구: 재질별 색(못 읽으면 가전과 같은 회색)
     renderer?.setClearColor(new THREE.Color(tok('--c-bg')), 1);
   }
   function rebuild() {
     clearTimeout(buildT); buildT = 0;
     dirty = false; rebuilds++;
-    const doc = store.doc, f = doc.floors[doc.cur], mesh = buildMesh(doc, doc.cur), data = meshData(mesh), key = { walls: 'wall', floors: 'floor', ac: 'ac', appliance: 'appliance', furniture: 'furniture' };
+    const doc = store.doc, f = doc.floors[doc.cur], mesh = buildMesh(doc, doc.cur), data = meshData(mesh, cutNow()), key = { walls: 'wall', floors: 'floor', ac: 'ac', appliance: 'appliance' };
     builtCur = doc.cur;
-    for (const [k, mk] of Object.entries(key)) { const o = meshes[mk]; o.geometry.dispose(); o.geometry = geometryOf(data[k]); o.visible = data[k].idx.length > 0; }
-    bounds = mesh.bounds; fitPending = true;
+    const put = (o, sd) => { o.geometry.dispose(); o.geometry = geometryOf(sd); o.visible = sd.idx.length > 0; };
+    for (const [k, mk] of Object.entries(key)) put(meshes[mk], data[k]);
+    for (const r of FURN_ROLES) put(meshes[`f_${r}`], data.furn[r]);
+    bounds = mesh.bounds; fitPending = true; aimSun(bounds);
     theme(f);
     applyAlpha();
+  }
+  let cutAt = null; // 지금 벽을 자른 방향(평면 단위 벡터, 평면 뷰어는 null)
+  function cutNow() { // 카메라가 보는 쪽 — 평면 뷰어는 자르지 않는다
+    if (view === 'plan') return (cutAt = null);
+    const p = camera.position, t = controls?.target; let x = p.x - (t?.x ?? 0), y = p.z - (t?.z ?? 0), r = Math.hypot(x, y);
+    if (!controls || r < 1e-6) { const az = VIEWS[view].az * RAD; x = Math.sin(az); y = Math.cos(az); r = 1; }
+    return (cutAt = [x / r, y / r]);
+  }
+  function recut() { // 카메라가 돈 뒤 자를 벽을 다시 고른다(벽만 다시 짓는다)
+    const was = cutAt, now = cutNow();
+    if (was === now || (was && now && Math.abs(was[0] - now[0]) + Math.abs(was[1] - now[1]) < 1e-3)) return;
+    const doc = store.doc, o = meshes.wall, d = meshData(buildMesh(doc, doc.cur), now).walls;
+    o.geometry.dispose(); o.geometry = geometryOf(d); o.visible = d.idx.length > 0 && wallA > 0; requestRender();
+  }
+  function aimSun(b) { // 그림자 상자를 모형에 맞춘다(해 방향은 그대로)
+    const B = b ?? { x0: 0, y0: 0, x1: 4000, y1: 4000, z0: 0, z1: 2300 }, c = [((B.x0 + B.x1) / 2) * MM, 0, ((B.y0 + B.y1) / 2) * MM], R = (Math.hypot(B.x1 - B.x0, B.y1 - B.y0, B.z1 - B.z0) / 2) * MM || 3, dir = new THREE.Vector3(-3, 6, 4).normalize();
+    sun.target.position.set(...c); sun.position.set(c[0] + dir.x * R * 2, c[1] + dir.y * R * 2, c[2] + dir.z * R * 2);
+    Object.assign(sun.shadow.camera, { left: -R * 1.1, right: R * 1.1, top: R * 1.1, bottom: -R * 1.1, near: 0.1, far: R * 4 }); sun.shadow.camera.updateProjectionMatrix();
   }
   function applyAlpha() { // 반투명이면 깊이를 쓰지 않아야 뒤의 것이 비친다
     for (const [k, a] of [['wall', wallA], ['floor', floorA]]) { const m = mats[k]; m.transparent = a < 1; m.opacity = a; m.depthWrite = a >= 1; meshes[k].visible = a > 0 && meshes[k].geometry.index !== null; }
@@ -173,11 +206,11 @@ export function createView3D(container, store, opts = {}) {
     clearTimeout(fadeT); fading = false; tw = null; controls.enabled = true; limits(spec); applied = name; moved = false;
     const still = instant || reduced();
     if (want !== camera) {
-      const swap = () => { if (seq !== fadeSeq || dead) return; fading = false; camera = want; controls.object = want; place(spec); canvas.style.opacity = '1'; requestRender(); };
+      const swap = () => { if (seq !== fadeSeq || dead) return; fading = false; camera = want; controls.object = want; place(spec); recut(); canvas.style.opacity = '1'; requestRender(); };
       if (still) swap(); else { fading = true; canvas.style.opacity = '0'; fadeT = setTimeout(swap, tokMs('--t-fast', 100)); }
     } else {
       canvas.style.opacity = '1'; // 흐려지는 중에 같은 투영으로 되돌아오면 위 clearTimeout 이 swap 을 취소했으므로 여기서 다시 보이게 한다
-      if (still) { place(spec); requestRender(); }
+      if (still) { place(spec); recut(); requestRender(); }
       else {
         camera.near = spec.near; camera.far = spec.far;
         tw = { t0: performance.now(), dur: tokMs('--t-slow', 350), spec, from: { pos: camera.position.clone(), target: controls.target.clone(), size: camera.top, zoom: camera.zoom } };
@@ -187,7 +220,7 @@ export function createView3D(container, store, opts = {}) {
   }
   function stepTween(now) {
     const k = Math.min(1, Math.max(0, (now - tw.t0) / tw.dur)), e = ease(k), { spec, from } = tw;
-    if (k >= 1) { tw = null; controls.enabled = true; place(spec); return; }
+    if (k >= 1) { tw = null; controls.enabled = true; place(spec); recut(); return; }
     camera.position.lerpVectors(from.pos, new THREE.Vector3(...spec.pos), e);
     controls.target.lerpVectors(from.target, new THREE.Vector3(...spec.target), e);
     camera.zoom = from.zoom + (1 - from.zoom) * e;
@@ -202,6 +235,7 @@ export function createView3D(container, store, opts = {}) {
       canvas = document.createElement('canvas');
       renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
       if (!renderer.getContext()) throw new Error('webgl');
+      renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     } catch { renderer?.dispose(); renderer = canvas = null; return false; }
     Object.assign(canvas.style, { display: 'block', width: '100%', height: '100%', transition: 'opacity var(--t-fast) var(--ease)' });
     canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', '도면 입체 보기');
@@ -214,6 +248,7 @@ export function createView3D(container, store, opts = {}) {
     controls.zoomToCursor = true; controls.maxPolarAngle = Math.PI / 2 - 0.02;               // 바닥 밑으로 못 간다
     controls.addEventListener('change', () => { if (!inFrame) requestRender(); });
     controls.addEventListener('start', () => { moved = true; });
+    controls.addEventListener('end', recut);   // 돌리고 놓으면 보는 쪽 벽을 다시 자른다
     ro = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
     ro?.observe(container);
     window.addEventListener('resize', resize);   // 확대(Ctrl +/−)는 창 resize 로 온다

@@ -3,6 +3,11 @@
 "items": [
 {"id": "desk-1200", "place": "office", "type": "desk", "shape": "table", "name": "책상 1200", "widthMm": 1200, "depthMm": 700, "heightMm": 720},
 {"id": "desk-1400", "place": "office", "type": "desk", "shape": "table", "name": "책상 1400", "widthMm": 1400, "depthMm": 700, "heightMm": 720},
+{"id": "workdesk-1200", "place": "office", "type": "desk", "shape": "workdesk", "name": "업무 책상 1200", "widthMm": 1200, "depthMm": 700, "heightMm": 1200},
+{"id": "workdesk-1400", "place": "office", "type": "desk", "shape": "workdesk", "name": "업무 책상 1400", "widthMm": 1400, "depthMm": 700, "heightMm": 1200},
+{"id": "workdesk-1600", "place": "office", "type": "desk", "shape": "workdesk", "name": "업무 책상 1600", "widthMm": 1600, "depthMm": 800, "heightMm": 1200},
+{"id": "table-high", "place": "office", "type": "table", "shape": "table", "name": "하이 테이블", "widthMm": 1200, "depthMm": 500, "heightMm": 1050},
+{"id": "stool-bar", "place": "office", "type": "chair", "shape": "stool", "name": "바 스툴", "widthMm": 400, "depthMm": 400, "heightMm": 750},
 {"id": "desk-1600", "place": "office", "type": "desk", "shape": "table", "name": "책상 1600", "widthMm": 1600, "depthMm": 800, "heightMm": 720},
 {"id": "desk-1800", "place": "office", "type": "desk", "shape": "table", "name": "책상 1800", "widthMm": 1800, "depthMm": 800, "heightMm": 720},
 {"id": "desk-l", "place": "office", "type": "desk", "shape": "ldesk", "name": "L형 책상", "widthMm": 1600, "depthMm": 1400, "heightMm": 720},
