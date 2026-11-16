@@ -57,8 +57,8 @@ assert.ok(!/postMessage\([^)]*,\s*['"]\*['"]\s*\)/.test(js), "임베드 알림�
 assert.ok(/html\[data-partner\] \.tnav/.test(css) && /html\[data-embed\] \.page-head/.test(css), '파트너·임베드 화면은 에인연 메뉴를 가린다');
 const lum = (h) => { const v = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4)); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
 const cr = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + .05) / (y + .05); };
-const partners = fs.readdirSync(path.join(__dirname, '..', 'maker/3d/partners')).filter((f) => f.endsWith('.json'));
-assert.ok(partners.length >= 1, '파트너 설정이 하나는 있다');
+const pdir = path.join(__dirname, '..', 'maker/3d/partners');
+const partners = fs.existsSync(pdir) ? fs.readdirSync(pdir).filter((f) => f.endsWith('.json')) : [];   // 지금은 파트너 없음 — 생기면 아래 검사를 받는다
 for (const f of partners) {
   const c = JSON.parse(read('maker/3d/partners/' + f)), id = f.replace(/\.json$/, '');
   assert.ok(/^[a-z0-9-]{1,32}$/.test(id), id + ': 이름은 소문자·숫자·-');
