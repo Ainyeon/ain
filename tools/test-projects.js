@@ -33,7 +33,7 @@ const root = path.join(__dirname, '..'), read = (p) => fs.readFileSync(path.join
   assert.ok(/confirmDelete\(m, fk\)/.test(pj) && /lib\.deletePlan\(m\.id\); close\(\)/.test(pj) && (pj.match(/lib\.deletePlan/g) || []).length === 1, '완전 삭제는 확인창 한 곳에서만');
   assert.ok(/\/maker\/3d\/\?ask=/.test(pj) && /\/maker\/3d\/plan\/\?new=1/.test(pj) && /\?doc=/.test(pj), '시작 페이지로 말 넘기기·새 도면·도면 열기 주소');
   // 시작 페이지 연결
-  const st = read('maker/3d/index.html'); for (const href of ['/maker/3d/projects/', '/maker/3d/plan/', '/maker/3d/maps/']) assert.ok(st.includes('href="' + href + '"'), '시작 페이지 메뉴: ' + href);
+  const st = read('maker/3d/index.html'); for (const href of ['/maker/3d/projects/', '/maker/3d/plan/?new=1', '/maker/3d/maps/']) assert.ok(st.includes('href="' + href + '"'), '시작 페이지 메뉴: ' + href);
   const js = read('maker/3d/studio.js'); assert.ok(/searchParams\.get\('ask'\)/.test(js) && /searchParams\.delete\('ask'\)/.test(js), '?ask= 를 실행하고 주소에서 지운다');
   console.log('test-projects: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

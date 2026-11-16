@@ -232,13 +232,8 @@
 @media (max-height: 520px) { .st-tour-art { aspect-ratio: 3 / 1; } }   /* 가로로 든 폰 — 그림을 낮춘다(넘치면 본문만 안에서 스크롤) */
 @media (max-width: 640px) { .st-tour-p p { min-height: calc(var(--lh-3) * 2em); } }   /* 단계마다 문장 줄 수가 달라도 창 높이가 뛰지 않게 */
 /* 말로 시키기 — 입력 카드 + 예시 문장 알약 + 응답 줄(정해진 말을 알아듣는다). 구조·동작만 참고: 카드 하나, 아래에 눌러 보는 예시 */
-.st-apps { display: flex; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-3) 24px 0; }
-.st-apps a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--sp-4); border: 1px solid var(--c-line-strong); border-radius: var(--r-1); background: var(--c-surface); color: var(--c-ink); font-size: var(--fs-3); font-weight: var(--fw-bold); text-decoration: none; -webkit-tap-highlight-color: transparent;
   transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease), scale var(--t-fast) var(--ease); }
-.st-apps a:active { scale: .98; }
-.st-apps a:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
-@media (hover: hover) { .st-apps a:hover { border-color: var(--c-control); background: var(--c-surface-sub); } }
-html[data-embed] .st-apps { display: none; }
+html[data-embed] .st-start, html[data-embed] .st-recent { display: none; }
 .st-ask { padding: var(--sp-4) 24px 0; }
 .st-ask-card { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1); background: var(--c-surface); border: 1px solid var(--c-control); border-radius: var(--r-2);   /* 안쪽 단추 r-1 6 + 여백 4 = 10 — 같은 중심의 둥글기 */
   transition: border-color var(--t-base) var(--ease), box-shadow var(--t-base) var(--ease); }
@@ -301,7 +296,7 @@ html[data-embed] .st-ask { display: none; }   /* 호스트 화면 안에서는 �
 .st-save:disabled, .st-go button:disabled, #stGo:disabled { opacity: 1; background: var(--c-accent-line); color: var(--c-ink-sub); cursor: default; }   /* 비활성도 읽히게 — 흰 글자 3.07 → 4.5 이상 */
 @media (hover: hover) { .st-jobs button:hover { border-color: var(--c-line); } }   /* 눌러 볼 때 구분선은 그대로, 배경만 */
 @media (max-width: 768px) {
-  .st-wiz, .st-tools, .st-sum, .st-ask, .st-apps { padding-left: 16px; padding-right: 16px; }
+  .st-wiz, .st-tools, .st-sum, .st-ask, .st-start, .st-recent { padding-left: 16px; padding-right: 16px; }
   .st-panel { padding: var(--sp-4) 0 0; }
   .st-canvas[style] { max-width: min(100%, calc(60svh * var(--ar))); margin-inline: auto; }   /* 칠 캔버스 위아래에 페이지를 밀 자리를 남긴다 */
 }
@@ -333,3 +328,27 @@ html[data-partner] body.has-tabbar, html[data-embed] body.has-tabbar { padding-b
 @media (max-width: 900px) {   /* 고정 바가 있는 폭 — 바 높이(70)만큼 페이지 아래를 비워 '에인연 제공' 링크가 가려지지 않게 */
   html[data-partner] body:has(.st-bar:not([hidden])), html[data-embed] body:has(.st-bar:not([hidden])) { padding-bottom: calc(var(--sp-3) + 70px + var(--sp-3) + env(safe-area-inset-bottom)); }
 }
+
+/* 새로 시작 카드 3 · 최근 프로젝트 — 아이콘은 Phosphor(MIT, plan/icons/) */
+.st-start, .st-recent { padding: var(--sp-4) 24px 0; }
+.st-gos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: var(--sp-2); margin-top: var(--sp-2); }
+.st-go { display: flex; align-items: center; gap: var(--sp-3); min-height: 72px; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--c-line-strong); border-radius: var(--r-2); background: var(--c-surface); color: var(--c-ink); text-decoration: none; transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease); }
+.st-go:focus-visible, .st-pj:focus-visible, .st-more:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+@media (hover: hover) { .st-go:hover, .st-pj:hover { border-color: var(--c-control); background: var(--c-surface-sub); } }
+.st-ico { flex: none; width: 28px; height: 28px; background: var(--c-accent); -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+.i-magnifying-glass { --i: url("/maker/3d/plan/icons/magnifying-glass.svg"); }
+.i-image { --i: url("/maker/3d/plan/icons/image.svg"); }
+.i-blueprint { --i: url("/maker/3d/plan/icons/blueprint.svg"); }
+.st-go-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.st-go-t strong { font-size: var(--fs-3); font-weight: var(--fw-semi); }
+.st-go-t span { font-size: var(--fs-4); color: var(--c-ink-sub); }
+.st-recent-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
+.st-more { font-size: var(--fs-4); color: var(--c-accent); }
+.st-recent-l { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: var(--sp-2); margin: var(--sp-2) 0 0; padding: 0; list-style: none; }
+.st-recent-e { grid-column: 1 / -1; padding: var(--sp-3) 0; font-size: var(--fs-4); color: var(--c-ink-faint); }
+.st-pj { display: flex; flex-direction: column; gap: 2px; padding: var(--sp-2); border: 1px solid var(--c-line); border-radius: var(--r-2); background: var(--c-surface); color: var(--c-ink); text-decoration: none; }
+.st-pj-th { display: block; aspect-ratio: 4 / 3; margin-bottom: var(--sp-1); border-radius: var(--r-1); background: var(--c-surface-sub); overflow: hidden; }
+.st-pj-th svg { display: block; width: 100%; height: 100%; }
+.st-pj strong { font-size: var(--fs-3); font-weight: var(--fw-semi); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.st-pj span:last-child { font-size: var(--fs-4); color: var(--c-ink-faint); }
+.st-pj-th .th-room { fill: var(--c-accent-bg); stroke: none; } .st-pj-th .th-wall { fill: none; stroke: var(--c-ink-sub); stroke-linecap: square; } .st-pj-th .th-col { fill: var(--c-ink-sub); } .st-pj-th .th-ac { fill: var(--c-accent); }   /* 썸네일 SVG(projects/thumb.js) — 내 프로젝트와 같은 색 */

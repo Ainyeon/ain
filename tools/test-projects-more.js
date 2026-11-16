@@ -35,9 +35,10 @@ const root = path.join(__dirname, '..'), read = (p) => fs.readFileSync(path.join
   const csp = Object.fromEntries(html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1].split(';').map((s) => s.trim().split(/ (.*)/s)).filter((x) => x[0]).map((x) => [x[0], x[1]]));
   assert.strictEqual(csp['default-src'], "'self'"); assert.strictEqual(csp['script-src'], "'self' https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/", 'script-src 는 정확히 이 둘'); for (const [k, v] of [['base-uri', "'none'"], ['object-src', "'none'"], ['form-action', "'self'"]]) assert.strictEqual(csp[k], v, k);
   assert.ok(/id: 'main'/.test(read('maker/3d/app/shell.js')), '#main 대상');
-  // 시작 페이지 .st-apps — 라벨과 주소를 짝으로
-  const nav = read('maker/3d/index.html').match(/<nav class="st-apps"([^>]*)>([\s\S]*?)<\/nav>/); assert.ok(nav && !/hidden/.test(nav[1]), '.st-apps 가 보인다');
-  assert.deepStrictEqual([...nav[2].matchAll(/<a href="([^"]+)">([^<]+)<\/a>/g)].map((m) => [m[2], m[1]]), [['내 프로젝트', '/maker/3d/projects/'], ['도면 그리기', '/maker/3d/plan/'], ['도면 검색', '/maker/3d/maps/']], '시작 페이지 메뉴 짝');
+  // 시작 페이지 '새로 시작' 카드 — 이름과 주소를 짝으로, '최근 프로젝트'의 전체 보기는 내 프로젝트로
+  const hh = read('maker/3d/index.html'), nav = hh.match(/<nav class="st-gos"([^>]*)>([\s\S]*?)<\/nav>/); assert.ok(nav && !/hidden/.test(nav[1]), '.st-gos 가 보인다');
+  assert.deepStrictEqual([...nav[2].matchAll(/<a class="st-go" href="([^"]+)">[\s\S]*?<strong>([^<]+)<\/strong>/g)].map((m) => [m[2], m[1]]), [['우리 집 도면 찾기', '/maker/3d/maps/'], ['도면 올리기', '#stIn'], ['직접 그리기', '/maker/3d/plan/?new=1']], '새로 시작 카드 짝');
+  assert.ok(/<a class="st-more" href="\/maker\/3d\/projects\/">전체 보기<\/a>/.test(hh) && /id="stIn"/.test(hh), '전체 보기 → 내 프로젝트, #stIn 이 있다');
   // studio.js ?ask= — 조각을 꺼내 실행
   const js = read('maker/3d/studio.js'), i = js.indexOf('const url = new URL(location.href), ask'), j = js.indexOf('\n', js.indexOf("else if (location.hash === '#stAsk')", i)); assert.ok(i > 0 && j > i, '?ask= 조각을 찾는다');
   const exec = (href) => { const out = { called: [], replaced: null }, location = new URL(href), history = { state: 7, replaceState: (s, t, u) => { out.replaced = u; } }, el = { scrollIntoView() {}, focus() {} };

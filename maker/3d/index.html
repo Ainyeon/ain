@@ -23,12 +23,13 @@
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
   <link rel="stylesheet" href="/assets/css/components.css?v=31">
   <link rel="stylesheet" href="/maker/maker.css?v=30">
-  <link rel="stylesheet" href="/maker/3d/studio.css?v=12">
+  <link rel="stylesheet" href="/maker/3d/studio.css?v=13">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js" integrity="sha384-WgXwGL6fUsYJWNaKJgVbrJKGRQwc1vieh2oy4kw9nXqpNDz3tdSsqEYUgeHD/NuF" crossorigin="anonymous"></script>
   <script defer src="/auth.js?v=31"></script>
   <script defer src="/assets/js/ain-common.js?v=30"></script>
   <script defer src="/maker/3d/ask.js?v=1"></script>
   <script defer src="/maker/3d/studio.js?v=16"></script>
+  <script type="module" src="/maker/3d/home.js?v=1"></script>
 </head>
 <body class="has-tabbar">
   <header class="pt-bar" id="ptBar" hidden>
@@ -60,11 +61,18 @@
       </div>
     </header>
 
-    <nav class="st-apps" aria-label="스튜디오 메뉴">
-      <a href="/maker/3d/projects/">내 프로젝트</a>
-      <a href="/maker/3d/plan/">도면 그리기</a>
-      <a href="/maker/3d/maps/">도면 검색</a>
-    </nav>
+    <section class="st-start" aria-labelledby="stStartH">
+      <h2 class="st-sh" id="stStartH">새로 시작</h2>
+      <nav class="st-gos" aria-label="새로 시작">
+        <a class="st-go" href="/maker/3d/maps/"><span class="st-ico i-magnifying-glass" aria-hidden="true"></span><span class="st-go-t"><strong>우리 집 도면 찾기</strong><span>단지·주소로 평면을 찾습니다</span></span></a>
+        <a class="st-go" href="#stIn"><span class="st-ico i-image" aria-hidden="true"></span><span class="st-go-t"><strong>도면 올리기</strong><span>DWG·PDF·사진에서 모형을 만듭니다</span></span></a>
+        <a class="st-go" href="/maker/3d/plan/?new=1"><span class="st-ico i-blueprint" aria-hidden="true"></span><span class="st-go-t"><strong>직접 그리기</strong><span>벽과 방을 그립니다</span></span></a>
+      </nav>
+    </section>
+    <section class="st-recent" aria-labelledby="stRecentH">
+      <div class="st-recent-h"><h2 class="st-sh" id="stRecentH">최근 프로젝트</h2><a class="st-more" href="/maker/3d/projects/">전체 보기</a></div>
+      <ul class="st-recent-l" id="stRecent"><li class="st-recent-e">저장한 도면이 여기에 나옵니다</li></ul>
+    </section>
     <section class="st-ask" id="stAsk" aria-labelledby="stAskH">
       <h2 class="st-vh" id="stAskH">말로 시키기</h2>
       <form class="st-ask-card" id="stAskForm" autocomplete="off">
