@@ -7,8 +7,8 @@ export function furnitureParts(shape, w, d, h) {
   const X = w / 2, Y = d / 2, t = Math.min(30, h / 2), all = [-X, -Y, X, Y, 0, h];
   const L = Math.min(50, w / 4, d / 4), g = Math.min(40, w / 8, d / 8), leg = (x, y) => [x - L / 2, y - L / 2, x + L / 2, y + L / 2, 0, h - t], in_ = (v) => v - Math.sign(v) * (g + L / 2);   // 다리: 모서리에서 조금 안쪽
   if (shape === 'table') return [[-X, -Y, X, Y, h - t, h], ...[[-X, -Y], [X, -Y], [X, Y], [-X, Y]].map(([x, y]) => leg(in_(x), in_(y)))];
-  if (shape === 'ldesk') { const D = Math.min(700, w / 2, d / 2); return [[-X, -Y, X, -Y + D, h - t, h], [-X, -Y + D, -X + D, Y, h - t, h], ...[[-X, -Y], [X, -Y], [X, -Y + D], [-X + D, Y], [-X, Y]].map(([x, y]) => leg(in_(x), y === -Y + D ? y - g - L / 2 : in_(y)))]; }   // 뒤 가로판 + 왼쪽 세로판
-  if (shape === 'chair') return [[-X, -Y, X, Y, 0, h * 0.48], [-X, -Y, X, -Y + Math.min(60, d / 4), h * 0.48, h]];
+  if (shape === 'ldesk') { const D = Math.min(700, w / 2, d / 2); return [[-X, -Y, X, -Y + D, h - t, h], [-X, -Y + D, -X + D, Y, h - t, h], ...[[-X, -Y], [X, -Y], [X, -Y + D], [-X + D, Y], [-X, Y]].map(([x, y]) => leg(x === -X + D ? x - g - L / 2 : in_(x), y === -Y + D ? y - g - L / 2 : in_(y)))]; }   // 뒤 가로판 + 왼쪽 세로판, 다리는 모두 상판 밑
+  if (shape === 'chair') { const s = Math.min(450, h * 0.55); return [[-X, -Y, X, Y, 0, s], [-X, -Y, X, -Y + Math.min(60, d / 4), s, h]]; }   // 좌판 윗면 450(낮은 의자는 높이의 55%)
   if (shape === 'bed') return [[-X, -Y, X, Y, 0, h / 2], [-X, -Y, X, -Y + Math.min(80, d / 8), h / 2, h]];
   if (shape === 'sofa') { const B = Math.min(200, d / 3), A = Math.min(150, w / 6); return [[-X, -Y, X, Y, 0, h / 2], [-X, -Y, X, -Y + B, h / 2, h], [-X, -Y + B, -X + A, Y, h / 2, h * 0.7], [X - A, -Y + B, X, Y, h / 2, h * 0.7]]; }
   if (shape === 'shelf') { const T = Math.min(20, w / 8, d / 8, h / 8), n = Math.max(2, Math.round(h / 350)); return [[-X, -Y, -X + T, Y, 0, h], [X - T, -Y, X, Y, 0, h], [-X + T, -Y, X - T, -Y + T, 0, h], ...Array.from({ length: n + 1 }, (_, k) => { const z = (k * (h - T)) / n; return [-X + T, -Y + T, X - T, Y, z, z + T]; })]; }

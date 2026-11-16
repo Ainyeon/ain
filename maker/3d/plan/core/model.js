@@ -76,7 +76,7 @@ const checkAppliance = (i) => !APPLIANCE_CATEGORIES.includes(i.category) ? '가�
   : !inR(i.heightMm, APPLIANCE_LIMITS.heightMin, APPLIANCE_LIMITS.heightMax) ? `가전 높이는 ${APPLIANCE_LIMITS.heightMin}~${APPLIANCE_LIMITS.heightMax} mm 여야 합니다`
   : i.url !== undefined && !(typeof i.url === 'string' && /^https:\/\/\S+$/.test(i.url)) ? '가전 출처 주소는 https 주소여야 합니다' : '';
 const checkFurniture = (i) => !FURNITURE_SHAPES.includes(i.shape) ? '가구 모양이 올바르지 않습니다'
-  : typeof i.name !== 'string' || !i.name ? '가구 이름이 없습니다'
+  : typeof i.name !== 'string' || !i.name.trim() || i.name.length > 40 ? '가구 이름은 1~40자여야 합니다'
   : !pt(i.c) || !num(i.rot) ? '제품 위치·회전이 올바르지 않습니다 (±10km 이내의 숫자)'
   : !(Array.isArray(i.size) && i.size.length === 2 && i.size.every((v) => inR(v, APPLIANCE_LIMITS.footMin, APPLIANCE_LIMITS.footMax))) ? `가구 크기(가로·깊이)는 ${APPLIANCE_LIMITS.footMin}~${APPLIANCE_LIMITS.footMax} mm 여야 합니다`
   : !inR(i.heightMm, APPLIANCE_LIMITS.heightMin, APPLIANCE_LIMITS.heightMax) ? `가구 높이는 ${APPLIANCE_LIMITS.heightMin}~${APPLIANCE_LIMITS.heightMax} mm 여야 합니다` : '';

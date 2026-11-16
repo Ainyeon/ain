@@ -84,6 +84,32 @@ const read = (p) => fs.readFileSync(path.join(PLAN, p), 'utf8');
   assert.ok(om.furniture.idx.length === 0 && om.ac.idx.length > 0 && om.appliance.idx.length > 0, '옛 문서의 3D 는 그대로');
   assert.ok(AX.axoScene(mesh).faces.some((f) => f.kind === 'appliance') && !AX.axoScene(mesh).faces.some((f) => f.kind === 'ac'), '액소: 가구는 바닥 상자');
 
+  // 검토 반영: 방향·회전·높이·L형 다리·러그·같은 자리·방 옮기기
+  const G = await imp('core/geom.js'), s3 = new Store(createDoc('검토')), f3 = () => curFloor(s3.doc), put3 = (idc, c, rot = 0, more = {}) => s3.exec({ type: 'addItem', ...P.furnitureOpts(items.find((m) => m.id === idc)), c, rot, ...more })[0];
+  s3.exec(room);
+  const ch = put3('office-chair', [1000, 1000], 90);
+  assert.strictEqual(f3().items.find((i) => i.id === ch).rot, 90, '놓을 때 회전이 저장된다');
+  const cm = MESH.buildMesh(s3.doc, 0).items[0], backP = cm.parts.at(-1), mid = (pl) => [(pl[0][0] + pl[2][0]) / 2, (pl[0][1] + pl[2][1]) / 2], edge = mid([cm.poly[0], cm.poly[0], cm.poly[1]]);
+  assert.ok(Math.hypot(mid(backP.poly)[0] - edge[0], mid(backP.poly)[1] - edge[1]) < 40 && mid(backP.poly)[0] > 1000, '90° 돌린 의자 등판은 poly[0]–poly[1] 변(평면 기호의 뒤) 쪽');
+  s3.exec({ type: 'update', id: ch, patch: { heightMm: 1200 } });
+  assert.strictEqual(Math.max(...MESH.buildMesh(s3.doc, 0).items[0].parts.map((q) => q.z1)), 1200, '높이를 고치면 모형 꼭대기가 따라온다');
+  assert.strictEqual(MESH.furnitureParts('chair', 500, 550, 850)[0][5], 450, '의자 좌판 450');
+  for (const [w, d] of [[1600, 1400], [1200, 1200], [2000, 1400]]) { const [t1, t2, ...legs] = MESH.furnitureParts('ldesk', w, d, 720); for (const l of legs) assert.ok([t1, t2].some((t) => l[0] >= t[0] && l[2] <= t[2] && l[1] >= t[1] && l[3] <= t[3]), `L형 ${w}×${d} 다리는 상판 밑`); }
+  const rug = put3('rug-l', [3000, 2000]), dk = put3('desk-1400', [3000, 2400]);
+  assert.strictEqual(G.hitTest(s3.doc, [3000, 2100]).id, dk, '러그 위 가구를 누르면 가구가 잡힌다'); assert.strictEqual(G.hitTest(s3.doc, [2100, 1400]).id, rug, '러그만 있는 자리는 러그');
+  ko(() => s3.exec({ type: 'update', id: dk, patch: { name: '   ' } })); ko(() => s3.exec({ type: 'update', id: dk, patch: { name: 'x'.repeat(41) } }));
+  const before = f3().items.map((i) => i.c), r1 = f3().rooms[0];
+  s3.exec({ type: 'addItem', kind: 'ac', model: '4way', brand: 'lg', c: [9000, 9000], size: [950, 950] });   // 방 밖 제품은 안 따라간다
+  s3.exec({ type: 'move', ids: [r1.id], dx: 500, dy: -300 });
+  assert.deepStrictEqual(f3().items.slice(0, 3).map((i) => i.c), before.map(([x, y]) => [x + 500, y - 300]), '방을 옮기면 방 안 가구가 같이 간다'); assert.deepStrictEqual(f3().items[3].c, [9000, 9000]);
+  s3.undo(); assert.deepStrictEqual(f3().items.slice(0, 3).map((i) => i.c), before, '되돌리면 가구도 제자리');
+  s3.exec({ type: 'move', ids: [f3().rooms[0].wallIds[1]], dx: -10, dy: 0 });
+  assert.deepStrictEqual([f3().rooms[0].poly[2][0] - f3().rooms[0].poly[0][0], f3().items.slice(0, 3).map((i) => i.c)], [6840, before], '벽을 옮겨 방 가로를 6,840 으로 — 가구는 그대로');
+  const tj = read('tools.js'), vj = read('view2d.js');
+  assert.ok(/dist\(i\.c, p\) < 1 && i\.size\[0\] === opts\.size\[0\] && i\.size\[1\] === opts\.size\[1\]/.test(tj), '같은 자리 무시는 같은 크기끼리만');
+  assert.ok(/shape !== 'rug'\) applianceLabels/.test(vj) && /furnitureSymbol\(e, px\)/.test(vj) && /^\s*path\(sh === 'ldesk' \?[^\n]*\); ctx\.globalAlpha = 0\.6;[^\n]*ctx\.fill\(\);[^\n]*ctx\.stroke\(\);/m.test(vj), '평면: 가구 면·테두리를 그리고(L형은 상판 자리만) 러그 글씨는 뺀다');
+  assert.ok(/isRectRoom\(first\.el\)\) \{ side\('가로', 0, 1\); side\('세로', 1, 2\); \}/.test(read('app.js')), '방 속성: 가로·세로');
+
   /* 4. 견적 · 내보내기 */
   const s2 = new Store(createDoc('사무실'));
   s2.exec(room);

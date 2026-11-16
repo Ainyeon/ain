@@ -211,7 +211,7 @@ export function createView2D(canvas, { store, getState, getSel, offscreen = fals
     if (!rectInsidePoly(e.poly, r)) return;
     const q = toPx(vp, [cx, cy]);
     ctx.fillStyle = C.ink; ctx.fillText(name, q[0], q[1]);
-    if (furn) return;   // 가구는 이름 한 줄
+    if (furn) return;   // 가구는 이름 한 줄(러그는 draw 에서 글씨를 뺀다 — 위에 놓인 가구 이름과 겹친다)
     taken.push({ poly: [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]], box: r });
     const code = e.el.code || e.el.model;
     ctx.font = `${C.fs4}px ${C.font}`;
@@ -227,13 +227,13 @@ export function createView2D(canvas, { store, getState, getSel, offscreen = fals
     const band = (u0, v0, u1, v1) => [at(u0, v0), at(u1, v0), at(u1, v1), at(u0, v1)], line = (...p) => { path(p, false); ctx.stroke(); }, sh = e.el.shape, [w, dp] = e.el.size;
     ctx.strokeStyle = C.sub; ctx.lineWidth = px; ctx.fillStyle = C.sub;
     if (sh === 'rug') { ctx.setLineDash([6 * px, 4 * px]); path(e.poly); ctx.stroke(); ctx.setLineDash([]); return; }
-    path(e.poly); ctx.globalAlpha = 0.6; ctx.fillStyle = C.line; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke(); ctx.fillStyle = C.sub;
+    const D = Math.min(700, w / 2, dp / 2), u = D / w, v = D / dp;   // L형 책상은 상판 자리(뒤 가로판 + 왼쪽 세로판)만
+    path(sh === 'ldesk' ? [at(0, 0), at(1, 0), at(1, v), at(u, v), at(u, 1), at(0, 1)] : e.poly); ctx.globalAlpha = 0.6; ctx.fillStyle = C.line; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke(); ctx.fillStyle = C.sub;
     if (sh === 'panel') { path(e.poly); ctx.fill(); }
     else if (sh === 'chair') { path(band(0, 0, 1, 0.15)); ctx.fill(); }
     else if (sh === 'sofa') { path(band(0, 0, 1, 0.22)); ctx.fill(); line(at(0.1, 0.22), at(0.1, 1)); line(at(0.9, 0.22), at(0.9, 1)); }
     else if (sh === 'bed') { line(at(0, 0.04), at(1, 0.04)); for (const [u0, u1] of w >= 1400 ? [[0.08, 0.46], [0.54, 0.92]] : [[0.15, 0.85]]) { path(band(u0, 0.07, u1, 0.24)); ctx.stroke(); } }
     else if (sh === 'box' || sh === 'shelf') line(at(0, 0.9), at(1, 0.9));
-    else if (sh === 'ldesk') { const D = Math.min(700, w / 2, dp / 2), u = D / w, v = D / dp; line(at(1, v), at(u, v), at(u, 1)); }   // 상판이 없는 앞오른쪽 칸의 경계
     else if (sh === 'plant') { const c = at(0.5, 0.5); ctx.beginPath(); ctx.arc(c[0], c[1], Math.min(w, dp) * 0.4, 0, Math.PI * 2); ctx.stroke(); }
   }
 
@@ -316,7 +316,7 @@ export function createView2D(canvas, { store, getState, getSel, offscreen = fals
       const avoidCode = swingsOf(fc).concat(taken);          // 문 호 + 방 이름·면적 글씨 — 이 프레임에서만 쓰므로 캐시하지 않는다(중심이 비어 있으면 바로 끝난다)
       for (const e of fc.items) {
         if (!vis(e.box)) continue;
-        if (e.el.kind !== 'ac') { applianceLabels(e, avoidCode, many); continue; }
+        if (e.el.kind !== 'ac') { if (e.el.shape !== 'rug') applianceLabels(e, avoidCode, many); continue; }
         if ((e.box[2] - e.box[0]) * s < 44) continue;
         ctx.font = `${C.fs4}px ${C.font}`; ctx.fillStyle = C.sub;   // 가전 글씨가 바꿔 둔 글꼴·색을 되돌린다
         const code = e.el.code || e.el.model.toUpperCase(), cw = ctx.measureText(code).width;

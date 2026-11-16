@@ -181,7 +181,7 @@ export function createTools({ store, view, sel, ui, state }) {
   /* 도구별 처리: down/move/up(포인터), hint(안내), overlay(미리보기) */
   const H = {
     select: {
-      hint: () => (state.analysis === 'axo' ? '끌어서 화면을 옮깁니다' : state.locked ? '잠금 상태입니다 · 고르기만 할 수 있습니다' : sel.size ? `끌어서 옮깁니다 · 끝점 핸들을 끌어 길이를 고칩니다 · ${kb('Delete 로 지웁니다', '오른쪽 패널의 [지우기]로 지웁니다')}` : state.multi ? '빈 곳을 끌어 한꺼번에 고르고, 도형을 눌러 더하거나 뺍니다' : fingers ? '도형을 눌러 고르고, 빈 곳을 끌면 화면이 움직입니다 · 두 손가락으로 확대·축소합니다' : '도형을 눌러 고르고, 빈 곳을 끌어 한꺼번에 고릅니다 · 방은 두 번 눌러 이름을 바꿉니다'),
+      hint: () => (state.analysis === 'axo' ? '끌어서 화면을 옮깁니다' : state.locked ? '잠금 상태입니다 · 고르기만 할 수 있습니다' : sel.size ? `끌어서 옮깁니다 · ${handlesOf(single()).length ? '끝점 핸들을 끌어 길이를 고칩니다 · ' : ''}${kb('Delete 로 지웁니다', '[지우기]로 지웁니다')}` : state.multi ? '빈 곳을 끌어 한꺼번에 고르고, 도형을 눌러 더하거나 뺍니다' : fingers ? '도형을 눌러 고르고, 빈 곳을 끌면 화면이 움직입니다 · 두 손가락으로 확대·축소합니다' : '도형을 눌러 고르고, 빈 곳을 끌어 한꺼번에 고릅니다 · 방은 두 번 눌러 이름을 바꿉니다'),
       down(c) {
         const one = single(), multi = c.shift || state.multi;
         if (one && !state.locked) { const hd = hitHandle(one, c.px); if (hd) { const ex = new Set([one.id]), joined = []; if (one.col === 'walls' && hd.k !== 'bulge') for (const w of fl().walls) if (w.id !== one.id) for (const k of ['a', 'b']) if (dist(w[k], hd.p) < 1) { joined.push({ id: w.id, k }); ex.add(w.id); } drag = { kind: 'handle', one, k: hd.k, joined, ex, started: false, failed: false }; return; } }
@@ -327,11 +327,11 @@ export function createTools({ store, view, sel, ui, state }) {
       },
     },
     placeItem: {
-      hint: () => `방 안을 눌러 놓습니다 · ${kb('[ ] 로 90° 돌립니다 · ESC 로 끝냅니다', '놓은 뒤 오른쪽 패널의 [회전]으로 돌립니다 · 끝내려면 [끝내기]를 누르세요')}`,
+      hint: () => `방 안을 눌러 놓습니다 · ${kb('[ ] 로 90° 돌립니다 · ESC 로 끝냅니다', '놓은 뒤 [회전]으로 돌립니다 · [끝내기]로 끝냅니다')}`,
       up(c) {
         const p = snap(c).p;
         if (!fl().rooms.some((r) => pointInPoly(r.poly, p))) return ui.toast('방 안에서 놓아 주세요', 'err');
-        if (fl().items.some((i) => dist(i.c, p) < 1)) return; // 같은 자리에 또 누르면(더블클릭) 두 대가 겹쳐 놓이므로 무시
+        if (fl().items.some((i) => dist(i.c, p) < 1 && i.size[0] === opts.size[0] && i.size[1] === opts.size[1])) return; // 같은 자리에 같은 크기를 또 누르면(더블클릭) 두 대가 겹쳐 놓이므로 무시 — 크기가 다르면(러그 위 탁자, 에어컨 아래 책상) 놓는다
         const ids = run(opts.kind === 'furniture' ? { type: 'addItem', kind: 'furniture', shape: opts.shape, name: opts.name, c: p, rot, size: opts.size, heightMm: opts.heightMm }
           : opts.kind === 'appliance' // 가전: 패널이 공식 제원의 크기·높이를 실어 보낸다(없으면 core 가 거절한다). 그 밖은 시스템에어컨
           ? { type: 'addItem', kind: 'appliance', category: opts.category, brand: opts.brand, model: opts.model, name: opts.name || '', c: p, rot, size: opts.size, heightMm: opts.heightMm, code: opts.code || opts.model, url: opts.url }

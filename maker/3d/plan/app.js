@@ -270,7 +270,9 @@ function propsBuild() {
     const isApp = first.col === 'items' && first.el.kind === 'appliance', isFurn = first.col === 'items' && first.el.kind === 'furniture';
     kids.push(h('p', { class: 'ed-note', text: `${isApp ? '가전' : isFurn ? '가구' : KO[first.col]} · ${id}` }));
     if (first.col === 'walls') { add(ro('길이', (e) => fmtLen(wallLen(e), state.unit))); add(num('두께', 'mm', (e) => e.t, (v) => up({ t: v }), { min: 10 })); add(pick('종류', [['inner', '내벽'], ['exterior', '외벽']], (e) => e.kind, (v) => up({ kind: v }))); add(num('곡선 처짐', 'mm', (e) => e.bulge, (v) => up({ bulge: v }))); }
-    else if (first.col === 'rooms') { add(txt('이름', (e) => e.name, (v) => up({ name: v }))); add(ro('실면적', (e) => fmtArea(roomAreaM2(store.doc, e), state.unit))); add(pick('구분', ZONES.map((z) => [z, ZONE_LABEL[z]]), (e) => zoneOf(e), (v) => up({ zone: v }))); }
+    else if (first.col === 'rooms') { add(txt('이름', (e) => e.name, (v) => up({ name: v })));
+      const side = (label, k, wi) => add(num(label, 'mm', (e) => e.poly[2][k] - e.poly[0][k], (v) => { const e = cur(), dv = v - (e.poly[2][k] - e.poly[0][k]); if (dv) run({ type: 'move', ids: [e.wallIds[wi]], dx: k ? 0 : dv, dy: k ? dv : 0 }); }, { min: 100, step: 10 }));   // 안치수 — 오른쪽·아래 벽을 옮겨 맞춘다(맞닿은 벽은 늘어난다)
+      if (isRectRoom(first.el)) { side('가로', 0, 1); side('세로', 1, 2); } add(ro('실면적', (e) => fmtArea(roomAreaM2(store.doc, e), state.unit))); add(pick('구분', ZONES.map((z) => [z, ZONE_LABEL[z]]), (e) => zoneOf(e), (v) => up({ zone: v }))); }
     else if (first.col === 'columns') { const rect = first.el.kind === 'rect'; add(num(rect ? '가로' : '지름', 'mm', (e) => e.w, (v) => up(rect ? { w: v } : { w: v, d: v }), { min: 10 })); if (rect) add(num('세로', 'mm', (e) => e.d, (v) => up({ d: v }), { min: 10 })); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 15 })); }
     else if (first.col === 'openings') { add(pick('종류', Object.entries(OPENING_NAMES), (e) => e.type, (v) => setOpeningType(cur, up, v))); add(num('폭', 'mm', (e) => e.width, (v) => up({ width: v }), { min: 100 })); add(num('높이', 'mm', (e) => e.height, (v) => up({ height: v }), { min: 100 })); add(num('바닥에서', 'mm', (e) => e.sill, (v) => up({ sill: v }), { min: 0 })); add(ro('경첩', (e) => (e.type === 'door' ? HINGE_NAME[e.hinge === 'b' ? 'b' : 'a'] : '없음'))); add(ro('열리는 쪽', (e) => (e.type === 'door' ? SWING_NAME[e.swing === -1 ? -1 : 1] : '없음'))); add(doorSwingRow(cur, up)); }
     else if (isApp) { // 가전: 크기는 공식 제원 값이라 고치지 않는다(읽기 전용), 돌리기만
@@ -507,6 +509,8 @@ function analysisBuild(box) {
     h('div', { class: 'ed-seg wide', role: 'group', 'aria-label': '분석 종류' }, tabs), ctl, body);
   syncRoutes(); sync();
 }
+// 반듯한 네모 방(왼쪽 위에서 시계방향, 변마다 벽 하나)만 가로·세로를 숫자로 고친다
+const isRectRoom = (r) => r.poly.length === 4 && r.wallIds.length === 4 && r.poly[0][1] === r.poly[1][1] && r.poly[1][0] === r.poly[2][0] && r.poly[2][1] === r.poly[3][1] && r.poly[3][0] === r.poly[0][0] && r.poly[1][0] > r.poly[0][0] && r.poly[2][1] > r.poly[1][1];
 // 같은 것 놓기 — 고른 제품·가구 하나를 지금 크기·이름·회전 그대로 다시 놓는 도구로 든다(책상 여러 개). 새 문서 명령은 없다 — 놓는 길은 placeItem 그대로
 function placeAgain() {
   const f = sel.size === 1 ? findEl(store.doc, [...sel.ids][0]) : null, e = f && f.el;
