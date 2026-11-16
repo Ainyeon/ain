@@ -41,15 +41,16 @@ function addPrism(out, poly, z0, z1, bottom) {
 }
 // buildMesh(doc) 결과 → {walls, floors, ac, appliance} 각각 {pos:Float32Array(x,y,z 연속), idx:Uint32Array}. 벽은 개구부로 이미 나뉜 조각 그대로(구멍은 조각 사이의 빈틈). 가전은 바닥에서 제품 높이까지의 상자(밑면 없음)
 export function meshData(mesh) {
-  const W = soup(), F = soup(), A = soup(), P = soup();
+  const W = soup(), F = soup(), A = soup(), P = soup(), U = soup();
   for (const w of mesh.walls) addPrism(W, w.poly, w.z0, w.z1, w.z0 > 0);          // 상인방 밑면만 보인다
   for (const f of mesh.floors) { if (f.thickness > 0) addPrism(F, f.poly, -f.thickness, 0, false); else addFace(F, f.poly, 0, true); }
   for (const i of mesh.items) { // 판넬은 천장면(mountZ) 아래로 얇게, 본체는 그 위(천장 속)로
     if (i.kind === 'appliance') { addPrism(P, i.poly, i.z0, i.z1, false); continue; }
+    if (i.kind === 'furniture') { for (const p of i.parts) addPrism(U, p.poly, p.z0, p.z1, p.z0 > 0); continue; }   // 가구: 상자 조합(뜬 조각만 밑면)
     addPrism(A, i.poly, i.z0, i.z1, true);
     addPrism(A, i.poly.map((p) => [i.c[0] + (p[0] - i.c[0]) * BODY_SCALE, i.c[1] + (p[1] - i.c[1]) * BODY_SCALE]), i.mountZ, i.mountZ + i.bodyH, false);
   }
-  return { walls: fin(W), floors: fin(F), ac: fin(A), appliance: fin(P) };
+  return { walls: fin(W), floors: fin(F), ac: fin(A), appliance: fin(P), furniture: fin(U) };
 }
 export function soupBounds(s) { // 정점 자료의 경계 {min:[x,y,z], max:[x,y,z]}(m), 비었으면 null
   if (!s.pos.length) return null;
@@ -110,7 +111,7 @@ export function createView3D(container, store, opts = {}) {
   let renderer, canvas, controls, ro, raf = 0, inFrame = false, tw = null, fadeSeq = 0, fadeT = 0, fading = false, buildT = 0, moved = false, applied = null, builtCur = -1, refitNext = false, emptyFired = false;
   const scene = new THREE.Scene();
   const mat = () => new THREE.MeshStandardMaterial({ roughness: 1, metalness: 0 });
-  const mats = { wall: mat(), floor: mat(), ac: mat(), appliance: mat() };
+  const mats = { wall: mat(), floor: mat(), ac: mat(), appliance: mat(), furniture: mat() };
   const meshes = Object.fromEntries(Object.entries(mats).map(([k, m]) => { const o = new THREE.Mesh(new THREE.BufferGeometry(), m); o.frustumCulled = false; o.visible = false; scene.add(o); return [k, o]; }));
   const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-3, 6, 4);
   scene.add(new THREE.AmbientLight(0xffffff, 1.2), sun); // 조명 둘 — 그림자 없음
@@ -133,17 +134,18 @@ export function createView3D(container, store, opts = {}) {
 
   /* 문서 → 장면 */
   function theme(f) {
-    const pick = (kind, def) => { try { return opts.finishColor?.(kind, f?.finish?.[kind]) || def; } catch { return def; } };
+    const pick = (kind, def) => { try { return opts.finishColor?.(kind, kind === 'furniture' ? 'wall-wood-oak' : f?.finish?.[kind]) || def; } catch { return def; } };
     mats.wall.color.set(pick('wall', tok('--c-surface')));
     mats.floor.color.set(pick('floor', tok('--c-line-strong')));
     mats.ac.color.set(tok('--c-accent'));
     mats.appliance.color.set(tok('--c-control')); // 가전: 중간 회색(벽의 흰색·바닥의 연회색과 구분)
+    mats.furniture.color.set(pick('furniture', tok('--c-control'))); // 가구: 나무색(마감재 자료의 색) — 못 읽으면 가전과 같은 회색
     renderer?.setClearColor(new THREE.Color(tok('--c-bg')), 1);
   }
   function rebuild() {
     clearTimeout(buildT); buildT = 0;
     dirty = false; rebuilds++;
-    const doc = store.doc, f = doc.floors[doc.cur], mesh = buildMesh(doc, doc.cur), data = meshData(mesh), key = { walls: 'wall', floors: 'floor', ac: 'ac', appliance: 'appliance' };
+    const doc = store.doc, f = doc.floors[doc.cur], mesh = buildMesh(doc, doc.cur), data = meshData(mesh), key = { walls: 'wall', floors: 'floor', ac: 'ac', appliance: 'appliance', furniture: 'furniture' };
     builtCur = doc.cur;
     for (const [k, mk] of Object.entries(key)) { const o = meshes[mk]; o.geometry.dispose(); o.geometry = geometryOf(data[k]); o.visible = data[k].idx.length > 0; }
     bounds = mesh.bounds; fitPending = true;

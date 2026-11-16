@@ -267,19 +267,25 @@ function propsBuild() {
       return { el: h('label', { class: 'ed-f' }, [h('span', { text: label }), s]), sync };
     };
     const ro = (label, get) => { const o = h('output', { class: 'ed-out' }); return { el: h('div', { class: 'ed-f' }, [h('span', { text: label }), o]), sync() { const e = cur(); if (e) setText(o, get(e)); } }; };
-    const isApp = first.col === 'items' && first.el.kind === 'appliance';
-    kids.push(h('p', { class: 'ed-note', text: `${isApp ? '가전' : KO[first.col]} · ${id}` }));
+    const isApp = first.col === 'items' && first.el.kind === 'appliance', isFurn = first.col === 'items' && first.el.kind === 'furniture';
+    kids.push(h('p', { class: 'ed-note', text: `${isApp ? '가전' : isFurn ? '가구' : KO[first.col]} · ${id}` }));
     if (first.col === 'walls') { add(ro('길이', (e) => fmtLen(wallLen(e), state.unit))); add(num('두께', 'mm', (e) => e.t, (v) => up({ t: v }), { min: 10 })); add(pick('종류', [['inner', '내벽'], ['exterior', '외벽']], (e) => e.kind, (v) => up({ kind: v }))); add(num('곡선 처짐', 'mm', (e) => e.bulge, (v) => up({ bulge: v }))); }
-    else if (first.col === 'rooms') { add(txt('이름', (e) => e.name, (v) => up({ name: v }))); add(ro('실면적', (e) => fmtArea(roomAreaM2(store.doc, e), state.unit))); add(pick('구분', ZONES.map((z) => [z, ZONE_LABEL[z]]), (e) => zoneOf(e), (v) => up({ zone: v }))); }
+    else if (first.col === 'rooms') { add(txt('이름', (e) => e.name, (v) => up({ name: v })));
+      const side = (label, k, wi) => add(num(label, 'mm', (e) => e.poly[2][k] - e.poly[0][k], (v) => { const e = cur(), dv = v - (e.poly[2][k] - e.poly[0][k]); if (dv) run({ type: 'move', ids: [e.wallIds[wi]], dx: k ? 0 : dv, dy: k ? dv : 0 }); }, { min: 100, step: 10 }));   // 안치수 — 오른쪽·아래 벽을 옮겨 맞춘다(맞닿은 벽은 늘어난다)
+      if (isRectRoom(first.el)) { side('가로', 0, 1); side('세로', 1, 2); } add(ro('실면적', (e) => fmtArea(roomAreaM2(store.doc, e), state.unit))); add(pick('구분', ZONES.map((z) => [z, ZONE_LABEL[z]]), (e) => zoneOf(e), (v) => up({ zone: v }))); }
     else if (first.col === 'columns') { const rect = first.el.kind === 'rect'; add(num(rect ? '가로' : '지름', 'mm', (e) => e.w, (v) => up(rect ? { w: v } : { w: v, d: v }), { min: 10 })); if (rect) add(num('세로', 'mm', (e) => e.d, (v) => up({ d: v }), { min: 10 })); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 15 })); }
     else if (first.col === 'openings') { add(pick('종류', Object.entries(OPENING_NAMES), (e) => e.type, (v) => setOpeningType(cur, up, v))); add(num('폭', 'mm', (e) => e.width, (v) => up({ width: v }), { min: 100 })); add(num('높이', 'mm', (e) => e.height, (v) => up({ height: v }), { min: 100 })); add(num('바닥에서', 'mm', (e) => e.sill, (v) => up({ sill: v }), { min: 0 })); add(ro('경첩', (e) => (e.type === 'door' ? HINGE_NAME[e.hinge === 'b' ? 'b' : 'a'] : '없음'))); add(ro('열리는 쪽', (e) => (e.type === 'door' ? SWING_NAME[e.swing === -1 ? -1 : 1] : '없음'))); add(doorSwingRow(cur, up)); }
     else if (isApp) { // 가전: 크기는 공식 제원 값이라 고치지 않는다(읽기 전용), 돌리기만
       add(ro('분류', (e) => APPLIANCE_LABEL[e.category] ?? e.category)); add(ro('모델', (e) => e.code || e.model)); add(ro('제품명', (e) => e.name || '미확인'));
       add(ro('크기', (e) => `가로 ${e.size[0].toLocaleString('ko-KR')} · 깊이 ${e.size[1].toLocaleString('ko-KR')} · 높이 ${e.heightMm.toLocaleString('ko-KR')} mm`)); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 }));
+    } else if (isFurn) { // 가구: 직접 정한 기본 크기라 이름·크기를 고친다
+      add(txt('이름', (e) => e.name, (v) => up({ name: v })));
+      add(num('가로', 'mm', (e) => e.size[0], (v) => up({ size: [v, cur().size[1]] }), { min: 5 })); add(num('깊이', 'mm', (e) => e.size[1], (v) => up({ size: [cur().size[0], v] }), { min: 5 })); add(num('높이', 'mm', (e) => e.heightMm, (v) => up({ heightMm: v }), { min: 5 }));
+      add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 }));
     } else if (first.col === 'items') { add(ro('모델', (e) => e.code || e.model.toUpperCase())); add(ro('냉방 용량', (e) => (e.capacityKw ? `${e.capacityKw} kW` : '미확인'))); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 })); }
     else if (first.col === 'guides') add(ro('길이', (e) => fmtLen(dist(e.a, e.b), state.unit)));
   } else kids.push(h('p', { class: 'ed-note', text: `${ids.length}개를 골랐습니다` }));
-  kids.push(h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: ids.length > 1 ? '선택한 것 지우기' : '지우기', onclick: delSel })]));
+  kids.push(h('div', { class: 'ed-btns' }, [first && first.col === 'items' ? h('button', { type: 'button', class: 'ed-b', text: '같은 것 놓기', 'aria-keyshortcuts': 'Control+D Meta+D', onclick: placeAgain }) : null, h('button', { type: 'button', class: 'ed-b', text: ids.length > 1 ? '선택한 것 지우기' : '지우기', onclick: delSel })]));
   box.replaceChildren(...kids); propFields.forEach((f2) => f2.sync());
 }
 // 개구부 종류를 바꾸면 폭·높이·바닥 높이도 새 종류의 기본값으로 — 이전 종류의 기본값 그대로인 칸만(사용자가 고친 값은 둔다). 문·개방은 같은 기본값
@@ -488,7 +494,7 @@ function analysisBuild(box) {
         kv('높이와 가정', [['높이', `${f2(H / 1000)} m`], ['시각 기준', '진태양시'], ['가정', '평지 · 앞 건물 없음']])];
     },
   });
-  fill.axo = (d, f) => [kv('층 구성', [['바닥', `방 ${f.rooms.length}개`], ['벽', `${f.walls.length}개`], ['문·창', `${f.openings.length}개`], ['기기', `${f.items.length}대`], ['천장 높이', mm(f.heightMm)]])];
+  fill.axo = (d, f) => [kv('층 구성', [['바닥', `방 ${f.rooms.length}개`], ['벽', `${f.walls.length}개`], ['문·창', `${f.openings.length}개`], ['기기', `${f.items.filter((i) => i.kind !== 'furniture').length}대`], ['가구', `${f.items.filter((i) => i.kind === 'furniture').length}개`], ['천장 높이', mm(f.heightMm)]])];
   const sync = () => {
     const d = store.doc, f = curFloor(d), m = state.analysis, s = siteOf(d), S = state.sun, next = [f, m, state.routes, s.north, s.lat, S.day, S.stories, S.storyMm, S.cut];
     if (!m) return;
@@ -502,6 +508,18 @@ function analysisBuild(box) {
   box.replaceChildren(h('div', { class: 'ed-sec-h' }, [h('h2', { id: 'plPropsH', text: '분석' }), h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: '도면판', onclick: openSheet }), h('button', { type: 'button', class: 'ed-b', text: '끝내기', 'aria-label': '분석 끝내기', onclick: () => setAnalysis(null) })])]),
     h('div', { class: 'ed-seg wide', role: 'group', 'aria-label': '분석 종류' }, tabs), ctl, body);
   syncRoutes(); sync();
+}
+// 반듯한 네모 방(왼쪽 위에서 시계방향, 변마다 벽 하나)만 가로·세로를 숫자로 고친다
+const isRectRoom = (r) => r.poly.length === 4 && r.wallIds.length === 4 && r.poly[0][1] === r.poly[1][1] && r.poly[1][0] === r.poly[2][0] && r.poly[2][1] === r.poly[3][1] && r.poly[3][0] === r.poly[0][0] && r.poly[1][0] > r.poly[0][0] && r.poly[2][1] > r.poly[1][1];
+// 같은 것 놓기 — 고른 제품·가구 하나를 지금 크기·이름·회전 그대로 다시 놓는 도구로 든다(책상 여러 개). 새 문서 명령은 없다 — 놓는 길은 placeItem 그대로
+function placeAgain() {
+  const f = sel.size === 1 ? findEl(store.doc, [...sel.ids][0]) : null, e = f && f.el;
+  if (!f || f.col !== 'items') return false;
+  const o = e.kind === 'furniture' ? { kind: 'furniture', shape: e.shape, name: e.name, size: e.size, heightMm: e.heightMm }
+    : e.kind === 'appliance' ? { kind: 'appliance', category: e.category, brand: e.brand, model: e.model, name: e.name, code: e.code, size: e.size, heightMm: e.heightMm, url: e.url }
+    : { model: e.model, brand: e.brand, code: e.code, capacityKw: e.capacityKw, size: e.size };
+  if (!ctx.setTool('placeItem', { ...o, rot: e.rot })) return false;
+  toast(`${e.name || e.code || e.model} · 캔버스를 눌러 놓으세요`); return true;
 }
 function delSel() { if (sel.size && run({ type: 'remove', ids: [...sel.ids] })) { sel.prune(store.doc); say('지웠습니다'); } }
 
@@ -712,6 +730,7 @@ function onKey(e) {
   if (mod && e.code === 'KeyZ') { e.preventDefault(); if (e.shiftKey) doRedo(); else doUndo(); return; }
   if (mod && e.code === 'KeyY') { e.preventDefault(); doRedo(); return; }
   if (mod && e.code === 'KeyA' && state.mode === '2d' && onCanvas && state.analysis !== 'axo') { e.preventDefault(); const f = curFloor(store.doc); sel.set(COLS.flatMap((c) => f[c].map((x) => x.id))); return; }
+  if (mod && e.code === 'KeyD') { if (state.mode === '2d' && onCanvas && placeAgain()) e.preventDefault(); return; }   // 고른 제품·가구를 같은 것으로 또 놓는다
   if (e.key === 'Shift') tools.setShift(true);
   if (e.code === 'Escape' && $('plMenu').classList.contains('open')) { $('plMenu').classList.remove('open'); $('plMore').setAttribute('aria-expanded', 'false'); $('plMore').focus({ preventScroll: true }); return; }
   if (state.mode === '3d') { // 3D: 2·3·4 = 보기, ESC = 2D 로, 도구 글쇠 = 2D 로 돌아가 그 도구

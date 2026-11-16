@@ -196,7 +196,8 @@ export function hitTest(doc, p, tolMm = 0) {
     return Math.abs(dx * Math.cos(t) + dy * Math.sin(t)) <= w / 2 + tolMm && Math.abs(-dx * Math.sin(t) + dy * Math.cos(t)) <= h / 2 + tolMm ? Math.hypot(dx, dy) : null;
   };
   const found = [
-    ['item', f.items, (i) => inRect(i, i.size[0], i.size[1])],
+    ['item', f.items.filter((i) => i.shape !== 'rug'), (i) => inRect(i, i.size[0], i.size[1])],
+    ['item', f.items.filter((i) => i.shape === 'rug'), (i) => inRect(i, i.size[0], i.size[1])],   // 러그는 다른 제품 밑에 깔린다(그리는 순서와 같다)
     ['opening', f.openings, (o) => { const w = W.get(o.wall); if (!w) return null; const n = nearestOnWall(w, p); return n.d <= w.t / 2 + tolMm && Math.abs(n.s - o.at * n.len) <= o.width / 2 + tolMm ? n.d : null; }],
     ['column', f.columns, (c) => (c.kind === 'round' ? (dist(p, c.c) <= c.w / 2 + tolMm ? dist(p, c.c) : null) : inRect(c, c.w, c.d))],
     ['wall', f.walls, (w) => { const n = nearestOnWall(w, p); return n.d <= w.t / 2 + tolMm ? n.d : null; }],

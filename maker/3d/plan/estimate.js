@@ -16,7 +16,9 @@ export function buildEstimate(doc) {
   const floors = doc.floors.map((f, i) => {
     const view = { ...doc, cur: i }, groups = new Map();
     const apps = new Map();
+    const furn = new Map();
     for (const it of f.items) {
+      if (it.kind === 'furniture') { const k = it.name + '|' + applianceDims(it), g = furn.get(k); if (g) g.count++; else furn.set(k, { floor: f.name, name: it.name, dims: applianceDims(it), count: 1 }); continue; }   // 가구: 이름·치수가 같은 것끼리
       if (it.kind === 'appliance') { // 가전은 에어컨 합계 kW 에 섞지 않는다 — 분류·브랜드·모델·치수가 같은 것끼리 묶는다
         const k = [it.category, it.brand, it.model, applianceDims(it)].join('|'), g = apps.get(k);
         if (g) g.count++;
@@ -33,14 +35,14 @@ export function buildEstimate(doc) {
     const rooms = f.rooms.map((r) => ({ floor: f.name, name: r.name, areaM2: r2(roomAreaM2(view, r)) }));
     const op = { door: 0, window: 0, open: 0 };
     for (const o of f.openings) op[o.type]++;
-    return { id: f.id, name: f.name, ac, appliances, rooms, areaM2: r2(rooms.reduce((s, r) => s + r.areaM2, 0)), walls: f.walls.length, grossMm: grossWallLen(view), netMm: netWallLen(view), openings: { ...op, total: f.openings.length } };
+    return { id: f.id, name: f.name, ac, appliances, furniture: [...furn.values()], rooms, areaM2: r2(rooms.reduce((s, r) => s + r.areaM2, 0)), walls: f.walls.length, grossMm: grossWallLen(view), netMm: netWallLen(view), openings: { ...op, total: f.openings.length } };
   });
-  const ac = floors.flatMap((f) => f.ac), appliances = floors.flatMap((f) => f.appliances), known = ac.filter((g) => g.capacityKw !== null);
+  const ac = floors.flatMap((f) => f.ac), appliances = floors.flatMap((f) => f.appliances), furniture = floors.flatMap((f) => f.furniture), known = ac.filter((g) => g.capacityKw !== null);
   const sum = (k) => floors.reduce((s, f) => s + f[k], 0);
   return {
-    title: doc.title, floors, ac, appliances,
+    title: doc.title, floors, ac, appliances, furniture,
     totals: {
-      acCount: ac.reduce((s, g) => s + g.count, 0), applianceCount: appliances.reduce((s, g) => s + g.count, 0), kwSum: r3(known.reduce((s, g) => s + g.kwSum, 0)), kwUnknown: ac.filter((g) => g.capacityKw === null).reduce((s, g) => s + g.count, 0),
+      acCount: ac.reduce((s, g) => s + g.count, 0), applianceCount: appliances.reduce((s, g) => s + g.count, 0), furnitureCount: furniture.reduce((s, g) => s + g.count, 0), kwSum: r3(known.reduce((s, g) => s + g.kwSum, 0)), kwUnknown: ac.filter((g) => g.capacityKw === null).reduce((s, g) => s + g.count, 0),
       rooms: floors.reduce((s, f) => s + f.rooms.length, 0), areaM2: r2(sum('areaM2')), walls: sum('walls'), grossMm: sum('grossMm'), netMm: sum('netMm'),
       openings: floors.reduce((s, f) => s + f.openings.total, 0),
     },
@@ -60,6 +62,7 @@ const AC_HEAD = ['층', '브랜드', '모델명', '형식', '냉방 kW', '수량
 const APP_HEAD = ['층', '분류', '브랜드', '모델명', '제품명', '가로×깊이×높이 mm', '수량'];
 const noName = (r) => r.filter((_, i) => i !== 4); // 화면 표는 좁아서 제품명 칸을 뺀다(CSV 에는 있다)
 const appRow = (g) => [g.floor, APPLIANCE_LABEL[g.category] ?? g.category, BRAND_LABEL[g.brand] ?? g.brand, g.model, g.name || UNKNOWN, g.dims, g.count];
+const FURN_HEAD = ['층', '이름', '가로×깊이×높이 mm', '수량'], furnRow = (g) => [g.floor, g.name, g.dims, g.count]; // 가구 구역은 가구가 있을 때만 낸다(가구 없는 문서의 출력은 그대로)
 const ROOM_HEAD = ['층', '방', '실면적 ㎡'];
 const WALL_HEAD = ['층', '벽 수', '벽 총 길이 m', '개구부 제외 길이 m', '문', '창', '개방', '개구부 합'];
 const wallRow = (f) => [f.name, f.walls, m(f.grossMm), m(f.netMm), f.openings.door, f.openings.window, f.openings.open, f.openings.total];
@@ -72,6 +75,7 @@ export function toCsv(est) {
     ['도면', est.title], [],
     ['에어컨'], AC_HEAD, ...est.ac.map(acRow), ['합계', '', '', '', '', t.acCount, kwTotal(t)], ...(t.kwUnknown ? [['비고', kwNote(t)]] : []), [],
     ['가전'], APP_HEAD, ...est.appliances.map(appRow), ['합계', '', '', '', '', '', t.applianceCount], [],
+    ...(t.furnitureCount ? [['가구'], FURN_HEAD, ...est.furniture.map(furnRow), ['합계', '', '', t.furnitureCount], []] : []),
     ['방'], ROOM_HEAD, ...est.floors.flatMap((f) => f.rooms.map((r) => [r.floor, r.name, f2(r.areaM2)])), ['합계', '', f2(t.areaM2)], [],
     ['벽·개구부'], WALL_HEAD, ...est.floors.map(wallRow), wallFoot(est),
   ];
@@ -105,11 +109,12 @@ function table(caption, head, rows, foot, numFrom) {
 
 export function renderEstimate(est) {
   const t = est.totals, sec = (title, ...kids) => h('section', { class: 'pl-est-sec' }, h('h3', {}, title), ...kids);
-  const sum = [['에어컨', `${t.acCount}대`], ['냉방 합계', t.kwUnknown && t.kwSum === 0 ? UNKNOWN : `${t.kwSum} kW`], ['가전', `${t.applianceCount}대`], ['방', `${t.rooms}개`], ['실면적', `${f2(t.areaM2)} ㎡`], ['벽 총 길이', `${m(t.grossMm)} m`], ['개구부', `${t.openings}개`]];
+  const sum = [['에어컨', `${t.acCount}대`], ['냉방 합계', t.kwUnknown && t.kwSum === 0 ? UNKNOWN : `${t.kwSum} kW`], ['가전', `${t.applianceCount}대`], ...(t.furnitureCount ? [['가구', `${t.furnitureCount}개`]] : []), ['방', `${t.rooms}개`], ['실면적', `${f2(t.areaM2)} ㎡`], ['벽 총 길이', `${m(t.grossMm)} m`], ['개구부', `${t.openings}개`]];
   return h('div', { class: 'pl-est' },
     h('dl', { class: 'pl-est-sum' }, sum.map(([k, v]) => h('div', {}, h('dt', {}, k), h('dd', {}, v)))),
     sec('에어컨', est.ac.length ? table('에어컨 모델별 수량', AC_HEAD, est.ac.map(acRow), ['합계', '', '', '', '', t.acCount, kwTotal(t)], 4) : h('p', { class: 'pl-est-none' }, '놓은 에어컨이 없습니다'), t.kwUnknown ? h('p', { class: 'pl-est-note' }, kwNote(t)) : null),
     sec('가전', est.appliances.length ? table('가전 분류·모델별 수량', noName(APP_HEAD), est.appliances.map((g) => noName(appRow(g))), ['합계', '', '', '', '', t.applianceCount], 5) : h('p', { class: 'pl-est-none' }, '놓은 가전이 없습니다')),
+    t.furnitureCount ? sec('가구', table('가구 이름·치수별 수량', FURN_HEAD, est.furniture.map(furnRow), ['합계', '', '', t.furnitureCount], 3)) : null,
     sec('방 면적 (실면적)', est.floors.some((f) => f.rooms.length) ? table('방별 실면적', ROOM_HEAD, est.floors.flatMap((f) => f.rooms.map((r) => [r.floor, r.name, f2(r.areaM2)])), ['합계', '', f2(t.areaM2)], 2) : h('p', { class: 'pl-est-none' }, '방이 없습니다')),
     sec('벽·개구부', table('층별 벽 길이와 개구부 수', WALL_HEAD, est.floors.map(wallRow), wallFoot(est), 1)),
     h('div', { class: 'pl-est-act' }, h('button', { type: 'button', class: 'pl-est-dl', onclick: () => downloadCsv(est) }, 'CSV 내려받기')));

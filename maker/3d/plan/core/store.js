@@ -134,6 +134,11 @@ const CMD = {
       ok(Array.isArray(c.size) && c.size.length === 2 && c.size.every((v) => Number.isFinite(v) && v > 0) && Number.isFinite(c.heightMm) && c.heightMm > 0, '가전은 크기(가로·깊이)와 높이가 있어야 놓을 수 있습니다');
       return [put(d, f, 'items', { kind: 'appliance', category: c.category, brand: c.brand, model: c.model, name: c.name ?? '', c: P2(c.c), rot: c.rot ?? 0, size: [c.size[0], c.size[1]], heightMm: c.heightMm, code: c.code ?? c.model, ...(c.url === undefined ? {} : { url: c.url }) })];
     }
+    if (c.kind === 'furniture') { // 가구: 모양·이름·크기·높이(범위는 문서 검증이 본다)
+      ok(isPt(c.c), '제품 위치가 필요합니다');
+      ok(Array.isArray(c.size) && c.size.length === 2, '가구는 크기(가로·깊이)와 높이가 있어야 놓을 수 있습니다');
+      return [put(d, f, 'items', { kind: 'furniture', shape: c.shape, name: c.name, c: P2(c.c), rot: c.rot ?? 0, size: [c.size[0], c.size[1]], heightMm: c.heightMm })];
+    }
     ok(c.kind === 'ac' && MODELS.includes(c.model) && BRANDS.includes(c.brand), '제품 종류·형식·브랜드가 올바르지 않습니다');
     ok(isPt(c.c), '제품 위치가 필요합니다');
     ok(Array.isArray(c.size) && c.size.length === 2 && c.size.every((v) => Number.isFinite(v) && v > 0), '제품 크기(가로·세로)가 필요합니다');
@@ -172,7 +177,7 @@ const CMD = {
     return fail(`요소를 찾을 수 없습니다: ${c.id}`);
   },
   // 벽 id 를 직접 주면 그 벽의 끝점과 맞닿은(1mm 이내) 다른 벽의 끝점이 따라와 모서리가 닫혀 있다(늘어남).
-  // 방 id 를 주면 그 방의 벽을 옮기되 이웃 방과 공유한 벽은 복제해(개구부는 원래 벽에 남는다) 그 방만 갖고 가고, 이웃 방·연결된 벽은 그대로다.
+  // 방 id 를 주면 그 방의 벽과 방 안 제품·가구를 옮기되 이웃 방과 공유한 벽은 복제해(개구부는 원래 벽에 남는다) 그 방만 갖고 가고, 이웃 방·연결된 벽은 그대로다.
   move(d, f, c) {
     ok(Array.isArray(c.ids) && Number.isFinite(c.dx) && Number.isFinite(c.dy), '이동할 id 와 거리가 필요합니다');
     if (!c.dx && !c.dy) return null;
@@ -199,7 +204,7 @@ const CMD = {
     f.rooms = f.rooms.map((r) => (ids.has(r.id) ? (out.push(r.id), { ...mapPts(r, mv), wallIds: r.wallIds.map((i) => clone.get(i) ?? i) }) : r));
     for (const i of stretched) refitOpenings(f, i);
     syncRooms(f, [...inPlace, ...stretched], ids); // 옮긴 방은 벽과 함께 움직여 맞고, 벽만 움직인(늘어난) 쪽 방은 다시 맞춘다
-    for (const col of ['columns', 'guides', 'items']) f[col] = f[col].map((e) => (ids.has(e.id) ? (out.push(e.id), mapPts(e, mv)) : e));
+    for (const col of ['columns', 'guides', 'items']) f[col] = f[col].map((e) => (ids.has(e.id) || (col === 'items' && moving.some((r) => pointInPoly(r.poly, e.c))) ? (out.push(e.id), mapPts(e, mv)) : e));   // 방을 옮기면 그 방 안(중심 기준)의 제품·가구도 같이 간다
     return out.length ? out : null;
   },
   mirror(d, f, c) { // axis 'x' = 좌우 반전(x 를 뒤집는다), 'y' = 상하 반전. 경계 상자 중심 기준

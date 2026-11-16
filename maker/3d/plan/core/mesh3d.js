@@ -2,6 +2,25 @@
 import { AC_PANEL_MM, AC_BODY_MM } from './model.js';
 import { jointsOf, wallLen, wallSlice, wallPointAt, rectPoly, circlePoly, bounds, roomOutlineWithArcs } from './geom.js';
 
+// 가구 모형 — 상자 조합. 가구 중심이 원점인 [x0,y0,x1,y1,z0,z1] 목록(−y = 뒤(등판·머리판 쪽), z 0 = 바닥). 모든 조각은 가로 w·깊이 d·높이 h 상자 안에 있다
+export function furnitureParts(shape, w, d, h) {
+  const X = w / 2, Y = d / 2, t = Math.min(30, h / 2), all = [-X, -Y, X, Y, 0, h];
+  const L = Math.min(50, w / 4, d / 4), g = Math.min(40, w / 8, d / 8), leg = (x, y) => [x - L / 2, y - L / 2, x + L / 2, y + L / 2, 0, h - t], in_ = (v) => v - Math.sign(v) * (g + L / 2);   // 다리: 모서리에서 조금 안쪽
+  if (shape === 'table') return [[-X, -Y, X, Y, h - t, h], ...[[-X, -Y], [X, -Y], [X, Y], [-X, Y]].map(([x, y]) => leg(in_(x), in_(y)))];
+  if (shape === 'ldesk') { const D = Math.min(700, w / 2, d / 2); return [[-X, -Y, X, -Y + D, h - t, h], [-X, -Y + D, -X + D, Y, h - t, h], ...[[-X, -Y], [X, -Y], [X, -Y + D], [-X + D, Y], [-X, Y]].map(([x, y]) => leg(x === -X + D ? x - g - L / 2 : in_(x), y === -Y + D ? y - g - L / 2 : in_(y)))]; }   // 뒤 가로판 + 왼쪽 세로판, 다리는 모두 상판 밑
+  if (shape === 'chair') { const s = Math.min(450, h * 0.55); return [[-X, -Y, X, Y, 0, s], [-X, -Y, X, -Y + Math.min(60, d / 4), s, h]]; }   // 좌판 윗면 450(낮은 의자는 높이의 55%)
+  if (shape === 'bed') return [[-X, -Y, X, Y, 0, h / 2], [-X, -Y, X, -Y + Math.min(80, d / 8), h / 2, h]];
+  if (shape === 'sofa') { const B = Math.min(200, d / 3), A = Math.min(150, w / 6); return [[-X, -Y, X, Y, 0, h / 2], [-X, -Y, X, -Y + B, h / 2, h], [-X, -Y + B, -X + A, Y, h / 2, h * 0.7], [X - A, -Y + B, X, Y, h / 2, h * 0.7]]; }
+  if (shape === 'shelf') { const T = Math.min(20, w / 8, d / 8, h / 8), n = Math.max(2, Math.round(h / 350)); return [[-X, -Y, -X + T, Y, 0, h], [X - T, -Y, X, Y, 0, h], [-X + T, -Y, X - T, -Y + T, 0, h], ...Array.from({ length: n + 1 }, (_, k) => { const z = (k * (h - T)) / n; return [-X + T, -Y + T, X - T, Y, z, z + T]; })]; }
+  if (shape === 'plant') return [[-X * 0.6, -Y * 0.6, X * 0.6, Y * 0.6, 0, h * 0.3], [-X, -Y, X, Y, h * 0.3, h]];
+  return [all];   // box · panel · rug
+}
+function furnitureItem(i) { // 전체 상자(poly·z0·z1, 가전과 같다) + 조각(parts)
+  const [w, d] = i.size, r = (i.rot * Math.PI) / 180, co = Math.cos(r), si = Math.sin(r);
+  const parts = furnitureParts(i.shape, w, d, i.heightMm).map(([x0, y0, x1, y1, z0, z1]) => { const x = (x0 + x1) / 2, y = (y0 + y1) / 2; return { poly: rectPoly([i.c[0] + x * co - y * si, i.c[1] + x * si + y * co], x1 - x0, y1 - y0, i.rot), z0, z1 }; });
+  return { id: i.id, kind: i.kind, shape: i.shape, name: i.name, c: i.c, rot: i.rot, size: i.size, heightMm: i.heightMm, poly: rectPoly(i.c, w, d, i.rot), z0: 0, z1: i.heightMm, parts };
+}
+
 // walls 의 조각: {id, poly, z0, z1, kind:'inner'|'exterior'|'column', part:'full'|'sill'(창 아래·문 옆 낮은 벽)|'lintel'(상인방)|'column'}
 // 개구부는 길이(u)로 구간을 나눠 구간마다 개구부가 비운 높이 띠를 빼고 남은 높이를 조각으로 만든다(겹친 개구부도 맞다)
 export function buildMesh(doc, floorIndex = doc.cur) {
@@ -36,7 +55,7 @@ export function buildMesh(doc, floorIndex = doc.cur) {
   return {
     walls, openings,
     floors: f.rooms.map((r) => ({ id: r.id, name: r.name, poly: roomOutlineWithArcs(r, byId), z: 0, thickness: f.slabMm, finish: f.finish.floor })),
-    items: f.items.map((i) => (i.kind === 'appliance' // 가전: 바닥(z0=0)에서 제품 높이까지의 상자. 시스템에어컨: 천장 아래 판넬(z0~z1)과 천장 속 본체(mountZ~+bodyH)
+    items: f.items.map((i) => (i.kind === 'furniture' ? furnitureItem(i) : i.kind === 'appliance' // 가전: 바닥(z0=0)에서 제품 높이까지의 상자. 시스템에어컨: 천장 아래 판넬(z0~z1)과 천장 속 본체(mountZ~+bodyH)
       ? { id: i.id, kind: i.kind, category: i.category, brand: i.brand, model: i.model, name: i.name, code: i.code, c: i.c, rot: i.rot, size: i.size, heightMm: i.heightMm, poly: rectPoly(i.c, i.size[0], i.size[1], i.rot), z0: 0, z1: i.heightMm }
       : { id: i.id, kind: i.kind, model: i.model, brand: i.brand, code: i.code, capacityKw: i.capacityKw, c: i.c, rot: i.rot, size: i.size, poly: rectPoly(i.c, i.size[0], i.size[1], i.rot), z0: H - AC_PANEL_MM, z1: H, mountZ: H, bodyH: AC_BODY_MM })),
     height: H, // 층고(천장 높이) — bounds.z1 은 키 큰 가전까지 담는 카메라 상자라 다르다
