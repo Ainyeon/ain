@@ -1,7 +1,7 @@
 // 플래너 왼쪽 패널(템플릿·제품(시스템에어컨·가전)·마감재·설계형 라이브러리·리소스 관리) — DOM 을 직접 만들어 container 에 넣는다(innerHTML 없음). 검색·정렬·배치 크기 같은 순수 함수는 export 해서 node 로 시험한다.
 import { curFloor, APPLIANCE_CATEGORIES, APPLIANCE_LABEL } from './core/model.js';
 import { pointInPoly } from './core/geom.js';
-import { furnitureThumb } from './thumbs.js';
+import { furnitureThumb, acThumb } from './thumbs.js';
 
 export const MODEL_LABEL = { '1way': '1Way', '2way': '2Way', '4way': '4Way', '360': '360', mini4way: '미니 4Way' };
 export const BRAND_LABEL = { samsung: '삼성', lg: 'LG' };
@@ -321,19 +321,20 @@ const roomNameAt = (f, p) => f.rooms.find((r) => pointInPoly(r.poly, p))?.name ?
 
 function productCard(m, ctx, api) {
   const pl = placement(m), dims = [m.panelMm && `판넬 ${fmtDims(m.panelMm)}`, m.bodyMm && `본체 ${fmtDims(m.bodyMm)}`].filter(Boolean);
-  const name = `${BRAND_LABEL[m.brand]} ${m.code}`;
-  const main = h('button', { type: 'button', class: 'pl-prod', 'aria-disabled': pl ? null : 'true',
+  const name = `${BRAND_LABEL[m.brand]} ${m.code}`, pic = pl && acThumb({ type: m.type, w: pl.size[0], d: pl.size[1] }, furnColors);
+  const main = h('button', { type: 'button', class: 'pl-prod' + (pic ? ' pl-prod--ac' : ''), 'aria-disabled': pl ? null : 'true',
     onclick: () => {
       if (!pl) { api.toast(`${m.code} · 제원표에 치수가 없어 놓을 수 없습니다`); return; }
       ctx.setTool('placeItem', placeOpts(m));
       api.toast(`${m.code} · 캔버스를 눌러 놓으세요`);
     } },
-    ...spaced(h('span', { class: 'pl-prod-type' }, `${BRAND_LABEL[m.brand]} · ${MODEL_LABEL[m.type]}`),
+    ...(pic ? [pic] : []),
+    h('span', { class: 'pl-prod-txt' }, ...spaced(h('span', { class: 'pl-prod-type' }, `${BRAND_LABEL[m.brand]} · ${MODEL_LABEL[m.type]}`),
       h('span', { class: 'pl-prod-row' }, ...spaced(h('span', { class: 'pl-prod-code' }, m.code), h('span', { class: 'pl-prod-kw' }, kwText(m)))),
       h('span', { class: 'pl-prod-series' }, m.series ?? ''),
       h('span', { class: 'pl-prod-dim' }, dims.length ? dims.join(' · ') : '치수 미확인'),
       m.currentUncertain && h('span', { class: 'pl-flag' }, '현행 불확실'),
-      !pl && h('span', { class: 'pl-flag' }, '놓을 수 없음')));
+      !pl && h('span', { class: 'pl-flag' }, '놓을 수 없음'))));
   labelFromText(main, pl ? '캔버스에 놓기' : '치수 미확인이라 놓을 수 없음');
   return { main, name };
 }

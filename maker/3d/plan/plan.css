@@ -307,3 +307,6 @@ dialog.ed-dlg.ed-sheet { width: min(1120px, calc(100vw - var(--sp-6))); }
 .i-wrench { --i: url("icons/wrench.svg"); }
 @media (min-width: 769px) and (max-width: 1279px) { .ed-top .ed-b .ico { display: none; } }   /* 좁은 화면은 위 줄 글자만 — 나가기가 밀려나지 않게 */
 @media (max-width: 768px) { .ed-rb { height: 100%; min-height: 0; padding-block: 0; gap: 0; } .ed-rb .ico { width: 18px; height: 18px; } }   /* 폰 아래 탭 줄: 줄 높이 안에 아이콘 + 이름 */
+/* 글자 무게 한 단계 가볍게(11-16 대표: archisketch 수준) — 단추·도구 줄은 보통, 고른 것만 한 단계 굵게 */
+.ed-b, .ed-sb, .ed-row, .ed-rb { font-weight: var(--fw-reg); }
+.ed-b.primary, .ed-rb.on, .ed-row[aria-pressed="true"], .ed-sb[aria-pressed="true"] { font-weight: var(--fw-semi); }
