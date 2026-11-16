@@ -305,5 +305,5 @@ dialog.ed-dlg.ed-sheet { width: min(1120px, calc(100vw - var(--sp-6))); }
 .i-text-t { --i: url("icons/text-t.svg"); }
 .i-wall { --i: url("icons/wall.svg"); }
 .i-wrench { --i: url("icons/wrench.svg"); }
-@media (max-width: 1279px) { .ed-top .ed-b .ico { display: none; } }   /* 좁은 화면은 위 줄 글자만 — 나가기가 밀려나지 않게 */
+@media (min-width: 769px) and (max-width: 1279px) { .ed-top .ed-b .ico { display: none; } }   /* 좁은 화면은 위 줄 글자만 — 나가기가 밀려나지 않게 */
 @media (max-width: 768px) { .ed-rb { height: 100%; min-height: 0; padding-block: 0; gap: 0; } .ed-rb .ico { width: 18px; height: 18px; } }   /* 폰 아래 탭 줄: 줄 높이 안에 아이콘 + 이름 */
