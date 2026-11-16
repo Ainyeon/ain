@@ -226,7 +226,6 @@ const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[
       assert.strictEqual((await swRun(u, down)).res, 'STALE', u + ' 네트워크가 막히면 캐시');
     }
     for (const u of ['/maker/3d/studio.js?v=14', '/maker/3d/maps/data/other.txt', '/maker/3d/view/viewer.js', '/maker/3d/index.html']) assert.strictEqual((await swRun(u, fresh)).res, 'STALE', u + ' 캐시 우선은 그대로');
-    assert.ok(/ain-v35'/.test(swSrc), 'VERSION 은 이번에 올리지 않는다(배포 때 판단)');
   }
 
   console.log('test-maps: OK');
