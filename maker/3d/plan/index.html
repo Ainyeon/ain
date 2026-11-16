@@ -13,7 +13,7 @@
   <script src="/maker/3d/partner-boot.js?v=2"></script>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
   <link rel="stylesheet" href="/maker/3d/plan/plan.css?v=3">
-  <script type="module" src="/maker/3d/plan/app.js?v=3"></script>
+  <script type="module" src="/maker/3d/plan/app.js?v=4"></script>
 </head>
 <body class="pl">
   <a class="ed-skip" href="#plCanvas">도면 캔버스로 건너뛰기</a>
@@ -96,6 +96,7 @@
 
     <aside class="ed-side" id="plSide" aria-label="층과 설정">
       <section class="ed-sec" aria-labelledby="plMiniH"><div class="ed-sec-h"><h2 id="plMiniH">미니맵</h2><button type="button" class="ed-x ed-small-only" id="plSideClose" aria-label="오른쪽 패널 닫기">×</button></div><canvas id="plMini" aria-label="미니맵 · 누르거나 끌면 화면이 옮겨 갑니다"></canvas></section>
+      <section class="ed-sec" id="plReview" aria-labelledby="plReviewH" hidden></section>
       <section class="ed-sec" aria-labelledby="plFloorH2">
         <h2 id="plFloorH2">층 관리</h2>
         <label class="ed-f"><span>현재 층</span><select id="plFloorSel"></select></label>
