@@ -127,7 +127,7 @@
         const session = await ainAuth.getSession();
         if (gen !== S.gen) return;
         if (!session) {
-          forgetDevice(null);   // 다른 화면에서 로그아웃했어도 이 기기의 업무 흔적을 지운다
+          forgetDevice(null);   // 계정 없는 임시 붙여넣기만 정리하고 기기 초안은 보존한다
           S.store = null; S.uid = null; S.d = null; document.body.classList.remove('w-app'); renderLanding(); return;
         }
         S.uid = session.user.id;
@@ -1158,14 +1158,10 @@
     ];
   }
 
-  // 이 기기에 남긴 업무 흔적(임시 입력·오프라인 요약)을 지운다. uid가 없으면 체험용을 뺀 전부
+  // 전환 준비 중 로그인 변경으로 미제출 초안이나 오프라인 요약을 지우지 않는다.
+  // 비계정 임시 붙여넣기는 기존과 같이 정리한다. 미완성 붙여넣기는 미리 따로 보관해야 한다.
   function forgetDevice(uid) {
-    try { sessionStorage.removeItem('work_paste'); } catch (e) { /* 무시 */ }
-    try {
-      Object.keys(localStorage).filter((k) => uid
-        ? k.startsWith('work_draft_' + uid + '_') || k === window.ainWorkStore.offlineKey(uid)
-        : (k.startsWith('work_draft_') && !k.startsWith('work_draft_demo_')) || k.startsWith('work_offline_')).forEach((k) => localStorage.removeItem(k));
-    } catch (e) { /* 저장소 접근 불가 */ }
+    try { sessionStorage.removeItem('work_paste'); } catch (e) { /* 저장소 접근 불가 */ }
   }
 
   // ── 시작
@@ -1176,7 +1172,7 @@
     if (uid !== S.uid) {
       if (S.uid && S.uid !== 'demo') forgetDevice(S.uid);
       document.querySelectorAll('.w-fab, dialog.w-dialog, #printArea').forEach((x) => x.remove());
-      S.d = null; boot();
+      S.store = null; S.uid = null; S.d = null; S.q = ''; S.cq = ''; S.myField = null; S.docPhotos = []; S.docPhotosJob = null; boot();
     }
     else if (S.d && /access_token/.test(location.hash)) { history.replaceState(null, '', location.pathname + location.search); route(); }
   });

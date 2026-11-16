@@ -145,8 +145,8 @@ const overlap = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[
 
   // ── 플래너 링크 ──
   assert.strictEqual(planUrl('draw'), '../plan/?new=1', '직접 그리기 = 빈 도면(?new=1 이 없으면 플래너가 마지막 저장 도면을 연다)'); assert.strictEqual(planUrl('trace'), '../plan/?underlay=1'); assert.strictEqual(planUrl('template', '', 'abc'), '../plan/?template=abc');
-  assert.strictEqual(planUrl('draw', '?partner=baramdaero&embed=1&x=1&q=2'), '../plan/?new=1&partner=baramdaero&embed=1', '공동 브랜드·임베드만 이어 붙인다(다른 값은 버림)');
-  assert.strictEqual(planUrl('trace', '?partner=baramdaero'), '../plan/?underlay=1&partner=baramdaero'); assert.strictEqual(planUrl('template', '?embed=1', 't1'), '../plan/?template=t1&embed=1');
+  assert.strictEqual(planUrl('draw', '?partner=acme&embed=1&x=1&q=2'), '../plan/?new=1&partner=acme&embed=1', '공동 브랜드·임베드만 이어 붙인다(다른 값은 버림)');
+  assert.strictEqual(planUrl('trace', '?partner=acme'), '../plan/?underlay=1&partner=acme'); assert.strictEqual(planUrl('template', '?embed=1', 't1'), '../plan/?template=t1&embed=1');
   assert.strictEqual(typeMeta({ areaM2: 84.9712, rooms: 3 }), '84.97㎡ · 방 3'); assert.strictEqual(typeMeta({ areaM2: 59, rooms: 0 }), '59㎡ · 방 0');
 
   // ── 바탕 지도(OpenStreetMap 타일) · 주소 검색(Nominatim) ──

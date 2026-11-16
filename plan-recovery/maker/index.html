@@ -1,0 +1,14 @@
+<!doctype html><html lang="ko"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; connect-src 'none'">
+<title>이전 안내문과 카드 옮기기 | 모당</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;background:#f4f6f7;color:#202a34;margin:0}main{max-width:680px;margin:auto;padding:32px 20px}section{background:white;border:1px solid #dce2e6;border-radius:12px;padding:20px;margin:20px 0}button,input{font:inherit}button{padding:9px 14px;background:#254f70;color:white;border:0;border-radius:7px}button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #f29d38;outline-offset:3px}a{color:#254f70}.error{color:#a02a23}</style>
+</head><body><main>
+<h1>이전 안내문과 카드 옮기기</h1>
+<p>예전 에인연에서 작성한 고객 안내문과 홍보 카드의 글·설정을 이 기기에서 모당으로 옮깁니다. 사진과 도면, 업무 내역은 이 기능으로 옮겨지지 않습니다.</p>
+<p>파일에는 작성한 업체명과 전화번호 등이 들어갈 수 있으니 다른 사람과 공유하지 마세요. 파일은 서버에 전송되지 않습니다.</p>
+<section id="source" hidden><h2>1. 에인연에서 파일 받기</h2><p>예전에 작성했던 같은 기기와 브라우저에서 파일을 받아 주세요. 기존 저장자료는 지우지 않습니다.</p><button type="button" id="download">이전 자료 파일로 받기</button><div id="split-download" hidden><p>파일이 크면 두 종류를 각각 받아 주세요. 파일마다 모당에서 가져오기를 진행합니다.</p><button type="button" id="download-notice">안내문만 받기</button> <button type="button" id="download-compare">홍보 카드만 받기</button></div><p id="export-status" role="status" aria-live="polite"></p><p>모당의 가져오기 기능은 준비 중입니다. 지금은 받은 파일을 안전하게 보관하고, 전환 안내 후 같은 기기에서 가져와 주세요.</p></section>
+<section id="destination" hidden><h2>2. 모당에서 파일 열기</h2><p>에인연에서 받은 파일을 선택한 뒤 ‘가져오기’를 눌러 주세요. 이 기기에 같은 도구의 저장 내용이 있으면 덮어쓰지 않습니다.</p><label for="file">이전 자료 파일</label> <input id="file" type="file" accept="application/json,.json"><p><button type="button" id="import">가져오기</button></p><p id="import-status" role="status" aria-live="polite"></p><div id="conflicts" hidden><h3>이전 내용 확인하기</h3><p>이미 모당에 저장된 내용이 있어 자동으로 바꾸지 않았습니다. 아래에서 예전 글을 확인하고 필요한 내용을 직접 복사해 주세요. 색상이나 배치는 자동으로 옮겨지지 않습니다.</p><div id="conflict-list"></div></div><p><a href="https://modang.io/maker/notice/">고객 안내문 열기</a> · <a href="https://modang.io/maker/compare/">홍보 카드 열기</a></p></section>
+<p id="unavailable" hidden>이 화면은 전환 후 에인연 또는 모당 주소에서 이용할 수 있습니다.</p>
+</main><script src="transfer.js"></script><script src="page.js"></script></body></html>
