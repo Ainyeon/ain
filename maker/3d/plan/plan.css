@@ -257,3 +257,53 @@ dialog.ed-dlg.ed-sheet { width: min(1120px, calc(100vw - var(--sp-6))); }
   body.printing .ed-sheet .ed-dlg-b { padding: 0; }
   body.printing .ed-sheet-cv { width: 420mm; height: 297mm; max-width: none; max-height: none; border: 0; }
 }
+
+/* 아이콘 — Phosphor(MIT) 원본 SVG 를 글자색으로 칠한다(icons/README.md) */
+.ico { flex: none; display: inline-block; width: 18px; height: 18px; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
+.ed-b .ico, .ed-sb .ico { width: 16px; height: 16px; }
+.ed-b:has(.ico), .ed-sb:has(.ico) { gap: 6px; }
+.ed-sb:has(.ico) { display: inline-flex; align-items: center; justify-content: center; }
+.ed-rb { gap: 2px; align-content: center; height: auto; min-height: 56px; padding-block: 6px; }
+.ed-rb .ico { width: 22px; height: 22px; }
+.ed-row .ed-lab { display: flex; align-items: center; gap: var(--sp-2); }
+.ed-row .ico { color: var(--c-ink-sub); }
+.ed-row[aria-pressed="true"] .ico { color: var(--c-accent); }
+.i-arrow-clockwise { --i: url("icons/arrow-clockwise.svg"); }
+.i-arrow-counter-clockwise { --i: url("icons/arrow-counter-clockwise.svg"); }
+.i-bezier-curve { --i: url("icons/bezier-curve.svg"); }
+.i-blueprint { --i: url("icons/blueprint.svg"); }
+.i-book-open { --i: url("icons/book-open.svg"); }
+.i-camera { --i: url("icons/camera.svg"); }
+.i-chart-pie-slice { --i: url("icons/chart-pie-slice.svg"); }
+.i-circle { --i: url("icons/circle.svg"); }
+.i-corners-out { --i: url("icons/corners-out.svg"); }
+.i-cube { --i: url("icons/cube.svg"); }
+.i-cube-transparent { --i: url("icons/cube-transparent.svg"); }
+.i-cursor { --i: url("icons/cursor.svg"); }
+.i-door { --i: url("icons/door.svg"); }
+.i-eraser { --i: url("icons/eraser.svg"); }
+.i-export { --i: url("icons/export.svg"); }
+.i-file-plus { --i: url("icons/file-plus.svg"); }
+.i-flip-horizontal { --i: url("icons/flip-horizontal.svg"); }
+.i-flip-vertical { --i: url("icons/flip-vertical.svg"); }
+.i-folder-open { --i: url("icons/folder-open.svg"); }
+.i-grid-four { --i: url("icons/grid-four.svg"); }
+.i-image { --i: url("icons/image.svg"); }
+.i-line-segment { --i: url("icons/line-segment.svg"); }
+.i-lock { --i: url("icons/lock.svg"); }
+.i-magnifying-glass { --i: url("icons/magnifying-glass.svg"); }
+.i-minus { --i: url("icons/minus.svg"); }
+.i-plus { --i: url("icons/plus.svg"); }
+.i-polygon { --i: url("icons/polygon.svg"); }
+.i-receipt { --i: url("icons/receipt.svg"); }
+.i-ruler { --i: url("icons/ruler.svg"); }
+.i-selection-plus { --i: url("icons/selection-plus.svg"); }
+.i-sign-out { --i: url("icons/sign-out.svg"); }
+.i-square { --i: url("icons/square.svg"); }
+.i-stack { --i: url("icons/stack.svg"); }
+.i-swatches { --i: url("icons/swatches.svg"); }
+.i-text-t { --i: url("icons/text-t.svg"); }
+.i-wall { --i: url("icons/wall.svg"); }
+.i-wrench { --i: url("icons/wrench.svg"); }
+@media (max-width: 1279px) { .ed-top .ed-b .ico { display: none; } }   /* 좁은 화면은 위 줄 글자만 — 나가기가 밀려나지 않게 */
+@media (max-width: 768px) { .ed-rb { height: 100%; min-height: 0; padding-block: 0; gap: 0; } .ed-rb .ico { width: 18px; height: 18px; } }   /* 폰 아래 탭 줄: 줄 높이 안에 아이콘 + 이름 */
