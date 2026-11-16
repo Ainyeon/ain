@@ -90,7 +90,7 @@ export function describeEl(doc, id) { // 낭독용 이름 — "벽 W3 · 3,200 m
   if (col === 'columns') return `${el.kind === 'round' ? '원형' : '사각'} 기둥 ${id}`;
   if (col === 'openings') return `${OPENING_NAMES[el.type] || '개구부'} ${id}`;
   if (col === 'guides') return `보조선 ${id} · ${mm(dist(el.a, el.b))}`;
-  return `${el.kind === 'appliance' ? '가전' : '에어컨'} ${el.code || el.model}`;
+  return el.kind === 'furniture' ? `가구 ${el.name}` : `${el.kind === 'appliance' ? '가전' : '에어컨'} ${el.code || el.model}`;
 }
 
 /* ---------- 도구 상태기계 ---------- */
@@ -332,15 +332,16 @@ export function createTools({ store, view, sel, ui, state }) {
         const p = snap(c).p;
         if (!fl().rooms.some((r) => pointInPoly(r.poly, p))) return ui.toast('방 안에서 놓아 주세요', 'err');
         if (fl().items.some((i) => dist(i.c, p) < 1)) return; // 같은 자리에 또 누르면(더블클릭) 두 대가 겹쳐 놓이므로 무시
-        const ids = run(opts.kind === 'appliance' // 가전: 패널이 공식 제원의 크기·높이를 실어 보낸다(없으면 core 가 거절한다). 그 밖은 시스템에어컨
+        const ids = run(opts.kind === 'furniture' ? { type: 'addItem', kind: 'furniture', shape: opts.shape, name: opts.name, c: p, rot, size: opts.size, heightMm: opts.heightMm }
+          : opts.kind === 'appliance' // 가전: 패널이 공식 제원의 크기·높이를 실어 보낸다(없으면 core 가 거절한다). 그 밖은 시스템에어컨
           ? { type: 'addItem', kind: 'appliance', category: opts.category, brand: opts.brand, model: opts.model, name: opts.name || '', c: p, rot, size: opts.size, heightMm: opts.heightMm, code: opts.code || opts.model, url: opts.url }
           : { type: 'addItem', kind: 'ac', model: opts.model, brand: opts.brand, c: p, rot, capacityKw: opts.capacityKw ?? null, code: opts.code || '', size: opts.size });
-        if (ids) say(`${opts.code || opts.model} 을 놓았습니다`);
+        if (ids) say(`${opts.code || opts.model || opts.name} 을 놓았습니다`);
       },
       overlay(g) {
         if (!cur || !opts.size) return; const p = snap(cur).p, ok = fl().rooms.some((r) => pointInPoly(r.poly, p));
         polyOverlay(g, rectPoly(p, opts.size[0], opts.size[1], rot), { bad: !ok });
-        const q = g.toPx(p); drawPill(g.ctx, g.C, `${opts.code || opts.model.toUpperCase()}${rot % 180 ? ' · 90°' : ''}`, q[0], q[1] - Math.max(18, (opts.size[1] * vp().scale) / 2 + 14), { color: ok ? g.C.accent : g.C.up });
+        const q = g.toPx(p); drawPill(g.ctx, g.C, `${opts.code || (opts.model ? opts.model.toUpperCase() : opts.name)}${rot % 180 ? ' · 90°' : ''}`, q[0], q[1] - Math.max(18, (opts.size[1] * vp().scale) / 2 + 14), { color: ok ? g.C.accent : g.C.up });
       },
     },
     calibrate: {

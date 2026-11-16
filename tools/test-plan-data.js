@@ -61,7 +61,7 @@ const r2 = (v) => Math.round(v * 100) / 100;
   { // 접근성: 제품 판 안내문은 실제 동작대로 + 키보드 문구는 따로(폰·터치에서 감춘다) · 가로로 넘치는 견적 표 상자는 키보드 초점을 받는다
     const pn = read('panels.js'), est = read('estimate.js');
     assert.ok(!/방향키로 고르고 Enter 로 놓습니다/.test(pn), '옛 안내문(카드에서 Enter 는 놓지 않고 도구만 켠다)이 남지 않는다');
-    assert.strictEqual((pn.match(/hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기/g) || []).length, 2, '시스템에어컨·가전 판: 카드를 고른 뒤 캔버스를 눌러 놓는다 + 키보드 문구');
+    assert.strictEqual((pn.match(/hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기/g) || []).length, 3, '시스템에어컨·가전·가구 판: 카드를 고른 뒤 캔버스를 눌러 놓는다 + 키보드 문구');
     assert.ok(/hint: '누르면 현재 층 벽·바닥에 적용됩니다', hintKeys: 'F 즐겨찾기'/.test(pn), '마감재 판도 F 즐겨찾기는 키보드 문구');
     assert.ok(/h\('p', \{ class: 'pl-hint' \}, cfg\.hint, cfg\.hintKeys && h\('span', \{ class: 'pl-kb' \}, ` · \$\{cfg\.hintKeys\}`\)\)/.test(pn), '키보드 문구는 .pl-kb 안(폰·터치에서 감춘다)');
     const mk = (tag) => ({ nodeType: 1, tag, attrs: {}, kids: [], className: '', setAttribute(k, v) { this.attrs[k] = v; }, addEventListener() {}, append(...c) { this.kids.push(...c); } });

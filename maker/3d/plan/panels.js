@@ -90,6 +90,13 @@ export function createFavs(kind, storage = browserStorage()) {
   };
 }
 
+/* ---------- 가구 (순수) — data/furniture-catalog.json 의 행 ---------- */
+export function filterFurniture(items, { type = 'all', place = 'all', query = '', ids = null } = {}) {
+  const q = norm(query);
+  return items.filter((m) => (type === 'all' || m.type === type) && (place === 'all' || m.place === place) && (!ids || ids.has(m.id)) && (!q || norm(m.name).includes(q)));
+}
+export const furnitureOpts = (m) => ({ kind: 'furniture', shape: m.shape, name: m.name, size: [m.widthMm, m.depthMm], heightMm: m.heightMm }); // ctx.setTool('placeItem', …) 에 넘기는 값
+
 /* ---------- 자료 불러오기 ---------- */
 const cache = new Map();
 function loadData(name) {
@@ -98,6 +105,7 @@ function loadData(name) {
 }
 export const loadCatalog = () => loadData('ac-catalog');
 export const loadApplianceCatalog = () => loadData('appliance-catalog'); // [가전] 을 처음 열 때만 불러온다(1MB 쯤)
+export const loadFurnitureCatalog = () => loadData('furniture-catalog'); // [가구] 를 처음 열 때만 불러온다
 export const loadFinishes = () => loadData('finishes');
 export const loadTemplates = () => loadData('templates');
 
@@ -329,23 +337,26 @@ function productCard(m, ctx, api) {
   return { main, name };
 }
 
-// 배치된 제품 탭 — 시스템에어컨과 가전을 구역으로 나눠 보이고, 삭제는 잠금을 지키는 ctx.exec 로
+// 배치된 제품 탭 — 시스템에어컨·가전·가구를 구역으로 나눠 보이고, 삭제는 잠금을 지키는 ctx.exec 로
 function placedProducts(data, ctx) {
   const node = h('div', { class: 'pl-browse' }), head = h('p', { class: 'pl-count' });
   const sec = (title) => h('h3', { class: 'pl-sec' }, title);
-  const acHead = sec(''), acList = h('ul', { class: 'pl-list', 'aria-label': '배치된 시스템에어컨' }), appHead = sec(''), appList = h('ul', { class: 'pl-list', 'aria-label': '배치된 가전' });
-  node.append(head, acHead, acList, appHead, appList);
+  const acHead = sec(''), acList = h('ul', { class: 'pl-list', 'aria-label': '배치된 시스템에어컨' }), appHead = sec(''), appList = h('ul', { class: 'pl-list', 'aria-label': '배치된 가전' }), fuHead = sec(''), fuList = h('ul', { class: 'pl-list', 'aria-label': '배치된 가구' });
+  node.append(head, acHead, acList, appHead, appList, fuHead, fuList);
   const row = (i, main, ...subs) => h('li', { class: 'pl-row' },
     h('span', { class: 'pl-row-main' }, h('span', { class: 'pl-prod-code' }, main), subs.map((t) => h('span', { class: 'pl-row-sub' }, t))),
     h('button', { type: 'button', class: 'pl-btn', 'aria-label': `${main} ${i.id} 삭제`, onclick: () => removeItem(ctx, i.id) }, '삭제'));
   const render = () => {
-    const f = curFloor(ctx.store.doc), acs = f.items.filter((i) => i.kind === 'ac'), apps = f.items.filter((i) => i.kind === 'appliance');
-    head.textContent = `${f.name} · ${f.items.length}대`;
+    const f = curFloor(ctx.store.doc), acs = f.items.filter((i) => i.kind === 'ac'), apps = f.items.filter((i) => i.kind === 'appliance'), fus = f.items.filter((i) => i.kind === 'furniture');
+    head.textContent = `${f.name} · ${f.items.length}개`;
     acHead.textContent = `시스템에어컨 ${acs.length}대`; appHead.textContent = `가전 ${apps.length}대`;
     acList.replaceChildren(...acs.map((i) => row(i, i.code || '모델명 미확인', [BRAND_LABEL[i.brand], MODEL_LABEL[i.model], i.capacityKw === null ? '냉방 미확인' : `냉방 ${i.capacityKw} kW`, roomNameAt(f, i.c)].filter(Boolean).join(' · '))));
     if (!acs.length) acList.append(h('li', { class: 'pl-empty-row' }, emptyNote('아직 놓은 에어컨이 없습니다')));
     appList.replaceChildren(...apps.map((i) => row(i, i.code || i.model, [BRAND_LABEL[i.brand], APPLIANCE_LABEL[i.category], roomNameAt(f, i.c)].filter(Boolean).join(' · '), dimLine(i.size[0], i.size[1], i.heightMm))));
     if (!apps.length) appList.append(h('li', { class: 'pl-empty-row' }, emptyNote('아직 놓은 가전이 없습니다')));
+    fuHead.textContent = `가구 ${fus.length}개`;
+    fuList.replaceChildren(...fus.map((i) => row(i, i.name, roomNameAt(f, i.c), dimLine(i.size[0], i.size[1], i.heightMm))));
+    if (!fus.length) fuList.append(h('li', { class: 'pl-empty-row' }, emptyNote('아직 놓은 가구가 없습니다')));
   };
   render();
   return { node, refresh: render };
@@ -410,20 +421,47 @@ function appliancesPanel(host, ctx) {
   });
 }
 
-// 제품 판: 맨 위 두 칸 전환 [시스템에어컨] [가전]. 시스템에어컨은 바로 열고, 가전은 처음 누를 때 만든다(카탈로그도 그때 불러온다)
+/* ---------- 제품(가구) ---------- */
+function furnitureCard(m, ctx, api, d) {
+  const lab = (list, id) => list.find((x) => x.id === id)?.label ?? id;
+  const main = h('button', { type: 'button', class: 'pl-prod', onclick: () => { ctx.setTool('placeItem', furnitureOpts(m)); api.toast(`${m.name} · 캔버스를 눌러 놓으세요`); } },
+    ...spaced(h('span', { class: 'pl-prod-type' }, `${lab(d.meta.places, m.place)} · ${lab(d.meta.types, m.type)}`),
+      h('span', { class: 'pl-prod-row' }, h('span', { class: 'pl-prod-code' }, m.name)),
+      h('span', { class: 'pl-prod-dim' }, dimLine(m.widthMm, m.depthMm, m.heightMm))));
+  labelFromText(main, '캔버스에 놓기');
+  return { main, name: m.name };
+}
+function furniturePanel(host, ctx) {
+  let data = null;
+  return browsePanel(host, ctx, {
+    name: 'furn', embedded: true, title: '가구', favKind: 'furniture', cols: 1,
+    tabs: [{ id: 'lib', label: '가구' }, { id: 'fav', label: '즐겨찾기' }, { id: 'placed', label: '배치된 제품' }],
+    load: () => loadFurnitureCatalog().then((d) => (data = d)), entries: (d) => d.items,
+    chipLabel: '종류', chips: (d) => d.meta.types, chipCounts: (e, o) => { const n = { all: 0 }; for (const m of filterFurniture(e, { place: o.chip2, query: o.query, ids: o.ids })) { n.all++; n[m.type] = (n[m.type] || 0) + 1; } return n; },
+    chip2Label: '곳', chips2: (d) => d.meta.places,
+    filter: (e, o) => filterFurniture(e, { type: o.chip, place: o.chip2, query: o.query, ids: o.ids }),
+    searchLabel: '이름 검색', hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기',
+    card: (m, c, api) => furnitureCard(m, c, api, data), placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
+    emptyFav: '즐겨찾기한 가구가 없습니다', emptyNone: '찾는 가구가 없습니다',
+    foot: () => '크기는 놓은 뒤 고칩니다',
+  });
+}
+
+// 제품 판: 맨 위 세 칸 전환 [시스템에어컨] [가전] [가구]. 시스템에어컨은 바로 열고, 가전은 처음 누를 때 만든다(카탈로그도 그때 불러온다)
 function productsPanel(container, ctx) {
   const root = h('section', { class: 'pl-root', 'data-panel': 'products' }, h('header', { class: 'pl-head' }, h('h2', { class: 'pl-title' }, '제품')));
-  const hosts = { ac: h('div', { class: 'pl-host', role: 'tabpanel' }), app: h('div', { class: 'pl-host', role: 'tabpanel', hidden: true }) };
-  const seg = tablist('제품 종류', [{ id: 'ac', label: '시스템에어컨' }, { id: 'app', label: '가전' }], 'ac', (id) => pick(id), 'pl-seg');
+  const hosts = { ac: h('div', { class: 'pl-host', role: 'tabpanel' }), app: h('div', { class: 'pl-host', role: 'tabpanel', hidden: true }), furn: h('div', { class: 'pl-host', role: 'tabpanel', hidden: true }) };
+  const seg = tablist('제품 종류', [{ id: 'ac', label: '시스템에어컨' }, { id: 'app', label: '가전' }, { id: 'furn', label: '가구' }], 'ac', (id) => pick(id), 'pl-seg');
   for (const t of seg.tabs) { const host = hosts[t.dataset.id]; host.id = uid('pl-h'); host.setAttribute('aria-labelledby', t.id); t.setAttribute('aria-controls', host.id); }
-  root.append(seg.el, hosts.ac, hosts.app);
+  root.append(seg.el, hosts.ac, hosts.app, hosts.furn);
   container.replaceChildren(root);
   let gone = false;
   revealWhenStyled(root, () => gone);
-  const subs = { ac: systemAcPanel(hosts.ac, ctx), app: null };
+  const subs = { ac: systemAcPanel(hosts.ac, ctx), app: null, furn: null };
   function pick(id) {
     if (id === 'app' && !subs.app) subs.app = appliancesPanel(hosts.app, ctx);
-    hosts.ac.hidden = id !== 'ac'; hosts.app.hidden = id !== 'app';
+    if (id === 'furn' && !subs.furn) subs.furn = furniturePanel(hosts.furn, ctx);
+    for (const k of Object.keys(hosts)) hosts[k].hidden = k !== id;
   }
   return { destroy() { gone = true; for (const sp of Object.values(subs)) if (sp) sp.destroy(); root.remove(); } };
 }
