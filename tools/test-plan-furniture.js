@@ -157,3 +157,16 @@ const read = (p) => fs.readFileSync(path.join(PLAN, p), 'utf8');
   const b2 = JSON.stringify(st.doc); st.exec({ type: 'turn', ids, deg: 360 }); assert.strictEqual(JSON.stringify(st.doc), b2, '한 바퀴는 바뀐 것 없음');
   console.log('turn ok');
 })().catch((e) => { console.error(e); process.exit(1); });
+
+// 벽 붙이기(wallSnapShift): 가까운 면에 붙고, 모서리에선 두 벽에, 멀면 그대로, 곡선벽·가로지름은 건너뛴다
+(async () => {
+  const { wallSnapShift, rectPoly } = await imp('core/geom.js');
+  const W = [{ a: [0, 0], b: [4000, 0], t: 150, bulge: 0 }, { a: [0, 0], b: [0, 4000], t: 150, bulge: 0 }];   // 위·왼쪽 벽, 면은 y=75·x=75
+  assert.deepStrictEqual(wallSnapShift(W, rectPoly([2000, 500], 600, 600), 200), [0, -125], '위 벽 면(y 75)에 붙는다');
+  assert.deepStrictEqual(wallSnapShift(W, rectPoly([400, 450], 600, 600), 200), [-25, -75], '모서리: 두 벽에');
+  assert.deepStrictEqual(wallSnapShift(W, rectPoly([2000, 1500], 600, 600), 200), [0, 0], '멀면 그대로');
+  assert.deepStrictEqual(wallSnapShift(W, rectPoly([2000, 60], 600, 600), 200).map(Math.abs), [0, 0], '벽을 가로지르면 건너뛴다');
+  assert.deepStrictEqual(wallSnapShift([{ ...W[0], bulge: 300 }], rectPoly([2000, 500], 600, 600), 200), [0, 0], '곡선벽은 건너뛴다');
+  assert.deepStrictEqual(wallSnapShift(W, rectPoly([2000, 340], 600, 600), 200), [0, 35], '묻힌 것은 밖으로');
+  console.log('wall snap ok');
+})().catch((e) => { console.error(e); process.exit(1); });

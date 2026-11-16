@@ -167,9 +167,9 @@ export function createView3D(container, store, opts = {}) {
     theme(f);
     applyAlpha();
   }
-  let cutAt = null; // 지금 벽을 자른 방향(평면 단위 벡터, 평면 뷰어는 null)
+  let cutAt = null, cutOn = opts.cut !== false; // 지금 벽을 자른 방향(평면 단위 벡터, 평면 뷰어·끔은 null) · cutOn = 보는 쪽 벽 걷기
   function cutNow() { // 카메라가 보는 쪽 — 평면 뷰어는 자르지 않는다
-    if (view === 'plan') return (cutAt = null);
+    if (view === 'plan' || !cutOn) return (cutAt = null);
     const p = camera.position, t = controls?.target; let x = p.x - (t?.x ?? 0), y = p.z - (t?.z ?? 0), r = Math.hypot(x, y);
     if (!controls || r < 1e-6) { const az = VIEWS[view].az * RAD; x = Math.sin(az); y = Math.cos(az); r = 1; }
     return (cutAt = [x / r, y / r]);
@@ -332,6 +332,7 @@ export function createView3D(container, store, opts = {}) {
   return {
     show, hide, setView, zoom, resize, destroy, isEmpty,
     setWallAlpha(a) { wallA = clamp01(a); applyAlpha(); },
+    setCut(on) { cutOn = !!on; if (renderer) recut(); },
     setFloorAlpha(a) { floorA = clamp01(a); applyAlpha(); },
     stats: () => ({ view, rebuilds, visible, geometries: renderer?.info.memory.geometries ?? 0, textures: renderer?.info.memory.textures ?? 0, calls: renderer?.info.render.calls ?? 0, frames: renderer?.info.render.frame ?? 0, triangles: renderer?.info.render.triangles ?? 0, pixelRatio: renderer?.getPixelRatio() ?? 0 }),
   };

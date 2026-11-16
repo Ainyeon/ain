@@ -1,6 +1,6 @@
 // 2D 편집 도구 — 도구 표·단축키와 포인터 상태기계(선택·벽·곡선벽·방·삭제·기둥·개구부·보조선·측정·제품 놓기·밑그림 축척)와 키보드 커서(방향키로 옮기고 Enter 로 누른다). import 해도 DOM 을 건드리지 않는다
 import { DEFAULTS, curFloor, COORD_MAX } from './core/model.js';
-import { snapPoint, hitTest, dist, wallPointAt, wallPoints, wallLen, nearestWall, nearestOnWall, rectPoly, circlePoly, pointInPoly, polyCentroid, segSegIntersect } from './core/geom.js';
+import { wallSnapShift, snapPoint, hitTest, dist, wallPointAt, wallPoints, wallLen, nearestWall, nearestOnWall, rectPoly, circlePoly, pointInPoly, polyCentroid, segSegIntersect } from './core/geom.js';
 import { SCALE, toMm, toPx as vpPx, snapStep, drawPill, drawCrosshair, angleDeg, fmtArea } from './view2d.js';
 
 export const PX = Object.freeze({ snap: 12, hit: 8, drag: 4, handle: 9 }); // 허용 거리(화면 px)
@@ -115,6 +115,10 @@ export function createTools({ store, view, sel, ui, state }) {
   /* ---------- 키보드 커서 — 포인터 대신 점을 가리킨다. 누르기는 마우스와 같은 down/up 처리기를 지나므로 스냅·검증·실행 취소가 그대로다 ---------- */
   const kbTip = () => (state.touch || state.analysis === 'axo' ? '' : tool === 'select' ? (sel.size ? ' · 방향키로도 옮깁니다 · [ ] 로 다른 것을 고릅니다' : ' · 방향키로 옮기고 Enter 로 고릅니다 · [ ] 로 하나씩 훑습니다') : KB_SET.has(tool) ? ' · 방향키로 옮기고 Enter 로 누릅니다 (Shift+방향키는 10칸)' : '');
   const kbStepMm = () => snapStep(vp().scale);
+  // 벽 붙이기 — 제품·가구·기둥의 발자국이 벽 면 가까이(화면 20px) 오면 붙인다. Alt 를 누르고 있으면 붙이지 않는다
+  const footprint = (f) => f.col === 'items' ? rectPoly(f.el.c, f.el.size[0], f.el.size[1], f.el.rot) : rectPoly(f.el.c, f.el.w, f.el.kind === 'round' ? f.el.w : f.el.d, f.el.kind === 'round' ? 0 : f.el.rot);
+  const placeAt = (c) => { const p = snap(c).p; if (!opts.size) return p; const [sx, sy] = wallSnap(rectPoly(p, opts.size[0], opts.size[1], rot), c.e); return [p[0] + sx, p[1] + sy]; };
+  const wallSnap = (pts, e) => (e && e.altKey ? [0, 0] : wallSnapShift(fl().walls, pts, T(20)));
   const kbCtx = (mm, shift) => ({ e: null, px: view.toPx(mm), mm, shift: !!shift, dn, moved: false, isDrag: false });
   const kbTool = () => KB_SET.has(tool) || (tool === 'select' && !sel.size); // 방향키·Enter 가 커서를 움직이는 도구 — 고른 것이 있으면 방향키는 그것을 옮긴다
   const kbShown = () => !!kc && focused && kbTool();
@@ -203,7 +207,9 @@ export function createTools({ store, view, sel, ui, state }) {
         if (!drag.started) { if (!c.moved) return; store.begin(drag.kind === 'handle' ? '끝점 이동' : '이동'); drag.started = true; }
         const s = snapStep(vp().scale);
         if (drag.kind === 'move') {
-          const dx = Math.round((c.mm[0] - drag.start[0]) / s) * s, dy = Math.round((c.mm[1] - drag.start[1]) / s) * s;
+          let dx = Math.round((c.mm[0] - drag.start[0]) / s) * s, dy = Math.round((c.mm[1] - drag.start[1]) / s) * s;
+          const els = [...sel.ids].map((i) => findEl(doc(), i));
+          if (els.length && els.every((f) => f && (f.col === 'items' || f.col === 'columns'))) { const ox = dx - drag.applied[0], oy = dy - drag.applied[1], [sx, sy] = wallSnap(els.flatMap(footprint).map((p) => [p[0] + ox, p[1] + oy]), c.e); dx += sx; dy += sy; }
           if (dx !== drag.applied[0] || dy !== drag.applied[1]) { try { store.exec({ type: 'move', ids: [...sel.ids], dx: dx - drag.applied[0], dy: dy - drag.applied[1] }); drag.applied = [dx, dy]; } catch (err) { ui.toast(err.message, 'err'); } }
         } else if (drag.kind === 'slide') {
           const o = findEl(doc(), drag.hit), w = o && fl().walls.find((x) => x.id === o.el.wall); if (!w) return;
@@ -326,10 +332,10 @@ export function createTools({ store, view, sel, ui, state }) {
         if (cur && !(op && op.done)) mark(g, snap(cur, op && op.a));
       },
     },
-    placeItem: {
+    placeItem: { // 놓을 자리도 벽에 붙인다
       hint: () => `방 안을 눌러 놓습니다 · ${kb('[ ] 로 90° 돌립니다 · ESC 로 끝냅니다', '놓은 뒤 [회전]으로 돌립니다 · [끝내기]로 끝냅니다')}`,
       up(c) {
-        const p = snap(c).p;
+        const p = placeAt(c);
         if (!fl().rooms.some((r) => pointInPoly(r.poly, p))) return ui.toast('방 안에서 놓아 주세요', 'err');
         if (fl().items.some((i) => dist(i.c, p) < 1 && i.size[0] === opts.size[0] && i.size[1] === opts.size[1])) return; // 같은 자리에 같은 크기를 또 누르면(더블클릭) 두 대가 겹쳐 놓이므로 무시 — 크기가 다르면(러그 위 탁자, 에어컨 아래 책상) 놓는다
         const ids = run(opts.kind === 'furniture' ? { type: 'addItem', kind: 'furniture', shape: opts.shape, name: opts.name, c: p, rot, size: opts.size, heightMm: opts.heightMm }
@@ -339,7 +345,7 @@ export function createTools({ store, view, sel, ui, state }) {
         if (ids) say(`${opts.code || opts.model || opts.name} 을 놓았습니다`);
       },
       overlay(g) {
-        if (!cur || !opts.size) return; const p = snap(cur).p, ok = fl().rooms.some((r) => pointInPoly(r.poly, p));
+        if (!cur || !opts.size) return; const p = placeAt(cur), ok = fl().rooms.some((r) => pointInPoly(r.poly, p));
         polyOverlay(g, rectPoly(p, opts.size[0], opts.size[1], rot), { bad: !ok });
         const q = g.toPx(p); drawPill(g.ctx, g.C, `${opts.code || (opts.model ? opts.model.toUpperCase() : opts.name)}${rot % 180 ? ' · 90°' : ''}`, q[0], q[1] - Math.max(18, (opts.size[1] * vp().scale) / 2 + 14), { color: ok ? g.C.accent : g.C.up });
       },
