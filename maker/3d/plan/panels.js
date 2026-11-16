@@ -1,6 +1,7 @@
 // 플래너 왼쪽 패널(템플릿·제품(시스템에어컨·가전)·마감재·설계형 라이브러리·리소스 관리) — DOM 을 직접 만들어 container 에 넣는다(innerHTML 없음). 검색·정렬·배치 크기 같은 순수 함수는 export 해서 node 로 시험한다.
 import { curFloor, APPLIANCE_CATEGORIES, APPLIANCE_LABEL } from './core/model.js';
 import { pointInPoly } from './core/geom.js';
+import { furnitureThumb } from './thumbs.js';
 
 export const MODEL_LABEL = { '1way': '1Way', '2way': '2Way', '4way': '4Way', '360': '360', mini4way: '미니 4Way' };
 export const BRAND_LABEL = { samsung: '삼성', lg: 'LG' };
@@ -422,19 +423,20 @@ function appliancesPanel(host, ctx) {
 }
 
 /* ---------- 제품(가구) ---------- */
+const furnColors = () => loadFinishes().then((d) => new Map((d.furniture || []).map((x) => [x.id, x.sw])));
 function furnitureCard(m, ctx, api, d) {
-  const lab = (list, id) => list.find((x) => x.id === id)?.label ?? id;
-  const main = h('button', { type: 'button', class: 'pl-prod', onclick: () => { ctx.setTool('placeItem', furnitureOpts(m)); api.toast(`${m.name} · 캔버스를 눌러 놓으세요`); } },
-    ...spaced(h('span', { class: 'pl-prod-type' }, `${lab(d.meta.places, m.place)} · ${lab(d.meta.types, m.type)}`),
-      h('span', { class: 'pl-prod-row' }, h('span', { class: 'pl-prod-code' }, m.name)),
-      h('span', { class: 'pl-prod-dim' }, dimLine(m.widthMm, m.depthMm, m.heightMm))));
+  const pic = furnitureThumb(m, furnColors);
+  const main = h('button', { type: 'button', class: 'pl-prod pl-prod--pic', onclick: () => { ctx.setTool('placeItem', furnitureOpts(m)); api.toast(`${m.name} · 캔버스를 눌러 놓으세요`); } },
+    ...(pic ? [pic] : []),
+    ...spaced(h('span', { class: 'pl-prod-code' }, m.name),
+      h('span', { class: 'pl-prod-dim' }, `${m.widthMm}×${m.depthMm}×${m.heightMm}`)));   // 종류·곳은 위 칩이 말한다
   labelFromText(main, '캔버스에 놓기');
   return { main, name: m.name };
 }
 function furniturePanel(host, ctx) {
   let data = null;
   return browsePanel(host, ctx, {
-    name: 'furn', embedded: true, title: '가구', favKind: 'furniture', cols: 1,
+    name: 'furn', embedded: true, title: '가구', favKind: 'furniture', cols: 2,
     tabs: [{ id: 'lib', label: '가구' }, { id: 'fav', label: '즐겨찾기' }, { id: 'placed', label: '배치된 제품' }],
     load: () => loadFurnitureCatalog().then((d) => (data = d)), entries: (d) => d.items,
     chipLabel: '종류', chips: (d) => d.meta.types, chipCounts: (e, o) => { const n = { all: 0 }; for (const m of filterFurniture(e, { place: o.chip2, query: o.query, ids: o.ids })) { n.all++; n[m.type] = (n[m.type] || 0) + 1; } return n; },
