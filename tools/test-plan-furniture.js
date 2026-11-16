@@ -143,3 +143,17 @@ const read = (p) => fs.readFileSync(path.join(PLAN, p), 'utf8');
   assert.ok(!/3D/.test(pj.slice(pj.indexOf('제품(가구)'), pj.indexOf('제품 판: 맨 위 세 칸'))), '가구 판 문구에 3D 없음');
   console.log(`test-plan-furniture: 통과 (가구 ${items.length}행)`);
 })().catch((e) => { console.error(e); process.exit(1); });
+
+// 여러 개 한꺼번에 돌리기(turn): 각자 제자리, 위치 그대로, 한 번에 실행 취소
+(async () => {
+  const { Store } = await imp('core/store.js');
+  const st = new Store();
+  for (const x of [1000, 3000]) st.exec({ type: 'addItem', kind: 'furniture', shape: 'chair', name: '의자', c: [x, 1000], size: [500, 500], heightMm: 800, rot: x === 1000 ? 0 : 270 });
+  const fl = () => st.doc.floors[st.doc.cur];
+  const ids = fl().items.map((e) => e.id), before = JSON.stringify(st.doc);
+  st.exec({ type: 'turn', ids, deg: 90 });
+  assert.deepStrictEqual(fl().items.map((e) => [e.c, e.rot]), [[[1000, 1000], 90], [[3000, 1000], 0]], 'turn: 각자 90° · 위치 그대로 · 0~359');
+  st.undo(); assert.strictEqual(JSON.stringify(st.doc), before, 'turn 은 실행 취소 한 번');
+  const b2 = JSON.stringify(st.doc); st.exec({ type: 'turn', ids, deg: 360 }); assert.strictEqual(JSON.stringify(st.doc), b2, '한 바퀴는 바뀐 것 없음');
+  console.log('turn ok');
+})().catch((e) => { console.error(e); process.exit(1); });

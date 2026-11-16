@@ -284,7 +284,11 @@ function propsBuild() {
       add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 }));
     } else if (first.col === 'items') { add(ro('모델', (e) => e.code || e.model.toUpperCase())); add(ro('냉방 용량', (e) => (e.capacityKw ? `${e.capacityKw} kW` : '미확인'))); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 })); }
     else if (first.col === 'guides') add(ro('길이', (e) => fmtLen(dist(e.a, e.b), state.unit)));
-  } else kids.push(h('p', { class: 'ed-note', text: `${ids.length}개를 골랐습니다` }));
+  } else {
+    kids.push(h('p', { class: 'ed-note', text: `${ids.length}개를 골랐습니다` }));
+    const turnIds = ids.filter((i) => ['items', 'columns'].includes(findEl(store.doc, i)?.col));   // 제품·가구·기둥만 돈다 — 각자 제자리에서
+    if (turnIds.length) { const turn = (deg) => () => run({ type: 'turn', ids: turnIds, deg }); kids.push(h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: '왼쪽 90°', onclick: turn(-90) }), h('button', { type: 'button', class: 'ed-b', text: '오른쪽 90°', onclick: turn(90) })])); }
+  }
   kids.push(h('div', { class: 'ed-btns' }, [first && first.col === 'items' ? h('button', { type: 'button', class: 'ed-b', text: '같은 것 놓기', 'aria-keyshortcuts': 'Control+D Meta+D', onclick: placeAgain }) : null, h('button', { type: 'button', class: 'ed-b', text: ids.length > 1 ? '선택한 것 지우기' : '지우기', onclick: delSel })]));
   box.replaceChildren(...kids); propFields.forEach((f2) => f2.sync());
 }

@@ -223,6 +223,13 @@ const CMD = {
     transformFloor(f, c.deg === 90 ? (p) => [cx + cy - p[1], cy - cx + p[0]] : (p) => [cx - cy + p[1], cy + cx - p[0]], (r) => r + c.deg, false);
     return allIds(f);
   },
+  turn(d, f, c) { // 고른 제품·가구·기둥을 각자 제자리에서 deg 만큼 돌린다(위치는 그대로, 0~359°)
+    ok(Array.isArray(c.ids) && Number.isFinite(c.deg), '돌릴 id 와 각도가 필요합니다');
+    if (!(c.deg % 360)) return null;
+    const ids = new Set(c.ids), out = [];
+    for (const col of ['items', 'columns']) f[col] = f[col].map((e) => (ids.has(e.id) ? (out.push(e.id), { ...e, rot: (((e.rot + c.deg) % 360) + 360) % 360 }) : e));
+    return out.length ? out : null;
+  },
   setFloor(d, f, c) {
     ok(c.patch && typeof c.patch === 'object', '층 설정 값이 필요합니다');
     const { heightMm = f.heightMm, slabMm = f.slabMm, name = f.name, finish } = c.patch, fin = { ...f.finish, ...finish };
