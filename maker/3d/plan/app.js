@@ -148,7 +148,19 @@ function replaceDoc(doc, id, updated = null) {
 }
 async function newDoc() {
   if (!(await confirmDiscard('새로 만들면'))) return;
-  replaceDoc(createDoc(), null); setUrl({ new: 1 });
+  replaceDoc(createDoc(), null); setUrl({ new: 1 }); startDialog();
+}
+/* 시작 방법 창 — 새 도면(?new=1·[새로 만들기])을 열면 어떻게 시작할지 고른다. 그냥 닫으면 빈 도면 */
+function startDialog() {
+  let d = null;
+  const opt = (icon, title, sub, fn) => h('button', { type: 'button', class: 'ed-start-o', onclick: () => { d.close(); fn(); } }, [h('span', { class: 'ico i-' + icon, 'aria-hidden': 'true' }), h('span', { class: 'ed-start-t' }, [h('strong', { text: title }), h('span', { text: sub })])]);
+  d = openDialog('어떻게 시작할까요?', [h('div', { class: 'ed-start' }, [
+    opt('file-plus', '빈 도면', '벽과 방을 직접 그립니다', () => {}),
+    opt('magnifying-glass', '우리 집 도면 찾기', '단지·주소로 평면을 찾습니다', () => { location.href = '../maps/'; }),
+    opt('image', '도면 이미지 올리기', '사진·캡처 위에 따라 그립니다', pickImage),
+    opt('book-open', '템플릿에서 고르기', '예시 평면에서 시작합니다', () => openPanel('templates')),
+    opt('folder-open', '도면 파일 불러오기', '내보낸 .json 을 엽니다', () => $('plFileJson').click()),
+  ])]);
 }
 async function openTemplate(id) { // 템플릿 카드 — 저장 안 한 변경은 다른 시작 경로와 같은 확인창을 거친다
   if (!(await confirmDiscard('템플릿으로 시작하면'))) return;
@@ -805,6 +817,8 @@ async function boot() {
   new ResizeObserver(() => { if (!touched && state.mode === '2d') { view.resize(); view.fit(fitBounds()); } }).observe(canvas);
   if (!kept) { toast(NO_STORE, 'err'); $('plSaveState').title = NO_STORE; } // 상태 칸이 좁아 잘려 보여도 전체 문구는 마우스를 올리면 나온다
   if (init.notice) toast(init.notice, 'err');
-  if (new URLSearchParams(location.search).get('underlay')) underlayStart();
+  const q0 = new URLSearchParams(location.search);
+  if (q0.get('underlay')) underlayStart();
+  else if (q0.get('new') && !init.notice) startDialog();
 }
 boot().catch((e) => { document.body.append(h('p', { class: 'ed-note err', text: `도면 편집기를 시작하지 못했습니다 · ${e.message}` })); throw e; });

@@ -310,3 +310,12 @@ dialog.ed-dlg.ed-sheet { width: min(1120px, calc(100vw - var(--sp-6))); }
 /* 글자 무게 한 단계 가볍게(11-16 대표: archisketch 수준) — 단추·도구 줄은 보통, 고른 것만 한 단계 굵게 */
 .ed-b, .ed-sb, .ed-row, .ed-rb { font-weight: var(--fw-reg); }
 .ed-b.primary, .ed-rb.on, .ed-row[aria-pressed="true"], .ed-sb[aria-pressed="true"] { font-weight: var(--fw-semi); }
+/* 시작 방법 창 — 새 도면을 열 때 고르는 다섯 길 */
+.ed-start { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: var(--sp-2); }
+.ed-start-o { display: flex; align-items: center; gap: var(--sp-3); min-height: 64px; padding: var(--sp-3); border: 1px solid var(--c-line); border-radius: var(--r-2); background: var(--c-surface); color: var(--c-ink); text-align: left; cursor: pointer; transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.ed-start-o .ico { width: 26px; height: 26px; color: var(--c-accent); }
+.ed-start-t { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ed-start-t strong { font-size: var(--fs-3); font-weight: var(--fw-semi); }
+.ed-start-t span { font-size: var(--fs-4); color: var(--c-ink-sub); }
+@media (hover: hover) { .ed-start-o:hover { border-color: var(--c-control); background: var(--c-surface-sub); } }
+@media (max-width: 768px) { .ed-top .ed-b .ico { display: none; } }   /* 폰 위 줄도 글자만 — 저장 단추가 화면 밖으로 밀리지 않게 */
