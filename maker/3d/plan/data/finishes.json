@@ -1,6 +1,7 @@
 {
   "meta": {
     "about": "벽·바닥 마감 색 견본. 상품·가격·제조사 이름이 없는 에인연 자체 목록이다. sw(색 견본 hex)는 이 파일에서만 hex 를 쓴다 — 화면 CSS 는 토큰만 쓴다.",
+    "furniture": "3D 가구 재질 색(furn-<재질>) — 마감 카드에는 나오지 않는다.",
     "apply": "카드를 누르면 현재 층 finish[target] 에 id 를 넣는다: store.exec({type:'setFloor', patch:{finish:{wall|floor: id}}}). 빈 문자열 ''은 마감 없음.",
     "fields": { "id": "finish 값으로 저장되는 이름", "target": "wall | floor", "chip": "분류 칩 id", "name": "화면에 보이는 이름", "sw": "색 견본 hex" }
   },
@@ -30,5 +31,17 @@
     { "id": "floor-tile-gray", "target": "floor", "chip": "tile", "name": "그레이 타일", "sw": "#B3B3AE" },
     { "id": "floor-tile-charcoal", "target": "floor", "chip": "tile", "name": "차콜 타일", "sw": "#55554F" },
     { "id": "floor-concrete", "target": "floor", "chip": "concrete", "name": "폴리싱 콘크리트", "sw": "#9B9A95" }
+  ],
+  "furniture": [
+    { "id": "furn-top", "name": "흰 상판", "sw": "#F3F3F0" },
+    { "id": "furn-body", "name": "흰 몸체", "sw": "#E8E7E3" },
+    { "id": "furn-metal", "name": "짙은 철재", "sw": "#3C3F44" },
+    { "id": "furn-seat", "name": "의자 천", "sw": "#2F3237" },
+    { "id": "furn-fabric", "name": "파티션 천", "sw": "#62778A" },
+    { "id": "furn-wood", "name": "오크", "sw": "#C8A47C" },
+    { "id": "furn-soft", "name": "소파·러그 천", "sw": "#A3A7AB" },
+    { "id": "furn-leaf", "name": "잎", "sw": "#5B8A4C" },
+    { "id": "furn-pot", "name": "화분", "sw": "#DCD7CE" },
+    { "id": "furn-screen", "name": "모니터", "sw": "#17191C" }
   ]
 }

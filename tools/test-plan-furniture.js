@@ -126,7 +126,7 @@ const read = (p) => fs.readFileSync(path.join(PLAN, p), 'utf8');
   /* 5. 패널 순수 함수 */
   assert.strictEqual(P.filterFurniture(items, { place: 'office' }).length, items.filter((m) => m.place === 'office').length);
   assert.ok(P.filterFurniture(items, { type: 'desk', place: 'office' }).every((m) => m.type === 'desk' && m.place === 'office'));
-  assert.deepStrictEqual(P.filterFurniture(items, { query: '책상 14' }).map((m) => m.id), ['desk-1400']);
+  assert.deepStrictEqual(P.filterFurniture(items, { query: '책상 14' }).map((m) => m.id), ['desk-1400', 'workdesk-1400']);
   assert.deepStrictEqual(P.filterFurniture(items, { ids: new Set(['bed-q']) }).map((m) => m.id), ['bed-q']);
   assert.deepStrictEqual(P.furnitureOpts(desk), { kind: 'furniture', shape: 'table', name: '책상 1400', size: [1400, 700], heightMm: 720 });
   assert.strictEqual(T.describeEl(s2.doc, curFloor(s2.doc).items[0].id), '가구 책상 1400');
