@@ -80,6 +80,8 @@
 .pl-prod--pic .pl-thumb { align-self: stretch; margin-bottom: var(--sp-1); }
 .pl-prod-txt { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); min-width: 0; width: 100%; }
 .pl-prod--ac .pl-thumb { align-self: stretch; aspect-ratio: 2 / 1; object-fit: cover; margin: var(--sp-1) 0; order: -1; }   /* 판넬은 납작해 위아래를 잘라 낮게 */
+.pl-prod--app .pl-thumb { align-self: stretch; aspect-ratio: 2 / 1; object-fit: contain; margin: var(--sp-1) 0; }   /* 키 큰 가전은 줄여서 다 보이게 */
+.pl-grid--1 .pl-prod--app .pl-thumb { width: calc(100% - 72px); }
 .pl-grid--1 .pl-prod--ac .pl-thumb { width: calc(100% - 72px); }   /* 오른쪽 위 즐겨찾기 단추 자리 */
 .pl-prod-type { display: flex; align-items: center; min-height: 24px; font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--fw-semi); color: var(--c-ink-faint); }   /* 24px = 오른쪽 위 즐겨찾기 단추 높이 */
 .pl-prod-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); width: 100%; }

@@ -45,6 +45,29 @@ function shootAc(m) {
   else { grille(w * 0.5, d * 0.5); for (const sg of [1, -1]) { slot(w * 0.6, d * 0.07, 0, sg * d * 0.36); slot(w * 0.07, d * 0.6, sg * w * 0.36, 0); } }   // 4Way·미니 4Way
   return snap(scene, made, Math.max(w, d) * 0.8, T / 2);
 }
+// 가전 — 분류마다 앞면(+z)에 알아볼 만한 것만: 냉장고 문, 세탁·건조기 둥근 문, TV 화면·받침, 정수기 출수구… 크기는 제원 가로·높이·깊이
+function shootApp(m) {
+  const scene = new THREE.Scene(), made = [], w = m.w * 0.001, h = m.h * 0.001, d = m.d * 0.001, F = d / 2, box = (x, y, z) => new THREE.BoxGeometry(x, y, z);
+  const b = (x, y, z, r, at) => put(scene, made, box(x, y, z), r, at), line = (x, y, cx, cy) => b(x, y, 0.004, 'screen', [cx, cy, F + 0.002]);   // 앞면 틈·손잡이
+  const disc = (r, cx, cy, role, t = 0.01) => { const g = new THREE.CylinderGeometry(r, r, t, 40); g.rotateX(Math.PI / 2); put(scene, made, g, role, [cx, cy, F + t / 2]); };
+  const c = m.cat, four = /4\s*도어|양문|4door/i.test(m.name || '') || (c === 'refrigerator' && w >= 0.85);
+  if (c === 'tv') { const sh = Math.min(h, w * 0.6), sd = Math.min(d, 0.06); b(w, sh, sd, 'screen', [0, h - sh / 2, 0]); if (h - sh > 0.05) { b(0.06, h - sh, 0.04, 'metal', [0, (h - sh) / 2, 0]); b(Math.min(w * 0.4, 0.5), 0.02, Math.min(d, 0.25), 'metal', [0, 0.01, 0]); } }
+  else if (c === 'cooking' && h < 0.15) b(w, h, d, 'screen', [0, h / 2, 0]);   // 인덕션 — 검은 유리판
+  else {
+    const body = c === 'refrigerator' || c === 'dishwasher' || c === 'styler' ? 'steel' : c === 'cooking' ? 'seat' : 'top';
+    b(w, h, d, body, [0, h / 2, 0]);
+    if (c === 'refrigerator') { if (four) { line(0.006, h * 0.55, 0, h * 0.72); line(w, 0.006, 0, h * 0.44); line(0.006, h * 0.4, 0, h * 0.22); } else line(w, 0.006, 0, h * 0.35); line(0.02, h * 0.2, four ? -0.04 : w * 0.38, h * 0.72); }
+    else if (c === 'kimchi') { for (const k of [0.33, 0.66]) line(w, 0.006, 0, h * k); for (const k of [0.17, 0.5, 0.83]) line(w * 0.5, 0.015, 0, h * k + 0.05); }
+    else if (c === 'washer' || c === 'dryer') { const r = Math.min(w, h) * 0.3; disc(r, 0, h * 0.5, 'gray'); disc(r * 0.72, 0, h * 0.5, 'screen', 0.014); line(w * 0.8, 0.04, 0, h * 0.9); }
+    else if (c === 'washtower') { for (const k of [0.27, 0.72]) { const r = Math.min(w, h * 0.5) * 0.28; disc(r, 0, h * k, 'gray'); disc(r * 0.72, 0, h * k, 'screen', 0.014); } line(w * 0.8, 0.05, 0, h * 0.5); }
+    else if (c === 'dishwasher') line(w * 0.7, 0.02, 0, h * 0.88);
+    else if (c === 'styler') { b(w * 0.86, h * 0.9, 0.006, 'screen', [0, h * 0.5, F + 0.003]); line(0.02, h * 0.25, w * 0.36, h * 0.55); }
+    else if (c === 'airpurifier' || c === 'aircon') { b(w * 0.7, 0.006, d * 0.7, 'screen', [0, h + 0.003, 0]); line(w * 0.12, h * 0.6, 0, h * 0.45); }
+    else if (c === 'water') { b(0.04, 0.03, 0.08, 'metal', [0, h * 0.72, F + 0.04]); line(w * 0.3, 0.02, 0, h * 0.88); }
+    else if (c === 'cooking') { b(w * 0.86, h * 0.6, 0.006, 'screen', [0, h * 0.42, F + 0.003]); line(w * 0.7, 0.02, 0, h * 0.8); }
+  }
+  return snap(scene, made, Math.max(w, d, h) * 0.95, h / 2);
+}
 function snap(scene, made, s, cy) {
   const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(-2, 4, 3);
   scene.add(new THREE.AmbientLight(0xffffff, 0.9), new THREE.HemisphereLight(0xffffff, 0x8a857b, 0.6), sun);
@@ -63,7 +86,7 @@ function pump() {
     const job = queue.shift();
     if (!job) { busy = false; return; }
     let url = cache.get(job.key);
-    if (url === undefined) { try { url = job.ac ? shootAc(job.m) : shoot(job.m); } catch { url = null; } cache.set(job.key, url); }
+    if (url === undefined) { try { url = job.ac === 'ac' ? shootAc(job.m) : job.ac === 'app' ? shootApp(job.m) : shoot(job.m); } catch { url = null; } cache.set(job.key, url); }
     if (url) job.img.src = url;
     setTimeout(step, 16);   // 한 장씩 — 화면이 멈추지 않게(rAF 는 숨은 탭에서 멈춘다)
   };
@@ -84,4 +107,6 @@ function thumb(m, key, ac, getColors) {
 }
 export const furnitureThumb = (m, getColors) => thumb(m, `f|${m.shape}|${m.widthMm}|${m.depthMm}|${m.heightMm}|${m.tone || ''}`, false, getColors);
 // m = {type: '1way'…, w, d}(판넬 가로·깊이 mm)
-export const acThumb = (m, getColors) => thumb(m, `a|${m.type}|${m.w}|${m.d}`, true, getColors);
+export const acThumb = (m, getColors) => thumb(m, `a|${m.type}|${m.w}|${m.d}`, 'ac', getColors);
+// m = {cat, name, w, h, d}(가전 분류·제품명·제원 mm)
+export const appThumb = (m, getColors) => thumb(m, `p|${m.cat}|${m.w}|${m.h}|${m.d}|${/4\s*도어|양문|4door/i.test(m.name || '') ? 4 : 2}`, 'app', getColors);
