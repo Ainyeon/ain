@@ -289,7 +289,7 @@ function propsBuild() {
     const turnIds = ids.filter((i) => ['items', 'columns'].includes(findEl(store.doc, i)?.col));   // 제품·가구·기둥만 돈다 — 각자 제자리에서
     if (turnIds.length) { const turn = (deg) => () => run({ type: 'turn', ids: turnIds, deg }); kids.push(h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: '왼쪽 90°', onclick: turn(-90) }), h('button', { type: 'button', class: 'ed-b', text: '오른쪽 90°', onclick: turn(90) })])); }
   }
-  kids.push(h('div', { class: 'ed-btns' }, [first && first.col === 'items' ? h('button', { type: 'button', class: 'ed-b', text: '같은 것 놓기', 'aria-keyshortcuts': 'Control+D Meta+D', onclick: placeAgain }) : null, h('button', { type: 'button', class: 'ed-b', text: ids.length > 1 ? '선택한 것 지우기' : '지우기', onclick: delSel })]));
+  kids.push(h('div', { class: 'ed-btns' }, [first && first.col === 'items' ? h('button', { type: 'button', class: 'ed-b', text: '같은 것 놓기', 'aria-keyshortcuts': 'Control+D Meta+D', onclick: placeAgain }) : null, ids.some((i) => ['items', 'columns'].includes(findEl(store.doc, i)?.col)) ? h('button', { type: 'button', class: 'ed-b', text: '복제', onclick: dupSel }) : null, h('button', { type: 'button', class: 'ed-b', text: ids.length > 1 ? '선택한 것 지우기' : '지우기', onclick: delSel })]));
   box.replaceChildren(...kids); propFields.forEach((f2) => f2.sync());
 }
 // 개구부 종류를 바꾸면 폭·높이·바닥 높이도 새 종류의 기본값으로 — 이전 종류의 기본값 그대로인 칸만(사용자가 고친 값은 둔다). 문·개방은 같은 기본값
@@ -516,6 +516,24 @@ function analysisBuild(box) {
 // 반듯한 네모 방(왼쪽 위에서 시계방향, 변마다 벽 하나)만 가로·세로를 숫자로 고친다
 const isRectRoom = (r) => r.poly.length === 4 && r.wallIds.length === 4 && r.poly[0][1] === r.poly[1][1] && r.poly[1][0] === r.poly[2][0] && r.poly[2][1] === r.poly[3][1] && r.poly[3][0] === r.poly[0][0] && r.poly[1][0] > r.poly[0][0] && r.poly[2][1] > r.poly[1][1];
 // 같은 것 놓기 — 고른 제품·가구 하나를 지금 크기·이름·회전 그대로 다시 놓는 도구로 든다(책상 여러 개). 새 문서 명령은 없다 — 놓는 길은 placeItem 그대로
+/* 복사·붙여넣기 — 제품·가구·기둥만(벽·방은 뺀다). 붙일 때마다 300mm 씩 비켜 놓고, 붙인 것을 고른다(실행 취소 한 번) */
+let clip = null, clipN = 0;
+function copySel() {
+  const els = [...sel.ids].map((i) => findEl(store.doc, i)).filter((f) => f && (f.col === 'items' || f.col === 'columns'));
+  if (!els.length) return false;
+  clip = els.map(({ col, el }) => ({ col, el: JSON.parse(JSON.stringify(el)) })); clipN = 0;
+  toast(`${els.length}개를 복사했습니다`); return true;
+}
+function pasteClip() {
+  if (!clip) return false;
+  if (state.locked) { toast('잠금 상태입니다 · 잠금을 풀어 주세요', 'err'); return true; }
+  const d = 300 * ++clipN, ids = [];
+  store.begin('붙여넣기');
+  try { for (const { col, el } of clip) { const { id, ...e } = el, r = run({ ...e, type: col === 'items' ? 'addItem' : 'addColumn', c: [e.c[0] + d, e.c[1] + d] }); if (r) ids.push(...r); } } finally { store.commit(); }
+  if (ids.length) { sel.set(ids); say(`${ids.length}개를 붙여 넣었습니다`); }
+  return true;
+}
+const dupSel = () => { if (copySel()) pasteClip(); };
 function placeAgain() {
   const f = sel.size === 1 ? findEl(store.doc, [...sel.ids][0]) : null, e = f && f.el;
   if (!f || f.col !== 'items') return false;
@@ -734,6 +752,8 @@ function onKey(e) {
   if (mod && e.code === 'KeyZ') { e.preventDefault(); if (e.shiftKey) doRedo(); else doUndo(); return; }
   if (mod && e.code === 'KeyY') { e.preventDefault(); doRedo(); return; }
   if (mod && e.code === 'KeyA' && state.mode === '2d' && onCanvas && state.analysis !== 'axo') { e.preventDefault(); const f = curFloor(store.doc); sel.set(COLS.flatMap((c) => f[c].map((x) => x.id))); return; }
+  if (mod && e.code === 'KeyC' && state.mode === '2d' && onCanvas) { if (copySel()) e.preventDefault(); return; }
+  if (mod && e.code === 'KeyV' && state.mode === '2d' && onCanvas) { if (pasteClip()) e.preventDefault(); return; }
   if (mod && e.code === 'KeyD') { if (state.mode === '2d' && onCanvas && placeAgain()) e.preventDefault(); return; }   // 고른 제품·가구를 같은 것으로 또 놓는다
   if (e.key === 'Shift') tools.setShift(true);
   if (e.code === 'Escape' && $('plMenu').classList.contains('open')) { $('plMenu').classList.remove('open'); $('plMore').setAttribute('aria-expanded', 'false'); $('plMore').focus({ preventScroll: true }); return; }
