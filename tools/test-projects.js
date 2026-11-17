@@ -27,7 +27,7 @@ const root = path.join(__dirname, '..'), read = (p) => fs.readFileSync(path.join
   for (const m of html.matchAll(/(?:href|src)="(\/[^"?]+)(?:\?[^"]*)?"/g)) assert.ok(fs.existsSync(path.join(root, m[1].slice(1))) || /^\/(auth\.js|assets\/)/.test(m[1]) && fs.existsSync(path.join(root, m[1].slice(1))), '참조 파일 있음: ' + m[1]);
   // 셸: 글자 메뉴(아이콘 없음) · 이동 주소 · 현재 위치 표시
   const shell = read('maker/3d/app/shell.js'); assert.ok(!/<svg|createElementNS/.test(shell), '셸에는 아이콘을 그리지 않는다'); assert.ok(/aria-current/.test(shell) && /aria-label': '스튜디오'/.test(shell), '현재 위치·내비게이션 이름');
-  for (const href of ['/maker/3d/', '/maker/3d/#stAsk', '/maker/3d/projects/', '/maker/3d/plan/', '/maker/3d/maps/']) assert.ok(shell.includes("'" + href + "'"), '메뉴 주소 ' + href);
+  for (const href of ['/maker/3d/', '/maker/3d/agent/', '/maker/3d/projects/', '/maker/3d/plan/', '/maker/3d/maps/']) assert.ok(shell.includes("'" + href + "'"), '메뉴 주소 ' + href);
   // 프로젝트 화면: 만들 수 없는 것을 약속하지 않는다 — 보기 4가지, 휴지통은 복원·완전 삭제만, 완전 삭제는 확인창
   const pj = read('maker/3d/projects/projects.js'); for (const t of ['전체 프로젝트', '북마크', '작업 결과', '휴지통', '복원', '완전 삭제', '이름 바꾸기', '복제']) assert.ok(pj.includes(t), '화면 글자: ' + t);
   assert.ok(/confirmDelete\(m, fk\)/.test(pj) && /lib\.deletePlan\(m\.id\); close\(\)/.test(pj) && (pj.match(/lib\.deletePlan/g) || []).length === 1, '완전 삭제는 확인창 한 곳에서만');

@@ -1,0 +1,37 @@
+/* AI 에이전트 — 토큰만. 제목 줄 · 모드 카드 둘(처음) · 대화(말풍선·입력·예시 문장). 상자는 1px 선, 그림자 없음 (projects.css 의 pj-btn·pj-dlg 를 같이 쓴다) */
+.ag-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--sp-3); }
+.ag-head h1 { margin: 0; font-size: var(--fs-1); line-height: var(--lh-1); font-weight: var(--fw-bold); letter-spacing: -0.02em; text-wrap: balance; }
+.ag-k { margin: 0 0 var(--sp-1); font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--fw-semi); color: var(--c-accent); }
+.ag-body { display: flex; flex-direction: column; gap: var(--sp-3); max-width: 820px; margin-top: var(--sp-5); }
+.ag-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.ag-mode { display: grid; gap: var(--sp-1); align-content: start; min-height: 148px; padding: var(--sp-5); border: 1px solid var(--c-line); border-radius: var(--r-2); background: var(--c-surface); color: var(--c-ink); font: inherit; text-align: left; cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease), background-color var(--t-fast) var(--ease); }
+.ag-mode-k { font-size: var(--fs-4); line-height: var(--lh-4); font-weight: var(--fw-semi); color: var(--c-accent); }
+.ag-mode strong { font-size: var(--fs-2); line-height: var(--lh-2); font-weight: var(--fw-bold); }
+.ag-mode span:last-child { color: var(--c-ink-sub); }
+.ag-tabs { display: inline-flex; align-self: flex-start; border: 1px solid var(--c-line-strong); border-radius: var(--r-1); overflow: hidden; }
+.ag-tabs button { min-height: 36px; padding: 0 var(--sp-4); border: 0; background: var(--c-surface); color: var(--c-ink-sub); font: inherit; font-weight: var(--fw-semi); cursor: pointer; }
+.ag-tabs button + button { border-left: 1px solid var(--c-line-strong); }
+.ag-tabs button[aria-pressed="true"] { background: var(--c-accent-bg); color: var(--c-accent); }
+.ag-attach { display: flex; align-items: center; gap: var(--sp-2); color: var(--c-ink-sub); font-size: var(--fs-3); }
+.ag-attach select { min-height: 40px; max-width: 100%; padding: 0 var(--sp-2); border: 1px solid var(--c-control); border-radius: var(--r-1); background: var(--c-surface); color: var(--c-ink); font: inherit; }
+.ag-log { display: flex; flex-direction: column; gap: var(--sp-3); max-height: min(60dvh, 640px); overflow-y: auto; }
+.ag-log:empty { display: none; }
+.ag-msg { max-width: 88%; padding: var(--sp-3) var(--sp-4); border-radius: var(--r-2); }
+.ag-msg p { margin: 0; white-space: pre-wrap; line-height: var(--lh-3); }
+.ag-msg.me { align-self: flex-end; background: var(--c-accent-bg); color: var(--c-ink); }
+.ag-msg.ai { align-self: flex-start; border: 1px solid var(--c-line); background: var(--c-surface); }
+.ag-msg.err { color: var(--c-ink-sub); }
+.ag-msg.wait p { color: var(--c-ink-sub); }
+.ag-acts { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-3); }
+.ag-go { display: inline-flex; align-items: center; min-height: 36px; padding: 0 var(--sp-3); border: 1px solid var(--c-accent-line); border-radius: var(--r-1); color: var(--c-accent); font-weight: var(--fw-semi); text-decoration: none; }
+.ag-login { align-self: flex-start; }
+.ag-form { display: flex; gap: var(--sp-2); align-items: stretch; }
+.ag-form textarea { flex: 1; min-width: 0; min-height: 52px; padding: var(--sp-3); border: 1px solid var(--c-control); border-radius: var(--r-2); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: 16px; resize: vertical; }
+.ag-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ag-chips button { min-height: 36px; padding: 0 var(--sp-3); border: 1px solid var(--c-line); border-radius: 999px; background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: var(--fs-4); cursor: pointer; }
+.ag-note { margin: 0; font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-sub); }
+.ag-step { margin: 0; font-size: var(--fs-4); color: var(--c-ink-sub); font-variant-numeric: tabular-nums; }
+.ag-mode:focus-visible, .ag-tabs button:focus-visible, .ag-chips button:focus-visible, .ag-go:focus-visible, .ag-form textarea:focus-visible, .ag-attach select:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+@media (hover: hover) { .ag-mode:hover, .ag-chips button:hover { border-color: var(--c-line-strong); background: var(--c-surface-sub); } }
+@media (max-width: 768px) { .ag-modes { grid-template-columns: minmax(0, 1fr); } .ag-msg { max-width: 100%; } .ag-head { align-items: flex-start; flex-direction: column; } }
