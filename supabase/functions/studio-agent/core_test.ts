@@ -1,6 +1,6 @@
 // studio-agent 점검 — 네트워크 없음.  실행: deno test -A supabase/functions/studio-agent/core_test.ts
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { buildMessages, checkBody, costUsd, readOut } from "./core.ts";
+import { buildMessages, checkBody, costUsd, readOut, replySoFar } from "./core.ts";
 
 const u = (content: string) => ({ role: "user", content }), a = (content: string) => ({ role: "assistant", content });
 
@@ -27,6 +27,14 @@ Deno.test("readOut: 정상·거절·깨짐·모르는 동작", () => {
   assertEquals(readOut({ stop_reason: "end_turn", content: [{ type: "text", text: '{"reply":" 네 ","actions":["maps","hack","plan_new","upload"]}' }] }), { reply: "네", actions: ["maps", "plan_new"] });
   assertEquals(readOut({ stop_reason: "refusal", content: [] }).actions, []);
   assertEquals(readOut({ stop_reason: "end_turn", content: [{ type: "text", text: "{깨짐" }] }).reply.startsWith("답을 만들지"), true);
+});
+
+Deno.test("replySoFar: 덜 온 JSON 에서 reply 앞부분만", () => {
+  assertEquals(replySoFar('{"rep'), "");
+  assertEquals(replySoFar('{"reply":"거실은 \\"남'), '거실은 "남');
+  assertEquals(replySoFar('{"reply":"줄\\'), "줄");                       // 이스케이프가 반만 왔다
+  assertEquals(replySoFar('{"reply":"a\\u00'), "a");
+  assertEquals(replySoFar('{"reply":"a\\u00e9b\\nc","actions":["maps"]}'), "aéb\nc");
 });
 
 Deno.test("costUsd: 실측 한 번(입력 62·캐시 쓰기 1165·출력 478 → 약 $0.0156)", () => {

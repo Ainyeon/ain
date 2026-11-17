@@ -57,13 +57,47 @@ async function send(text) {
   const msgs = S.log.filter((m) => !m.err).slice(-15).map((m) => ({ role: m.role, content: m.content }));
   while (msgs.length && msgs[0].role !== 'user') msgs.shift();
   const body = { mode: S.mode, messages: msgs, project: S.mode === 'expert' && S.project ? summary(S.project) : undefined };
-  let reply;
+  const reply = { role: 'assistant', content: '' };
+  const fail = (why) => Object.assign(reply, { content: ERR[why] || (why === 'net' ? '연결이 끊겼습니다. 다시 보내 주세요.' : '답을 받지 못했습니다. 잠시 뒤 다시 보내 주세요.'), err: true });
   try {
-    const { data, error } = await sb.functions.invoke('studio-agent', { body });
-    if (error) { let why = ''; try { why = (await error.context.json()).error; } catch (e) { /* 아래 */ } reply = { role: 'assistant', content: ERR[why] || '답을 받지 못했습니다. 잠시 뒤 다시 보내 주세요.', err: true }; }
-    else reply = { role: 'assistant', content: data.reply, actions: data.actions, left: data.left };
-  } catch (e) { reply = { role: 'assistant', content: '연결이 끊겼습니다. 다시 보내 주세요.', err: true }; }
-  S.log.push(reply); S.busy = false; render(); ui.input.focus();
+    const res = await fetch(sb.supabaseUrl + '/functions/v1/studio-agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + S.session.access_token, apikey: sb.supabaseKey },
+      body: JSON.stringify({ ...body, stream: true }),
+    });
+    if (!res.ok) { let why = ''; try { why = (await res.json()).error; } catch (e) { /* 아래 */ } fail(why); }
+    else await readStream(res.body, (ev) => {
+      if (ev.t) { if (!reply.content) { S.log.push(reply); render(); } reply.content += ev.t; paintLast(); }
+      else if (ev.done) Object.assign(reply, { content: ev.reply, actions: ev.actions, left: ev.left });
+      else if (ev.error) fail(ev.error);
+    });
+    if (!reply.content) fail('');
+  } catch (e) { fail(reply.content ? '' : 'net'); }
+  if (!S.log.includes(reply)) S.log.push(reply);
+  S.busy = false; render(); ui.input.focus();
+}
+
+// SSE 줄(data: {...}) 읽기
+async function readStream(stream, on) {
+  const rd = stream.pipeThrough(new TextDecoderStream()).getReader();
+  let buf = '';
+  for (;;) {
+    const { value, done } = await rd.read();
+    if (done) break;
+    buf += value;
+    let i;
+    while ((i = buf.indexOf('\n\n')) >= 0) {
+      const line = buf.slice(0, i); buf = buf.slice(i + 2);
+      if (line.startsWith('data: ')) on(JSON.parse(line.slice(6)));
+    }
+  }
+}
+
+// 오는 중인 답은 마지막 말풍선 글만 바꾼다(전체를 다시 그리지 않는다)
+function paintLast() {
+  const p = ui.body.querySelector('.ag-log > .ag-msg:last-child p');
+  const m = S.log[S.log.length - 1];
+  if (p && m) { p.textContent = m.content; p.closest('.ag-log').scrollTop = 1e9; }
 }
 
 function tour() {
@@ -85,7 +119,7 @@ function render() {
   const tabs = h('div', { class: 'ag-tabs', role: 'group', 'aria-label': '모드' }, Object.entries(MODES).map(([k, v]) => h('button', { type: 'button', 'aria-pressed': S.mode === k ? 'true' : 'false', text: v.name, onclick: () => { S.mode = k; render(); } })));
   const plans = lib ? lib.listPlans() : [];
   const attach = S.mode === 'expert' ? h('label', { class: 'ag-attach' }, ['첨부할 도면', h('select', { onchange: (e) => { S.project = e.target.value; } }, [h('option', { value: '', text: plans.length ? '고르지 않음' : '저장한 도면이 없습니다' }), ...plans.map((p) => h('option', { value: p.id, text: p.title, selected: p.id === S.project }))])]) : null;
-  const log = h('div', { class: 'ag-log', role: 'log', 'aria-live': 'polite' }, [...S.log.map(bubble), S.busy ? h('div', { class: 'ag-msg ai wait' }, [h('p', { text: '답을 쓰는 중…' })]) : null]);
+  const log = h('div', { class: 'ag-log', role: 'log', 'aria-live': 'polite' }, [...S.log.map(bubble), S.busy && S.log[S.log.length - 1].role === 'user' ? h('div', { class: 'ag-msg ai wait' }, [h('p', { text: '답을 쓰는 중…' })]) : null]);
   const lastLogin = S.log.length && S.log[S.log.length - 1].login;
   const chips = S.log.length ? null : h('div', { class: 'ag-chips', role: 'group', 'aria-label': '예시 문장' }, m.chips.map((c) => h('button', { type: 'button', text: c, onclick: () => { ui.input.value = c; ui.input.focus(); } })));
   const left = [...S.log].reverse().find((x) => typeof x.left === 'number');
