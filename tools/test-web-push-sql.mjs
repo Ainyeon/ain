@@ -13,7 +13,8 @@ let PGlite;
 try { ({ PGlite } = await import(process.env.PGLITE || '@electric-sql/pglite')); }
 catch (e) { console.error('PGlite가 없습니다.  npm i --prefix tools  후 다시 실행하세요.'); process.exit(2); }
 const grab = (file, name) => fs.readFileSync(path.join(here, file), 'utf8').match(new RegExp('const ' + name + ' = `([\\s\\S]*?)`;'))[1];
-const SQL = fs.readFileSync(path.join(repo, 'supabase', '26_web_push.sql'), 'utf8');
+const SQL = fs.readFileSync(path.join(repo, 'supabase', '26_web_push.sql'), 'utf8')
+  + '\n' + fs.readFileSync(path.join(repo, 'supabase', '29_notices.sql'), 'utf8');   // 29 알림 목록이 push_enqueue 를 덮는다
 
 const db = new PGlite();
 await db.exec(grab('test-work-sql.mjs', 'STUB'));
@@ -120,4 +121,18 @@ assert.equal((await q(`select user_id from public.push_subscriptions`))[0].user_
 await as(B, `select public.delete_push_subscription($1)`, [FCM]);
 assert.equal((await q(`select count(*)::int n from public.push_subscriptions`))[0].n, 0);
 
-console.log('test-web-push-sql: 6 groups OK');
+// 7) 알림 목록(29) — 구독과 상관없이 쌓이고, 본인 것만 읽고, 읽음 표시는 함수로만
+const mine = await as(A, `select kind, url, seen_at from public.notices order by id`);
+assert.ok(mine.length >= 6 && mine.every((r) => !r.seen_at), 'A 알림이 쌓임: ' + mine.length);
+assert.ok(mine.some((r) => r.url === '/board/free/?id=1' && r.kind === 'comment'));
+assert.equal((await as(B, `select count(*)::int n from public.notices`))[0].n, 0, 'B 는 A 알림을 못 읽음');
+assert.ok((await q(`select count(*)::int n from public.notices where user_id = '${C}'`))[0].n >= 1, '구독 없는 C 도 목록에는 쌓임');
+await fails(as(null, `select * from public.notices`), /permission denied/, '비회원 읽기');
+await fails(as(A, `update public.notices set seen_at = now()`), /permission denied/, '직접 읽음 표시');
+await fails(as(A, `insert into public.notices (user_id, kind, title, body, url) values ('${A}', 'comment', 't', 'b', '/')`), /permission denied/, '직접 넣기');
+const top = (await as(A, `select max(id)::int m from public.notices`))[0].m;
+assert.equal((await as(A, `select public.notices_seen($1) n`, [top - 1]))[0].n, 1, '마지막 하나만 남음');
+assert.equal((await as(A, `select public.notices_seen($1) n`, [top]))[0].n, 0);
+assert.equal((await q(`select count(*)::int n from public.notices where user_id = '${C}' and seen_at is not null`))[0].n, 0, 'A 가 C 것을 읽음 처리 못 함');
+
+console.log('test-web-push-sql: 7 groups OK');

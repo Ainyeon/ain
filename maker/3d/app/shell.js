@@ -25,8 +25,34 @@ export function mountShell({ active, root = document.getElementById('app') }) {
     h('a', { class: 'ap-foot', href: '/', text: '홈페이지로' }),
   ]);
   const authSlot = h('div', { class: 'ap-auth', id: 'authSlot' });
-  const top = h('header', { class: 'ap-top' }, [h('a', { class: 'ap-brand sm', href: '/maker/3d/', 'aria-label': '3D 스튜디오 시작' }, [h('img', { src: '/assets/ain-wordmark-v4.svg', alt: 'A.IN', height: 20 })]), authSlot]);
+  const bellBtn = h('button', { type: 'button', class: 'ap-bell', 'aria-label': '알림', hidden: true }, [h('span', { class: 'ap-i', 'aria-hidden': 'true' }), h('span', { class: 'ap-bell-n', hidden: true })]);
+  const top = h('header', { class: 'ap-top' }, [h('a', { class: 'ap-brand sm', href: '/maker/3d/', 'aria-label': '3D 스튜디오 시작' }, [h('img', { src: '/assets/ain-wordmark-v4.svg', alt: 'A.IN', height: 20 })]), bellBtn, authSlot]);
   const main = h('main', { class: 'ap-main', id: 'main', tabindex: '-1' });
   root.replaceChildren(side, h('div', { class: 'ap-col' }, [top, main]));
+  bell(bellBtn).catch(() => { /* 알림 없이 */ });
   return { main, top, side, authSlot };
+}
+
+// 알림(supabase/29_notices.sql) — 로그인한 회원만 종이 보인다. 열면 그때까지 온 것을 읽음으로
+async function bell(btn) {
+  const auth = window.ainAuth, sb = auth && auth.getClient();
+  if (!sb || !(await auth.getSession().catch(() => null))) return;
+  const { data: list, error } = await sb.from('notices').select('id,title,body,url,created_at,seen_at').order('id', { ascending: false }).limit(30);
+  if (error) return;
+  const badge = btn.lastChild;
+  const paint = (n) => { badge.hidden = !n; badge.textContent = n > 9 ? '9+' : String(n); btn.setAttribute('aria-label', n ? `알림 ${n}개 안 읽음` : '알림'); };
+  paint(list.filter((x) => !x.seen_at).length);
+  btn.hidden = false;
+  const day = (t) => new Date(t).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
+  btn.onclick = () => {
+    const close = h('button', { type: 'button', class: 'pj-btn', text: '닫기' });
+    const items = list.length
+      ? h('ul', { class: 'ap-notes' }, list.map((x) => h('li', { class: x.seen_at ? null : 'new' }, [h('a', { href: x.url }, [h('strong', { text: x.title }), x.body ? h('span', { text: x.body }) : null, h('time', { datetime: x.created_at, text: day(x.created_at) })])])))
+      : h('p', { class: 'ap-notes-empty', text: '새 알림이 없습니다.' });
+    const dlg = h('dialog', { class: 'pj-dlg ap-notes-dlg', 'aria-label': '알림' }, [h('h2', { text: '알림' }), items, h('div', { class: 'row' }, [close])]);
+    close.onclick = () => dlg.close();
+    dlg.addEventListener('close', () => { dlg.remove(); btn.focus(); });
+    document.body.append(dlg); dlg.showModal(); close.focus();
+    if (list.some((x) => !x.seen_at)) sb.rpc('notices_seen', { p_upto: list[0].id }).then(({ error: e }) => { if (!e) { list.forEach((x) => { x.seen_at = x.seen_at || 'now'; }); paint(0); } });
+  };
 }

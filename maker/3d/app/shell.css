@@ -34,3 +34,18 @@ body.ap { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
   html { scroll-padding-bottom: 72px; }   /* 아래 탭이 초점 잡힌 요소를 가리지 않게 */
 }
 @media (prefers-reduced-motion: reduce) { .ap-link { transition: none; } }
+/* 알림 종 — Phosphor(MIT) 원본 SVG(../plan/icons/bell.svg). 목록은 .pj-dlg 창 안 */
+.ap-bell { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--r-1); background: transparent; color: var(--c-ink); cursor: pointer; }
+.ap-bell .ap-i { width: 22px; height: 22px; background: currentColor; -webkit-mask: url("../plan/icons/bell.svg") center / contain no-repeat; mask: url("../plan/icons/bell.svg") center / contain no-repeat; }
+.ap-bell-n { position: absolute; top: 6px; right: 4px; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border-radius: var(--r-3); background: var(--c-accent); color: var(--c-surface); font-size: var(--fs-4); font-weight: var(--fw-bold); line-height: 18px; text-align: center; }
+.ap-bell:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+@media (hover: hover) { .ap-bell:hover { background: var(--c-surface-sub); } }
+.ap-notes-dlg { width: min(calc(100% - 2 * var(--sp-4)), 440px); }
+.ap-notes { list-style: none; margin: 0; padding: 0; display: grid; max-height: min(60dvh, 480px); overflow: auto; border-top: 1px solid var(--c-line); }
+.ap-notes li { border-bottom: 1px solid var(--c-line); }
+.ap-notes a { display: grid; gap: 2px; padding: var(--sp-3) var(--sp-2); color: var(--c-ink); text-decoration: none; }
+.ap-notes li.new a { background: var(--c-accent-bg); }
+.ap-notes strong { font-size: var(--fs-3); }
+.ap-notes span, .ap-notes time { font-size: var(--fs-4); color: var(--c-ink-sub); }
+.ap-notes a:focus-visible { outline: 2px solid var(--c-accent); outline-offset: -2px; }
+.ap-notes-empty { margin: 0; color: var(--c-ink-sub); }
