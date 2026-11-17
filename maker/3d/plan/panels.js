@@ -182,7 +182,7 @@ const failNote = (text, retry) => h('p', { class: 'pl-empty', role: 'alert' }, t
 const refocus = (box) => {
   const a = document.activeElement;
   if (a && a !== document.body) return;
-  const t = box.querySelector('.pl-card-main') || box.querySelector('.pl-link') || box.querySelector('[role=tab][aria-selected="true"]');
+  const t = box.querySelector('.pl-card-main, .pl-cat') || box.querySelector('.pl-link') || box.querySelector('[role=tab][aria-selected="true"]');
   if (t) t.focus({ preventScroll: true });
 };
 // 스타일시트가 붙기 전 한 프레임 맨몸으로 보이지 않게 숨겼다가 불러오면 보인다
@@ -194,7 +194,7 @@ const revealWhenStyled = (root, isGone) => { root.style.visibility = 'hidden'; e
    둘째 칩 줄: chip2Label·chips2(data)→[…] (있으면 filter 의 chip2 로 넘어간다) · chipCounts?(entries,{chip2,query,ids})→{칩 id: 개수}(첫 칩 줄 글자에 개수를 적는다)
    limit?: 한 번에 그리는 카드 수(넘으면 '더 보기') · countText?(total, shown) · embedded: 제품 판 안에 들어가는 판(제목 줄이 없다) */
 function browsePanel(container, ctx, cfg) {
-  const st = { tab: 'lib', chip: 'all', chip2: 'all', chip3: cfg.chip3Default || 'all', q: '', sort: cfg.sorts ? cfg.sorts[0].id : '' };
+  const st = { tab: 'lib', chip: 'all', chip2: 'all', chip3: cfg.chip3Default || 'all', q: '', sort: cfg.sorts ? cfg.sorts[0].id : '', home: !!cfg.catPic };   // home = 라이브러리 첫 화면을 분류 카드로(catPic 이 있을 때)
   const favs = createFavs(cfg.favKind), lastTab = cfg.tabs[cfg.tabs.length - 1].id, page = cfg.limit || Infinity;
   let data = null, phase = 'loading', view = null, placedView = null, gone = false;
   const toast = (m) => ctx.toast && ctx.toast(m);
@@ -224,7 +224,20 @@ function browsePanel(container, ctx, cfg) {
     view = placedView = null;
     if (st.tab === lastTab && cfg.placed) { placedView = cfg.placed(data, ctx, { toast }); status(placedView.node); return; }
     if (!data) { if (phase === 'fail') fail(); else status(loadingNote()); return; }
-    body.replaceChildren(browse());
+    body.replaceChildren(st.tab === 'lib' && st.home ? catHome() : browse());
+  }
+  // 분류 카드 첫 화면 — [전체] + 분류마다 대표 그림·이름·개수. 누르면 그 분류의 목록으로, 목록 위 [분류] 로 돌아온다
+  function catHome() {
+    const entries = cfg.entries(data), of = (id) => cfg.filter(entries, { chip: id, chip2: 'all', chip3: st.chip3, query: '', ids: null });
+    const go = (id) => { st.chip = id; st.home = false; show(); refocus(body); };
+    const grid = h('ul', { class: 'pl-cats', 'aria-label': `${cfg.title} 분류` });
+    for (const c of [{ id: 'all', label: '전체' }, ...cfg.chips(data)]) {
+      const list = of(c.id); if (c.id !== 'all' && !list.length) continue;
+      const pic = c.id === 'all' ? null : cfg.catPic(list);
+      grid.append(h('li', {}, h('button', { type: 'button', class: 'pl-cat' + (pic ? '' : ' pl-cat--txt'), onclick: () => go(c.id) }, pic, h('span', { class: 'pl-cat-name' }, c.label), h('span', { class: 'pl-cat-n' }, `${list.length.toLocaleString('ko-KR')}개`))));
+    }
+    roving(grid, '.pl-cat')();
+    return h('div', { class: 'pl-browse' }, grid, cfg.foot && h('p', { class: 'pl-foot' }, cfg.foot(data)));
   }
 
   function browse() {
@@ -297,7 +310,8 @@ function browsePanel(container, ctx, cfg) {
     view = { update, grid };
     update();
     const group = (title, el) => h('div', { class: 'pl-fgroup' }, h('span', { class: 'pl-flabel' }, title), el);
-    return h('div', { class: 'pl-browse' }, h('div', { class: 'pl-filters' }, h('div', { class: 'pl-tools' }, search, sort), chips2 ? [group(cfg.chipLabel, chips.el), group(cfg.chip2Label, chips2.el), chips3 && group(cfg.chip3Label, chips3.el)] : chips.el, hint, count), grid, moreBtn, foot);
+    const back = cfg.catPic && st.tab === 'lib' && h('button', { type: 'button', class: 'pl-back', onclick: () => { st.home = true; st.chip = 'all'; st.q = ''; show(); refocus(body); } }, '‹ 분류');
+    return h('div', { class: 'pl-browse' }, back, h('div', { class: 'pl-filters' }, h('div', { class: 'pl-tools' }, search, sort), chips2 ? [group(cfg.chipLabel, chips.el), group(cfg.chip2Label, chips2.el), chips3 && group(cfg.chip3Label, chips3.el)] : chips.el, hint, count), grid, moreBtn, foot);
   }
 
   const unsub = ctx.store.subscribe(() => {
@@ -373,6 +387,7 @@ function systemAcPanel(host, ctx) {
     chips: () => MODEL_ORDER.map((id) => ({ id, label: MODEL_LABEL[id] })),
     filter: (e, o) => filterModels(e, { type: o.chip, query: o.query, ids: o.ids }), sorts: MODEL_SORTS, sort: sortModels,
     searchLabel: '모델명·시리즈 검색', hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기',
+    catPic: (list) => { const m = list.find(placement), pl = m && placement(m); return pl && acThumb({ type: m.type, w: pl.size[0], d: pl.size[1] }, furnColors); },
     card: productCard, placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
     emptyFav: '즐겨찾기한 에어컨이 없습니다', emptyNone: '찾는 에어컨이 없습니다',
     foot: (d) => `제원은 제조사 웹 카탈로그를 옮긴 값입니다 · 수집 ${d.meta.readme.checked} · 빈 칸은 미확인`,
@@ -417,6 +432,7 @@ function appliancesPanel(host, ctx) {
     chip3Label: '판매', chips3: [{ id: 'sale', label: '판매 중' }, { id: 'all', label: '단종·미확인 포함' }], chip3Default: 'sale',   // 기본은 판매 중으로 확인된 것만(단종·삼성닷컴 판매 페이지 없음은 [단종·미확인 포함])
     filter: (e, o) => filterAppliances(e, { category: o.chip, brand: o.chip2, sale: o.chip3, query: o.query, ids: o.ids }), sorts: APP_SORTS, sort: sortAppliances,
     searchLabel: '모델명·제품명 검색', hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기 · O 공식 페이지',
+    catPic: (list) => { const m = list.find(applianceOpts), o = m && applianceOpts(m); return o && appThumb({ cat: m.category, name: m.name, w: o.size[0], d: o.size[1], h: o.heightMm }, furnColors); },
     card: applianceCard, placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
     countText: (total, shown) => (shown < total ? `${total.toLocaleString('ko-KR')}개 중 ${shown.toLocaleString('ko-KR')}개 표시` : `${total.toLocaleString('ko-KR')}개`),
     emptyFav: '즐겨찾기한 가전이 없습니다',
@@ -446,6 +462,7 @@ function furniturePanel(host, ctx) {
     chip2Label: '곳', chips2: (d) => d.meta.places,
     filter: (e, o) => filterFurniture(e, { type: o.chip, place: o.chip2, query: o.query, ids: o.ids }),
     searchLabel: '이름 검색', hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기',
+    catPic: (list) => furnitureThumb(list[0], furnColors),
     card: (m, c, api) => furnitureCard(m, c, api, data), placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
     emptyFav: '즐겨찾기한 가구가 없습니다', emptyNone: '찾는 가구가 없습니다',
     foot: () => '크기는 놓은 뒤 고칩니다',

@@ -38,6 +38,7 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
     assert.ok(html.includes(`id="${id}"`) && html.includes(t), t + ' 단추가 있다');
     assert.ok(re.test(rd('app.js')), t + ' 단추가 실제 기능에 이어져 있다');
   }
+  { const pj = rd('panels.js'); assert.strictEqual((pj.match(/^\s+catPic: /gm) || []).length, 3, '제품 판 셋(에어컨·가전·가구)이 분류 카드 첫 화면을 쓴다'); assert.ok(/st\.tab === 'lib' && st\.home \? catHome\(\) : browse\(\)/.test(pj) && /'‹ 분류'/.test(pj), '분류 카드 → 목록 → [분류] 로 돌아오기'); }
   // 모든 단추는 <button> 이고 type 이 있다. 이름 없는 단추 없음(글자 또는 aria-label)
   for (const m of html.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)) { assert.ok(/type="button"/.test(m[1]), '단추 type: ' + m[0].slice(0, 60)); assert.ok(m[2].trim() || /aria-label="[^"]+"/.test(m[1]), '단추 이름: ' + m[0].slice(0, 60)); }
   // 3D 전환 단추 글자는 예외, 그 밖의 문구에 3D 를 자랑처럼 쓰지 않는다(제목·설명·안내)
