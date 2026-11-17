@@ -7,7 +7,8 @@ const memory = () => { const m = new Map(); return { getItem: (k) => (m.has(k) ?
 let storage, kept = true;
 try { storage = window.localStorage; storage.getItem('ain-plan-docs'); } catch (e) { storage = memory(); kept = false; }   // 저장소를 못 쓰는 브라우저(사생활 보호 창): 이 화면 안에서만
 const lib = createLibrary(storage);
-const S = { view: 'all', sort: 'recent', session: null, jobs: null, jobsErr: '', entered: false, menuFk: null };
+const S = { view: 'all', sort: 'recent', q: '', layout: 'grid', session: null, jobs: null, jobsErr: '', entered: false, menuFk: null };
+try { if (storage.getItem('ain-pj-layout') === 'list') S.layout = 'list'; } catch (e) { /* 보기 방식은 못 남겨도 된다 */ }
 const STATUS = { uploading: '올리는 중', queued: '대기', running: '만드는 중', done: '완료', failed: '실패', expired: '보관 끝' };
 const TOOLN = { plan3d: '도면대로', interior: '사진처럼', design: '디자인 제안', erase: '지우개', cutout: '배경 떼기' };
 const TITLE = { all: '전체 프로젝트', bookmark: '북마크', jobs: '작업 결과', trash: '휴지통' };
@@ -101,6 +102,19 @@ function newCard() {
     h('form', { class: 'pj-ask', onsubmit: (e) => { e.preventDefault(); const v = input.value.trim(); if (v) location.href = '/maker/3d/?ask=' + encodeURIComponent(v); } }, [input, h('button', { type: 'submit', class: 'pj-btn', text: '말로 시키기' })]),
   ]);
 }
+// 새 프로젝트 창 — 시작하는 세 길(큰 카드)과 템플릿 한 줄(누르면 그 평면으로 도면 그리기)
+function newProject(returnFk) {
+  const go = (href, t, sub) => h('a', { class: 'pj-go', href }, [h('strong', { text: t }), h('span', { text: sub })]);
+  const tpl = h('div', { class: 'pj-tpls' }, [h('p', { class: 'pj-msg', text: '템플릿을 불러오는 중…' })]);
+  const d = dialog('새 프로젝트', h('div', { class: 'pj-newdlg' }, [
+    h('div', { class: 'pj-gos' }, [go('/maker/3d/maps/', '우리 집 도면 찾기', '단지·주소로 평면을 찾습니다'), go('/maker/3d/#stIn', '도면 올리기', 'DWG·PDF·사진에서 모형을 만듭니다'), go('/maker/3d/plan/?new=1', '직접 그리기', '벽과 방을 그립니다')]),
+    h('h3', { text: '템플릿으로 시작' }), tpl]), (close) => [h('button', { type: 'button', class: 'pj-btn', text: '닫기', onclick: close })], returnFk);
+  d.dlg.classList.add('pj-dlg--wide');
+  fetch('/maker/3d/plan/data/templates.json').then((r) => r.json()).then((d) => {
+    tpl.replaceChildren(...(d.templates || []).slice(0, 6).map((t) => { let th; try { th = thumbSvg(t.doc); } catch (e) { th = thumbSvg(null); }
+      return h('a', { class: 'pj-tpl', href: '/maker/3d/plan/?template=' + encodeURIComponent(t.id) }, [h('span', { class: 'pj-tpl-th' }, [th]), h('strong', { text: t.name }), h('span', { text: `${t.pyeong}평 · ${t.areaM2}㎡` })]); }));
+  }).catch(() => tpl.replaceChildren(h('p', { class: 'pj-msg err', text: '템플릿을 불러오지 못했습니다' })));
+}
 function empty(title, text) { return h('div', { class: 'pj-empty' }, [h('strong', { text: title }), text]); }
 
 async function loadJobs() {
@@ -120,9 +134,11 @@ function render(fk) {
   const all = lib.listPlans(), trash = lib.listPlans({ trashed: true }), marks = all.filter((m) => m.bookmark);
   const counts = { all: all.length, bookmark: marks.length, jobs: S.jobs ? S.jobs.length : 0, trash: trash.length };
   ui.views.replaceChildren(h('h2', { text: '보기' }), ...Object.keys(TITLE).map((k) => h('button', { type: 'button', class: 'pj-view', 'data-fk': 'v:' + k, 'aria-pressed': S.view === k ? 'true' : 'false', onclick: () => { S.view = k; render('v:' + k); } }, [TITLE[k], h('span', { class: 'n', text: k === 'jobs' && S.jobs === null ? '' : String(counts[k]) })])));
-  const plans = (S.view === 'bookmark' ? marks : S.view === 'trash' ? trash : all).slice().sort(SORTS[S.sort][1]);
+  const q = S.q.trim().toLowerCase(), plans = (S.view === 'bookmark' ? marks : S.view === 'trash' ? trash : all).filter((m) => !q || m.title.toLowerCase().includes(q)).sort(SORTS[S.sort][1]);
   ui.barTitle = h('h2', { tabindex: '-1' }, [TITLE[S.view], h('small', { text: S.view === 'jobs' ? '' : `${plans.length}개` })]);
   ui.bar.replaceChildren(ui.barTitle,
+    S.view === 'jobs' ? null : h('input', { type: 'search', class: 'pj-q', 'data-fk': 'q', value: S.q, placeholder: '이름 검색', 'aria-label': '이름 검색', oninput: (e) => { S.q = e.target.value; render('q'); const el = document.querySelector('[data-fk="q"]'); if (el) el.setSelectionRange(S.q.length, S.q.length); } }),
+    S.view === 'jobs' ? null : h('div', { class: 'pj-lay', role: 'group', 'aria-label': '보기 방식' }, [['grid', '격자'], ['list', '목록']].map(([k, t]) => h('button', { type: 'button', 'data-fk': 'lay:' + k, 'aria-pressed': S.layout === k ? 'true' : 'false', text: t, onclick: () => { S.layout = k; try { storage.setItem('ain-pj-layout', k); } catch (e) { /* 이 화면에서만 */ } render('lay:' + k); } }))),
     S.view === 'jobs' ? null : h('label', { class: 'pj-sort' }, ['정렬', h('select', { 'data-fk': 'sort', onchange: (e) => { S.sort = e.target.value; render('sort'); } }, Object.entries(SORTS).map(([k, [t]]) => h('option', { value: k, selected: S.sort === k, text: t })))]));
   let body;
   if (S.view === 'jobs') {
@@ -132,9 +148,10 @@ function render(fk) {
           : !S.jobs.length ? empty('아직 만든 결과가 없습니다', '시작하기에서 도면을 올려 만들면 여기에 쌓입니다.')
             : h('div', { class: 'pj-jobs' }, S.jobs.map((j) => h('a', { class: 'pj-job', href: '/maker/3d/#job-' + j.id }, [h('span', { text: `${TOOLN[j.tool] || '도면'} · ${new Date(j.created_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` }), h('span', { class: 's', text: STATUS[j.status] || j.status })])));
   } else if (S.view === 'all') {
-    body = h('div', { class: 'pj-grid' }, [newCard(), ...plans.map((m, i) => card(m, i + 1))]);
+    body = q && !plans.length ? empty('찾는 도면이 없습니다', '이름을 다르게 적어 보세요.') : h('div', { class: 'pj-grid' + (S.layout === 'list' ? ' pj-grid--list' : '') }, [q || S.layout === 'list' ? null : newCard(), ...plans.map((m, i) => card(m, i + 1))]);
   } else {
-    body = plans.length ? h('div', { class: 'pj-grid' }, plans.map((m, i) => card(m, i)))
+    body = plans.length ? h('div', { class: 'pj-grid' + (S.layout === 'list' ? ' pj-grid--list' : '') }, plans.map((m, i) => card(m, i)))
+      : q ? empty('찾는 도면이 없습니다', '이름을 다르게 적어 보세요.')
       : S.view === 'bookmark' ? empty('북마크한 도면이 없습니다', '카드의 [북마크]를 누르면 여기에 모입니다.') : empty('휴지통이 비어 있습니다', '지운 도면은 여기에 남아 있다가 [완전 삭제]로만 사라집니다.');
   }
   ui.list.replaceChildren(body);
@@ -149,7 +166,7 @@ function boot() {
   try { window.ainAuth.init('authSlot'); } catch (e) {}
   ui = { main, views: h('nav', { class: 'pj-views', 'aria-label': '보기' }), bar: h('div', { class: 'pj-bar' }), list: h('div'), msg: h('p', { class: 'pj-msg', role: 'status' }), live: h('p', { class: 'ap-vh', role: 'status' }), barTitle: null };
   main.append(
-    h('div', { class: 'pj-head' }, [h('h1', { text: '프로젝트' }), h('a', { class: 'pj-btn primary', href: '/maker/3d/plan/?new=1', text: '새 프로젝트' })]),
+    h('div', { class: 'pj-head' }, [h('h1', { text: '프로젝트' }), h('button', { type: 'button', class: 'pj-btn primary', 'data-fk': 'newpj', text: '새 프로젝트', onclick: () => newProject('newpj') })]),
     h('section', { class: 'pj-hints', 'aria-label': '시작 방법' }, [
       h('a', { class: 'pj-hint', href: '/maker/3d/plan/?new=1' }, [h('strong', { text: '도면 그리기' }), h('span', { text: '벽과 방을 그려 평면을 만들고 에어컨을 놓습니다.' })]),
       h('a', { class: 'pj-hint', href: '/maker/3d/maps/' }, [h('strong', { text: '도면 검색' }), h('span', { text: '단지를 찾아 그 평면에서 시작합니다.' })]),

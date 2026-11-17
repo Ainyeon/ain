@@ -1,7 +1,7 @@
 // 플래너 왼쪽 패널(템플릿·제품(시스템에어컨·가전)·마감재·설계형 라이브러리·리소스 관리) — DOM 을 직접 만들어 container 에 넣는다(innerHTML 없음). 검색·정렬·배치 크기 같은 순수 함수는 export 해서 node 로 시험한다.
 import { curFloor, APPLIANCE_CATEGORIES, APPLIANCE_LABEL } from './core/model.js';
 import { pointInPoly } from './core/geom.js';
-import { furnitureThumb, acThumb } from './thumbs.js';
+import { furnitureThumb, acThumb, appThumb } from './thumbs.js';
 
 export const MODEL_LABEL = { '1way': '1Way', '2way': '2Way', '4way': '4Way', '360': '360', mini4way: '미니 4Way' };
 export const BRAND_LABEL = { samsung: '삼성', lg: 'LG' };
@@ -384,12 +384,14 @@ const APP_PAGE = 200; // 한 번에 그리는 카드 수 — 1,295개를 한꺼�
 const isHttps = (u) => typeof u === 'string' && /^https:\/\/\S+$/.test(u);
 function applianceCard(m, ctx, api) {
   const opts = applianceOpts(m), cat = APPLIANCE_LABEL[m.category] ?? m.category, dims = fmtApplianceDims(m), name = `${BRAND_LABEL[m.brand]} ${m.model}`;
-  const main = h('button', { type: 'button', class: 'pl-prod pl-app', 'aria-disabled': opts ? null : 'true',
+  const pic = opts && appThumb({ cat: m.category, name: m.name, w: opts.size[0], d: opts.size[1], h: opts.heightMm }, furnColors);
+  const main = h('button', { type: 'button', class: 'pl-prod pl-app' + (pic ? ' pl-prod--app' : ''), 'aria-disabled': opts ? null : 'true',
     onclick: () => {
       if (!opts) { api.toast(`${m.model} · ${m.whyNot}`); return; } // 눌러도 알림만
       ctx.setTool('placeItem', opts);
       api.toast(`${m.model} · 캔버스를 눌러 놓으세요`);
     } },
+    ...(pic ? [pic] : []),
     ...spaced(h('span', { class: 'pl-prod-type' }, `${BRAND_LABEL[m.brand]} · ${cat}`),
       h('span', { class: 'pl-prod-row' }, h('span', { class: 'pl-prod-code' }, m.model)),
       h('span', { class: 'pl-prod-series pl-app-name', title: m.name }, m.name),
