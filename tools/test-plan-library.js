@@ -27,5 +27,14 @@ const assert = require('assert');
   const small = mem(400), ls = createLibrary(small, () => ++t, () => 0.1);
   assert.throws(() => ls.savePlan(doc('큰 도면', Array.from({ length: 40 }, (_, i) => room(1000, 1000, i * 1000)))), { message: QUOTA_MSG });
   assert.strictEqual([...small.m.keys()].filter((k) => k !== 'ain-plan-docs').length, 0, '실패한 새 문서가 남지 않는다');
+  { // 폴더 — 넣기·저장해도 유지·사본은 같은 폴더·없는 폴더 거절·폴더 삭제는 도면을 남긴다
+    const lf = createLibrary(mem(), () => ++t, () => 0.3), p = lf.savePlan(doc('폴더 도면', [])), f = lf.addFolder('  우리 집  ');
+    assert.strictEqual(f.name, '우리 집'); assert.strictEqual(lf.addFolder('   '), null);
+    assert.strictEqual(lf.moveToFolder(p.id, f.id).folder, f.id); assert.strictEqual(lf.moveToFolder(p.id, 'fnone'), null);
+    lf.savePlan(doc('폴더 도면', []), { id: p.id }); assert.strictEqual(lf.getMeta(p.id).folder, f.id, '다시 저장해도 폴더 유지');
+    assert.strictEqual(lf.duplicatePlan(p.id).folder, f.id, '사본은 같은 폴더');
+    assert.strictEqual(lf.renameFolder(f.id, '본가').name, '본가');
+    assert.ok(lf.deleteFolder(f.id)); assert.strictEqual(lf.listFolders().length, 0); assert.strictEqual(lf.listPlans().length, 2, '폴더를 지워도 도면은 남는다'); assert.ok(lf.listPlans().every((m) => !m.folder));
+  }
   console.log('test-plan-library: OK');
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -20,6 +20,8 @@
 .pj-view { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 0 var(--sp-2); border: 0; border-radius: var(--r-1); background: transparent; color: var(--c-ink); font: inherit; font-size: var(--fs-3); font-weight: var(--fw-semi); text-align: left; cursor: pointer;
   transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
 .pj-view[aria-pressed="true"] { background: var(--c-accent-bg); color: var(--c-accent); font-weight: var(--fw-bold); }
+.pj-views h2 ~ h2 { margin-top: var(--sp-3); }
+.pj-addf { color: var(--c-ink-sub); font-weight: var(--fw-reg); }
 .pj-view .n { color: var(--c-ink-sub); font-weight: var(--fw-reg); font-variant-numeric: tabular-nums; }
 .pj-view[aria-pressed="true"] .n { color: var(--c-accent); }
 .pj-list { min-width: 0; }
@@ -67,7 +69,7 @@
 .pj-dlg { box-sizing: border-box; width: min(calc(100% - 2 * var(--sp-4)), 400px); overflow-wrap: anywhere; padding: var(--sp-5); border: 1px solid var(--c-line); border-radius: var(--r-3); background: var(--c-surface); color: var(--c-ink); box-shadow: var(--sh-2); }
 .pj-dlg::backdrop { background: color-mix(in srgb, var(--c-ink, black) 40%, transparent); }
 .pj-dlg h2 { margin: 0 0 var(--sp-3); font-size: var(--fs-2); }
-.pj-dlg input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 var(--sp-3); border: 1px solid var(--c-control); border-radius: var(--r-1); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: 16px; }
+.pj-dlg select, .pj-dlg input { width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 var(--sp-3); border: 1px solid var(--c-control); border-radius: var(--r-1); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: 16px; }
 .pj-dlg .row { display: flex; justify-content: flex-end; gap: var(--sp-2); margin-top: var(--sp-4); }
 @media (hover: hover) {
   .pj-hint:hover { border-color: var(--c-control); background: var(--c-surface-sub); } .pj-btn:hover { border-color: var(--c-control); background: var(--c-surface-sub); } .pj-btn.primary:hover { background: var(--c-accent); filter: brightness(.94); }
