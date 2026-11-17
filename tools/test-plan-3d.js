@@ -143,7 +143,7 @@ const nearV = (a, b, eps, msg) => a.forEach((v, i) => near(v, b[i], eps, msg));
   /* ===== 4. createView3D: 모양과 실패 경로(WebGL·DOM 없는 node) ===== */
   const cont = { hidden: true, clientWidth: 0, clientHeight: 0, appendChild() { throw new Error('만들어지면 안 된다'); } };
   const empty = new Store(), v0 = V.createView3D(cont, empty);
-  assert.deepStrictEqual(Object.keys(v0).sort(), ['destroy', 'hide', 'isEmpty', 'resize', 'setCut', 'setFloorAlpha', 'setView', 'setWallAlpha', 'show', 'stats', 'zoom']);
+  assert.deepStrictEqual(Object.keys(v0).sort(), ['destroy', 'hide', 'isEmpty', 'resize', 'setCut', 'setFloorAlpha', 'setView', 'setWallAlpha', 'shot', 'show', 'stats', 'zoom']);
   assert.strictEqual(typeof V.needsRefit, 'function');
   assert.strictEqual(v0.isEmpty(), true, '방이 없는 문서의 isEmpty()'); assert.strictEqual(V.createView3D(cont, st).isEmpty(), false, '방이 있으면 isEmpty() 는 false');
   assert.deepStrictEqual(v0.show(), { ok: false, reason: 'rooms' }, '방이 없으면 show() 대신 이유를 돌려준다');

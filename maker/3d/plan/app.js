@@ -689,6 +689,19 @@ function exit3d() {
   if (!document.querySelector('dialog[open]')) $('plCanvas').focus({ preventScroll: true });   // 3D 화면이 숨겨지며 초점이 사라지지 않게(Safari 에서는 단추 초점도 없다). 대화상자가 열려 있으면 건드리지 않는다
 }
 
+/* ---------- 렌더샷 ---------- */
+async function renderShot() { // 3D 면 배율을 올려 다시 그린 그림, 2D 면 도면 캔버스를 갤러리(IndexedDB)에 담는다. 못 담으면 파일로 내려받는다
+  let cv = null;
+  if (state.mode === '3d' && v3) cv = v3.shot(2);
+  else { view.requestDraw(); await new Promise((r) => requestAnimationFrame(r)); cv = $('plCanvas'); }
+  const blob = cv && await new Promise((r) => cv.toBlob(r, 'image/png'));
+  if (!blob) return toast('이미지를 만들지 못했습니다', 'err');
+  try {
+    await (await import('./gallery.js')).addShot({ planId: curId, title: store.doc.title, view: state.mode === '3d' ? '3D' : '2D', at: new Date().toISOString(), w: cv.width, h: cv.height, blob });
+    toast('렌더샷을 갤러리에 담았습니다');
+  } catch (e) { download(`ain-렌더샷-${safe(store.doc.title)}.png`, blob); toast('갤러리에 담지 못해 파일로 내려받았습니다'); }
+}
+
 /* ---------- 배선 ---------- */
 const doUndo = () => { if (store.undo()) { sel.prune(store.doc); say('실행을 취소했습니다'); } };
 const doRedo = () => { if (store.redo()) { sel.prune(store.doc); say('다시 실행했습니다'); } };
@@ -704,6 +717,9 @@ function wire() {
   menu.addEventListener('click', (e) => { if (e.target.closest('button')) { closeMenu(); if ($('plMore').offsetParent !== null) $('plMore').focus({ preventScroll: true }); } }, true);   // capture — 항목이 창(showModal)을 열기 전에 메뉴를 닫고 초점을 [메뉴]에 둬야 창이 닫힐 때 초점이 [메뉴]로 돌아온다
   $('plRename').onclick = async () => { const v = await ask({ title: '도면 이름', label: '이름', value: store.doc.title }); if (v) run({ type: 'rename', title: v }); };
   $('plEstimate').onclick = async () => { try { (await import('./estimate.js')).openEstimate(ctx); } catch (e) { errDialog('견적 물량표를 열지 못했습니다', 'estimate.js 를 불러오거나 실행하지 못했습니다', e); } };
+  $('plShot').onclick = renderShot;
+  $('plGallery').onclick = async () => { try { await (await import('./gallery.js')).openGallery({ h, openDialog, download, toast, choose }, { planId: curId }); } catch (e) { errDialog('갤러리를 열지 못했습니다', 'gallery.js 를 불러오거나 실행하지 못했습니다', e); } };
+  $('plSpec').onclick = async () => { try { await (await import('./spec.js')).openSpec(ctx); } catch (e) { errDialog('시방서를 열지 못했습니다', 'spec.js 를 불러오거나 실행하지 못했습니다', e); } };
   $('plExport').onclick = () => { download(`ain-도면-${safe(store.doc.title)}.json`, new Blob([toDocJSON(store.doc)], { type: 'application/json' })); toast('도면 파일을 내려받았습니다'); };
   $('plImport').onclick = () => { const f = $('plFileJson'); f.value = ''; f.click(); };
   $('plFileJson').onchange = (e) => { const f = e.target.files[0]; if (f) importFile(f); };

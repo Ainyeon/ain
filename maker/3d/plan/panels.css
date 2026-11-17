@@ -151,6 +151,8 @@
 .pl-est-note { margin: var(--sp-2) 0 0; font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-sub); }
 .pl-est-none { margin: 0; color: var(--c-ink-sub); }
 .pl-est-act { display: flex; justify-content: flex-end; }
+.pl-spec td { white-space: normal; }   /* 시방서(spec.js) — 마감·모델 이름이 길면 줄을 바꾼다 */
+@media print { .pl-spec .pl-est-act { display: none; } .pl-spec .pl-est-sec { break-inside: avoid; } }
 .pl-est-dl { min-height: 40px; padding: 0 var(--sp-4); background: var(--c-accent); border: 1px solid var(--c-accent); border-radius: var(--r-1); color: var(--c-surface); font-weight: var(--fw-semi); }
 .pl-est-dl:hover { background: var(--c-ink); border-color: var(--c-ink); }
 
