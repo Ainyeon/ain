@@ -77,6 +77,16 @@
 /* 가구 썸네일 — 우리 3D 모형을 찍은 그림(thumbs.js), 찍기 전엔 빈 칸 */
 .pl-thumb { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; background: var(--c-surface-sub); border-radius: var(--r-1); }
 .pl-prod--pic { gap: 2px; }
+/* 분류 카드 첫 화면 */
+.pl-cats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
+.pl-cat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; height: 100%; padding: var(--sp-2); border: 1px solid var(--c-line); border-radius: var(--r-2); background: var(--c-surface); text-align: left; transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+.pl-cat:hover { border-color: var(--c-line-strong); background: var(--c-surface-sub); }
+.pl-cat .pl-thumb { margin-bottom: var(--sp-1); }
+.pl-cat--txt { justify-content: flex-end; min-height: 100%; background: var(--c-accent-bg); border-color: transparent; }
+.pl-cat-name { font-weight: var(--fw-semi); color: var(--c-ink); }
+.pl-cat-n { font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-sub); font-variant-numeric: tabular-nums; }
+.pl-back { align-self: flex-start; min-height: 32px; padding: 0 var(--sp-2); border: 0; border-radius: var(--r-1); background: transparent; color: var(--c-ink-sub); font-weight: var(--fw-semi); }
+.pl-back:hover { background: var(--c-surface-sub); color: var(--c-ink); }
 .pl-prod--pic .pl-thumb { align-self: stretch; margin-bottom: var(--sp-1); }
 .pl-prod-txt { display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp-1); min-width: 0; width: 100%; }
 .pl-prod--ac .pl-thumb { align-self: stretch; aspect-ratio: 2 / 1; object-fit: cover; margin: var(--sp-1) 0; order: -1; }   /* 판넬은 납작해 위아래를 잘라 낮게 */
