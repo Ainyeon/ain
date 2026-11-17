@@ -1,6 +1,6 @@
 // 도면 문서 보관 — localStorage 에 목록(meta)과 문서를 따로 둔다. DOM 없음: node 에서 storage 를 주입해 테스트하고, 편집기와 프로젝트 화면이 같이 쓴다.
 import { roomOutlineWithArcs, polyArea } from './core/geom.js';
-const LIST = 'ain-plan-docs', KEY = (id) => 'ain-plan-' + id;
+const LIST = 'ain-plan-docs', FOLDERS = 'ain-plan-folders', KEY = (id) => 'ain-plan-' + id;
 export const QUOTA_MSG = '저장 공간이 부족합니다 · 안 쓰는 도면을 지워 주세요';
 const isQuota = (e) => !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014);
 const polyAreaM2 = (p) => { let s = 0; for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length]; s += a[0] * b[1] - b[0] * a[1]; } return Math.abs(s) / 2 / 1e6; };
@@ -35,7 +35,7 @@ export function createLibrary(storage, now = () => Date.now(), rand = Math.rando
     lastPlanId() { const m = this.listPlans()[0]; return m ? m.id : null; },
     savePlan(doc, { id } = {}) {                  // 문서와 목록을 같이 쓴다 — 문서가 들어갔는데 목록이 실패하면 새로 만든 문서는 되돌린다
       const list = readList(), old = id ? list.find((m) => m.id === id) : null, nid = old ? old.id : newId();
-      const m = Object.assign({ id: nid, title: String(doc.title || '이름 없는 도면').slice(0, 60), updated: now(), bookmark: old ? !!old.bookmark : false, trashed: false }, summarize(doc));
+      const m = Object.assign({ id: nid, title: String(doc.title || '이름 없는 도면').slice(0, 60), updated: now(), bookmark: old ? !!old.bookmark : false, trashed: false, folder: old ? old.folder : undefined }, summarize(doc));   // folder 는 있을 때만(JSON 이 undefined 를 뺀다)
       const prev = storage.getItem(KEY(nid));                         // 덮어쓰기가 실패하면 이 본문으로 되돌린다
       put(KEY(nid), JSON.stringify(doc));
       try { writeList(old ? list.map((x) => (x.id === nid ? m : x)) : list.concat(m)); } catch (e) { undo(nid, prev); throw e; }
@@ -44,8 +44,14 @@ export function createLibrary(storage, now = () => Date.now(), rand = Math.rando
     trashPlan(id) { return patch(id, { trashed: true }); },
     restorePlan(id) { return patch(id, { trashed: false, updated: now() }); },
     deletePlan(id) { writeList(readList().filter((m) => m.id !== id)); try { storage.removeItem(KEY(id)); } catch (e) {} },
-    duplicatePlan(id) { const d = this.getPlan(id); if (!d) return null; const c = JSON.parse(JSON.stringify(d)); c.title = String(d.title || '이름 없는 도면').slice(0, 54) + ' 사본'; return this.savePlan(c); },
+    duplicatePlan(id) { const d = this.getPlan(id); if (!d) return null; const c = JSON.parse(JSON.stringify(d)); c.title = String(d.title || '이름 없는 도면').slice(0, 54) + ' 사본'; const m = this.savePlan(c), f = find(id)?.folder; return f ? patch(m.id, { folder: f }) : m; },   // 사본은 같은 폴더에
     setBookmark(id, on) { return patch(id, { bookmark: !!on }); },
+    /* 폴더 — 목록(ain-plan-folders)과 도면 목록의 folder 칸. 폴더를 지우면 안의 도면은 지우지 않고 '폴더 없음'으로 */
+    listFolders() { try { const a = JSON.parse(storage.getItem(FOLDERS) || '[]'); return Array.isArray(a) ? a.filter((f) => f && /^f[a-z0-9]+$/.test(f.id) && typeof f.name === 'string') : []; } catch (e) { return []; } },
+    addFolder(name) { const n = String(name || '').trim().slice(0, 40); if (!n) return null; const f = { id: 'f' + newId().slice(1), name: n }; put(FOLDERS, JSON.stringify(this.listFolders().concat(f))); return f; },
+    renameFolder(id, name) { const n = String(name || '').trim().slice(0, 40), all = this.listFolders(), f = all.find((x) => x.id === id); if (!n || !f) return null; f.name = n; put(FOLDERS, JSON.stringify(all)); return f; },
+    deleteFolder(id) { const all = this.listFolders(); if (!all.some((x) => x.id === id)) return null; writeList(readList().map((m) => (m.folder === id ? Object.assign(m, { folder: undefined }) : m))); put(FOLDERS, JSON.stringify(all.filter((x) => x.id !== id))); return true; },
+    moveToFolder(id, folder) { if (folder && !this.listFolders().some((x) => x.id === folder)) return null; return patch(id, { folder: folder || undefined }); },
     renamePlan(id, title) {                      // 문서 안 제목과 목록을 같이 바꾼다 — 목록 쓰기가 실패하면 본문도 되돌린다
       const t = String(title || '').trim().slice(0, 60); if (!t || !find(id)) return null;
       const d = this.getPlan(id), prev = storage.getItem(KEY(id));

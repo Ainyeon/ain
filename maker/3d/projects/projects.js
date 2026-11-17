@@ -34,15 +34,29 @@ function dialog(title, body, actions, returnFk) {         // 이름 바꾸기·�
   dlg.addEventListener('close', finish);
   document.body.append(dlg); dlg.showModal(); return { dlg, close };
 }
-function rename(m, returnFk) {
+// 이름 하나 묻는 창 — apply(이름) 이 거짓이면 NOT_READ, 던지면 그 글을 보인다. 성공하면 then(결과) 뒤 다시 그린다
+function askName(title, label, value, max, apply, returnFk, then) {
   const note = h('p', { class: 'pj-msg err', role: 'alert', hidden: true });
-  const input = h('input', { type: 'text', maxlength: '60', value: m.title, 'aria-label': '도면 이름', 'aria-describedby': 'pjRenameNote' });
+  const input = h('input', { type: 'text', maxlength: String(max), value, 'aria-label': label, 'aria-describedby': 'pjRenameNote' });
   note.id = 'pjRenameNote';
   const fail = (t) => { note.textContent = t; note.hidden = false; input.setAttribute('aria-invalid', 'true'); input.focus(); };
-  const save = (close) => { try { if (lib.renamePlan(m.id, input.value)) { close(); render(); } else fail(input.value.trim() ? NOT_READ : '이름을 입력해 주세요'); } catch (e) { fail(e.message); } };
-  const d = dialog('이름 바꾸기', h('div', {}, [input, note]), (close) => [h('button', { type: 'button', class: 'pj-btn', text: '취소', onclick: close }), h('button', { type: 'button', class: 'pj-btn primary', text: '저장', onclick: () => save(close) })], returnFk);
+  const save = (close) => { if (!input.value.trim()) return fail('이름을 입력해 주세요'); try { const r = apply(input.value); if (r) { close(); if (then) then(r); render(); } else fail(NOT_READ); } catch (e) { fail(e.message); } };
+  const d = dialog(title, h('div', {}, [input, note]), (close) => [h('button', { type: 'button', class: 'pj-btn', text: '취소', onclick: close }), h('button', { type: 'button', class: 'pj-btn primary', text: '저장', onclick: () => save(close) })], returnFk);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(d.close); } });
   input.select();
+}
+const rename = (m, fk) => askName('이름 바꾸기', '도면 이름', m.title, 60, (v) => lib.renamePlan(m.id, v), fk);
+const newFolder = (fk) => askName('새 폴더', '폴더 이름', '', 40, (v) => lib.addFolder(v), fk, (f) => { S.view = 'f:' + f.id; });
+// 폴더로 옮기기 — 폴더 고르기(폴더 없음 포함). 폴더가 없으면 왼쪽 [새 폴더] 안내
+function moveTo(m, returnFk) {
+  const fs = lib.listFolders();
+  const sel = h('select', { 'aria-label': '옮길 폴더' }, [h('option', { value: '', text: '폴더 없음', selected: !m.folder }), ...fs.map((f) => h('option', { value: f.id, text: f.name, selected: m.folder === f.id }))]);
+  dialog('폴더로 옮기기', h('div', {}, [sel, fs.length ? null : h('p', { class: 'pj-msg', text: '아직 폴더가 없습니다 · 왼쪽 [새 폴더]로 만듭니다.' })]),
+    (close) => [h('button', { type: 'button', class: 'pj-btn', text: '취소', onclick: close }), h('button', { type: 'button', class: 'pj-btn primary', text: '옮기기', onclick: () => { close(); guard(() => lib.moveToFolder(m.id, sel.value || null)); } })], returnFk);
+  sel.focus();
+}
+function confirmFolderDelete(f, returnFk) {
+  dialog('폴더를 삭제할까요?', h('p', { class: 'pj-msg', text: `‘${f.name}’ 폴더만 지웁니다. 안의 도면은 전체 프로젝트에 남습니다.` }), (close) => [h('button', { type: 'button', class: 'pj-btn', text: '취소', onclick: close }), h('button', { type: 'button', class: 'pj-btn danger', text: '폴더 삭제', onclick: () => { close(); S.view = 'all'; guard(() => lib.deleteFolder(f.id)); } })], returnFk);
 }
 function confirmDelete(m, returnFk) {
   dialog('완전히 삭제할까요?', h('p', { class: 'pj-msg', text: `‘${m.title}’은 복원할 수 없습니다.` }), (close) => [h('button', { type: 'button', class: 'pj-btn', text: '취소', onclick: close }), h('button', { type: 'button', class: 'pj-btn danger', text: '삭제', onclick: () => { lib.deletePlan(m.id); close(); render(); } })], returnFk);
@@ -66,7 +80,7 @@ function menu(anchor, m) {                                // 관리 단추 — �
   closeMenu(false);
   const trash = S.view === 'trash', fk = keyOf(anchor); S.menuFk = fk;
   const items = trash ? [['복원', () => guard(() => lib.restorePlan(m.id)), ''], ['완전 삭제', () => confirmDelete(m, fk), 'danger']]
-    : [['이름 바꾸기', () => rename(m, fk), ''], ['복제', () => guard(() => lib.duplicatePlan(m.id)), ''], ['휴지통', () => guard(() => lib.trashPlan(m.id)), 'danger']];
+    : [['이름 바꾸기', () => rename(m, fk), ''], ['폴더로 옮기기', () => moveTo(m, fk), ''], ['복제', () => guard(() => lib.duplicatePlan(m.id)), ''], ['휴지통', () => guard(() => lib.trashPlan(m.id)), 'danger']];
   const box = h('div', { class: 'pj-menu', role: 'menu', 'aria-label': `${m.title} 관리` }, items.map(([t, fn, c]) => h('button', { type: 'button', role: 'menuitem', class: c, text: t, onclick: () => { closeMenu(false); fn(); } })));
   const btns = [...box.children];
   box.addEventListener('keydown', (e) => {
@@ -131,12 +145,18 @@ async function loadJobs() {
 
 function render(fk) {
   fk = fk || keyOf(document.activeElement);
-  const all = lib.listPlans(), trash = lib.listPlans({ trashed: true }), marks = all.filter((m) => m.bookmark);
+  const all = lib.listPlans(), trash = lib.listPlans({ trashed: true }), marks = all.filter((m) => m.bookmark), folders = lib.listFolders();
+  let folder = S.view.startsWith('f:') ? folders.find((f) => 'f:' + f.id === S.view) : null;
+  if (S.view.startsWith('f:') && !folder) S.view = 'all';   // 지운 폴더를 보고 있었으면 전체로
   const counts = { all: all.length, bookmark: marks.length, jobs: S.jobs ? S.jobs.length : 0, trash: trash.length };
-  ui.views.replaceChildren(h('h2', { text: '보기' }), ...Object.keys(TITLE).map((k) => h('button', { type: 'button', class: 'pj-view', 'data-fk': 'v:' + k, 'aria-pressed': S.view === k ? 'true' : 'false', onclick: () => { S.view = k; render('v:' + k); } }, [TITLE[k], h('span', { class: 'n', text: k === 'jobs' && S.jobs === null ? '' : String(counts[k]) })])));
-  const q = S.q.trim().toLowerCase(), plans = (S.view === 'bookmark' ? marks : S.view === 'trash' ? trash : all).filter((m) => !q || m.title.toLowerCase().includes(q)).sort(SORTS[S.sort][1]);
-  ui.barTitle = h('h2', { tabindex: '-1' }, [TITLE[S.view], h('small', { text: S.view === 'jobs' ? '' : `${plans.length}개` })]);
+  const viewBtn = (k, label, n) => h('button', { type: 'button', class: 'pj-view', 'data-fk': 'v:' + k, 'aria-pressed': S.view === k ? 'true' : 'false', onclick: () => { S.view = k; render('v:' + k); } }, [label, h('span', { class: 'n', text: n })]);
+  ui.views.replaceChildren(h('h2', { text: '보기' }), ...Object.keys(TITLE).map((k) => viewBtn(k, TITLE[k], k === 'jobs' && S.jobs === null ? '' : String(counts[k]))),
+    h('h2', { text: '폴더' }), ...folders.map((f) => viewBtn('f:' + f.id, f.name, String(all.filter((m) => m.folder === f.id).length))),
+    h('button', { type: 'button', class: 'pj-view pj-addf', 'data-fk': 'newf', text: '+ 새 폴더', onclick: () => newFolder('newf') }));
+  const q = S.q.trim().toLowerCase(), plans = (S.view === 'bookmark' ? marks : S.view === 'trash' ? trash : folder ? all.filter((m) => m.folder === folder.id) : all).filter((m) => !q || m.title.toLowerCase().includes(q)).sort(SORTS[S.sort][1]);
+  ui.barTitle = h('h2', { tabindex: '-1' }, [folder ? folder.name : TITLE[S.view], h('small', { text: S.view === 'jobs' ? '' : `${plans.length}개` })]);
   ui.bar.replaceChildren(ui.barTitle,
+    folder ? h('div', { class: 'pj-lay', role: 'group', 'aria-label': '폴더 관리' }, [h('button', { type: 'button', 'data-fk': 'fren', text: '이름 바꾸기', onclick: () => askName('폴더 이름 바꾸기', '폴더 이름', folder.name, 40, (v) => lib.renameFolder(folder.id, v), 'fren') }), h('button', { type: 'button', 'data-fk': 'fdel', text: '폴더 삭제', onclick: () => confirmFolderDelete(folder, 'fdel') })]) : null,
     S.view === 'jobs' ? null : h('input', { type: 'search', class: 'pj-q', 'data-fk': 'q', value: S.q, placeholder: '이름 검색', 'aria-label': '이름 검색', oninput: (e) => { S.q = e.target.value; render('q'); const el = document.querySelector('[data-fk="q"]'); if (el) el.setSelectionRange(S.q.length, S.q.length); } }),
     S.view === 'jobs' ? null : h('div', { class: 'pj-lay', role: 'group', 'aria-label': '보기 방식' }, [['grid', '격자'], ['list', '목록']].map(([k, t]) => h('button', { type: 'button', 'data-fk': 'lay:' + k, 'aria-pressed': S.layout === k ? 'true' : 'false', text: t, onclick: () => { S.layout = k; try { storage.setItem('ain-pj-layout', k); } catch (e) { /* 이 화면에서만 */ } render('lay:' + k); } }))),
     S.view === 'jobs' ? null : h('label', { class: 'pj-sort' }, ['정렬', h('select', { 'data-fk': 'sort', onchange: (e) => { S.sort = e.target.value; render('sort'); } }, Object.entries(SORTS).map(([k, [t]]) => h('option', { value: k, selected: S.sort === k, text: t })))]));
@@ -152,10 +172,11 @@ function render(fk) {
   } else {
     body = plans.length ? h('div', { class: 'pj-grid' + (S.layout === 'list' ? ' pj-grid--list' : '') }, plans.map((m, i) => card(m, i)))
       : q ? empty('찾는 도면이 없습니다', '이름을 다르게 적어 보세요.')
+      : folder ? empty('이 폴더가 비어 있습니다', '도면 카드의 [관리] → [폴더로 옮기기]로 넣습니다.')
       : S.view === 'bookmark' ? empty('북마크한 도면이 없습니다', '카드의 [북마크]를 누르면 여기에 모입니다.') : empty('휴지통이 비어 있습니다', '지운 도면은 여기에 남아 있다가 [완전 삭제]로만 사라집니다.');
   }
   ui.list.replaceChildren(body);
-  ui.live.textContent = S.view === 'jobs' ? TITLE[S.view] : `${TITLE[S.view]} ${plans.length}개`;   // 바뀐 결과만 알린다(목록 전체를 다시 읽지 않게 목록 영역은 라이브가 아니다)
+  ui.live.textContent = S.view === 'jobs' ? TITLE[S.view] : `${folder ? folder.name : TITLE[S.view]} ${plans.length}개`;   // 바뀐 결과만 알린다(목록 전체를 다시 읽지 않게 목록 영역은 라이브가 아니다)
   if (!kept && !ui.msg.textContent) ui.msg.textContent = '이 브라우저는 저장소를 막아 두었습니다 · 도면은 이 화면을 닫으면 사라집니다.';
   S.entered = true;                                       // 입장 애니메이션은 처음 한 번만
   focusKey(fk);
