@@ -12,7 +12,7 @@ export function h(tag, attrs = {}, kids = []) {          // DOM 헬퍼 — 글�
 }
 
 export const NAV = [
-  { items: [{ id: 'start', label: '시작하기', href: '/maker/3d/' }, { id: 'ask', label: '말로 시키기', href: '/maker/3d/#stAsk' }] },
+  { items: [{ id: 'start', label: '시작하기', href: '/maker/3d/' }, { id: 'ask', label: 'AI 에이전트', href: '/maker/3d/agent/' }] },
   { label: '프로젝트', items: [{ id: 'projects', label: '내 프로젝트', href: '/maker/3d/projects/' }] },
   { label: '도면', items: [{ id: 'plan', label: '도면 그리기', href: '/maker/3d/plan/' }, { id: 'maps', label: '도면 검색', href: '/maker/3d/maps/' }] },
 ];
