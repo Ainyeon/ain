@@ -5,7 +5,9 @@
 
 body.mp { word-break: keep-all; height: 100dvh; min-height: 0; overflow: hidden; background: var(--c-bg); color: var(--c-ink); }
 .mp-vh { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-.mp-i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.mp-i { width: 18px; height: 18px; flex: none; display: inline-block; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }   /* Phosphor(MIT) 원본 SVG — 플래너와 같은 파일(../plan/icons) */
+.i-magnifying-glass { --i: url("../plan/icons/magnifying-glass.svg"); } .i-x { --i: url("../plan/icons/x.svg"); } .i-info { --i: url("../plan/icons/info.svg"); } .i-pencil-simple { --i: url("../plan/icons/pencil-simple.svg"); }
+.i-image { --i: url("../plan/icons/image.svg"); } .i-crosshair { --i: url("../plan/icons/crosshair.svg"); } .i-plus { --i: url("../plan/icons/plus.svg"); } .i-minus { --i: url("../plan/icons/minus.svg"); }
 
 /* 상단 바 */
 .mp-top { flex: none; height: var(--mp-bar); display: flex; align-items: center; gap: var(--sp-3); padding: 0 var(--sp-3) 0 var(--sp-4); background: var(--c-surface); border-bottom: 1px solid var(--c-line); position: relative; z-index: 3; }
