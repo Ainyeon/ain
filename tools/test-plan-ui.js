@@ -32,9 +32,12 @@ const near = (a, b, e, m) => assert.ok(Math.abs(a - b) <= e, `${m || ''} ${a} �
   // 왼쪽 줄: 패널 이름 여섯 개(panels.js 의 mountPanel 이름과 같다), 글자 이름
   const rail = [...html.matchAll(/<button[^>]*data-panel="(\w+)"[^>]*><span class="ico [^"]+" aria-hidden="true"><\/span><span>([^<]+)<\/span><\/button>/g)].map((m) => [m[1], m[2]]);
   assert.deepStrictEqual(rail, [['templates', '템플릿'], ['draw', '도면 그리기'], ['products', '제품'], ['materials', '마감재'], ['library', '설계형 라이브러리'], ['resources', '리소스 관리']], '왼쪽 줄 여섯 칸(아이콘 + 이름)');
-  // 상단: 없는 기능(렌더샷·갤러리·시방서)을 단추로 두지 않는다. 있는 기능의 이름
+  // 상단: 렌더샷·갤러리·시방서는 실제 기능(gallery.js·spec.js·view3d shot)에 이어진 단추로만 둔다. 있는 기능의 이름
   for (const t of ['견적 물량표', '도면 내보내기 (.json)', '도면 불러오기', '새로 만들기', '실행 취소', '다시 실행', '저장', '나가기']) assert.ok(html.includes('>' + t + '<'), '상단 이름 ' + t);
-  for (const t of ['렌더샷', '갤러리', '시방서']) assert.ok(!html.includes(t), t + ' 단추를 만들지 않는다');
+  for (const [t, id, re] of [['렌더샷', 'plShot', /\$\('plShot'\)\.onclick = renderShot/], ['갤러리', 'plGallery', /import\('\.\/gallery\.js'\)\)\.openGallery/], ['시방서', 'plSpec', /import\('\.\/spec\.js'\)\)\.openSpec/]]) {
+    assert.ok(html.includes(`id="${id}"`) && html.includes(t), t + ' 단추가 있다');
+    assert.ok(re.test(rd('app.js')), t + ' 단추가 실제 기능에 이어져 있다');
+  }
   // 모든 단추는 <button> 이고 type 이 있다. 이름 없는 단추 없음(글자 또는 aria-label)
   for (const m of html.matchAll(/<button\b([^>]*)>([^<]*)<\/button>/g)) { assert.ok(/type="button"/.test(m[1]), '단추 type: ' + m[0].slice(0, 60)); assert.ok(m[2].trim() || /aria-label="[^"]+"/.test(m[1]), '단추 이름: ' + m[0].slice(0, 60)); }
   // 3D 전환 단추 글자는 예외, 그 밖의 문구에 3D 를 자랑처럼 쓰지 않는다(제목·설명·안내)

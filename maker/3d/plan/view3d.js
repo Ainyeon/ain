@@ -317,6 +317,16 @@ export function createView3D(container, store, opts = {}) {
     else { const off = camera.position.clone().sub(controls.target), len = Math.min(controls.maxDistance, Math.max(controls.minDistance, off.length() / f)); camera.position.copy(controls.target).addScaledVector(off.normalize(), len); }
     controls.update(); requestRender();
   }
+  function shot(mult = 2) { // 렌더샷 — 지금 보이는 3D 를 배율을 올려 다시 그리고 곧바로 2D 캔버스로 떠낸다(그리기 버퍼를 남기지 않으므로 그린 직후에 복사). 긴 변 4096px 까지. 못 그리면 null
+    if (!visible || !renderer || dead) return null;
+    const w = container.clientWidth, h = container.clientHeight;
+    if (!w || !h) return null;
+    renderer.setPixelRatio(Math.min(4096 / Math.max(w, h), Math.max(1, (window.devicePixelRatio || 1) * mult)));
+    renderer.setSize(w, h, false); renderer.render(scene, camera);
+    const out = document.createElement('canvas'); out.width = canvas.width; out.height = canvas.height; out.getContext('2d').drawImage(canvas, 0, 0);
+    resize(); // 화면 배율로 되돌리고 다시 그린다
+    return out;
+  }
   function destroy() {
     if (dead) return;
     dead = true; visible = false;
@@ -330,7 +340,7 @@ export function createView3D(container, store, opts = {}) {
     renderer = canvas = controls = null;
   }
   return {
-    show, hide, setView, zoom, resize, destroy, isEmpty,
+    show, hide, setView, zoom, resize, destroy, isEmpty, shot,
     setWallAlpha(a) { wallA = clamp01(a); applyAlpha(); },
     setCut(on) { cutOn = !!on; if (renderer) recut(); },
     setFloorAlpha(a) { floorA = clamp01(a); applyAlpha(); },

@@ -122,6 +122,17 @@ const read = (p) => fs.readFileSync(path.join(PLAN, p), 'utf8');
   assert.strictEqual(est.totals.furnitureCount, 5); assert.strictEqual(est.totals.acCount, 0); assert.strictEqual(est.totals.applianceCount, 0);
   assert.ok(csv.includes('가구\r\n층,이름,가로×깊이×높이 mm,수량\r\nFloor 1,책상 1400,1400×700×720,3\r\n'));
   assert.ok(!E.toCsv(E.buildEstimate(old.doc)).includes('가구'), '가구 없는 문서의 CSV 에 가구 구역 없음');
+  { // 시방서 — 가구는 색까지 나눠 묶고, 마감은 finishes.json 이름으로(없으면 '지정 안 함')
+    const SP = await imp('spec.js'), fin = JSON.parse(read('data/finishes.json'));
+    const s4 = new Store(JSON.parse(JSON.stringify(s2.doc))), it0 = curFloor(s4.doc).items[0];
+    s4.exec({ type: 'update', id: it0.id, patch: { tone: 'walnut' } });
+    const sp = SP.buildSpec(s4.doc, fin);
+    assert.deepStrictEqual(sp.furniture.map((g) => [g.name, g.tone, g.count]), [['책상 1400', '월넛', 1], ['책상 1400', '기본', 2], ['사무 의자', '기본', 2]]);
+    assert.deepStrictEqual([sp.floors[0].floor, sp.floors[0].wall], ['지정 안 함', '지정 안 함']);
+    const d5 = JSON.parse(JSON.stringify(s4.doc)); d5.floors[0].finish = { wall: 'wall-white', floor: 'nope' };
+    assert.deepStrictEqual([SP.buildSpec(d5, fin).floors[0].wall, SP.buildSpec(d5, fin).floors[0].floor], ['화이트', 'nope']);
+    assert.strictEqual(sp.rooms.length, 1);
+  }
   assert.strictEqual(X.toSpaceJSON(s2.doc).ac_units?.length ?? 0, 0, '엔진 공간 JSON 에 가구 없음'); assert.ok(!JSON.stringify(X.toSpaceJSON(s2.doc)).includes('furniture'));
 
   /* 5. 패널 순수 함수 */

@@ -183,8 +183,8 @@ dialog.ed-dlg::backdrop { background: color-mix(in srgb, var(--c-ink) 40%, trans
   .ed-x { width: 44px; height: 44px; }
 }
 
-/* 중간 폭(~1023px: 아이패드 세로·아이폰 가로·브라우저 확대·작은 노트북): 위 바의 가로줄은 991px 부터 들어가므로, 여유를 두고 1023px 까지는 메뉴 항목을 [메뉴] 로 접고(폰과 같은 규칙) 769px 부터는 패널 칸도 좁힌다. 저장·나가기는 항상 화면 안 */
-@media (max-width: 1023px) {
+/* 중간 폭(~1365px: 아이패드·브라우저 확대·1280 노트북): 위 바의 가로줄(렌더샷·갤러리·견적·시방서·내보내기·불러오기·새로 만들기)은 1320px 부터 들어가므로, 제목 칸 여유를 두고 1365px 까지는 메뉴 항목을 [메뉴] 로 접는다(폰과 같은 규칙). 저장·나가기는 항상 화면 안 */
+@media (max-width: 1365px) {
   .ed-more { display: inline-flex; }
   .ed-menu { position: absolute; top: calc(var(--ed-top) - 1px); right: var(--sp-2); z-index: 30; display: none; flex-direction: column; align-items: stretch; gap: var(--sp-1); min-width: 200px; margin: 0; padding: var(--sp-2); border: 1px solid var(--c-line); border-radius: var(--r-2); background: var(--c-surface); box-shadow: var(--sh-2); }
   .ed-menu.open { display: flex; }
@@ -258,6 +258,26 @@ dialog.ed-dlg.ed-sheet { width: min(1120px, calc(100vw - var(--sp-6))); }
   body.printing .ed-sheet-cv { width: 420mm; height: 297mm; max-width: none; max-height: none; border: 0; }
 }
 
+/* 갤러리 — 렌더샷 카드 격자 */
+.ed-gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: var(--sp-3); margin: 0; padding: 0; list-style: none; }
+.ed-gal-i { display: flex; flex-direction: column; gap: var(--sp-2); padding: var(--sp-2); border: 1px solid var(--c-line); border-radius: var(--r-2); background: var(--c-surface); }
+.ed-gal-i.cur { border-color: var(--c-accent); }
+.ed-gal-im { display: block; border-radius: var(--r-1); overflow: hidden; background: var(--c-surface-sub); }
+.ed-gal-im img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; }
+.ed-gal-t { display: flex; flex-direction: column; min-width: 0; }
+.ed-gal-t strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--fw-semi); }
+.ed-gal-t span { font-size: var(--fs-4); line-height: var(--lh-4); color: var(--c-ink-sub); font-variant-numeric: tabular-nums; }
+.ed-gal-a { display: flex; gap: var(--sp-1); }
+.ed-gal-a .ed-b { flex: 1; justify-content: center; }
+/* 시방서 — 창과 A4 세로 인쇄(인쇄할 때는 시방서만 남긴다 · A4 는 spec.js 가 인쇄하는 동안만 @page 를 덧붙인다 — 도면판의 A3 가로를 이긴다) */
+dialog.ed-dlg.ed-spec { width: min(880px, calc(100vw - var(--sp-6))); }
+@media print {
+  body.printing-spec > :not(.ed-spec) { display: none !important; }
+  body.printing-spec dialog.ed-spec { position: static; width: auto; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; box-shadow: none; overflow: visible; }
+  body.printing-spec dialog.ed-spec::backdrop { display: none; }
+  body.printing-spec .ed-spec .ed-dlg-h .ed-x { display: none; }
+}
+
 /* 아이콘 — Phosphor(MIT) 원본 SVG 를 글자색으로 칠한다(icons/README.md) */
 .ico { flex: none; display: inline-block; width: 18px; height: 18px; background: currentColor; -webkit-mask: var(--i) center / contain no-repeat; mask: var(--i) center / contain no-repeat; }
 .ed-b .ico, .ed-sb .ico { width: 16px; height: 16px; }
@@ -289,6 +309,10 @@ dialog.ed-dlg.ed-sheet { width: min(1120px, calc(100vw - var(--sp-6))); }
 .i-folder-open { --i: url("icons/folder-open.svg"); }
 .i-grid-four { --i: url("icons/grid-four.svg"); }
 .i-image { --i: url("icons/image.svg"); }
+.i-images { --i: url("icons/images.svg"); }
+.i-clipboard-text { --i: url("icons/clipboard-text.svg"); }
+.i-download-simple { --i: url("icons/download-simple.svg"); }
+.i-trash { --i: url("icons/trash.svg"); }
 .i-line-segment { --i: url("icons/line-segment.svg"); }
 .i-lock { --i: url("icons/lock.svg"); }
 .i-magnifying-glass { --i: url("icons/magnifying-glass.svg"); }

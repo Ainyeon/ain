@@ -45,8 +45,8 @@ assert.ok(!/\.ed-menu \+ \.ed-more/.test(css), '옛 순서(메뉴 → 단추) �
 
 /* ===== #25 중간 폭: 위 바가 넘치지 않게 메뉴를 접고 칸을 좁힌다 ===== */
 const collapse = [...css.matchAll(/@media \(max-width: (\d+)px\) \{/g)].map((m) => Number(m[1])).filter((n) => n > 768);
-assert.ok(collapse.length === 1 && collapse[0] >= 991, `위 바 메뉴 접기 경계는 가로줄 최소폭(991px) 이상이어야 한다: ${collapse}`);
-const mid = mediaBodies(css, /\(max-width: 1023px\)/).join(' ');
+assert.ok(collapse.length === 1 && collapse[0] >= 1320, `위 바 메뉴 접기 경계는 가로줄 최소폭(1320px — 렌더샷·갤러리·시방서 포함, 헤드리스 실측) 이상이어야 한다: ${collapse}`);
+const mid = mediaBodies(css, new RegExp(`\\(max-width: ${collapse[0]}px\\)`)).join(' ');
 assert.ok(/\.ed-more \{ display: inline-flex; \}/.test(mid), '중간 폭: [메뉴] 단추가 보인다');
 assert.ok(/\.ed-menu \{[^}]*position: absolute[^}]*display: none/.test(mid) && /\.ed-menu\.open \{ display: flex; \}/.test(mid), '중간 폭: 메뉴 항목은 접혀 열 때만 뜬다');
 const narrow = mediaBodies(css, /\(min-width: 769px\) and \(max-width: 1023px\)/).join(' '), cols = mediaBodies(css, /\(min-width: 769px\) and \(max-width: 1279px\)/).join(' ');

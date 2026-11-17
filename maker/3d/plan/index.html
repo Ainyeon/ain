@@ -12,8 +12,8 @@
   <link rel="preload" href="/assets/fonts/PretendardVariable.subset.woff2" as="font" type="font/woff2" crossorigin>
   <script src="/maker/3d/partner-boot.js?v=2"></script>
   <link rel="stylesheet" href="/assets/css/design-tokens.css?v=12">
-  <link rel="stylesheet" href="/maker/3d/plan/plan.css?v=6">
-  <script type="module" src="/maker/3d/plan/app.js?v=15"></script>
+  <link rel="stylesheet" href="/maker/3d/plan/plan.css?v=7">
+  <script type="module" src="/maker/3d/plan/app.js?v=16"></script>
 </head>
 <body class="pl">
   <a class="ed-skip" href="#plCanvas">도면 캔버스로 건너뛰기</a>
@@ -29,7 +29,10 @@
       <button type="button" class="ed-b ghost ed-more" id="plMore" aria-expanded="false" aria-controls="plMenu">메뉴</button>
       <div class="ed-menu" id="plMenu" role="group" aria-label="도면 메뉴">
         <button type="button" class="ed-b ghost ed-small-only" id="plRename">이름 바꾸기</button>
+        <button type="button" class="ed-b ghost" id="plShot" title="지금 화면을 갤러리에 담습니다"><span class="ico i-camera" aria-hidden="true"></span>렌더샷</button>
+        <button type="button" class="ed-b ghost" id="plGallery"><span class="ico i-images" aria-hidden="true"></span>갤러리</button>
         <button type="button" class="ed-b ghost" id="plEstimate"><span class="ico i-receipt" aria-hidden="true"></span>견적 물량표</button>
+        <button type="button" class="ed-b ghost" id="plSpec"><span class="ico i-clipboard-text" aria-hidden="true"></span>시방서</button>
         <button type="button" class="ed-b ghost" id="plExport"><span class="ico i-export" aria-hidden="true"></span>도면 내보내기 (.json)</button>
         <button type="button" class="ed-b ghost" id="plImport"><span class="ico i-folder-open" aria-hidden="true"></span>도면 불러오기</button>
         <button type="button" class="ed-b ghost" id="plNew"><span class="ico i-file-plus" aria-hidden="true"></span>새로 만들기</button>
