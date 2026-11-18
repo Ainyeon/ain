@@ -178,7 +178,7 @@ assert.ok(/html\[data-embed\] \.st-ask\s*\{\s*display:\s*none/.test(css), '임�
   const pv = read('_dev/legal/privacy/index.html'), row = pv.match(/<tr><td>Anthropic, PBC<\/td>.*?<\/tr>/)[0];
   assert.ok(/<td>미국<\/td>/.test(row) && !/채울 것/.test(row) && /<tr><td>도면 작업<\/td>.*14일/.test(pv), '처리방침 초안: 받는 곳·국가·항목, 도면 작업 보유 기간');
   assert.ok(pv.includes('규칙으로 읽지 못하거나 읽은 결과의 방 수가 넓이에 비해 적으면'), '보내는 조건은 코드(ai_read.extract: 엔진 실패 또는 engine_suspect)와 같게');
-  assert.strictEqual((pv.match(/〔채울 것: Anthropic[^〕]*〕/g) || []).length, 1, 'Anthropic 보관 기간은 확인 뒤 채운다(채울 곳 1)');
+  assert.ok(!/〔채울 것: Anthropic/.test(pv) && pv.includes('AI 학습에 쓰지 않고, 받은 날부터 30일 안에 지웁니다'), 'Anthropic 보관 기간: 공식 안내(privacy.claude.com, 11-17 확인) 그대로');
 }
 
 console.log('test-studio-live: OK');

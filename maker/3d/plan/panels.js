@@ -91,6 +91,24 @@ export function createFavs(kind, storage = browserStorage()) {
   };
 }
 
+// 내 가구(개인 탭) — 놓은 가구의 모양·이름·크기·색을 localStorage('ain-plan-mine-furniture') 에 카탈로그 행 모양으로 저장. 이 브라우저에만, 최대 MINE_MAX 개(오래된 것부터 밀려난다)
+export const MINE_MAX = 60;
+export function createMine(storage = browserStorage()) {
+  const key = 'ain-plan-mine-furniture';
+  const read = () => { try { const a = JSON.parse(storage.getItem(key) || '[]'); return Array.isArray(a) ? a.filter((m) => m && typeof m.id === 'string' && typeof m.shape === 'string') : []; } catch (e) { return []; } };
+  const write = (a) => { try { storage.setItem(key, JSON.stringify(a)); return true; } catch (e) { return false; } };
+  return {
+    all: read,
+    add(it) { // it = 놓인 가구 요소. 같은 모양·이름·크기·색이 이미 있으면 그 줄을 맨 앞으로만. 저장까지 됐으면 true
+      const row = { id: `mine-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`, shape: it.shape, name: it.name, widthMm: it.size[0], depthMm: it.size[1], heightMm: it.heightMm, ...(it.tone ? { tone: it.tone } : {}) };
+      const same = (m) => m.shape === row.shape && m.name === row.name && m.widthMm === row.widthMm && m.depthMm === row.depthMm && m.heightMm === row.heightMm && (m.tone || '') === (row.tone || '');
+      const a = read(), old = a.find(same);
+      return write([old || row, ...a.filter((m) => m !== old)].slice(0, MINE_MAX));
+    },
+    remove: (id) => write(read().filter((m) => m.id !== id)),
+  };
+}
+
 /* ---------- 가구 (순수) — data/furniture-catalog.json 의 행 ---------- */
 export function filterFurniture(items, { type = 'all', place = 'all', query = '', ids = null } = {}) {
   const q = norm(query);
@@ -241,7 +259,8 @@ function browsePanel(container, ctx, cfg) {
   }
 
   function browse() {
-    const entries = cfg.entries(data);
+    const mineTab = st.tab === 'mine';   // 개인 탭: 내가 저장한 줄만, 칩·즐겨찾기 없이
+    const entries = mineTab ? cfg.mine.all() : cfg.entries(data);
     const chipItems = [{ id: 'all', label: '전체' }, ...cfg.chips(data)];
     if (!chipItems.some((c) => c.id === st.chip)) st.chip = 'all';
     const search = h('input', { type: 'search', class: 'pl-search', placeholder: cfg.searchLabel, 'aria-label': cfg.searchLabel, autocomplete: 'off', spellcheck: 'false' });
@@ -254,7 +273,7 @@ function browsePanel(container, ctx, cfg) {
     const chips2 = cfg.chips2 && tablist(cfg.chip2Label, [{ id: 'all', label: '전체' }, ...cfg.chips2(data)], st.chip2, (id) => { st.chip2 = id; update(); }, 'pl-chips');
     const chips3 = cfg.chips3 && tablist(cfg.chip3Label, cfg.chips3, st.chip3, (id) => { st.chip3 = id; update(); }, 'pl-chips'); // 셋째 줄(가전: 판매 중 / 단종·미확인 포함)
     const count = h('p', { class: 'pl-count', 'aria-live': 'polite' });
-    const hint = h('p', { class: 'pl-hint' }, cfg.hint, cfg.hintKeys && h('span', { class: 'pl-kb' }, ` · ${cfg.hintKeys}`)); // hintKeys = 키보드 화면에서만 보이는 뒤 문구(폰·터치에서는 감춘다)
+    const hint = h('p', { class: 'pl-hint' }, cfg.hint, cfg.hintKeys && h('span', { class: 'pl-kb' }, ` · ${mineTab ? cfg.hintKeys.replace(/ · F 즐겨찾기/, '') : cfg.hintKeys}`)); // hintKeys = 키보드 화면에서만 보이는 뒤 문구(폰·터치에서는 감춘다)
     const grid = h('ul', { class: 'pl-grid pl-grid--' + cfg.cols, 'aria-label': cfg.title });
     const moreBtn = h('button', { type: 'button', class: 'pl-more', onclick: showMore });
     const foot = cfg.foot && h('p', { class: 'pl-foot' }, cfg.foot(data));
@@ -269,13 +288,15 @@ function browsePanel(container, ctx, cfg) {
     grid.addEventListener('keydown', (e) => { // F = 즐겨찾기, O = 공식 페이지 열기(카드에 초점이 있을 때만). 한글 자판에서도 되도록 글쇠 위치(code)로 본다
       const main = e.target.closest('.pl-card-main');
       if (!main || e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.code === 'KeyF' || e.key === 'f' || e.key === 'F') { e.preventDefault(); e.stopPropagation(); toggleFav(main.dataset.id, main.parentElement.querySelector('.pl-fav')); }
+      if (!mineTab && (e.code === 'KeyF' || e.key === 'f' || e.key === 'F')) { e.preventDefault(); e.stopPropagation(); toggleFav(main.dataset.id, main.parentElement.querySelector('.pl-fav')); }
       else if (e.code === 'KeyO' || e.key === 'o' || e.key === 'O') { const a = main.parentElement.querySelector('.pl-src'); if (a) { e.preventDefault(); e.stopPropagation(); a.click(); } }
     });
     function cardOf(en) {
       const c = cfg.card(en, ctx, { toast }), id = en.id;
-      const fav = h('button', { type: 'button', class: 'pl-fav', 'aria-pressed': favs.has(id), 'aria-label': `${c.name} 즐겨찾기`, tabindex: '-1', 'aria-keyshortcuts': 'F', onclick: (e) => toggleFav(id, e.currentTarget) }, '즐겨찾기');
       c.main.classList.add('pl-card-main'); c.main.dataset.id = id;
+      if (mineTab) return h('li', { class: 'pl-card' }, c.main, h('button', { type: 'button', class: 'pl-fav', 'aria-label': `${c.name} 내 가구에서 빼기`, tabindex: '-1',
+        onclick: () => { if (!cfg.mine.remove(id)) toast('내 가구를 저장하지 못했습니다'); entries.splice(entries.findIndex((m) => m.id === id), 1); update(); (grid.querySelector('.pl-card-main') || search).focus(); } }, '빼기'));
+      const fav = h('button', { type: 'button', class: 'pl-fav', 'aria-pressed': favs.has(id), 'aria-label': `${c.name} 즐겨찾기`, tabindex: '-1', 'aria-keyshortcuts': 'F', onclick: (e) => toggleFav(id, e.currentTarget) }, '즐겨찾기');
       return h('li', { class: 'pl-card' }, c.main, fav, c.extra);
     }
     function syncMore() {
@@ -286,13 +307,13 @@ function browsePanel(container, ctx, cfg) {
     function update() { // 조건이 바뀌었다 — 처음 한 쪽부터 다시 그린다
       const ids = st.tab === 'fav' ? favs.all() : null;
       const chip3 = st.tab === 'fav' ? 'all' : st.chip3;   // 즐겨찾기는 판매 여부와 상관없이 다 보인다
-      list = cfg.filter(entries, { chip: st.chip, chip2: st.chip2, chip3, query: st.q, ids });
+      list = mineTab ? cfg.filter(entries, { chip: 'all', chip2: 'all', chip3: 'all', query: st.q, ids: null }) : cfg.filter(entries, { chip: st.chip, chip2: st.chip2, chip3, query: st.q, ids });
       if (cfg.sorts) list = cfg.sort(list, st.sort);
       shown = Math.min(list.length, page);
-      if (cfg.chipCounts) { const n = cfg.chipCounts(entries, { chip2: st.chip2, chip3, query: st.q, ids }); for (const c of chipItems) chips.setLabel(c.id, `${c.label} ${(n[c.id] ?? 0).toLocaleString('ko-KR')}`); }
+      if (cfg.chipCounts && !mineTab) { const n = cfg.chipCounts(entries, { chip2: st.chip2, chip3, query: st.q, ids }); for (const c of chipItems) chips.setLabel(c.id, `${c.label} ${(n[c.id] ?? 0).toLocaleString('ko-KR')}`); }
       grid.replaceChildren(...list.slice(0, shown).map(cardOf));
       if (!list.length) {
-        const none = st.tab === 'fav' && !favs.all().size && !st.q && st.chip === 'all' && st.chip2 === 'all' ? cfg.emptyFav : typeof cfg.emptyNone === 'function' ? cfg.emptyNone(data, st) : cfg.emptyNone;
+        const none = mineTab ? (st.q ? cfg.emptyNone : cfg.emptyMine) : st.tab === 'fav' && !favs.all().size && !st.q && st.chip === 'all' && st.chip2 === 'all' ? cfg.emptyFav : typeof cfg.emptyNone === 'function' ? cfg.emptyNone(data, st) : cfg.emptyNone;
         grid.append(h('li', { class: 'pl-empty-row' }, emptyNote(...[].concat(none))));
       }
       syncMore(); refreshTab();
@@ -311,7 +332,7 @@ function browsePanel(container, ctx, cfg) {
     update();
     const group = (title, el) => h('div', { class: 'pl-fgroup' }, h('span', { class: 'pl-flabel' }, title), el);
     const back = cfg.catPic && st.tab === 'lib' && h('button', { type: 'button', class: 'pl-back', onclick: () => { st.home = true; st.chip = 'all'; st.q = ''; show(); refocus(body); } }, '‹ 분류');
-    return h('div', { class: 'pl-browse' }, back, h('div', { class: 'pl-filters' }, h('div', { class: 'pl-tools' }, search, sort), chips2 ? [group(cfg.chipLabel, chips.el), group(cfg.chip2Label, chips2.el), chips3 && group(cfg.chip3Label, chips3.el)] : chips.el, hint, count), grid, moreBtn, foot);
+    return h('div', { class: 'pl-browse' }, back, h('div', { class: 'pl-filters' }, h('div', { class: 'pl-tools' }, search, sort), mineTab ? null : chips2 ? [group(cfg.chipLabel, chips.el), group(cfg.chip2Label, chips2.el), chips3 && group(cfg.chip3Label, chips3.el)] : chips.el, hint, count), grid, moreBtn, foot);
   }
 
   const unsub = ctx.store.subscribe(() => {
@@ -320,8 +341,10 @@ function browsePanel(container, ctx, cfg) {
     if (placedView && placedView.refresh) placedView.refresh();
     if (view && cfg.refresh) cfg.refresh(view.grid, ctx);
   });
+  const onMine = () => { if (!gone && st.tab === 'mine') show(); };   // 속성 칸에서 [내 가구로 저장] 하면 열린 개인 탭을 다시 그린다
+  if (cfg.mine) addEventListener('ain-plan-mine', onMine);
   start();
-  return { destroy() { gone = true; unsub(); root.remove(); } };
+  return { destroy() { gone = true; unsub(); removeEventListener('ain-plan-mine', onMine); root.remove(); } };
 }
 
 /* ---------- 문서 명령: 잠금을 지키는 ctx.exec 로만 (없으면 store.exec) ---------- */
@@ -456,7 +479,7 @@ function furniturePanel(host, ctx) {
   let data = null;
   return browsePanel(host, ctx, {
     name: 'furn', embedded: true, title: '가구', favKind: 'furniture', cols: 2,
-    tabs: [{ id: 'lib', label: '가구' }, { id: 'fav', label: '즐겨찾기' }, { id: 'placed', label: '배치된 제품' }],
+    tabs: [{ id: 'lib', label: '가구' }, { id: 'fav', label: '즐겨찾기' }, { id: 'mine', label: '개인' }, { id: 'placed', label: '배치된 제품' }], mine: createMine(),
     load: () => loadFurnitureCatalog().then((d) => (data = d)), entries: (d) => d.items,
     chipLabel: '종류', chips: (d) => d.meta.types, chipCounts: (e, o) => { const n = { all: 0 }; for (const m of filterFurniture(e, { place: o.chip2, query: o.query, ids: o.ids })) { n.all++; n[m.type] = (n[m.type] || 0) + 1; } return n; },
     chip2Label: '곳', chips2: (d) => d.meta.places,
@@ -464,7 +487,7 @@ function furniturePanel(host, ctx) {
     searchLabel: '이름 검색', hint: '카드를 고른 뒤 캔버스를 눌러 놓습니다', hintKeys: '방향키로 옮기고 Enter 로 놓습니다 · F 즐겨찾기',
     catPic: (list) => furnitureThumb(list[0], furnColors),
     card: (m, c, api) => furnitureCard(m, c, api, data), placed: placedProducts, countTab: (d, c) => `배치된 제품 ${countItems(c)}`,
-    emptyFav: '즐겨찾기한 가구가 없습니다', emptyNone: '찾는 가구가 없습니다',
+    emptyFav: '즐겨찾기한 가구가 없습니다', emptyNone: '찾는 가구가 없습니다', emptyMine: '저장한 가구가 없습니다 · 놓은 가구를 고르고 [내 가구로 저장]을 누르세요',
     foot: () => '크기는 놓은 뒤 고칩니다',
   });
 }
