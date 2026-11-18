@@ -295,6 +295,7 @@ function propsBuild() {
       add(num('가로', 'mm', (e) => e.size[0], (v) => up({ size: [v, cur().size[1]] }), { min: 5 })); add(num('깊이', 'mm', (e) => e.size[1], (v) => up({ size: [cur().size[0], v] }), { min: 5 })); add(num('높이', 'mm', (e) => e.heightMm, (v) => up({ heightMm: v }), { min: 5 }));
       add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 }));
       add(pick('색', FURNITURE_TONES, (e) => e.tone || FURNITURE_MAIN[e.shape] || 'body', (v) => up({ tone: v })));
+      kids.push(h('div', { class: 'ed-btns' }, [h('button', { type: 'button', class: 'ed-b', text: '내 가구로 저장', onclick: saveMine })]));
     } else if (first.col === 'items') { add(ro('모델', (e) => e.code || e.model.toUpperCase())); add(ro('냉방 용량', (e) => (e.capacityKw ? `${e.capacityKw} kW` : '미확인'))); add(num('회전', '°', (e) => e.rot, (v) => up({ rot: v }), { step: 90 })); }
     else if (first.col === 'guides') add(ro('길이', (e) => fmtLen(dist(e.a, e.b), state.unit)));
   } else {
@@ -304,6 +305,14 @@ function propsBuild() {
   }
   kids.push(h('div', { class: 'ed-btns' }, [first && first.col === 'items' ? h('button', { type: 'button', class: 'ed-b', text: '같은 것 놓기', 'aria-keyshortcuts': 'Control+D Meta+D', onclick: placeAgain }) : null, ids.some((i) => ['items', 'columns'].includes(findEl(store.doc, i)?.col)) ? h('button', { type: 'button', class: 'ed-b', text: '복제', onclick: dupSel }) : null, h('button', { type: 'button', class: 'ed-b', text: ids.length > 1 ? '선택한 것 지우기' : '지우기', onclick: delSel })]));
   box.replaceChildren(...kids); propFields.forEach((f2) => f2.sync());
+}
+// 고른 가구 하나를 제품 판 [가구] → [개인] 탭에 저장(이 브라우저에만)
+async function saveMine() {
+  const e = sel.size === 1 && findEl(store.doc, [...sel.ids][0])?.el;
+  if (!e || e.kind !== 'furniture') return;
+  try { if (!(await getPanels()).createMine().add(e)) { toast('내 가구를 저장하지 못했습니다', 'err'); return; } } catch { toast('내 가구를 저장하지 못했습니다', 'err'); return; }
+  dispatchEvent(new Event('ain-plan-mine'));
+  toast(`${e.name} · 제품 판 [가구] → [개인] 에 저장했습니다`);
 }
 // 개구부 종류를 바꾸면 폭·높이·바닥 높이도 새 종류의 기본값으로 — 이전 종류의 기본값 그대로인 칸만(사용자가 고친 값은 둔다). 문·개방은 같은 기본값
 const openDefaults = (t) => (t === 'window' ? { width: DEFAULTS.winW, height: DEFAULTS.winH, sill: DEFAULTS.winSill } : { width: DEFAULTS.doorW, height: DEFAULTS.doorH, sill: 0 });

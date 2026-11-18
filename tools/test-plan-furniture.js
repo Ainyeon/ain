@@ -192,4 +192,22 @@ const read = (p) => fs.readFileSync(path.join(PLAN, p), 'utf8');
   const bad = JSON.parse(JSON.stringify(st.doc)); bad.floors[0].items[0].tone = 'pink';
   assert.ok(validateDoc(bad).some((m) => /가구 색/.test(m)), '모르는 색은 거절');
   console.log('tone ok');
+  // 내 가구(개인 탭) — 저장·같은 것 중복 없음·빼기·상한·깨진 저장소
+  {
+    const P = await imp('panels.js'), mem = new Map(), store = { getItem: (k) => mem.get(k) ?? null, setItem: (k, v) => mem.set(k, v) };
+    const mine = P.createMine(store), it = { kind: 'furniture', shape: 'desk', name: '내 책상', size: [1400, 700], heightMm: 720, tone: 'oak' };
+    assert.ok(mine.add(it) && mine.add(it), '저장');
+    assert.strictEqual(mine.all().length, 1, '같은 것은 한 줄');
+    const row = mine.all()[0];
+    assert.deepStrictEqual([row.shape, row.name, row.widthMm, row.depthMm, row.heightMm, row.tone], ['desk', '내 책상', 1400, 700, 720, 'oak'], '카탈로그 행 모양');
+    assert.deepStrictEqual(P.furnitureOpts(row), { kind: 'furniture', shape: 'desk', name: '내 책상', size: [1400, 700], heightMm: 720, tone: 'oak' }, '그대로 다시 놓는다');
+    mine.add({ ...it, size: [1200, 700] });
+    assert.strictEqual(mine.all()[0].widthMm, 1200, '새 것이 맨 앞');
+    assert.ok(mine.remove(row.id) && mine.all().length === 1, '빼기');
+    for (let n = 0; n < P.MINE_MAX + 5; n++) mine.add({ ...it, name: `책상 ${n}` });
+    assert.strictEqual(mine.all().length, P.MINE_MAX, '상한');
+    mem.set('ain-plan-mine-furniture', '{깨짐'); assert.deepStrictEqual(mine.all(), [], '깨진 값은 빈 목록');
+    assert.strictEqual(P.createMine({ getItem() { throw new Error('x'); }, setItem() { throw new Error('x'); } }).add(it), false, '저장소가 막히면 false');
+    console.log('mine ok');
+  }
 })().catch((e) => { console.error(e); process.exit(1); });
