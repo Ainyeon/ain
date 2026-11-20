@@ -11,11 +11,12 @@
     if (!Array.isArray(value) || value.length > maxItems || value.some(id => typeof id !== 'string' || !id || id.length > maxIdLength)) throw new Error('invalid-list');
     return [...new Set(value)];
   }
-  function exportFavorites(storage) {
+  function exportFavorites(storage, type) {
+    if (type !== undefined && !types.includes(type)) throw new Error('invalid-type');
     const favorites = {};
-    for (const type of types) {
-      const raw = storage.getItem(prefix + type);
-      if (raw !== null) favorites[type] = parseList(raw);
+    for (const group of type === undefined ? types : [type]) {
+      const raw = storage.getItem(prefix + group);
+      if (raw !== null) favorites[group] = parseList(raw);
     }
     const text = JSON.stringify({format:'modang-catalog-favorites', version:1, favorites});
     if (bytes(text) > maxBytes) throw new Error('too-large');
