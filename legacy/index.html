@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; script-src 'sha256-lR178RFmN6Z9NQ9pPOpRDxt6LCTXEd1ae5JVT16szLk='; style-src 'sha256-SmgothFdBOZzgoi3vmr/ZQXBuyDcy2Z42NeKEH8/O5Q='">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>에인연 이전 화면 | 모당으로 이동</title><style>
+body{margin:0;color:#202721;background:white;font:1.0625rem/1.65 system-ui,sans-serif;word-break:keep-all}
+main{max-width:32rem;margin:12vh auto;padding:0 1.5rem}h1{font-size:clamp(1.65rem,5vw,2.15rem);line-height:1.35}
+a{color:#315e49;text-underline-offset:.22em}nav{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap;margin-top:2rem}
+.primary{display:inline-block;background:#315e49;color:white;padding:.7rem 1.1rem;border-radius:.65rem;text-decoration:none;font-weight:650}
+a:focus-visible{outline:3px solid currentColor;outline-offset:4px}.primary:focus-visible{outline-color:#202721}
+</style></head>
+<body><main><h1>에인연 이전 화면</h1><p>모당에서 이어서 볼 수 있어요.</p>
+<nav aria-label="이동"><a id="continue" class="primary" href="https://modang.io/legacy/">모당에서 에인연 이전 화면 열기</a>
+<a href="/ain/github-recovery/?restore=1">예전 기기의 자료 찾기</a></nav>
+</main><script>
+const link = document.querySelector('#continue');
+const originalDestination = link.href;
+function openBookmark() {
+  const target = new URL(originalDestination);
+  const query = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const accountKeys = ['access_token','refresh_token','id_token','provider_token','provider_refresh_token',
+    'provider_access_token','token','token_hash','code','code_verifier','state','session_id',
+    'expires_in','expires_at','token_type','error','error_code','error_description'];
+  const mailTypes = ['recovery','invite','email_change','signup','magiclink'];
+  const mail = [query, hash].some(params => params.getAll('type').some(type => mailTypes.includes(type)));
+  const callback = mail || [query, hash].some(params => accountKeys.some(key => params.has(key)));
+  if (callback) {
+    history.replaceState(null, '', location.pathname);
+    document.querySelector('h1').textContent = '로그인 링크가 예전 주소로 열렸어요';
+    document.querySelector('p').textContent = mail
+      ? '문의하실 때 받은 메일이 초대, 가입, 계정 복구 중 어떤 메일이었는지 알려 주세요.'
+      : '모당에서 쓰던 카카오 계정으로 다시 로그인해 주세요.';
+    link.href = mail ? 'mailto:contact@modang.io' : 'https://modang.io/me/';
+    link.textContent = mail ? '모당에 계정 문의하기' : '모당에서 로그인하기';
+  } else {
+    function keep(key, rule, source=query, destination=target) {
+      const values = source.getAll(key);
+      if (values.length !== 1) return;
+      const value = values[0];
+      if (Array.isArray(rule) ? rule.includes(value) : rule.test(value)) destination.searchParams.set(key, value);
+    }
+    const regions = ['METRO','NATION'];
+    const publicId = /^[0-9A-Za-z가-힣][0-9A-Za-z가-힣_./|:-]{0,127}$/u;
+    switch (target.pathname) {
+      case '/calendar/':
+        keep('region', regions);
+        keep('province', ['강원','대전','세종','충북','충남','대구','경북','부산','울산','경남','광주','전북','전남','제주','기타']);
+        break;
+      case '/edu/':
+        keep('work', ['hvac','plumbing','tile','waterproof','film','carpentry','paint','interior','grout','clean','furniture']);
+        keep('region', /^[가-힣]{2,8}$/u);
+        keep('status', ['deadline','posted_no_deadline','unconfirmed','expired']);
+        keep('target', ['beginner','experience','condition','unknown']);
+        keep('cost', ['subsidy','self','free','unknown']);
+        keep('id', publicId);
+        break;
+      case '/edu/jobs/':
+        keep('kind', ['seek']);
+        break;
+      case '/area/':
+        keep('tab', ['notice','complex']);
+        keep('region', regions);
+        if (target.searchParams.get('tab') === 'notice') keep('notice', publicId);
+        else keep('complex', /^\d{1,24}$/);
+        break;
+    }
+    link.href = target.href;
+    location.replace(target.href);
+  }
+}
+addEventListener('hashchange', openBookmark);
+openBookmark();
+</script></body></html>
