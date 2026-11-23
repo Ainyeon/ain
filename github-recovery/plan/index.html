@@ -14,6 +14,8 @@
     button:focus-visible,a:focus-visible{outline:3px solid #f29d38;outline-offset:3px}
     li{padding:12px 0;border-bottom:1px solid #e6eaed}li:last-child{border:0}ul{padding-left:22px}
     .note{color:#52616b}.error{color:#a02a23}a{color:#254f70}
+    #bundle-parts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    #bundle-parts button,#save-bundle{min-height:44px}
   </style>
 </head>
 <body><main>
@@ -37,9 +39,11 @@
     <ul id="list"></ul>
   </section>
   <section>
-    <h2>목록에 있는 도면 한 번에 보관</h2>
-    <p>목록에 등록된 도면과 북마크·휴지통 상태를 한 파일로 보관합니다. 다른 도면 편집 탭을 모두 닫은 뒤 진행해 주세요. 목록에 없는 도면은 위에서 각각 받아 주세요.</p>
+    <h2>도면과 폴더 함께 받기</h2>
+    <p>묶음에는 도면의 폴더, 즐겨찾기, 휴지통 표시와 수정 시각이 들어가요. 다른 도면 편집 탭을 닫은 뒤 받아 주세요. 목록에 없는 도면은 위의 ‘이 기기에 저장된 도면 찾기’에서 한 장씩 받아 주세요.</p>
     <button type="button" id="save-bundle">도면 묶음 받기</button>
+    <p id="bundle-omitted" role="status" hidden></p>
+    <div id="bundle-parts" aria-label="나눠 받은 도면 파일"></div>
     <p id="bundle-status" role="status" aria-live="polite"></p>
   </section>
   <section>
@@ -107,22 +111,124 @@
   const load = document.getElementById('load'), list = document.getElementById('list'), status = document.getElementById('status');
   let downloaded = false;
   const bundleStatus = document.getElementById('bundle-status');
+  const partList = document.getElementById('bundle-parts');
+  function downloadPart(text,name) {
+    const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+    const link=document.createElement('a');
+    link.href=url;link.download=name;link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    downloaded=true;
+  }
+  const omittedNote = document.getElementById('bundle-omitted');
+  function offerParts(plans,folders,needsReview) {
+    const encode=rows=>JSON.stringify(folders.length
+      ? {format:'modang-plan-transfer',version:2,plans:rows,folders}
+      : {format:'modang-plan-transfer',version:1,plans:rows});
+    const encoder=new TextEncoder(),limit=50*1024*1024;
+    const headerBytes=encoder.encode(encode([])).byteLength;
+    if(headerBytes>limit)throw Error('too-large');
+    const parts=[];let rows=[],size=headerBytes;
+    for(const plan of plans){
+      const bytes=encoder.encode(JSON.stringify(plan)).byteLength;
+      if(headerBytes+bytes>limit)throw Error('too-large');
+      if(rows.length===300||size+bytes+(rows.length?1:0)>limit){
+        parts.push(rows);rows=[];size=headerBytes;
+      }
+      size+=bytes+(rows.length?1:0);rows.push(plan);
+    }
+    parts.push(rows);
+    if(parts.length===1 && !needsReview){
+      downloadPart(encode(rows),'모당-도면-묶음.json');
+      bundleStatus.textContent=`도면 ${plans.length}개와 폴더 ${folders.length}개를 파일로 준비했습니다. 다운로드 목록에서 확인해 주세요.`;
+      return;
+    }
+    if (parts.length === 1) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = '도면 ' + plans.length + '개와 폴더 ' + folders.length + '개 받기';
+      button.addEventListener('click', () => {
+        downloadPart(encode(rows),'모당-도면-부분-묶음.json');
+        bundleStatus.textContent = '부분 묶음을 내려받도록 요청했어요. 다운로드 목록을 확인해 주세요.';
+      });
+      partList.append(button);
+      bundleStatus.textContent = '아래 버튼으로 확인된 자료를 따로 받을 수 있어요.';
+      return;
+    }
+    const batch=crypto.randomUUID().slice(0,8),requested=new Set();
+    bundleStatus.textContent=`도면 ${plans.length}개를 파일 ${parts.length}개로 나눴어요. 번호를 하나씩 눌러 받은 뒤 모당에서 모두 가져와 주세요.`;
+    parts.forEach((part,index)=>{
+      const button=document.createElement('button');
+      button.type='button';button.textContent=`${index+1}/${parts.length} 받기 · 도면 ${part.length}개`;
+      button.addEventListener('click',()=>{
+        downloadPart(encode(part),`모당-도면-묶음-${batch}-${index+1}-of-${parts.length}.json`);
+        requested.add(index);
+        bundleStatus.textContent=`파일 ${parts.length}개 중 ${requested.size}개를 내려받도록 요청했어요. 브라우저의 다운로드 목록을 확인해 주세요.`;
+      });
+      partList.append(button);
+    });
+  }
   document.getElementById('save-bundle').addEventListener('click', () => {
+    partList.replaceChildren();
+    omittedNote.hidden = true;
+    omittedNote.textContent = '';
     try {
       const stored=localStorage.getItem('ain-plan-docs'), records=stored===null?[]:JSON.parse(stored);
-      if (!Array.isArray(records) || records.length>300 || records.some(m=>!m || typeof m.id!=='string' || !/^p[a-z0-9]+$/.test(m.id) || typeof m.title!=='string' || m.title.length>1024 || !Number.isFinite(m.updated)) || new Set(records.map(m=>m.id)).size!==records.length) throw new Error('invalid-list');
-      if (!records.length) {bundleStatus.textContent='목록에 등록된 도면이 없습니다. 목록에 없는 도면은 위에서 각각 확인해 주세요.';return;}
-      const plans=records.map(m=>({id:m.id,title:m.title,updated:m.updated,bookmark:!!m.bookmark,trashed:!!m.trashed,raw:localStorage.getItem('ain-plan-'+m.id)}));
-      if (localStorage.getItem('ain-plan-docs')!==stored || plans.some(p=>localStorage.getItem('ain-plan-'+p.id)!==p.raw)) throw new Error('changed');
-      const text=JSON.stringify({format:'modang-plan-transfer',version:1,plans});
-      if (new TextEncoder().encode(text).byteLength>50*1024*1024) throw new Error('too-large');
-      const url=URL.createObjectURL(new Blob([text],{type:'application/json'})), a=document.createElement('a');
-      a.href=url;a.download='모당-도면-묶음.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
-      downloaded=true;bundleStatus.textContent=`목록의 도면 ${plans.length}개를 파일로 준비했습니다. 다운로드 목록에서 확인해 주세요.`;
+      if (!Array.isArray(records)) throw Error('invalid-list');
+      const folderRaw = localStorage.getItem('ain-plan-folders');
+      let folderRows;
+      try { folderRows = JSON.parse(folderRaw ?? '[]'); } catch { folderRows = null; }
+      const folderIds = new Set(), ambiguous = new Set();
+      for (const row of Array.isArray(folderRows) ? folderRows : []) {
+        if (typeof row?.id !== 'string') continue;
+        if (folderIds.has(row.id)) ambiguous.add(row.id);
+        folderIds.add(row.id);
+      }
+      const folders = (Array.isArray(folderRows) ? folderRows : []).filter(row =>
+        typeof row?.id === 'string' && /^f[a-z0-9]+$/.test(row.id) && !ambiguous.has(row.id) &&
+        typeof row.name === 'string' && row.name.trim() && row.name.length <= 40
+      ).map(({id, name}) => ({id, name}));
+      const ids = new Set(folders.map(row => row.id));
+      const damagedFolders = !Array.isArray(folderRows) || folders.length !== folderRows.length;
+      const seen = new Set(), duplicates = new Set();
+      for (const record of records) {
+        if (typeof record?.id !== 'string') continue;
+        if (seen.has(record.id)) duplicates.add(record.id);
+        seen.add(record.id);
+      }
+      const flag = value => value === undefined || typeof value === 'boolean';
+      const readable = records.filter(m => typeof m?.id === 'string' && /^p[a-z0-9]+$/.test(m.id) &&
+        !duplicates.has(m.id) && typeof m.title === 'string' && m.title.length <= 1024 && Number.isFinite(m.updated) &&
+        flag(m.bookmark) && flag(m.trashed));
+      const omitted = records.length - readable.length;
+      const unfiled = readable.filter(row => row.folder != null && !ids.has(row.folder)).length;
+      const notes = [];
+      if (omitted) {
+        const accepted = new Set(readable);
+        const titles = records.filter(row => !accepted.has(row) && typeof row?.title === 'string' && row.title.trim());
+        const examples = titles.slice(0, 3).map(row => '‘' + row.title.trim().slice(0, 50) + '’').join(', ');
+        notes.push('도면 목록 ' + records.length + '개 중 ' + omitted + '개 항목은 번호나 저장 정보를 확인하지 못해 제외했어요.' +
+          (examples ? ' 제외한 항목: ' + examples + '.' : '') + ' 위의 도면 찾기에서 개별 원본을 확인해 주세요.');
+      }
+      if (damagedFolders) notes.push('읽을 수 없는 폴더 정보는 제외했어요.');
+      if (unfiled) notes.push('원래 폴더를 찾지 못한 도면 ' + unfiled + '개는 폴더 없이 담아요.');
+      omittedNote.textContent = notes.join(' ');
+      omittedNote.hidden = !notes.length;
+      if (!readable.length && !folders.length) {
+        bundleStatus.textContent = '묶음으로 받을 도면이나 폴더가 없어요. 위의 도면 찾기에서 개별 원본을 확인해 주세요.';
+        return;
+      }
+      const plans=readable.map(m=>({id:m.id,title:m.title,updated:m.updated,bookmark:!!m.bookmark,trashed:!!m.trashed,...(ids.has(m.folder) ? {folder:m.folder} : {}),raw:localStorage.getItem('ain-plan-'+m.id)}));
+      if (localStorage.getItem('ain-plan-folders')!==folderRaw || localStorage.getItem('ain-plan-docs')!==stored || plans.some(p=>localStorage.getItem('ain-plan-'+p.id)!==p.raw)) throw new Error('changed');
+      offerParts(plans,folders,notes.length > 0);
     } catch (_) {bundleStatus.textContent='묶음을 만들지 못했습니다. 기존 자료를 지우지 말고 위에서 도면을 각각 받아 주세요.';}
   });
   window.addEventListener('storage', event => {
-    if (event.storageArea !== localStorage || (event.key !== null && event.key !== 'ain-plan-docs' && !/^ain-plan-p[a-z0-9]+$/.test(event.key))) return;
+    if (event.storageArea !== localStorage || (event.key !== null && event.key !== 'ain-plan-docs' && event.key !== 'ain-plan-folders' && !/^ain-plan-p[a-z0-9]+$/.test(event.key))) return;
+    if (partList.childElementCount) {
+      partList.replaceChildren();
+      omittedNote.hidden = true;
+      bundleStatus.textContent = '다른 탭에서 도면이 바뀌었어요. 도면 묶음 받기를 다시 눌러 주세요.';
+    }
     status.className = 'error';
     status.textContent = downloaded ? '다른 탭에서 도면이 바뀌었습니다. 이미 내려받은 파일에 최신 변경이 없을 수 있습니다. 도면 찾기를 다시 눌러 확인해 주세요.' : '다른 탭에서 도면이 바뀌었습니다. 도면 찾기를 다시 눌러 확인해 주세요.';
     if (downloaded) bundleStatus.textContent='다른 탭에서 도면이 바뀌었습니다. 묶음 파일도 다시 받아 주세요.';
